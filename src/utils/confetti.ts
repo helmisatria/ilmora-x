@@ -18,23 +18,44 @@ export function runConfetti() {
   }));
 
   let f = 0;
+  const stopRespawnAt = 500;
+  const fadeStartAt = 450;
   
   function anim() {
     if (!x || !c) return;
     x.clearRect(0, 0, c.width, c.height);
     
+    let activeCount = 0;
+    
     p.forEach((o) => {
       o.y += o.s;
       o.x += Math.sin(f / 20 + o.a) * 0.7;
-      if (o.y > c.height) o.y = -10;
-      x.fillStyle = o.co;
-      x.beginPath();
-      x.arc(o.x, o.y, o.r, 0, 6.28);
-      x.fill();
+      
+      const shouldRespawn = f < stopRespawnAt && o.y > c.height;
+      if (shouldRespawn) {
+        o.y = -10;
+      }
+      
+      const isVisible = o.y < c.height + 10;
+      if (isVisible) {
+        activeCount++;
+        
+        let alpha = 1;
+        if (f > fadeStartAt) {
+          alpha = Math.max(0, 1 - (f - fadeStartAt) / (stopRespawnAt - fadeStartAt));
+        }
+        
+        x.fillStyle = o.co.replace(')', `, ${alpha})`).replace('hsl', 'hsla');
+        x.beginPath();
+        x.arc(o.x, o.y, o.r, 0, 6.28);
+        x.fill();
+      }
     });
     
     f++;
-    if (f < 320) requestAnimationFrame(anim);
+    if (activeCount > 0 || f < stopRespawnAt) {
+      requestAnimationFrame(anim);
+    }
   }
   
   anim();
