@@ -112,12 +112,12 @@ export const questionBank: Record<number, Question[]> = {
 };
 
 export const modules = [
-  { title: "Farmakologi Dasar", icon: "💊", color: "var(--primary)", progress: 85, total: 24, done: 20, tag: "Aktif" },
-  { title: "Kardiovaskular", icon: "❤️", color: "var(--rose)", progress: 60, total: 18, done: 11, tag: "Lanjut" },
-  { title: "Antibiotik & Antiinfeksi", icon: "🦠", color: "var(--violet)", progress: 35, total: 22, done: 8, tag: "Baru" },
-  { title: "Farmasi Klinik", icon: "🏥", color: "var(--teal)", progress: 15, total: 30, done: 4, tag: "Mulai" },
-  { title: "Perhitungan Dosis", icon: "🧮", color: "var(--amber)", progress: 0, total: 15, done: 0, tag: "Premium", lock: true },
-  { title: "Steril & Onkologi", icon: "🔬", color: "var(--slate)", progress: 0, total: 12, done: 0, tag: "Premium", lock: true },
+  { title: "Farmakologi Dasar", icon: "💊", color: "#14b8a6", progress: 85, total: 24, done: 20, tag: "Aktif" },
+  { title: "Kardiovaskular", icon: "❤️", color: "#fb7185", progress: 60, total: 18, done: 11, tag: "Lanjut" },
+  { title: "Antibiotik & Antiinfeksi", icon: "🦠", color: "#a855f7", progress: 35, total: 22, done: 8, tag: "Baru" },
+  { title: "Farmasi Klinik", icon: "🏥", color: "#0ea5e9", progress: 15, total: 30, done: 4, tag: "Mulai" },
+  { title: "Perhitungan Dosis", icon: "🧮", color: "#f59e0b", progress: 0, total: 15, done: 0, tag: "Premium", lock: true },
+  { title: "Steril & Onkologi", icon: "🔬", color: "#57534e", progress: 0, total: 12, done: 0, tag: "Premium", lock: true },
 ];
 
 export const shopItems = [

@@ -121,49 +121,17 @@ function ResultsComponent() {
     <div className="results-view">
       <canvas id="confetti" />
       <div className="results-content">
-        {/* Premium Banner - Show if there are locked pembahasan */}
+        {/* Premium Banner - cleaner, solid colors */}
         {hasPremiumContent && (
-          <div style={{
-            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-            borderRadius: 'var(--radius)',
-            padding: '16px 20px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)',
-          }}>
-            <span style={{ fontSize: '28px' }}>🔒</span>
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <p style={{
-                margin: '0',
-                fontWeight: 700,
-                fontSize: '14px',
-                color: '#92400e',
-              }}>
-                {premiumCount} pembahasan terkunci
-              </p>
-              <p style={{
-                margin: '4px 0 0',
-                fontSize: '13px',
-                color: '#a16207',
-              }}>
-                Upgrade untuk akses lengkap dengan video pembelajaran
-              </p>
+          <div className="premium-banner">
+            <span className="premium-banner-icon">🔒</span>
+            <div className="premium-banner-content">
+              <p>{premiumCount} pembahasan terkunci</p>
+              <span>Upgrade untuk akses lengkap</span>
             </div>
             <button
+              className="premium-banner-btn"
               onClick={() => setShowPremiumDialog(true)}
-              style={{
-                background: '#92400e',
-                color: '#fff',
-                border: 'none',
-                padding: '10px 16px',
-                borderRadius: '10px',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
             >
               Unlock
             </button>
@@ -171,20 +139,16 @@ function ResultsComponent() {
         )}
         <div className="celebrate">🎉</div>
         <h1>Pelajaran selesai!</h1>
+        
+        {/* Score Ring - solid color instead of gradient */}
         <div className="score-ring">
           <svg viewBox="0 0 120 120">
-            <defs>
-              <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#0d9488" />
-                <stop offset="100%" stopColor="#06b6d4" />
-              </linearGradient>
-            </defs>
-            <circle cx="60" cy="60" r="54" stroke="#e5e5e5" strokeWidth="12" fill="none" />
+            <circle cx="60" cy="60" r="54" stroke="#e7e5e4" strokeWidth="12" fill="none" />
             <circle
               cx="60"
               cy="60"
               r="54"
-              stroke="url(#scoreGradient)"
+              stroke="#14b8a6"
               strokeWidth="12"
               fill="none"
               strokeDasharray={dash}
@@ -198,13 +162,13 @@ function ResultsComponent() {
             <span>AKURASI</span>
           </div>
         </div>
+        
         <div className="xp-gain">+{r.xpEarn} XP</div>
+        
         <div className="result-stats">
           <div className="r-stat">
             <span>🎯</span>
-            <b>
-              {r.correct}/{r.total}
-            </b>
+            <b>{r.correct}/{r.total}</b>
             <span>Benar</span>
           </div>
           <div className="r-stat">
@@ -218,8 +182,9 @@ function ResultsComponent() {
             <span>Streak</span>
           </div>
         </div>
+        
         <Link to="/dashboard" className="btn btn-primary btn-lg" style={{ width: "100%" }}>
-          LANJUTKAN
+          🎉 LANJUTKAN
         </Link>
         
         {/* Enhanced Pembahasan Section */}
@@ -228,13 +193,14 @@ function ResultsComponent() {
             <h3>📚 Pembahasan Soal</h3>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {hasPremiumContent && (
-                <span className="premium-count" style={{
+                <span style={{
                   fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--amber-dark)',
-                  background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                  padding: '4px 10px',
-                  borderRadius: '20px',
+                  fontWeight: 800,
+                  color: '#92400e',
+                  background: '#fef3c7',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-full)',
+                  border: '2px solid #fde68a',
                 }}>
                   🔒 {premiumCount} Premium
                 </span>
@@ -367,11 +333,10 @@ function ResultsComponent() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            background: 'linear-gradient(to bottom, transparent, rgba(254, 243, 199, 0.9))',
+                            background: 'rgba(254, 243, 199, 0.8)',
                           }}>
                             <span style={{
                               fontSize: '32px',
-                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
                             }}>🔒</span>
                           </div>
                         </div>
