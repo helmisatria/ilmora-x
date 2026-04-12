@@ -44,6 +44,7 @@ export interface Question {
 
 export interface WrongAnswer extends Question {
   user: string;
+  explanationPreview?: string;
 }
 
 export const tryouts = [

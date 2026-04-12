@@ -75,6 +75,9 @@ function TestComponent() {
             options: question.options,
             correct: question.correct,
             explanation: question.explanation,
+            explanationPreview: question.explanation.slice(0, 120) + "...",
+            videoUrl: question.videoUrl,
+            isPremium: question.isPremium,
             user: sel !== undefined ? question.options[sel] : "Tidak dijawab",
           };
           wrongs.push(wrongAnswer);

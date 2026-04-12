@@ -20,20 +20,20 @@ function LandingComponent() {
           <svg viewBox="0 0 200 200">
             <defs>
               <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0" stopColor="#7de01f" />
-                <stop offset="1" stopColor="#58cc02" />
+                <stop offset="0" stopColor="#14b8a6" />
+                <stop offset="1" stopColor="#0d9488" />
               </linearGradient>
             </defs>
             <circle cx="100" cy="115" r="68" fill="url(#g)" />
-            <circle cx="100" cy="85" r="52" fill="#eaffd3" />
-            <circle cx="72" cy="80" r="18" fill="#fff" stroke="#4b4b4b" strokeWidth="5" />
-            <circle cx="128" cy="80" r="18" fill="#fff" stroke="#4b4b4b" strokeWidth="5" />
-            <circle cx="72" cy="82" r="6" fill="#4b4b4b" />
-            <circle cx="128" cy="82" r="6" fill="#4b4b4b" />
-            <path d="M84 100 q16 14 32 0" stroke="#4b4b4b" strokeWidth="5" fill="none" strokeLinecap="round" />
-            <rect x="62" y="38" width="76" height="18" rx="9" fill="#1cb0f6" />
-            <rect x="95" y="20" width="10" height="22" fill="#1cb0f6" />
-            <circle cx="100" cy="18" r="7" fill="#ffc800" stroke="#1cb0f6" strokeWidth="3" />
+            <circle cx="100" cy="85" r="52" fill="#f0fdfa" />
+            <circle cx="72" cy="80" r="18" fill="#fff" stroke="#334155" strokeWidth="5" />
+            <circle cx="128" cy="80" r="18" fill="#fff" stroke="#334155" strokeWidth="5" />
+            <circle cx="72" cy="82" r="6" fill="#334155" />
+            <circle cx="128" cy="82" r="6" fill="#334155" />
+            <path d="M84 100 q16 14 32 0" stroke="#334155" strokeWidth="5" fill="none" strokeLinecap="round" />
+            <rect x="62" y="38" width="76" height="18" rx="9" fill="#0ea5e9" />
+            <rect x="95" y="20" width="10" height="22" fill="#0ea5e9" />
+            <circle cx="100" cy="18" r="7" fill="#f59e0b" stroke="#0ea5e9" strokeWidth="3" />
             <rect x="76" y="142" width="48" height="26" rx="8" fill="#fff" />
             <text x="100" y="160" textAnchor="middle" fontSize="18">
               💊
