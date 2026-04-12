@@ -38,6 +38,8 @@ export interface Question {
   options: string[];
   correct: number;
   explanation: string;
+  videoUrl?: string;
+  isPremium?: boolean;
 }
 
 export interface WrongAnswer extends Question {
@@ -61,7 +63,9 @@ export const questionBank: Record<number, Question[]> = {
       question: "Pilih obat golongan ACE Inhibitor yang tepat:",
       options: ["Amlodipin", "Captopril", "Propranolol", "Furosemid"],
       correct: 1,
-      explanation: "Captopril adalah ACE Inhibitor yang menghambat konversi Angiotensin I menjadi II, menurunkan tekanan darah.",
+      explanation: "Captopril adalah ACE Inhibitor yang menghambat konversi Angiotensin I menjadi II, menurunkan tekanan darah. Obat ini bekerja dengan menghambat enzim ACE (Angiotensin Converting Enzyme) sehingga mengurangi pembentukan angiotensin II, sebuah zat yang menyebabkan pembuluh darah menyempit. Dengan berkurangnya angiotensin II, pembuluh darah akan melebar dan tekanan darah menurun. ACE inhibitor juga mengurangi pengeluaran aldosteron yang dapat menurunkan retensi sodium dan air.",
+      videoUrl: "https://www.youtube.com/embed/6R4DtneE5IY",
+      isPremium: false,
     },
     {
       id: 2,
@@ -69,15 +73,19 @@ export const questionBank: Record<number, Question[]> = {
       question: "Dosis loading digoxin untuk dewasa adalah:",
       options: ["0.25-0.5 mg", "0.75-1.5 mg", "2-3 mg", "5 mg"],
       correct: 1,
-      explanation: "Dosis loading digoxin 0.75-1.5 mg dibagi, kemudian maintenance 0.125-0.25 mg/hari.",
+      explanation: "Dosis loading digoxin 0.75-1.5 mg dibagi dalam 3 dosis selama 24 jam pertama, kemudian maintenance 0.125-0.25 mg/hari. Digoxin adalah glikosida jantung yang meningkatkan kontraktilitas miokard dan memperlambat konduksi AV. Monitoring level digoxin dalam darah penting untuk menghindari toksisitas.",
+      videoUrl: "https://www.youtube.com/embed/vK1n2sN2lQc",
+      isPremium: true,
     },
     {
       id: 3,
-      subject: "FARMAKO",
+      subject: "FARMAKOLOGI",
       question: "Antidotum untuk heparin adalah:",
       options: ["Vitamin K", "Protamin sulfat", "Naloxone", "Flumazenil"],
       correct: 1,
-      explanation: "Protamin sulfat mengikat heparin membentuk kompleks inaktif.",
+      explanation: "Protamin sulfat adalah antidot spesifik untuk heparin yang mengikat heparin membentuk kompleks inaktif. Dosis yang diberikan tergantung pada dosis heparin yang diterima pasien. Setiap 1 mg protamin sulfat dapat menetralkan sekitar 100 unit heparin. Penting untuk tidak melebihi dosis karena protamin juga memiliki efek antikoagulan dalam dosis tinggi.",
+      videoUrl: "https://www.youtube.com/embed/6I5h6-cenJo",
+      isPremium: false,
     },
     {
       id: 4,
@@ -85,7 +93,9 @@ export const questionBank: Record<number, Question[]> = {
       question: "Waktu paruh amoksisilin sekitar:",
       options: ["30 menit", "1-1.5 jam", "6-8 jam", "12 jam"],
       correct: 1,
-      explanation: "Amoksisilin t½ 1-1.5 jam, sehingga diberikan 3x sehari.",
+      explanation: "Amoksisilin memiliki waktu paruh (t½) 1-1.5 jam, sehingga diberikan 3x sehari untuk menjaga konsentrasi terapeutik. Amoksisilin adalah antibiotik spektrum luas dari golongan penisilin yang bekerja dengan menghambat sintesis dinding sel bakteri. Obat ini efektif terhadap bakteri Gram positif dan beberapa Gram negatif, serta tersebar baik ke jaringan dan cairan tubuh.",
+      videoUrl: "https://www.youtube.com/embed/8j9Sz-NrF3Q",
+      isPremium: true,
     },
     {
       id: 5,
@@ -93,7 +103,9 @@ export const questionBank: Record<number, Question[]> = {
       question: "Obat hipertensi kontraindikasi pada kehamilan:",
       options: ["Metildopa", "Nifedipin", "ACE Inhibitor", "Labetalol"],
       correct: 2,
-      explanation: "ACE Inhibitor bersifat teratogenik, menyebabkan gangguan ginjal janin.",
+      explanation: "ACE Inhibitor dan ARB (Angiotensin Receptor Blocker) bersifat teratogenik dan sangat kontraindikasi pada kehamilan. Obat ini dapat menyebabkan gangguan ginjal janin, oligohidramnios, hipoplasia tengkorak, dan kematian janin. Pada trimester kedua dan ketiga, risiko kerusakan ginjal janin meningkat signifikan. Alternatif yang aman adalah metildopa, nifedipin, atau labetalol.",
+      videoUrl: "https://www.youtube.com/embed/2k3Ih_-8yHc",
+      isPremium: true,
     },
   ],
 };
