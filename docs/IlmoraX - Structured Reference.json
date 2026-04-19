@@ -1,0 +1,1717 @@
+{
+  "notes": [
+    "Structured from docs/IlmoraX - Experience level.ods.",
+    "Badge support status is sourced from the DB_-_Badges sheet in the ODS workbook.",
+    "Rows marked supported are included in proposal scope; rows marked not_supported are excluded from proposal scope.",
+    "Badge rows 40, 41, and 42 have missing badge names in the ODS source.",
+    "Institution spelling and codes preserve the source workbook where likely intentional."
+  ],
+  "levels": [
+    {
+      "level": 1,
+      "grade": "Pharmacy Newbie I",
+      "experience_required": 0,
+      "exp_difference_from_previous_level": 0,
+      "total_right_questions_estimate": 0.0
+    },
+    {
+      "level": 2,
+      "grade": "Pharmacy Newbie II",
+      "experience_required": 100,
+      "exp_difference_from_previous_level": 100,
+      "total_right_questions_estimate": 25.0
+    },
+    {
+      "level": 3,
+      "grade": "Pharmacy Novice I",
+      "experience_required": 220,
+      "exp_difference_from_previous_level": 120,
+      "total_right_questions_estimate": 55.0
+    },
+    {
+      "level": 4,
+      "grade": "Pharmacy Novice II",
+      "experience_required": 360,
+      "exp_difference_from_previous_level": 140,
+      "total_right_questions_estimate": 90.0
+    },
+    {
+      "level": 5,
+      "grade": "Pharmacy Novice III",
+      "experience_required": 520,
+      "exp_difference_from_previous_level": 160,
+      "total_right_questions_estimate": 130.0
+    },
+    {
+      "level": 6,
+      "grade": "Pharmacy Trainee I",
+      "experience_required": 700,
+      "exp_difference_from_previous_level": 180,
+      "total_right_questions_estimate": 175.0
+    },
+    {
+      "level": 7,
+      "grade": "Pharmacy Trainee II",
+      "experience_required": 900,
+      "exp_difference_from_previous_level": 200,
+      "total_right_questions_estimate": 225.0
+    },
+    {
+      "level": 8,
+      "grade": "Pharmacy Trainee III",
+      "experience_required": 1120,
+      "exp_difference_from_previous_level": 220,
+      "total_right_questions_estimate": 280.0
+    },
+    {
+      "level": 9,
+      "grade": "Pharmacy Trainee IV",
+      "experience_required": 1360,
+      "exp_difference_from_previous_level": 240,
+      "total_right_questions_estimate": 340.0
+    },
+    {
+      "level": 10,
+      "grade": "Pharmacy Trainee V",
+      "experience_required": 1620,
+      "exp_difference_from_previous_level": 260,
+      "total_right_questions_estimate": 405.0
+    },
+    {
+      "level": 11,
+      "grade": "Pharmacy Practitioner I",
+      "experience_required": 1900,
+      "exp_difference_from_previous_level": 280,
+      "total_right_questions_estimate": 475.0
+    },
+    {
+      "level": 12,
+      "grade": "Pharmacy Practitioner II",
+      "experience_required": 2200,
+      "exp_difference_from_previous_level": 300,
+      "total_right_questions_estimate": 550.0
+    },
+    {
+      "level": 13,
+      "grade": "Pharmacy Practitioner III",
+      "experience_required": 2520,
+      "exp_difference_from_previous_level": 320,
+      "total_right_questions_estimate": 630.0
+    },
+    {
+      "level": 14,
+      "grade": "Pharmacy Practitioner IV",
+      "experience_required": 2860,
+      "exp_difference_from_previous_level": 340,
+      "total_right_questions_estimate": 715.0
+    },
+    {
+      "level": 15,
+      "grade": "Pharmacy Practitioner V",
+      "experience_required": 3220,
+      "exp_difference_from_previous_level": 360,
+      "total_right_questions_estimate": 805.0
+    },
+    {
+      "level": 16,
+      "grade": "Pharmacy Professional I",
+      "experience_required": 3620,
+      "exp_difference_from_previous_level": 400,
+      "total_right_questions_estimate": 905.0
+    },
+    {
+      "level": 17,
+      "grade": "Pharmacy Professional II",
+      "experience_required": 4050,
+      "exp_difference_from_previous_level": 430,
+      "total_right_questions_estimate": 1012.5
+    },
+    {
+      "level": 18,
+      "grade": "Pharmacy Professional III",
+      "experience_required": 4510,
+      "exp_difference_from_previous_level": 460,
+      "total_right_questions_estimate": 1127.5
+    },
+    {
+      "level": 19,
+      "grade": "Pharmacy Professional IV",
+      "experience_required": 5000,
+      "exp_difference_from_previous_level": 490,
+      "total_right_questions_estimate": 1250.0
+    },
+    {
+      "level": 20,
+      "grade": "Pharmacy Professional V",
+      "experience_required": 5520,
+      "exp_difference_from_previous_level": 520,
+      "total_right_questions_estimate": 1380.0
+    },
+    {
+      "level": 21,
+      "grade": "Pharmacy Specialist I",
+      "experience_required": 6070,
+      "exp_difference_from_previous_level": 550,
+      "total_right_questions_estimate": 1517.5
+    },
+    {
+      "level": 22,
+      "grade": "Pharmacy Specialist II",
+      "experience_required": 6650,
+      "exp_difference_from_previous_level": 580,
+      "total_right_questions_estimate": 1662.5
+    },
+    {
+      "level": 23,
+      "grade": "Pharmacy Specialist III",
+      "experience_required": 7260,
+      "exp_difference_from_previous_level": 610,
+      "total_right_questions_estimate": 1815.0
+    },
+    {
+      "level": 24,
+      "grade": "Pharmacy Specialist IV",
+      "experience_required": 7900,
+      "exp_difference_from_previous_level": 640,
+      "total_right_questions_estimate": 1975.0
+    },
+    {
+      "level": 25,
+      "grade": "Pharmacy Specialist V",
+      "experience_required": 8570,
+      "exp_difference_from_previous_level": 670,
+      "total_right_questions_estimate": 2142.5
+    },
+    {
+      "level": 26,
+      "grade": "Pharmacy Expert I",
+      "experience_required": 9280,
+      "exp_difference_from_previous_level": 710,
+      "total_right_questions_estimate": 2320.0
+    },
+    {
+      "level": 27,
+      "grade": "Pharmacy Expert II",
+      "experience_required": 10030,
+      "exp_difference_from_previous_level": 750,
+      "total_right_questions_estimate": 2507.5
+    },
+    {
+      "level": 28,
+      "grade": "Pharmacy Expert III",
+      "experience_required": 10820,
+      "exp_difference_from_previous_level": 790,
+      "total_right_questions_estimate": 2705.0
+    },
+    {
+      "level": 29,
+      "grade": "Pharmacy Expert IV",
+      "experience_required": 11650,
+      "exp_difference_from_previous_level": 830,
+      "total_right_questions_estimate": 2912.5
+    },
+    {
+      "level": 30,
+      "grade": "Pharmacy Expert V",
+      "experience_required": 12520,
+      "exp_difference_from_previous_level": 870,
+      "total_right_questions_estimate": 3130.0
+    },
+    {
+      "level": 31,
+      "grade": "Pharmacy Consultant I",
+      "experience_required": 13430,
+      "exp_difference_from_previous_level": 910,
+      "total_right_questions_estimate": 3357.5
+    },
+    {
+      "level": 32,
+      "grade": "Pharmacy Consultant II",
+      "experience_required": 14380,
+      "exp_difference_from_previous_level": 950,
+      "total_right_questions_estimate": 3595.0
+    },
+    {
+      "level": 33,
+      "grade": "Pharmacy Consultant III",
+      "experience_required": 15380,
+      "exp_difference_from_previous_level": 1000,
+      "total_right_questions_estimate": 3845.0
+    },
+    {
+      "level": 34,
+      "grade": "Pharmacy Consultant IV",
+      "experience_required": 16430,
+      "exp_difference_from_previous_level": 1050,
+      "total_right_questions_estimate": 4107.5
+    },
+    {
+      "level": 35,
+      "grade": "Pharmacy Consultant V",
+      "experience_required": 17530,
+      "exp_difference_from_previous_level": 1100,
+      "total_right_questions_estimate": 4382.5
+    },
+    {
+      "level": 36,
+      "grade": "Pharmacy Master I",
+      "experience_required": 18680,
+      "exp_difference_from_previous_level": 1150,
+      "total_right_questions_estimate": 4670.0
+    },
+    {
+      "level": 37,
+      "grade": "Pharmacy Master II",
+      "experience_required": 19880,
+      "exp_difference_from_previous_level": 1200,
+      "total_right_questions_estimate": 4970.0
+    },
+    {
+      "level": 38,
+      "grade": "Pharmacy Master III",
+      "experience_required": 21130,
+      "exp_difference_from_previous_level": 1250,
+      "total_right_questions_estimate": 5282.5
+    },
+    {
+      "level": 39,
+      "grade": "Pharmacy Master IV",
+      "experience_required": 22430,
+      "exp_difference_from_previous_level": 1300,
+      "total_right_questions_estimate": 5607.5
+    },
+    {
+      "level": 40,
+      "grade": "Pharmacy Master V",
+      "experience_required": 23780,
+      "exp_difference_from_previous_level": 1350,
+      "total_right_questions_estimate": 5945.0
+    },
+    {
+      "level": 41,
+      "grade": "Pharmacy Grand-Master I",
+      "experience_required": 25180,
+      "exp_difference_from_previous_level": 1400,
+      "total_right_questions_estimate": 6295.0
+    },
+    {
+      "level": 42,
+      "grade": "Pharmacy Grand-Master II",
+      "experience_required": 26680,
+      "exp_difference_from_previous_level": 1500,
+      "total_right_questions_estimate": 6670.0
+    },
+    {
+      "level": 43,
+      "grade": "Pharmacy Grand-Master III",
+      "experience_required": 28280,
+      "exp_difference_from_previous_level": 1600,
+      "total_right_questions_estimate": 7070.0
+    },
+    {
+      "level": 44,
+      "grade": "Pharmacy Grand-Master IV",
+      "experience_required": 29980,
+      "exp_difference_from_previous_level": 1700,
+      "total_right_questions_estimate": 7495.0
+    },
+    {
+      "level": 45,
+      "grade": "Pharmacy Grand-Master V",
+      "experience_required": 31780,
+      "exp_difference_from_previous_level": 1800,
+      "total_right_questions_estimate": 7945.0
+    },
+    {
+      "level": 46,
+      "grade": "Pharmacy Authority I",
+      "experience_required": 33680,
+      "exp_difference_from_previous_level": 1900,
+      "total_right_questions_estimate": 8420.0
+    },
+    {
+      "level": 47,
+      "grade": "Pharmacy Authority II",
+      "experience_required": 35680,
+      "exp_difference_from_previous_level": 2000,
+      "total_right_questions_estimate": 8920.0
+    },
+    {
+      "level": 48,
+      "grade": "Pharmacy Authority III",
+      "experience_required": 37780,
+      "exp_difference_from_previous_level": 2100,
+      "total_right_questions_estimate": 9445.0
+    },
+    {
+      "level": 49,
+      "grade": "Pharmacy Authority IV",
+      "experience_required": 39980,
+      "exp_difference_from_previous_level": 2200,
+      "total_right_questions_estimate": 9995.0
+    },
+    {
+      "level": 50,
+      "grade": "Pharmacy Legendary",
+      "experience_required": 42280,
+      "exp_difference_from_previous_level": 2300,
+      "total_right_questions_estimate": 10570.0
+    }
+  ],
+  "badges": [
+    {
+      "badge_id": "BADGE-001",
+      "no": 1,
+      "category": "General",
+      "badge_name": "First steps",
+      "task": "Complete your first test",
+      "achievement_bonus_exp": 10,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Complete first CBT",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-002",
+      "no": 2,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Novice Badge",
+      "task": "Reach Level 3",
+      "achievement_bonus_exp": 60,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-003",
+      "no": 3,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Trainee Badge",
+      "task": "Reach Level 6",
+      "achievement_bonus_exp": 90,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-004",
+      "no": 4,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Practitioner Badge",
+      "task": "Reach Level 11",
+      "achievement_bonus_exp": 140,
+      "permanent_bonus": "Permanently + 5% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-005",
+      "no": 5,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Professional Badge",
+      "task": "Reach Level 16",
+      "achievement_bonus_exp": 200,
+      "permanent_bonus": "Permanently + 10% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-006",
+      "no": 6,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Specialist Badge",
+      "task": "Reach Level 21",
+      "achievement_bonus_exp": 275,
+      "permanent_bonus": "Permanently + 15% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-007",
+      "no": 7,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Expert Badge",
+      "task": "Reach Level 26",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 20% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-008",
+      "no": 8,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Consultant Badge",
+      "task": "Reach Level 31",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 25% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-009",
+      "no": 9,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Master Badge",
+      "task": "Reach Level 36",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 30% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-010",
+      "no": 10,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Grand-Master Badge",
+      "task": "Reach Level 41",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 35% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-011",
+      "no": 11,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Authority Badge",
+      "task": "Reach Level 46",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 40% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-012",
+      "no": 12,
+      "category": "Level Badge",
+      "badge_name": "Pharmacy Legendary Badge",
+      "task": "Reach Level 50",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Reach level",
+      "dev_note": "permanently + exp: only impact future",
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-013",
+      "no": 13,
+      "category": "Level Badge",
+      "badge_name": "Top 10",
+      "task": "Reach top 10 leaderboard",
+      "achievement_bonus_exp": 200,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Weekly leaderboard final rank <= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-014",
+      "no": 14,
+      "category": "Level Badge",
+      "badge_name": "Top 5",
+      "task": "Reach top 5 leaderboard",
+      "achievement_bonus_exp": 500,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Weekly leaderboard final rank <= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-015",
+      "no": 15,
+      "category": "Level Badge",
+      "badge_name": "Top 3",
+      "task": "Reach top 3 leaderboard",
+      "achievement_bonus_exp": 750,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Weekly leaderboard final rank <= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-016",
+      "no": 16,
+      "category": "Level Badge",
+      "badge_name": "Top 1",
+      "task": "Reach top 1 leaderboard",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Weekly leaderboard final rank <= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-017",
+      "no": 17,
+      "category": "Streak Badge",
+      "badge_name": "3-Days Streak",
+      "task": "Complete CBT every day for 3 days",
+      "achievement_bonus_exp": 300,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "CBT daily streak >= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-018",
+      "no": 18,
+      "category": "Streak Badge",
+      "badge_name": "7-Days Streak",
+      "task": "Complete CBT every day for 7 days",
+      "achievement_bonus_exp": 700,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "CBT daily streak >= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-019",
+      "no": 19,
+      "category": "Streak Badge",
+      "badge_name": "14-Days Streak",
+      "task": "Complete CBT every day for 14 days",
+      "achievement_bonus_exp": 1500,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "CBT daily streak >= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-020",
+      "no": 20,
+      "category": "Streak Badge",
+      "badge_name": "30-Days Warrior",
+      "task": "Complete CBT every day for 30 days",
+      "achievement_bonus_exp": 2000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "CBT daily streak >= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-021",
+      "no": 21,
+      "category": "Streak Badge",
+      "badge_name": "Never Skip",
+      "task": "No Missed days in a weekly plan",
+      "achievement_bonus_exp": 700,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": null,
+      "dev_note": "requires a weekly plan feature (creates extra product logic for only this one badge)",
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-022",
+      "no": 22,
+      "category": "Streak Badge",
+      "badge_name": "Dedicated",
+      "task": "Complete 15 CBT",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Completed CBT count >= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-023",
+      "no": 23,
+      "category": "Streak Badge",
+      "badge_name": "Master",
+      "task": "Complete 50 CBT",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Completed CBT count >= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-024",
+      "no": 24,
+      "category": "Streak Badge",
+      "badge_name": "Legendary",
+      "task": "Complete 100 CBT",
+      "achievement_bonus_exp": 7500,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Completed CBT count >= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-025",
+      "no": 25,
+      "category": "Streak Badge",
+      "badge_name": "Speed Runner",
+      "task": "Finish CBT under time limit with >80% score",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Speed + score threshold",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-026",
+      "no": 26,
+      "category": "Prestige Badge",
+      "badge_name": "Fail legend",
+      "task": "Reach 5x fail",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Failed CBT count >= X",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-027",
+      "no": 27,
+      "category": "Prestige Badge",
+      "badge_name": "100% Club",
+      "task": "Reach 100% Score",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope",
+      "implementation_rule": "Perfect score",
+      "dev_note": null,
+      "source_mark": "✅"
+    },
+    {
+      "badge_id": "BADGE-028",
+      "no": 28,
+      "category": "Prestige Badge",
+      "badge_name": "Perfect Streak",
+      "task": "Achieve > 90% in 5 CBT",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": null,
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-029",
+      "no": 29,
+      "category": "Prestige Badge",
+      "badge_name": "Cumlaude Pharmacist",
+      "task": "Maintain 90% average across 10 CBTs",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": null,
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-030",
+      "no": 30,
+      "category": "Pharmacology Badge",
+      "badge_name": "Drug Master",
+      "task": "Achieve > 85% Score in Pharmacology Tests",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-031",
+      "no": 31,
+      "category": "Pharmacology Badge",
+      "badge_name": "Mechanism Master",
+      "task": "Achieve > 85% Score in Mechanism of Action Test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-032",
+      "no": 32,
+      "category": "Pharmacology Badge",
+      "badge_name": "Clinical Thinker",
+      "task": "Achieve > 85% Score in Comprehensive task",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-033",
+      "no": 33,
+      "category": "Pharmacology Badge",
+      "badge_name": "Oncology Navigator",
+      "task": "Achieve > 85% Score in Oncology Tests",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-034",
+      "no": 34,
+      "category": "Pharmacology Badge",
+      "badge_name": "Vaccinator Specialist",
+      "task": "Achieve > 95% Score in Vaccine Test",
+      "achievement_bonus_exp": 2500,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-035",
+      "no": 35,
+      "category": "Pharmacology Badge",
+      "badge_name": "Guideline Guardian",
+      "task": "Achieve > 95% Guideline Test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-036",
+      "no": 36,
+      "category": "Pharmacology Badge",
+      "badge_name": "Pharmacokinetics Genius",
+      "task": "Achieve > 85% in Pharmacokinetics Tests",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-037",
+      "no": 37,
+      "category": "Pharmaceutical Badge",
+      "badge_name": "Formulatorization",
+      "task": "Achieve > 85% in Pharmaceutical Formulation",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-038",
+      "no": 38,
+      "category": "Pharmaceutical Badge",
+      "badge_name": "GMP Consultant",
+      "task": "Achieve > 85% in GMP test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-039",
+      "no": 39,
+      "category": "Pharmaceutical Badge",
+      "badge_name": "Human Calculator",
+      "task": "Achieve > 85% in Pharmaceutical Calculation",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-040",
+      "no": 40,
+      "category": "Pharmaceutical Badge",
+      "badge_name": null,
+      "task": null,
+      "achievement_bonus_exp": null,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": null,
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-041",
+      "no": 41,
+      "category": "Pharmaceutical Badge",
+      "badge_name": null,
+      "task": null,
+      "achievement_bonus_exp": null,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": null,
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-042",
+      "no": 42,
+      "category": "Pharmacy Badge",
+      "badge_name": null,
+      "task": "Achieve > 85% Score in Regulatory Pharmacy Test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-043",
+      "no": 43,
+      "category": "Pharmacy Badge",
+      "badge_name": "Ministry of Economy",
+      "task": "Achieve > 85% Score in Pharmacoeconomy Test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Category score threshold",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-044",
+      "no": 44,
+      "category": "Improvement Badge",
+      "badge_name": "Rising Star",
+      "task": "Improve score by 15% compared to last test",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Score improved by X% vs previous comparable test",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-045",
+      "no": 45,
+      "category": "Improvement Badge",
+      "badge_name": "Redemption Arc",
+      "task": "Fail a test, then pass it next attempt > 75%",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": "Fail then pass next attempt",
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-046",
+      "no": 46,
+      "category": "Improvement Badge",
+      "badge_name": "Memory Builder",
+      "task": "Correct Previously wrong question (10 in a row)",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": null,
+      "dev_note": null,
+      "source_mark": "❌"
+    },
+    {
+      "badge_id": "BADGE-047",
+      "no": 47,
+      "category": "Improvement Badge",
+      "badge_name": "Lightbulb Moment",
+      "task": "Improve score in weakest subject to > 70%",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope",
+      "implementation_rule": null,
+      "dev_note": null,
+      "source_mark": "❌"
+    }
+  ],
+  "achievement_rewards": [
+    {
+      "reward_id": "REWARD-001",
+      "badge_id": "BADGE-001",
+      "task": "Complete your first test",
+      "achievement_bonus_exp": 10,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-002",
+      "badge_id": "BADGE-002",
+      "task": "Reach Level 3",
+      "achievement_bonus_exp": 60,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-003",
+      "badge_id": "BADGE-003",
+      "task": "Reach Level 6",
+      "achievement_bonus_exp": 90,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-004",
+      "badge_id": "BADGE-004",
+      "task": "Reach Level 11",
+      "achievement_bonus_exp": 140,
+      "permanent_bonus": "Permanently + 5% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-005",
+      "badge_id": "BADGE-005",
+      "task": "Reach Level 16",
+      "achievement_bonus_exp": 200,
+      "permanent_bonus": "Permanently + 10% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-006",
+      "badge_id": "BADGE-006",
+      "task": "Reach Level 21",
+      "achievement_bonus_exp": 275,
+      "permanent_bonus": "Permanently + 15% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-007",
+      "badge_id": "BADGE-007",
+      "task": "Reach Level 26",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 20% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-008",
+      "badge_id": "BADGE-008",
+      "task": "Reach Level 31",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 25% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-009",
+      "badge_id": "BADGE-009",
+      "task": "Reach Level 36",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 30% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-010",
+      "badge_id": "BADGE-010",
+      "task": "Reach Level 41",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 35% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-011",
+      "badge_id": "BADGE-011",
+      "task": "Reach Level 46",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": "Permanently + 40% exp",
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-012",
+      "badge_id": "BADGE-012",
+      "task": "Reach Level 50",
+      "achievement_bonus_exp": null,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-013",
+      "badge_id": "BADGE-013",
+      "task": "Reach top 10 leaderboard",
+      "achievement_bonus_exp": 200,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-014",
+      "badge_id": "BADGE-014",
+      "task": "Reach top 5 leaderboard",
+      "achievement_bonus_exp": 500,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-015",
+      "badge_id": "BADGE-015",
+      "task": "Reach top 3 leaderboard",
+      "achievement_bonus_exp": 750,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-016",
+      "badge_id": "BADGE-016",
+      "task": "Reach top 1 leaderboard",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-017",
+      "badge_id": "BADGE-017",
+      "task": "Complete CBT every day for 3 days",
+      "achievement_bonus_exp": 300,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-018",
+      "badge_id": "BADGE-018",
+      "task": "Complete CBT every day for 7 days",
+      "achievement_bonus_exp": 700,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-019",
+      "badge_id": "BADGE-019",
+      "task": "Complete CBT every day for 14 days",
+      "achievement_bonus_exp": 1500,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-020",
+      "badge_id": "BADGE-020",
+      "task": "Complete CBT every day for 30 days",
+      "achievement_bonus_exp": 2000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-021",
+      "badge_id": "BADGE-021",
+      "task": "No Missed days in a weekly plan",
+      "achievement_bonus_exp": 700,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-022",
+      "badge_id": "BADGE-022",
+      "task": "Complete 15 CBT",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-023",
+      "badge_id": "BADGE-023",
+      "task": "Complete 50 CBT",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-024",
+      "badge_id": "BADGE-024",
+      "task": "Complete 100 CBT",
+      "achievement_bonus_exp": 7500,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-025",
+      "badge_id": "BADGE-025",
+      "task": "Finish CBT under time limit with >80% score",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-026",
+      "badge_id": "BADGE-026",
+      "task": "Reach 5x fail",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-027",
+      "badge_id": "BADGE-027",
+      "task": "Reach 100% Score",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "supported",
+      "proposal_scope": "in_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-028",
+      "badge_id": "BADGE-028",
+      "task": "Achieve > 90% in 5 CBT",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-029",
+      "badge_id": "BADGE-029",
+      "task": "Maintain 90% average across 10 CBTs",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-030",
+      "badge_id": "BADGE-030",
+      "task": "Achieve > 85% Score in Pharmacology Tests",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-031",
+      "badge_id": "BADGE-031",
+      "task": "Achieve > 85% Score in Mechanism of Action Test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-032",
+      "badge_id": "BADGE-032",
+      "task": "Achieve > 85% Score in Comprehensive task",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-033",
+      "badge_id": "BADGE-033",
+      "task": "Achieve > 85% Score in Oncology Tests",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-034",
+      "badge_id": "BADGE-034",
+      "task": "Achieve > 95% Score in Vaccine Test",
+      "achievement_bonus_exp": 2500,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-035",
+      "badge_id": "BADGE-035",
+      "task": "Achieve > 95% Guideline Test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-036",
+      "badge_id": "BADGE-036",
+      "task": "Achieve > 85% in Pharmacokinetics Tests",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-037",
+      "badge_id": "BADGE-037",
+      "task": "Achieve > 85% in Pharmaceutical Formulation",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-038",
+      "badge_id": "BADGE-038",
+      "task": "Achieve > 85% in GMP test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-039",
+      "badge_id": "BADGE-039",
+      "task": "Achieve > 85% in Pharmaceutical Calculation",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-042",
+      "badge_id": "BADGE-042",
+      "task": "Achieve > 85% Score in Regulatory Pharmacy Test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-043",
+      "badge_id": "BADGE-043",
+      "task": "Achieve > 85% Score in Pharmacoeconomy Test",
+      "achievement_bonus_exp": 5000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-044",
+      "badge_id": "BADGE-044",
+      "task": "Improve score by 15% compared to last test",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-045",
+      "badge_id": "BADGE-045",
+      "task": "Fail a test, then pass it next attempt > 75%",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-046",
+      "badge_id": "BADGE-046",
+      "task": "Correct Previously wrong question (10 in a row)",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    },
+    {
+      "reward_id": "REWARD-047",
+      "badge_id": "BADGE-047",
+      "task": "Improve score in weakest subject to > 70%",
+      "achievement_bonus_exp": 1000,
+      "permanent_bonus": null,
+      "support_status": "not_supported",
+      "proposal_scope": "out_of_proposal_scope"
+    }
+  ],
+  "institution_codes": [
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas 17 Agustus 1945 Jakarta (UTA)",
+      "code": "UTA"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Ahmad Dahlan (UAD)",
+      "code": "UAD"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Airlangga (UNAIR)",
+      "code": "UNAIR"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Andalas",
+      "code": "UNAND"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Bakti Kencana (UBK)",
+      "code": "UBK"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Brawijaya (UB)",
+      "code": "UB"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Gadjah Mada (UGM)",
+      "code": "UGM"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Garut (UNIGA)",
+      "code": "UNIGA"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Halu Oleo (UHO)",
+      "code": "UHO"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Hasanuddin (UNHAS)",
+      "code": "UNHAS"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Indonesia (UI)",
+      "code": "UI"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Islam Negeri Maulana Malik Ibrahim Malang",
+      "code": "UINMLG"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Islam Negeri Syarif Hidayatullah",
+      "code": "UINJKT"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Jember (UNEJ)",
+      "code": "UNEJ"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Jenderal Achmad Yani Bandung (UNJANI)",
+      "code": "UNJADI"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Jenderal Soedirman (UNSOED)",
+      "code": "UNSOED"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Katolik Widya Mandala Surabaya (UKWMS)",
+      "code": "UKWMS"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Lambung Mangkurat (ULM)",
+      "code": "ULM"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Ma Chung",
+      "code": "MACHUNG"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Megarezky (UNIMERZ)",
+      "code": "UNIMERZ"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Muhammadiyah Malang (UMM)",
+      "code": "UMM"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Muhammadiyah Prof. Dr. Hamka (UHAMKA)",
+      "code": "UHAMKA"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Muhammadiyah Purwokerto (UMP)",
+      "code": "UMP"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Muhammadiyah Surakarta (UMS)",
+      "code": "UMS"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Muhammadiyah Yogyakarta (UMY)",
+      "code": "UMY"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Mulawarman (UNMUL)",
+      "code": "UNMUL"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Muslim Indonesia (UMI)",
+      "code": "UMI"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Padjajaran (UNPAD)",
+      "code": "UNPAD"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Pancasila (UP)",
+      "code": "UP"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Sanata Dharma (USD)",
+      "code": "USD"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Setia Budi (USB)",
+      "code": "USB"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Sumatera Utara (USU)",
+      "code": "USU"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Surabaya (UBAYA)",
+      "code": "UBAYA"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Tanjungpura (UNTAN)",
+      "code": "UNTAN"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Tjut Nyak Dhien (UTND)",
+      "code": "UTND"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Udayana (UNUD)",
+      "code": "UNUD"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Wahid Hasyim (UNWAHAS)",
+      "code": "UNWAHAS"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Mahasarasvati Denpasar (UNMAS)",
+      "code": "UNMAS"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Bali International (UNBI)",
+      "code": "UNBI"
+    },
+    {
+      "category": "Universitas",
+      "institution_name": "Universitas Bakti Tunas Husada Tasikmalaya (BTH)",
+      "code": "BTH"
+    },
+    {
+      "category": "Sekolah Tinggi",
+      "institution_name": "STIFAR Yayasan Pharmasi SMG",
+      "code": "STIFARSMG"
+    },
+    {
+      "category": "Sekolah Tinggi",
+      "institution_name": "STIFAR Riau",
+      "code": "STIFARRIAU"
+    },
+    {
+      "category": "Sekolah Tinggi",
+      "institution_name": "STIFAR YPIB Cirebon",
+      "code": "YPIB"
+    },
+    {
+      "category": "Sekolah Tinggi",
+      "institution_name": "STIKES Borneo Lestari",
+      "code": "BORNEOLESTARI"
+    },
+    {
+      "category": "Sekolah Tinggi",
+      "institution_name": "Sekolah Tinggi Farmasi Indonesia Perintis Padang",
+      "code": "STFIPP"
+    },
+    {
+      "category": "Sekolah Tinggi",
+      "institution_name": "Sekolah Tinggi Farmasi Indonesia Bandung",
+      "code": "STFIBDG"
+    },
+    {
+      "category": "Institut",
+      "institution_name": "Institut Teknologi Bandung (ITB)",
+      "code": "ITB"
+    },
+    {
+      "category": "Institut",
+      "institution_name": "Institut Sains dan Teknologi Nasional (ISTN)",
+      "code": "ISTN"
+    },
+    {
+      "category": "Institut",
+      "institution_name": "Institut Kesehatan Deli Husada Deli Tua",
+      "code": "DELIHUSADA"
+    },
+    {
+      "category": "Institut",
+      "institution_name": "Institut Kesehatan Medistra Lubuk Pakam",
+      "code": "MEDISTRA"
+    },
+    {
+      "category": "Institut",
+      "institution_name": "Institut Ilmu Kesehatan Bhakti Wiyata Kediri",
+      "code": "BHAKTIWIYATA"
+    },
+    {
+      "category": "D3/S1 saja",
+      "institution_name": "Universitas Dipenogoro",
+      "code": "UNDIP"
+    },
+    {
+      "category": "D3/S1 saja",
+      "institution_name": "Akademi Farmasi Hang Tuah",
+      "code": "HANGTUAH"
+    },
+    {
+      "category": "D3/S1 saja",
+      "institution_name": "Politeknik Kesehatan Kemenkes Jakarta",
+      "code": "POLTEKESJKT"
+    },
+    {
+      "category": "D3/S1 saja",
+      "institution_name": "Politeknik Kesehatan Kemenkes Bandung",
+      "code": "POLTEKESBDG"
+    },
+    {
+      "category": "D3/S1 saja",
+      "institution_name": "Universitas Esa Unggul Jakarta (UEU)",
+      "code": "UEU"
+    }
+  ],
+  "source_ods": "docs/IlmoraX - Experience level.ods",
+  "badge_support_summary": {
+    "supported": 26,
+    "not_supported": 21,
+    "unknown": 0
+  },
+  "document_purpose": "Canonical AI-readable structured reference for IlmoraX levels, badges, reward rules, institution codes, and proposal support scope."
+}
