@@ -1,0 +1,17 @@
+export const institutions = [
+  "Universitas Airlangga",
+  "Universitas Gadjah Mada",
+  "Universitas Indonesia",
+  "Universitas Padjadjaran",
+  "Universitas Hasanuddin",
+  "Universitas Brawijaya",
+  "Universitas Diponegoro",
+  "Universitas Andalas",
+  "Universitas Udayana",
+  "Universitas Sriwijaya",
+  "Universitas Sumatera Utara",
+  "Universitas Islam Indonesia",
+  "Politeknik Kesehatan Kementerian Kesehatan",
+  "Sekolah Tinggi Ilmu Farmasi",
+  "Institut Teknologi Bandung",
+];

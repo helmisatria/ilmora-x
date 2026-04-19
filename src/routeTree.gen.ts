@@ -11,11 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TryoutRouteImport } from './routes/tryout'
 import { Route as ResultsRouteImport } from './routes/results'
+import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BadgesRouteImport } from './routes/badges'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TestIdRouteImport } from './routes/test.$id'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthCompleteProfileRouteImport } from './routes/auth/complete-profile'
 
 const TryoutRoute = TryoutRouteImport.update({
   id: '/tryout',
@@ -27,9 +31,19 @@ const ResultsRoute = ResultsRouteImport.update({
   path: '/results',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProgressRoute = ProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvaluationRoute = EvaluationRouteImport.update({
+  id: '/evaluation',
+  path: '/evaluation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -52,23 +66,41 @@ const TestIdRoute = TestIdRouteImport.update({
   path: '/test/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCompleteProfileRoute = AuthCompleteProfileRouteImport.update({
+  id: '/auth/complete-profile',
+  path: '/auth/complete-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/badges': typeof BadgesRoute
   '/dashboard': typeof DashboardRoute
+  '/evaluation': typeof EvaluationRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/progress': typeof ProgressRoute
   '/results': typeof ResultsRoute
   '/tryout': typeof TryoutRoute
+  '/auth/complete-profile': typeof AuthCompleteProfileRoute
+  '/auth/login': typeof AuthLoginRoute
   '/test/$id': typeof TestIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/badges': typeof BadgesRoute
   '/dashboard': typeof DashboardRoute
+  '/evaluation': typeof EvaluationRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/progress': typeof ProgressRoute
   '/results': typeof ResultsRoute
   '/tryout': typeof TryoutRoute
+  '/auth/complete-profile': typeof AuthCompleteProfileRoute
+  '/auth/login': typeof AuthLoginRoute
   '/test/$id': typeof TestIdRoute
 }
 export interface FileRoutesById {
@@ -76,9 +108,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/badges': typeof BadgesRoute
   '/dashboard': typeof DashboardRoute
+  '/evaluation': typeof EvaluationRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/progress': typeof ProgressRoute
   '/results': typeof ResultsRoute
   '/tryout': typeof TryoutRoute
+  '/auth/complete-profile': typeof AuthCompleteProfileRoute
+  '/auth/login': typeof AuthLoginRoute
   '/test/$id': typeof TestIdRoute
 }
 export interface FileRouteTypes {
@@ -87,27 +123,39 @@ export interface FileRouteTypes {
     | '/'
     | '/badges'
     | '/dashboard'
+    | '/evaluation'
     | '/leaderboard'
+    | '/progress'
     | '/results'
     | '/tryout'
+    | '/auth/complete-profile'
+    | '/auth/login'
     | '/test/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/badges'
     | '/dashboard'
+    | '/evaluation'
     | '/leaderboard'
+    | '/progress'
     | '/results'
     | '/tryout'
+    | '/auth/complete-profile'
+    | '/auth/login'
     | '/test/$id'
   id:
     | '__root__'
     | '/'
     | '/badges'
     | '/dashboard'
+    | '/evaluation'
     | '/leaderboard'
+    | '/progress'
     | '/results'
     | '/tryout'
+    | '/auth/complete-profile'
+    | '/auth/login'
     | '/test/$id'
   fileRoutesById: FileRoutesById
 }
@@ -115,9 +163,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BadgesRoute: typeof BadgesRoute
   DashboardRoute: typeof DashboardRoute
+  EvaluationRoute: typeof EvaluationRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  ProgressRoute: typeof ProgressRoute
   ResultsRoute: typeof ResultsRoute
   TryoutRoute: typeof TryoutRoute
+  AuthCompleteProfileRoute: typeof AuthCompleteProfileRoute
+  AuthLoginRoute: typeof AuthLoginRoute
   TestIdRoute: typeof TestIdRoute
 }
 
@@ -137,11 +189,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResultsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/progress': {
+      id: '/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/leaderboard': {
       id: '/leaderboard'
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evaluation': {
+      id: '/evaluation'
+      path: '/evaluation'
+      fullPath: '/evaluation'
+      preLoaderRoute: typeof EvaluationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -172,6 +238,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TestIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/complete-profile': {
+      id: '/auth/complete-profile'
+      path: '/auth/complete-profile'
+      fullPath: '/auth/complete-profile'
+      preLoaderRoute: typeof AuthCompleteProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -179,9 +259,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BadgesRoute: BadgesRoute,
   DashboardRoute: DashboardRoute,
+  EvaluationRoute: EvaluationRoute,
   LeaderboardRoute: LeaderboardRoute,
+  ProgressRoute: ProgressRoute,
   ResultsRoute: ResultsRoute,
   TryoutRoute: TryoutRoute,
+  AuthCompleteProfileRoute: AuthCompleteProfileRoute,
+  AuthLoginRoute: AuthLoginRoute,
   TestIdRoute: TestIdRoute,
 }
 export const routeTree = rootRouteImport
