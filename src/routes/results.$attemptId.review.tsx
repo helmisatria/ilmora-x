@@ -4,6 +4,15 @@ import { useApp, questionBank, tryouts, mockMateri } from "../data";
 import { PremiumDialog } from "../components/PremiumDialog";
 
 export const Route = createFileRoute("/results/$attemptId/review")({
+  head: ({ params }) => ({
+    meta: [
+      { title: "Pembahasan Tryout — IlmoraX" },
+      { name: "description", content: "Review dan pelajari pembahasan lengkap soal tryout. Lihat jawaban benar, penjelasan detail, dan video pembelajaran untuk setiap soal." },
+      { property: "og:title", content: "Pembahasan Tryout — IlmoraX" },
+      { property: "og:description", content: "Review dan pelajari pembahasan lengkap soal tryout dengan penjelasan detail dan video." },
+      { name: "robots", content: "noindex, follow" },
+    ],
+  }),
   component: ReviewComponent,
 });
 

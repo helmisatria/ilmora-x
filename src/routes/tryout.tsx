@@ -5,6 +5,14 @@ import { PremiumDialog } from "../components/PremiumDialog";
 import { getCategoryName, tryouts, useApp, type Tryout } from "../data";
 
 export const Route = createFileRoute("/tryout")({
+  head: () => ({
+    meta: [
+      { title: "Try-out UKAI — IlmoraX" },
+      { name: "description", content: "Pilih dari 500+ soal UKAI dengan berbagai kategori. Latihan simulasi UKAI dengan timer, pembahasan lengkap, dan evaluasi detail. Gratis dan premium tersedia." },
+      { property: "og:title", content: "Try-out UKAI — IlmoraX" },
+      { property: "og:description", content: "Pilih dari 500+ soal UKAI dengan berbagai kategori. Latihan simulasi UKAI dengan timer dan pembahasan lengkap." },
+    ],
+  }),
   component: TryoutComponent,
 });
 
@@ -35,19 +43,19 @@ function TryoutComponent() {
           }}
         >
           <TopBar />
-          <div className="px-5 pt-7 pb-5">
+          <div className="page-lane pt-7 pb-5 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Modul Tryout
             </div>
-            <h1 className="mt-2 text-[28px] leading-tight font-bold tracking-tight text-stone-800 max-w-[22ch]">
+            <h1 className="mt-2 max-w-[18ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
               Try-out UKAI
             </h1>
-            <p className="m-0 mt-3 text-[14px] leading-relaxed text-stone-500 font-medium max-w-[34ch]">
+            <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
               Pilih simulasi yang sesuai ritme belajarmu, lalu lanjutkan ke persiapan sebelum timer berjalan.
             </p>
           </div>
 
-          <div className="flex gap-2 px-5 pb-1 overflow-x-auto">
+          <div className="page-lane flex gap-2 overflow-x-auto pb-1">
             {(["all", "free", "premium"] as const).map((option) => (
               <FilterButton
                 key={option}
@@ -59,8 +67,8 @@ function TryoutComponent() {
           </div>
         </div>
 
-        <div className="px-5 -mt-4 pb-24 relative">
-          <div className="grid grid-cols-2 gap-3.5">
+        <div className="page-lane relative -mt-4 pb-24">
+          <div className="grid grid-flow-dense grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4">
             {filtered.map((tryout) => (
               <TryoutCard
                 key={tryout.id}
@@ -133,7 +141,7 @@ function TryoutCard({
     <Link
       to={isLocked ? "/premium" : "/tryout/$id"}
       params={isLocked ? undefined : { id: String(tryout.id) }}
-      className="group relative min-h-[238px] bg-white rounded-[var(--radius-lg)] p-4 flex flex-col shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 no-underline"
+      className="group relative flex min-h-[238px] flex-col rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-4 no-underline shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 md:min-h-[260px]"
       onClick={(event) => {
         if (!isLocked) return;
 
@@ -155,10 +163,10 @@ function TryoutCard({
       </div>
 
       <div className="mt-4 flex-1">
-        <div className="font-bold text-[13.5px] leading-tight text-stone-800 max-w-[13ch]">
+        <div className="max-w-[16ch] text-[13.5px] font-bold leading-tight text-stone-800 lg:max-w-[18ch]">
           {tryout.title}
         </div>
-        <p className="mt-2 text-[12.5px] leading-relaxed text-stone-500 font-medium max-w-[18ch]">
+        <p className="mt-2 max-w-[22ch] text-[12.5px] font-medium leading-relaxed text-stone-500">
           {tryout.description}
         </p>
       </div>

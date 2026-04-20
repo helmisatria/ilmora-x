@@ -8,6 +8,14 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/checkout")({
+  head: () => ({
+    meta: [
+      { title: "Checkout Premium — IlmoraX" },
+      { name: "description", content: "Selesaikan pembelian paket Premium IlmoraX. Pilih metode pembayaran, gunakan kode promo atau referral, dan aktifkan akses premium." },
+      { property: "og:title", content: "Checkout Premium — IlmoraX" },
+      { property: "og:description", content: "Selesaikan pembelian paket Premium IlmoraX. Pilih metode pembayaran dan gunakan kode promo." },
+    ],
+  }),
   component: CheckoutComponent,
   validateSearch: searchSchema,
 });

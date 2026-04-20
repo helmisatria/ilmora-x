@@ -4,6 +4,14 @@ import { useApp, badges, mockUsers, getLevelForXp, getXpProgress, isUserPremium 
 import { getLevelGrade } from "../data/users";
 
 export const Route = createFileRoute("/profile/$userId")({
+  head: ({ params }) => ({
+    meta: [
+      { title: "Profil Pengguna — IlmoraX" },
+      { name: "description", content: "Lihat profil publik pengguna IlmoraX. Pantau level, XP, streak, dan koleksi lencana yang telah dibuka." },
+      { property: "og:title", content: "Profil Pengguna — IlmoraX" },
+      { property: "og:description", content: "Lihat profil publik pengguna IlmoraX. Pantau level, XP, dan koleksi lencana." },
+    ],
+  }),
   component: PublicProfileComponent,
 });
 

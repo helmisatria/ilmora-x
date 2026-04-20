@@ -5,6 +5,15 @@ import { runConfetti } from "../utils/confetti";
 import { PremiumDialog } from "../components/PremiumDialog";
 
 export const Route = createFileRoute("/results/$attemptId")({
+  head: ({ params }) => ({
+    meta: [
+      { title: "Hasil Tryout — IlmoraX" },
+      { name: "description", content: "Lihat hasil tryout: skor, XP yang didapat, dan pembahasan soal. Review jawaban benar dan salah untuk evaluasi belajar." },
+      { property: "og:title", content: "Hasil Tryout — IlmoraX" },
+      { property: "og:description", content: "Lihat hasil tryout: skor, XP yang didapat, dan pembahasan soal." },
+      { name: "robots", content: "noindex, follow" },
+    ],
+  }),
   component: ResultsComponent,
 });
 

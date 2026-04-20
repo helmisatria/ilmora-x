@@ -5,6 +5,14 @@ import { PremiumDialog } from "../components/PremiumDialog";
 import { getLevelForXp, getNextLevel, getXpProgress, tryouts, useApp, type Tryout } from "../data";
 
 export const Route = createFileRoute("/dashboard")({
+  head: () => ({
+    meta: [
+      { title: "Beranda — IlmoraX" },
+      { name: "description", content: "Dashboard belajar IlmoraX. Lanjutkan latihan UKAI, pantau streak dan level, serta akses try-out dan fitur premium." },
+      { property: "og:title", content: "Beranda — IlmoraX" },
+      { property: "og:description", content: "Dashboard belajar IlmoraX. Lanjutkan latihan UKAI, pantau streak dan level." },
+    ],
+  }),
   component: DashboardComponent,
 });
 
@@ -92,14 +100,14 @@ function DashboardComponent() {
         >
           <TopBar />
 
-          <div className="px-5 pt-7">
+          <div className="page-lane pt-7 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Beranda
             </div>
-            <h1 className="mt-2 text-[28px] leading-tight font-bold tracking-tight text-stone-800 max-w-[22ch]">
+            <h1 className="mt-2 max-w-[18ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
               Halo, {user.name}
             </h1>
-            <p className="m-0 mt-3 text-[14px] leading-relaxed text-stone-500 font-medium max-w-[34ch]">
+            <p className="m-0 mt-3 max-w-[54ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
               Lanjutkan latihan UKAI dari progres terakhir dan pantau ritme belajarmu hari ini.
             </p>
 
@@ -114,8 +122,8 @@ function DashboardComponent() {
           </div>
         </div>
 
-        <div className="px-5 -mt-4 pb-24 relative">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="page-lane relative -mt-4 pb-24">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <button
               className="btn btn-primary col-span-2"
               onClick={() => navigate({ to: "/tryout" })}
@@ -142,50 +150,50 @@ function DashboardComponent() {
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mt-5">
+          <div className="mt-5 grid grid-cols-3 gap-3">
             <StatCard icon={<DocumentIcon />} label="Soal dikerjakan" value={String(user.totalQuestions)} accent="#14b8a6" />
             <StatCard icon={<TargetIcon />} label="Akurasi" value={`${accuracy}%`} accent="#f59e0b" />
             <StatCard icon={<ChartIcon />} label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" />
           </div>
 
-          <div className="mt-6">
-            <SectionHeader title="Try-out Tersedia" action="Lihat semua" to="/tryout" />
-            <div className="grid gap-3.5">
-              {tryouts.slice(0, 4).map((tryout) => (
-                <TryoutRow key={tryout.id} tryout={tryout} isLocked={tryout.isPremium && !isPremium} />
-              ))}
+          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.85fr)] lg:items-start">
+            <div>
+              <SectionHeader title="Try-out Tersedia" action="Lihat semua" to="/tryout" />
+              <div className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-1">
+                {tryouts.slice(0, 4).map((tryout) => (
+                  <TryoutRow key={tryout.id} tryout={tryout} isLocked={tryout.isPremium && !isPremium} />
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
+              {isPremium ? (
+                <FeatureCallout
+                  title="Evaluation Dashboard"
+                  description="Lihat analisis performa lengkapmu"
+                  to="/evaluation"
+                  cta="Buka Evaluation"
+                  accent="#f59e0b"
+                  icon={<ChartIcon />}
+                />
+              ) : (
+                <PremiumFeatureCallout onOpenPremium={() => setShowPremium(true)} />
+              )}
+
+              <FeatureCallout
+                title="Gabung Live Poll"
+                description="Masukkan kode 6 digit dari pembimbingmu"
+                to="/poll/join"
+                cta="Masuk Poll"
+                accent="#14b8a6"
+                icon={<SignalIcon />}
+              />
             </div>
           </div>
 
           <div className="mt-6">
-            {isPremium ? (
-              <FeatureCallout
-                title="Evaluation Dashboard"
-                description="Lihat analisis performa lengkapmu"
-                to="/evaluation"
-                cta="Buka Evaluation"
-                accent="#f59e0b"
-                icon={<ChartIcon />}
-              />
-            ) : (
-              <PremiumFeatureCallout onOpenPremium={() => setShowPremium(true)} />
-            )}
-          </div>
-
-          <div className="mt-4">
-            <FeatureCallout
-              title="Gabung Live Poll"
-              description="Masukkan kode 6 digit dari pembimbingmu"
-              to="/poll/join"
-              cta="Masuk Poll"
-              accent="#14b8a6"
-              icon={<SignalIcon />}
-            />
-          </div>
-
-          <div className="mt-6">
             <SectionHeader title="Segera Hadir" />
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 md:grid-cols-3">
               <ComingSoonCard feature="drilling" title="Drilling" description="Latihan" icon={<GameIcon />} accent="#14b8a6" />
               <ComingSoonCard feature="store" title="Store" description="Power-up" icon={<StoreIcon />} accent="#f59e0b" />
               <ComingSoonCard feature="affiliate" title="Affiliate" description="Referral" icon={<HandshakeIcon />} accent="#0ea5e9" />

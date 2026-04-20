@@ -5,6 +5,14 @@ import { packages } from "../data";
 import type { Package } from "../data/entitlements";
 
 export const Route = createFileRoute("/premium")({
+  head: () => ({
+    meta: [
+      { title: "Upgrade Premium — IlmoraX" },
+      { name: "description", content: "Buka semua tryout premium, video pembahasan lengkap, dan evaluation dashboard. Paket mulai dari Rp49rb/bulan. Tidak auto-renew." },
+      { property: "og:title", content: "Upgrade Premium — IlmoraX" },
+      { property: "og:description", content: "Buka semua tryout premium, video pembahasan lengkap, dan evaluation dashboard. Paket mulai dari Rp49rb/bulan." },
+    ],
+  }),
   component: PremiumComponent,
 });
 

@@ -1,6 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "IlmoraX — Belajar Farmasi Jadi Seru!" },
+      { name: "description", content: "Platform latihan UKAI terbaik untuk calon apoteker. Kumpulkan XP, jaga streak harian, dan taklukkan tryout dengan cara yang menyenangkan. 500+ soal UKAI, leaderboard, dan materi lengkap." },
+      { property: "og:title", content: "IlmoraX — Belajar Farmasi Jadi Seru!" },
+      { property: "og:description", content: "Platform latihan UKAI terbaik untuk calon apoteker. Kumpulkan XP, jaga streak harian, dan taklukkan tryout dengan cara yang menyenangkan." },
+    ],
+  }),
   component: LandingComponent,
 });
 

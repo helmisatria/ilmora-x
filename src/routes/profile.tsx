@@ -4,6 +4,14 @@ import { badges, getLevelForXp, getNextLevel, getXpProgress, useApp } from "../d
 import { getLevelGrade } from "../data/users";
 
 export const Route = createFileRoute("/profile")({
+  head: () => ({
+    meta: [
+      { title: "Profil Belajar — IlmoraX" },
+      { name: "description", content: "Kelola profil belajarmu, pantau level dan XP, lihat koleksi lencana, dan atur data akun. Progress belajar farmasi dalam satu tempat." },
+      { property: "og:title", content: "Profil Belajar — IlmoraX" },
+      { property: "og:description", content: "Kelola profil belajarmu, pantau level dan XP, lihat koleksi lencana. Progress belajar farmasi dalam satu tempat." },
+    ],
+  }),
   component: ProfileComponent,
 });
 

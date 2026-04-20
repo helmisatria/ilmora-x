@@ -3,6 +3,14 @@ import { useState } from "react";
 import { mockPolls } from "../data";
 
 export const Route = createFileRoute("/poll/$code")({
+  head: ({ params }) => ({
+    meta: [
+      { title: "Live Poll — IlmoraX" },
+      { name: "description", content: `Gabung live poll dengan kode ${params.code}. Vote jawaban dan lihat hasil setelah poll ditutup. Real-time polling untuk kelas dan tryout.` },
+      { property: "og:title", content: "Live Poll — IlmoraX" },
+      { property: "og:description", content: "Gabung live poll dan vote jawaban secara real-time." },
+    ],
+  }),
   component: PollActiveComponent,
 });
 

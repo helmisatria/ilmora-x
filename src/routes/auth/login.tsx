@@ -2,6 +2,15 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 export const Route = createFileRoute("/auth/login")({
+  head: () => ({
+    meta: [
+      { title: "Masuk — IlmoraX" },
+      { name: "description", content: "Masuk ke IlmoraX dengan Google. Mulai latihan UKAI, kumpulkan XP, dan naik level bersama ribuan calon apoteker lainnya." },
+      { property: "og:title", content: "Masuk — IlmoraX" },
+      { property: "og:description", content: "Masuk ke IlmoraX dengan Google. Mulai latihan UKAI dan kumpulkan XP." },
+      { name: "robots", content: "noindex, follow" },
+    ],
+  }),
   component: LoginComponent,
 });
 

@@ -3,6 +3,14 @@ import { BottomNav, TopBar } from "../components/Navigation";
 import { mockUsers, useApp, type LeaderboardEntry } from "../data";
 
 export const Route = createFileRoute("/leaderboard")({
+  head: () => ({
+    meta: [
+      { title: "Leaderboard Mingguan — IlmoraX" },
+      { name: "description", content: "Papan peringkat mingguan IlmoraX. Lihat peringkatmu, kejar posisi terbaik, dan kompetisi dengan ribuan calon apoteker lainnya. Reset setiap Senin." },
+      { property: "og:title", content: "Leaderboard Mingguan — IlmoraX" },
+      { property: "og:description", content: "Papan peringkat mingguan IlmoraX. Lihat peringkatmu dan kompetisi dengan ribuan calon apoteker lainnya." },
+    ],
+  }),
   component: LeaderboardComponent,
 });
 
@@ -31,70 +39,72 @@ function LeaderboardComponent() {
         }}
       >
         <TopBar />
-        <div className="px-5 pt-7">
+        <div className="page-lane pt-7 lg:pt-10">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
             Peringkat Mingguan
           </div>
-          <h1 className="mt-2 text-[28px] leading-tight font-bold tracking-tight text-stone-800 max-w-[22ch]">
+          <h1 className="mt-2 max-w-[18ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
             Kejar posisi terbaik minggu ini
           </h1>
-          <p className="m-0 mt-3 text-[14px] leading-relaxed text-stone-500 font-medium max-w-[34ch]">
+          <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
             Peringkat dihitung dari XP mingguan dan diperbarui otomatis dari aktivitas tryout.
           </p>
 
-          <div className="mt-5 grid grid-cols-2 gap-3 grid-flow-dense">
+          <div className="mt-5 grid max-w-[560px] grid-flow-dense grid-cols-2 gap-3">
             <SummaryCard label="Peringkatmu" value={currentUser ? `#${currentUser.r}` : "-"} accent="#14b8a6" />
             <SummaryCard label="Jarak leader" value={`${leaderGap.toLocaleString()} XP`} accent={accent} />
           </div>
         </div>
       </div>
 
-      <div className="relative -mt-4 px-5 pb-28">
-        <div className="rounded-[var(--radius-xl)] bg-white p-5 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
-                Kompetisi
+      <div className="page-lane relative -mt-4 grid gap-6 pb-28 lg:grid-cols-[minmax(330px,0.9fr)_minmax(0,1.25fr)] lg:items-start">
+        <div className="grid gap-6 lg:sticky lg:top-20">
+          <div className="rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
+                  Kompetisi
+                </div>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-stone-800">
+                  Minggu ini
+                </h2>
               </div>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-stone-800">
-                Minggu ini
-              </h2>
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center border-2"
+                style={{ color: accent, background: `${accent}18`, borderColor: `${accent}30` }}
+              >
+                <TrophyIcon />
+              </div>
             </div>
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center border-2"
-              style={{ color: accent, background: `${accent}18`, borderColor: `${accent}30` }}
-            >
-              <TrophyIcon />
+
+            <div className="mt-5 flex items-end justify-center gap-2">
+              {podium.map((user) => (
+                <PodiumCard key={user.r} user={user} />
+              ))}
             </div>
           </div>
 
-          <div className="mt-5 flex items-end justify-center gap-2">
-            {podium.map((user) => (
-              <PodiumCard key={user.r} user={user} />
-            ))}
+          <div className="rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 text-primary border-2 border-teal-100 flex items-center justify-center shrink-0">
+                <ClockIcon />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-stone-800">Reset mingguan</h3>
+                <p className="mt-1 text-[13.5px] leading-relaxed text-stone-500 font-medium max-w-[30ch]">
+                  Papan peringkat dimulai ulang setiap Senin pukul 00.00 WIB.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-6">
+        <div className="lg:pt-4">
           <SectionHeader title="Daftar peserta" />
           <div className="flex flex-col gap-2.5">
             {leaderboardUsers.map((user) => (
               <LeaderboardRow key={user.r} user={user} />
             ))}
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-[var(--radius-lg)] bg-white p-5 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 text-primary border-2 border-teal-100 flex items-center justify-center shrink-0">
-              <ClockIcon />
-            </div>
-            <div>
-              <h3 className="text-base font-extrabold text-stone-800">Reset mingguan</h3>
-              <p className="mt-1 text-[13.5px] leading-relaxed text-stone-500 font-medium max-w-[30ch]">
-                Papan peringkat dimulai ulang setiap Senin pukul 00.00 WIB.
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -140,8 +150,8 @@ function PodiumCard({ user }: { user: LeaderboardEntry }) {
       }}
     >
       {isFirst && (
-        <div className="-mt-9 mb-1 rounded-full border-2 border-amber-200 bg-amber-50 px-2 py-1 text-[18px] shadow-sm">
-          👑
+        <div className="-mt-9 mb-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-200 bg-amber-50 text-amber-600 shadow-sm">
+          <CrownIcon />
         </div>
       )}
       <div
@@ -217,10 +227,10 @@ function getRankTone(rank: number) {
 }
 
 function getRankSymbol(rank: number) {
-  if (rank === 1) return "🏆";
-  if (rank === 2) return "🥈";
-  if (rank === 3) return "🥉";
-  return "✨";
+  if (rank === 1) return "I";
+  if (rank === 2) return "II";
+  if (rank === 3) return "III";
+  return "+";
 }
 
 function SectionHeader({ title }: { title: string }) {
@@ -254,6 +264,14 @@ function TrophyIcon() {
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
       <path d="M8 4h8v3a4 4 0 0 1-8 0V4ZM12 11v4M9 20h6M10 15h4v5h-4v-5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M8 6H4v1.5A3.5 3.5 0 0 0 7.5 11H9M16 6h4v1.5a3.5 3.5 0 0 1-3.5 3.5H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CrownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="m4 8 4 3.5L12 5l4 6.5L20 8l-1.5 10h-13L4 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

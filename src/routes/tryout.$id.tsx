@@ -3,6 +3,15 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useApp, questionBank, tryouts, getCategoryName, type Attempt, type Tryout } from "../data";
 
 export const Route = createFileRoute("/tryout/$id")({
+  head: ({ params }) => ({
+    meta: [
+      { title: "Try-out UKAI — IlmoraX" },
+      { name: "description", content: "Kerjakan try-out UKAI dengan timer dan sistem penilaian real-time. Latihan simulasi UKAI dengan soal pilihan ganda dan pembahasan lengkap." },
+      { property: "og:title", content: "Try-out UKAI — IlmoraX" },
+      { property: "og:description", content: "Kerjakan try-out UKAI dengan timer dan sistem penilaian real-time." },
+      { name: "robots", content: "noindex, follow" },
+    ],
+  }),
   component: TryoutTakeComponent,
 });
 

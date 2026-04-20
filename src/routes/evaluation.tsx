@@ -5,6 +5,14 @@ import { PremiumDialog } from "../components/PremiumDialog";
 import { useApp } from "../data";
 
 export const Route = createFileRoute("/evaluation")({
+  head: () => ({
+    meta: [
+      { title: "Evaluation Dashboard — IlmoraX" },
+      { name: "description", content: "Analisis performa belajar lengkap. Lihat akurasi, breakdown kategori, pola salah, dan rekomendasi prioritas latihan. Fitur Premium." },
+      { property: "og:title", content: "Evaluation Dashboard — IlmoraX" },
+      { property: "og:description", content: "Analisis performa belajar lengkap. Lihat akurasi, breakdown kategori, dan rekomendasi latihan." },
+    ],
+  }),
   component: EvaluationComponent,
 });
 
