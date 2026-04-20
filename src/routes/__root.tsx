@@ -13,14 +13,14 @@ export const Route = createRootRoute({
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" },
     ],
   }),
   component: RootComponent,
   notFoundComponent: () => (
     <div className="view p-10 text-center">
       <h1 className="text-[48px] mb-5">🚫</h1>
-      <h2 className="text-2xl font-black mb-3">Halaman Tidak Ditemukan</h2>
+      <h2 className="text-2xl font-bold mb-3">Halaman Tidak Ditemukan</h2>
       <p className="text-stone-400 mb-6">Maaf, halaman yang kamu cari tidak ada.</p>
       <a href="/" className="btn btn-primary">Kembali ke Beranda</a>
     </div>
@@ -33,7 +33,7 @@ function RootComponent() {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="antialiased">
         <AppProvider>
           <div id="app" className="view">
             <Outlet />

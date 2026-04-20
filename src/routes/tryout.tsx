@@ -29,8 +29,8 @@ function TryoutComponent() {
       <div className="app-shell">
         <TopBar />
         <div className="px-4 pt-5 pb-2">
-          <h2 className="text-2xl font-black m-0">Try-out UKAI</h2>
-          <p className="m-0 mt-1.5 text-stone-400 font-semibold text-sm">Pilih modul, kumpulkan XP!</p>
+          <h2 className="text-2xl font-bold m-0 tracking-tight">Try-out UKAI</h2>
+          <p className="m-0 mt-1.5 text-stone-400 font-medium text-sm">Pilih modul, kumpulkan XP!</p>
         </div>
 
         <div className="flex gap-2 px-4 pb-3">
