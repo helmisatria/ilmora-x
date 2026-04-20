@@ -67,11 +67,30 @@ export const Route = createRootRoute({
   }),
   component: RootComponent,
   notFoundComponent: () => (
-    <div className="view p-10 text-center">
-      <h1 className="text-[48px] mb-5">🚫</h1>
-      <h2 className="text-2xl font-bold mb-3">Halaman Tidak Ditemukan</h2>
-      <p className="text-stone-400 mb-6">Maaf, halaman yang kamu cari tidak ada.</p>
-      <a href="/" className="btn btn-primary">Kembali ke Beranda</a>
+    <div className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eef8f6_0%,#fbfaf7_48%,#f7f3ea_100%)]">
+      <div
+        className="relative flex min-h-screen items-center justify-center px-5 py-16"
+        style={{
+          background:
+            "radial-gradient(900px 340px at 10% -16%, #14b8a62f, transparent 62%), radial-gradient(760px 360px at 92% 0%, #f59e0b20, transparent 66%)",
+        }}
+      >
+        <div className="w-full max-w-[440px] rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-teal-100 bg-teal-50 text-primary">
+            <NotFoundIcon />
+          </div>
+          <div className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-stone-400">
+            Tidak ditemukan
+          </div>
+          <h1 className="mx-auto mt-2 max-w-[16ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800">
+            Halaman ini belum tersedia
+          </h1>
+          <p className="mx-auto mt-3 max-w-[32ch] text-[14px] font-medium leading-relaxed text-stone-500">
+            Tautan mungkin berubah atau halaman sudah dipindahkan.
+          </p>
+          <a href="/dashboard" className="btn btn-primary mt-6 w-full">Kembali ke Dashboard</a>
+        </div>
+      </div>
     </div>
   ),
 });
@@ -92,5 +111,14 @@ function RootComponent() {
         <TanStackRouterDevtools position="bottom-right" />
       </body>
     </html>
+  );
+}
+
+function NotFoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+      <path d="M10.5 10.5h.1M14.5 10.5h.1M9 16c1.8-1.4 4.2-1.4 6 0" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
+    </svg>
   );
 }

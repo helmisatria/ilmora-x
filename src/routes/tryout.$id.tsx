@@ -249,7 +249,7 @@ function TryoutTakeComponent() {
               </button>
             </div>
           </div>
-          <h2 className="text-lg sm:text-xl font-bold leading-relaxed m-0">{q.question}</h2>
+          <h2 className="m-0 max-w-[34ch] text-lg font-bold leading-relaxed sm:text-xl">{q.question}</h2>
         </div>
 
         <div className="flex flex-col gap-2.5 sm:gap-3">
@@ -306,20 +306,18 @@ function TryoutTakeComponent() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/98 backdrop-blur-xl px-4 sm:px-6 py-4 border-t-2 border-stone-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50">
-        <div className="max-w-3xl mx-auto w-full">
-          <button
-            className="btn btn-primary w-full"
-            onClick={qIndex === total - 1 ? () => setShowSubmitConfirm(true) : () => {
-              if (qIndex < total - 1) {
-                setQIndex(qIndex + 1);
-                setSelected(answers[qIndex + 1] ?? null);
-              }
-            }}
-          >
-            {qIndex === total - 1 ? "SELESAI" : "SELANJUTNYA"}
-          </button>
-        </div>
+      <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-32px)] max-w-3xl -translate-x-1/2 rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-200 border-b-stone-300 bg-white/98 p-3 shadow-xl backdrop-blur-xl sm:p-4">
+        <button
+          className="btn btn-primary w-full"
+          onClick={qIndex === total - 1 ? () => setShowSubmitConfirm(true) : () => {
+            if (qIndex < total - 1) {
+              setQIndex(qIndex + 1);
+              setSelected(answers[qIndex + 1] ?? null);
+            }
+          }}
+        >
+          {qIndex === total - 1 ? "Selesai" : "Selanjutnya"}
+        </button>
       </div>
 
       {showSubmitConfirm && (

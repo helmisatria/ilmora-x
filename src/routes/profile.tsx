@@ -63,14 +63,14 @@ function ProfileComponent() {
       >
         <TopBar />
 
-        <div className="px-5 pt-7">
+        <div className="page-lane pt-7 lg:pt-10">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
             Profil Belajar
           </div>
-          <h1 className="mt-2 max-w-[22ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800">
+          <h1 className="mt-2 max-w-[18ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
             Kelola identitas dan progresmu
           </h1>
-          <p className="m-0 mt-3 max-w-[34ch] text-[14px] font-medium leading-relaxed text-stone-500">
+          <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
             Pantau level, lencana, bonus EXP, dan data akun yang terhubung ke simulasi UKAI.
           </p>
 
@@ -88,63 +88,67 @@ function ProfileComponent() {
         </div>
       </div>
 
-      <div className="relative -mt-4 px-5 pb-28">
-        <AvatarPicker
-          selectedAvatar={user.avatar}
-          onSelect={(avatar) => {
-            setUser((currentUser) => ({ ...currentUser, avatar }));
-          }}
-        />
+      <div className="page-lane relative -mt-4 grid gap-6 pb-28 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.15fr)] lg:items-start">
+        <div className="grid gap-5">
+          <AvatarPicker
+            selectedAvatar={user.avatar}
+            onSelect={(avatar) => {
+              setUser((currentUser) => ({ ...currentUser, avatar }));
+            }}
+          />
 
-        {activeBonus > 0 && highestLevelBadge && (
-          <BonusCallout bonus={activeBonus} badgeName={highestLevelBadge.name} />
-        )}
-
-        <div className="mt-5 grid grid-cols-3 gap-3 grid-flow-dense">
-          <StatCard label="Soal" value={String(user.totalQuestions)} accent="#14b8a6" icon={<DocumentIcon />} />
-          <StatCard label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
-          <StatCard label="Streak" value={`${user.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
-        </div>
-
-        <div className="mt-6">
-          <SectionHeader title={`Lencana ${unlockedBadgeList.length}/${badges.length}`} action="Lihat semua" to="/badges" />
-          {unlockedBadgeList.length === 0 ? (
-            <EmptyBadges />
-          ) : (
-            <div className="grid grid-cols-4 gap-3">
-              {unlockedBadgeList.slice(0, 8).map((badge) => (
-                <BadgePreview key={badge.id} name={badge.name} icon={badge.icon} />
-              ))}
-            </div>
+          {activeBonus > 0 && highestLevelBadge && (
+            <BonusCallout bonus={activeBonus} badgeName={highestLevelBadge.name} />
           )}
-        </div>
 
-        <div className="mt-6">
-          <SectionHeader title="Akun" />
-          <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
-            <AccountRow label="Email" value={user.email} />
-            <AccountRow label="Institusi" value={user.institution} />
-            <AccountRow label="Kode Referral" value={user.referralCode} copyable />
-            <AccountRow
-              label="Bergabung"
-              value={new Date(user.joinDate).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            />
+          <div className="grid grid-flow-dense grid-cols-3 gap-3">
+            <StatCard label="Soal" value={String(user.totalQuestions)} accent="#14b8a6" icon={<DocumentIcon />} />
+            <StatCard label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
+            <StatCard label="Streak" value={`${user.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
+
+          {!isPremium && <PremiumProfileCallout />}
         </div>
 
-        {!isPremium && <PremiumProfileCallout />}
+        <div className="grid gap-6">
+          <div>
+            <SectionHeader title={`Lencana ${unlockedBadgeList.length}/${badges.length}`} action="Lihat semua" to="/badges" />
+            {unlockedBadgeList.length === 0 ? (
+              <EmptyBadges />
+            ) : (
+              <div className="grid grid-flow-dense grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-4 xl:grid-cols-6">
+                {unlockedBadgeList.slice(0, 8).map((badge) => (
+                  <BadgePreview key={badge.id} name={badge.name} icon={badge.icon} />
+                ))}
+              </div>
+            )}
+          </div>
 
-        <div className="mt-5 flex gap-3">
-          <button className="btn btn-white flex-1 text-xs" onClick={togglePremium} type="button">
-            {isPremium ? "Demo Premium ON" : "Demo Premium OFF"}
-          </button>
-          <button className="btn btn-white flex-1 text-xs" onClick={() => navigate({ to: "/auth/login" })} type="button">
-            Keluar
-          </button>
+          <div>
+            <SectionHeader title="Akun" />
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
+              <AccountRow label="Email" value={user.email} />
+              <AccountRow label="Institusi" value={user.institution} />
+              <AccountRow label="Kode Referral" value={user.referralCode} copyable />
+              <AccountRow
+                label="Bergabung"
+                value={new Date(user.joinDate).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button className="btn btn-white flex-1 text-xs" onClick={togglePremium} type="button">
+              {isPremium ? "Demo Premium ON" : "Demo Premium OFF"}
+            </button>
+            <button className="btn btn-white flex-1 text-xs" onClick={() => navigate({ to: "/auth/login" })} type="button">
+              Keluar
+            </button>
+          </div>
         </div>
       </div>
 
