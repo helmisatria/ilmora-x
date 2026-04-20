@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
@@ -9,9 +9,14 @@ export const Route = createFileRoute("/tryout")({
 });
 
 function TryoutComponent() {
+  const location = useLocation();
   const { isPremium } = useApp();
   const [showPremium, setShowPremium] = useState(false);
   const [filter, setFilter] = useState<"all" | "free" | "premium">("all");
+
+  if (location.pathname !== "/tryout") {
+    return <Outlet />;
+  }
 
   const filtered = tryouts.filter((t) => {
     if (filter === "all") return true;

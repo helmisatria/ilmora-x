@@ -10,30 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TryoutRouteImport } from './routes/tryout'
-import { Route as ResultsRouteImport } from './routes/results'
 import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PremiumRouteImport } from './routes/premium'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ComingSoonRouteImport } from './routes/coming-soon'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as BadgesRouteImport } from './routes/badges'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TestIdRouteImport } from './routes/test.$id'
+import { Route as TryoutIdRouteImport } from './routes/tryout.$id'
+import { Route as ResultsAttemptIdRouteImport } from './routes/results.$attemptId'
+import { Route as ProfileUserIdRouteImport } from './routes/profile.$userId'
+import { Route as PollJoinRouteImport } from './routes/poll.join'
+import { Route as PollCodeRouteImport } from './routes/poll.$code'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCompleteProfileRouteImport } from './routes/auth/complete-profile'
+import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
 
 const TryoutRoute = TryoutRouteImport.update({
   id: '/tryout',
   path: '/tryout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResultsRoute = ResultsRouteImport.update({
-  id: '/results',
-  path: '/results',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProgressRoute = ProgressRouteImport.update({
   id: '/progress',
   path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PremiumRoute = PremiumRouteImport.update({
+  id: '/premium',
+  path: '/premium',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -51,6 +64,16 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComingSoonRoute = ComingSoonRouteImport.update({
+  id: '/coming-soon',
+  path: '/coming-soon',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BadgesRoute = BadgesRouteImport.update({
   id: '/badges',
   path: '/badges',
@@ -61,9 +84,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TestIdRoute = TestIdRouteImport.update({
-  id: '/test/$id',
-  path: '/test/$id',
+const TryoutIdRoute = TryoutIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TryoutRoute,
+} as any)
+const ResultsAttemptIdRoute = ResultsAttemptIdRouteImport.update({
+  id: '/results/$attemptId',
+  path: '/results/$attemptId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => ProfileRoute,
+} as any)
+const PollJoinRoute = PollJoinRouteImport.update({
+  id: '/poll/join',
+  path: '/poll/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PollCodeRoute = PollCodeRouteImport.update({
+  id: '/poll/$code',
+  path: '/poll/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -76,101 +119,159 @@ const AuthCompleteProfileRoute = AuthCompleteProfileRouteImport.update({
   path: '/auth/complete-profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResultsAttemptIdReviewRoute = ResultsAttemptIdReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => ResultsAttemptIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/badges': typeof BadgesRoute
+  '/checkout': typeof CheckoutRoute
+  '/coming-soon': typeof ComingSoonRoute
   '/dashboard': typeof DashboardRoute
   '/evaluation': typeof EvaluationRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/premium': typeof PremiumRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
-  '/results': typeof ResultsRoute
-  '/tryout': typeof TryoutRoute
+  '/tryout': typeof TryoutRouteWithChildren
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
-  '/test/$id': typeof TestIdRoute
+  '/poll/$code': typeof PollCodeRoute
+  '/poll/join': typeof PollJoinRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
+  '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
+  '/tryout/$id': typeof TryoutIdRoute
+  '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/badges': typeof BadgesRoute
+  '/checkout': typeof CheckoutRoute
+  '/coming-soon': typeof ComingSoonRoute
   '/dashboard': typeof DashboardRoute
   '/evaluation': typeof EvaluationRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/premium': typeof PremiumRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
-  '/results': typeof ResultsRoute
-  '/tryout': typeof TryoutRoute
+  '/tryout': typeof TryoutRouteWithChildren
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
-  '/test/$id': typeof TestIdRoute
+  '/poll/$code': typeof PollCodeRoute
+  '/poll/join': typeof PollJoinRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
+  '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
+  '/tryout/$id': typeof TryoutIdRoute
+  '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/badges': typeof BadgesRoute
+  '/checkout': typeof CheckoutRoute
+  '/coming-soon': typeof ComingSoonRoute
   '/dashboard': typeof DashboardRoute
   '/evaluation': typeof EvaluationRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/premium': typeof PremiumRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
-  '/results': typeof ResultsRoute
-  '/tryout': typeof TryoutRoute
+  '/tryout': typeof TryoutRouteWithChildren
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
-  '/test/$id': typeof TestIdRoute
+  '/poll/$code': typeof PollCodeRoute
+  '/poll/join': typeof PollJoinRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
+  '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
+  '/tryout/$id': typeof TryoutIdRoute
+  '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/badges'
+    | '/checkout'
+    | '/coming-soon'
     | '/dashboard'
     | '/evaluation'
     | '/leaderboard'
+    | '/premium'
+    | '/profile'
     | '/progress'
-    | '/results'
     | '/tryout'
     | '/auth/complete-profile'
     | '/auth/login'
-    | '/test/$id'
+    | '/poll/$code'
+    | '/poll/join'
+    | '/profile/$userId'
+    | '/results/$attemptId'
+    | '/tryout/$id'
+    | '/results/$attemptId/review'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/badges'
+    | '/checkout'
+    | '/coming-soon'
     | '/dashboard'
     | '/evaluation'
     | '/leaderboard'
+    | '/premium'
+    | '/profile'
     | '/progress'
-    | '/results'
     | '/tryout'
     | '/auth/complete-profile'
     | '/auth/login'
-    | '/test/$id'
+    | '/poll/$code'
+    | '/poll/join'
+    | '/profile/$userId'
+    | '/results/$attemptId'
+    | '/tryout/$id'
+    | '/results/$attemptId/review'
   id:
     | '__root__'
     | '/'
     | '/badges'
+    | '/checkout'
+    | '/coming-soon'
     | '/dashboard'
     | '/evaluation'
     | '/leaderboard'
+    | '/premium'
+    | '/profile'
     | '/progress'
-    | '/results'
     | '/tryout'
     | '/auth/complete-profile'
     | '/auth/login'
-    | '/test/$id'
+    | '/poll/$code'
+    | '/poll/join'
+    | '/profile/$userId'
+    | '/results/$attemptId'
+    | '/tryout/$id'
+    | '/results/$attemptId/review'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BadgesRoute: typeof BadgesRoute
+  CheckoutRoute: typeof CheckoutRoute
+  ComingSoonRoute: typeof ComingSoonRoute
   DashboardRoute: typeof DashboardRoute
   EvaluationRoute: typeof EvaluationRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  PremiumRoute: typeof PremiumRoute
+  ProfileRoute: typeof ProfileRouteWithChildren
   ProgressRoute: typeof ProgressRoute
-  ResultsRoute: typeof ResultsRoute
-  TryoutRoute: typeof TryoutRoute
+  TryoutRoute: typeof TryoutRouteWithChildren
   AuthCompleteProfileRoute: typeof AuthCompleteProfileRoute
   AuthLoginRoute: typeof AuthLoginRoute
-  TestIdRoute: typeof TestIdRoute
+  PollCodeRoute: typeof PollCodeRoute
+  PollJoinRoute: typeof PollJoinRoute
+  ResultsAttemptIdRoute: typeof ResultsAttemptIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -182,18 +283,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TryoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/results': {
-      id: '/results'
-      path: '/results'
-      fullPath: '/results'
-      preLoaderRoute: typeof ResultsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/progress': {
       id: '/progress'
       path: '/progress'
       fullPath: '/progress'
       preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/premium': {
+      id: '/premium'
+      path: '/premium'
+      fullPath: '/premium'
+      preLoaderRoute: typeof PremiumRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard': {
@@ -217,6 +325,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coming-soon': {
+      id: '/coming-soon'
+      path: '/coming-soon'
+      fullPath: '/coming-soon'
+      preLoaderRoute: typeof ComingSoonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/badges': {
       id: '/badges'
       path: '/badges'
@@ -231,11 +353,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/test/$id': {
-      id: '/test/$id'
-      path: '/test/$id'
-      fullPath: '/test/$id'
-      preLoaderRoute: typeof TestIdRouteImport
+    '/tryout/$id': {
+      id: '/tryout/$id'
+      path: '/$id'
+      fullPath: '/tryout/$id'
+      preLoaderRoute: typeof TryoutIdRouteImport
+      parentRoute: typeof TryoutRoute
+    }
+    '/results/$attemptId': {
+      id: '/results/$attemptId'
+      path: '/results/$attemptId'
+      fullPath: '/results/$attemptId'
+      preLoaderRoute: typeof ResultsAttemptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/$userId': {
+      id: '/profile/$userId'
+      path: '/$userId'
+      fullPath: '/profile/$userId'
+      preLoaderRoute: typeof ProfileUserIdRouteImport
+      parentRoute: typeof ProfileRoute
+    }
+    '/poll/join': {
+      id: '/poll/join'
+      path: '/poll/join'
+      fullPath: '/poll/join'
+      preLoaderRoute: typeof PollJoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/poll/$code': {
+      id: '/poll/$code'
+      path: '/poll/$code'
+      fullPath: '/poll/$code'
+      preLoaderRoute: typeof PollCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/login': {
@@ -252,21 +402,66 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCompleteProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/results/$attemptId/review': {
+      id: '/results/$attemptId/review'
+      path: '/review'
+      fullPath: '/results/$attemptId/review'
+      preLoaderRoute: typeof ResultsAttemptIdReviewRouteImport
+      parentRoute: typeof ResultsAttemptIdRoute
+    }
   }
 }
+
+interface ProfileRouteChildren {
+  ProfileUserIdRoute: typeof ProfileUserIdRoute
+}
+
+const ProfileRouteChildren: ProfileRouteChildren = {
+  ProfileUserIdRoute: ProfileUserIdRoute,
+}
+
+const ProfileRouteWithChildren =
+  ProfileRoute._addFileChildren(ProfileRouteChildren)
+
+interface TryoutRouteChildren {
+  TryoutIdRoute: typeof TryoutIdRoute
+}
+
+const TryoutRouteChildren: TryoutRouteChildren = {
+  TryoutIdRoute: TryoutIdRoute,
+}
+
+const TryoutRouteWithChildren =
+  TryoutRoute._addFileChildren(TryoutRouteChildren)
+
+interface ResultsAttemptIdRouteChildren {
+  ResultsAttemptIdReviewRoute: typeof ResultsAttemptIdReviewRoute
+}
+
+const ResultsAttemptIdRouteChildren: ResultsAttemptIdRouteChildren = {
+  ResultsAttemptIdReviewRoute: ResultsAttemptIdReviewRoute,
+}
+
+const ResultsAttemptIdRouteWithChildren =
+  ResultsAttemptIdRoute._addFileChildren(ResultsAttemptIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BadgesRoute: BadgesRoute,
+  CheckoutRoute: CheckoutRoute,
+  ComingSoonRoute: ComingSoonRoute,
   DashboardRoute: DashboardRoute,
   EvaluationRoute: EvaluationRoute,
   LeaderboardRoute: LeaderboardRoute,
+  PremiumRoute: PremiumRoute,
+  ProfileRoute: ProfileRouteWithChildren,
   ProgressRoute: ProgressRoute,
-  ResultsRoute: ResultsRoute,
-  TryoutRoute: TryoutRoute,
+  TryoutRoute: TryoutRouteWithChildren,
   AuthCompleteProfileRoute: AuthCompleteProfileRoute,
   AuthLoginRoute: AuthLoginRoute,
-  TestIdRoute: TestIdRoute,
+  PollCodeRoute: PollCodeRoute,
+  PollJoinRoute: PollJoinRoute,
+  ResultsAttemptIdRoute: ResultsAttemptIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

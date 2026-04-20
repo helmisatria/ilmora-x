@@ -1,18 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
-import { useApp, questionBank, tryouts, type Question, type WrongAnswer } from "../data";
+import { useEffect, useState } from "react";
+import { useApp, questionBank, tryouts, type WrongAnswer, type Attempt } from "../data";
 
-export const Route = createFileRoute("/test/$id")({
-  component: TestComponent,
+export const Route = createFileRoute("/tryout/$id")({
+  component: TryoutTakeComponent,
 });
 
-function TestComponent() {
+function TryoutTakeComponent() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { user, isPremium, addAttempt } = useApp();
+  const { user, attempts, addAttempt } = useApp();
   const testId = parseInt(id, 10);
   const [isReady, setIsReady] = useState(false);
-  const [tick, setTick] = useState(0);
 
   const [qIndex, setQIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -26,7 +25,7 @@ function TestComponent() {
 
   const [timeLeft, setTimeLeft] = useState(tryout.duration * 60);
   const [showReport, setShowReport] = useState(false);
-  const [reportQuestion, setReportQuestion] = useState<number | null>(null);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const [lastSaved, setLastSaved] = useState<string>("");
 
@@ -37,10 +36,7 @@ function TestComponent() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 0) return 0;
-        return prev - 1;
-      });
+      setTimeLeft((prev) => (prev <= 0 ? 0 : prev - 1));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -91,41 +87,39 @@ function TestComponent() {
 
   const handleSubmit = () => {
     let correct = 0;
-    const wrongs: WrongAnswer[] = [];
+    const attemptAnswers: Attempt["answers"] = [];
     questions.forEach((question, i) => {
       const sel = answers[i];
       const ok = sel === question.correct;
-      if (ok) {
-        correct++;
-      } else {
-        const wrongAnswer: WrongAnswer = {
-          id: question.id,
-          subject: getCategoryLabel(question.categoryId),
-          question: question.question,
-          options: question.options,
-          correct: question.correct,
-          explanation: question.explanation,
-          explanationPreview: question.explanation.slice(0, 120) + "...",
-          videoUrl: question.videoUrl,
-          isPremium: question.isPremium,
-          user: sel !== undefined ? question.options[sel] : "Tidak dijawab",
-        };
-        wrongs.push(wrongAnswer);
+      if (ok) correct++;
+      if (sel !== undefined) {
+        attemptAnswers.push({ questionId: question.id, selected: sel, correct: ok });
       }
     });
     const score = Math.round((correct / questions.length) * 100);
     const xpEarn = 50 + correct * 20;
-    navigate({ to: "/results" });
-  };
-
-  function getCategoryLabel(catId: string): string {
-    const labels: Record<string, string> = {
-      klinis: "KLINIS",
-      farmakologi: "FARMAKOLOGI",
-      "farmasi-klinik": "FARMASI KLINIS",
+    const newId = Math.max(0, ...attempts.map((a) => a.id)) + 1;
+    const now = new Date();
+    const attemptNumber = attempts.filter((a) => a.tryoutId === testId && a.userId === user.id).length + 1;
+    const attempt: Attempt = {
+      id: newId,
+      userId: user.id,
+      tryoutId: testId,
+      attemptNumber,
+      status: "submitted",
+      startedAt: new Date(now.getTime() - (tryout.duration * 60 - timeLeft) * 1000).toISOString(),
+      deadlineAt: new Date(now.getTime() + timeLeft * 1000).toISOString(),
+      score,
+      correct,
+      total: questions.length,
+      xpEarned: attemptNumber === 1 ? xpEarn : Math.round(xpEarn * 0.25),
+      completedAt: now.toISOString(),
+      answers: attemptAnswers,
+      markedQuestionIds: flagged.map((fi) => questions[fi].id),
     };
-    return labels[catId] || catId.toUpperCase();
-  }
+    addAttempt(attempt);
+    navigate({ to: "/results/$attemptId", params: { attemptId: String(newId) } });
+  };
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
@@ -181,17 +175,13 @@ function TestComponent() {
               <button
                 key={i}
                 className={`flex items-center gap-3.5 w-full text-left px-4 py-4.5 bg-white border-3 border-stone-200 rounded-[var(--radius-lg)] font-semibold text-base cursor-pointer transition-all duration-100 ${
-                  isSelected
-                    ? "border-primary bg-teal-50 border-b-primary-dark"
-                    : "border-b-stone-300"
+                  isSelected ? "border-primary bg-teal-50" : ""
                 }`}
                 style={{ borderBottom: isSelected ? "5px solid var(--color-primary-dark)" : "5px solid var(--color-stone-300)" }}
                 onClick={() => handleSelect(i)}
               >
                 <span className={`w-10 h-10 rounded-[10px] flex items-center justify-center font-black shrink-0 transition-all duration-150 ${
-                  isSelected
-                    ? "bg-primary border-b-3 text-white"
-                    : "bg-stone-200 border-b-3 text-stone-500"
+                  isSelected ? "bg-primary border-b-3 text-white" : "bg-stone-200 border-b-3 text-stone-500"
                 }`}>
                   {String.fromCharCode(65 + i)}
                 </span>
@@ -235,7 +225,7 @@ function TestComponent() {
       <div className="sticky bottom-0 bg-white/98 backdrop-blur-xl px-4 py-4 border-t-2 border-stone-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-5">
         <button
           className="btn btn-primary w-full max-w-[640px] mx-auto"
-          onClick={qIndex === total - 1 ? handleSubmit : () => {
+          onClick={qIndex === total - 1 ? () => setShowSubmitConfirm(true) : () => {
             if (qIndex < total - 1) {
               setQIndex(qIndex + 1);
               setSelected(answers[qIndex + 1] ?? null);
@@ -245,6 +235,23 @@ function TestComponent() {
           {qIndex === total - 1 ? "SELESAI" : "SELANJUTNYA"}
         </button>
       </div>
+
+      {showSubmitConfirm && (
+        <div className="dialog-backdrop show" onClick={(e) => { if (e.target === e.currentTarget) setShowSubmitConfirm(false) }}>
+          <div className="dialog-box text-left">
+            <div className="text-[48px] text-center mb-2">🚀</div>
+            <h3 className="text-xl font-black mb-2 text-center">Yakin submit?</h3>
+            <p className="text-sm text-stone-500 mb-4 text-center">
+              {answers.filter((a) => a !== undefined).length}/{total} soal dijawab.
+              {answers.some((a) => a === undefined) && " Soal kosong dianggap salah."}
+            </p>
+            <div className="flex gap-3">
+              <button className="btn btn-white flex-1" onClick={() => setShowSubmitConfirm(false)}>Lanjut kerjain</button>
+              <button className="btn btn-primary flex-1" onClick={handleSubmit}>Submit</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showReport && (
         <div className="dialog-backdrop show" onClick={(e) => { if (e.target === e.currentTarget) setShowReport(false) }}>
@@ -270,4 +277,13 @@ function TestComponent() {
       )}
     </div>
   );
+}
+
+function getCategoryLabel(catId: string): string {
+  const labels: Record<string, string> = {
+    klinis: "KLINIS",
+    farmakologi: "FARMAKOLOGI",
+    "farmasi-klinik": "FARMASI KLINIK",
+  };
+  return labels[catId] || catId.toUpperCase();
 }

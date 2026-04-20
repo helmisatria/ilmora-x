@@ -150,17 +150,38 @@ function DashboardComponent() {
           </div>
 
           <div className="mt-4 mb-4">
+            <Link
+              to="/poll/join"
+              className="block bg-gradient-to-r from-teal-50 to-teal-100 rounded-[var(--radius-lg)] p-4 shadow-md border-2 border-teal-200 border-b-4 border-b-teal-400"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">📊</span>
+                <div className="flex-1">
+                  <b className="block font-extrabold text-teal-900">Gabung Live Poll</b>
+                  <span className="text-xs text-teal-700 font-medium">Pembimbingmu kasih kode 6 digit</span>
+                </div>
+                <span className="text-teal-900 text-xl">›</span>
+              </div>
+            </Link>
+          </div>
+
+          <div className="mt-4 mb-4">
             <h3 className="text-xl font-black mb-3">🚀 Segera Hadir</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <Link to="/coming-soon?feature=drilling" className="bg-white rounded-[var(--radius-lg)] p-4 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
+            <div className="grid grid-cols-3 gap-3">
+              <Link to="/coming-soon" search={{ feature: "drilling" }} className="bg-white rounded-[var(--radius-lg)] p-4 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
                 <div className="text-3xl mb-2">🎮</div>
                 <b className="text-sm font-extrabold">Drilling</b>
-                <div className="text-xs text-stone-400 font-medium">Latihan interaktif</div>
+                <div className="text-xs text-stone-400 font-medium">Latihan</div>
               </Link>
-              <Link to="/coming-soon?feature=store" className="bg-white rounded-[var(--radius-lg)] p-4 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
+              <Link to="/coming-soon" search={{ feature: "store" }} className="bg-white rounded-[var(--radius-lg)] p-4 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
                 <div className="text-3xl mb-2">🛒</div>
                 <b className="text-sm font-extrabold">Store</b>
-                <div className="text-xs text-stone-400 font-medium">Belanja power-up</div>
+                <div className="text-xs text-stone-400 font-medium">Power-up</div>
+              </Link>
+              <Link to="/coming-soon" search={{ feature: "affiliate" }} className="bg-white rounded-[var(--radius-lg)] p-4 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
+                <div className="text-3xl mb-2">🤝</div>
+                <b className="text-sm font-extrabold">Affiliate</b>
+                <div className="text-xs text-stone-400 font-medium">Referral</div>
               </Link>
             </div>
           </div>

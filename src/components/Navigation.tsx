@@ -1,20 +1,29 @@
-import { Link, useRouteContext } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useApp } from "../data";
 
 export function TopBar() {
   const { user } = useApp();
-  const { level, xp, streak } = user;
+  const { level, xp, streak, avatar } = user;
 
   return (
-    <div className="sticky top-0 z-20 bg-white/92 backdrop-blur-xl flex justify-center gap-2.5 px-4 py-3 border-b-2 border-stone-200">
-      <div className="flex items-center gap-1.5 font-extrabold text-[13px] px-3.5 py-2 rounded-full bg-amber-50 border-2 border-amber-200 text-amber-700 shadow-sm">
-        <span>🔥</span> {streak}
-      </div>
-      <div className="flex items-center gap-1.5 font-extrabold text-[13px] px-3.5 py-2 rounded-full bg-green-50 border-2 border-green-200 text-green-700 shadow-sm">
-        <span>⚡</span> {xp.toLocaleString()}
-      </div>
-      <div className="flex items-center gap-1.5 font-extrabold text-[13px] px-3.5 py-2 rounded-full bg-teal-50 border-2 border-teal-200 text-teal-700 shadow-sm">
-        <span>🏆</span> Lv.{level}
+    <div className="sticky top-0 z-20 bg-white/92 backdrop-blur-xl flex items-center justify-between gap-2 px-4 py-3 border-b-2 border-stone-200">
+      <Link
+        to="/profile"
+        className="w-10 h-10 rounded-full bg-teal-50 border-2 border-teal-200 flex items-center justify-center text-xl shadow-sm shrink-0 hover:bg-teal-100 transition-colors"
+        title="Profil"
+      >
+        {avatar}
+      </Link>
+      <div className="flex items-center gap-2 flex-1 justify-center">
+        <div className="flex items-center gap-1.5 font-extrabold text-[12px] px-3 py-2 rounded-full bg-amber-50 border-2 border-amber-200 text-amber-700 shadow-sm">
+          <span>🔥</span> {streak}
+        </div>
+        <div className="flex items-center gap-1.5 font-extrabold text-[12px] px-3 py-2 rounded-full bg-green-50 border-2 border-green-200 text-green-700 shadow-sm">
+          <span>⚡</span> {xp.toLocaleString()}
+        </div>
+        <div className="flex items-center gap-1.5 font-extrabold text-[12px] px-3 py-2 rounded-full bg-teal-50 border-2 border-teal-200 text-teal-700 shadow-sm">
+          <span>🏆</span> Lv.{level}
+        </div>
       </div>
     </div>
   );

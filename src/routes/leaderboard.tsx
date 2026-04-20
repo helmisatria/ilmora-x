@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { BottomNav, TopBar } from "../components/Navigation";
-import { useApp } from "../data";
+import { useApp, mockUsers } from "../data";
 
 export const Route = createFileRoute("/leaderboard")({
   component: LeaderboardComponent,
@@ -67,23 +67,33 @@ function LeaderboardComponent() {
       </div>
 
       <div className="px-3.5 pb-20 flex flex-col gap-2">
-        {leaderboardUsers.map((u) => (
-          <div key={u.r} className={`flex items-center gap-3 bg-white px-3.5 py-3 rounded-[var(--radius-lg)] border-2 border-stone-200 border-b-4 border-b-stone-300 transition-transform hover:translate-x-1 ${
-            u.me ? "!border-primary !bg-teal-50 !border-b-primary-dark" : ""
-          }`}>
-            <span className="w-7 text-center font-black text-stone-400 text-sm">{u.r}</span>
-            <div className="w-11 h-11 rounded-full bg-stone-100 flex items-center justify-center text-[22px] border-2 border-white shadow-sm">
-              {u.a}
-            </div>
-            <div className="flex-1">
-              <b className="text-[15px] font-extrabold block">{u.n}{u.me ? " (Kamu)" : ""}</b>
-              <span className="text-xs text-stone-400 font-semibold">Lv.{u.level} • {u.xp.toLocaleString()} XP minggu ini</span>
-            </div>
-            <span className={`font-black text-sm ${u.ch === "up" ? "text-success" : "text-coral"}`}>
-              {u.ch === "up" ? "▲" : "▼"}
-            </span>
-          </div>
-        ))}
+        {leaderboardUsers.map((u) => {
+          const userRecord = mockUsers.find((mu) => mu.name === u.n);
+          const profileTo = u.me ? "/profile" : "/profile/$userId";
+          const params = u.me ? undefined : { userId: String(userRecord?.id ?? 2) };
+          return (
+            <Link
+              key={u.r}
+              to={profileTo}
+              params={params}
+              className={`flex items-center gap-3 bg-white px-3.5 py-3 rounded-[var(--radius-lg)] border-2 border-stone-200 border-b-4 border-b-stone-300 transition-transform hover:translate-x-1 ${
+                u.me ? "!border-primary !bg-teal-50 !border-b-primary-dark" : ""
+              }`}
+            >
+              <span className="w-7 text-center font-black text-stone-400 text-sm">{u.r}</span>
+              <div className="w-11 h-11 rounded-full bg-stone-100 flex items-center justify-center text-[22px] border-2 border-white shadow-sm">
+                {u.a}
+              </div>
+              <div className="flex-1">
+                <b className="text-[15px] font-extrabold block">{u.n}{u.me ? " (Kamu)" : ""}</b>
+                <span className="text-xs text-stone-400 font-semibold">Lv.{u.level} • {u.xp.toLocaleString()} XP minggu ini</span>
+              </div>
+              <span className={`font-black text-sm ${u.ch === "up" ? "text-success" : "text-coral"}`}>
+                {u.ch === "up" ? "▲" : "▼"}
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
       <BottomNav active="rank" />
