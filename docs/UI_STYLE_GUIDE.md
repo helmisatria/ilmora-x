@@ -1,6 +1,6 @@
 # IlmoraX UI Style Guide
 
-Compact rulebook derived from [src/routes/tryout.$id.tsx](../src/routes/tryout.$id.tsx) (Preparation + Countdown screens). Apply these rules to align Dashboard, Tryout List, CBT Active, Results, Review, Evaluation, Leaderboard, and Profile screens with the same quality bar.
+Compact rulebook derived from [src/routes/tryout.$id.tsx](../src/routes/tryout.$id.tsx) (Preparation + Countdown screens), then refined through the Dashboard and Tryout List prototypes. Apply these rules to align Dashboard, Tryout List, CBT Active, Results, Review, Evaluation, Leaderboard, and Profile screens with the same quality bar.
 
 ---
 
@@ -22,13 +22,27 @@ Five design decisions carry the screen. Any page missing 3+ of these will feel c
 
 ### 2.1 Emoji discipline
 - Inline emojis in body copy, H1s, or buttons are **banned**. `"📚 Mulai Tryout"` → `"Mulai Tryout"` with optional icon-tile to the left.
-- Emojis only survive inside **icon tiles**: `w-9 h-9 rounded-xl` or `w-14 h-14 rounded-2xl` with tinted bg `${accent}18` and color `${accent}`.
+- Prefer inline SVG icons inside **icon tiles**: `w-9 h-9 rounded-xl` or `w-14 h-14 rounded-2xl` with tinted bg `${accent}18` and color `${accent}`.
+- Legacy emoji data may exist in mocks, but production-facing page chrome should render SVG icons or initials instead.
 - Loading state is not `🔄` — see Rule 4.
 
 ### 2.2 Color thread
 - Pick **one accent per screen** (module color, status color, or `--color-primary`). Thread it through: header glow → kicker pill → icon tile → primary CTA border-bottom.
 - Secondary accents live only inside bento StatCards — one per cell, never repeated across unrelated sections.
-- Ban multi-gradient celebratory backgrounds like `bg-gradient-to-r from-amber-50 to-amber-100` for generic cards. Gradients are for the ambient header, not card fills.
+- Ban multi-gradient celebratory backgrounds like `bg-gradient-to-r from-amber-50 to-amber-100` for generic cards. Gradients are for ambient page tone, premium modules, and meaningful status surfaces — not default card fills.
+
+### 2.2.1 Tonal backgrounds
+- Pure white page stacks feel too flat. Use a restrained page gradient when a screen has multiple white cards.
+- Dashboard default tone is **Clinic**:
+  ```tsx
+  page:
+    "linear-gradient(180deg, #eef8f6 0%, #f6fbfa 44%, #f7f3ea 100%)"
+  header:
+    "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)"
+  ```
+- Good alternate tones: Mist, Paper, Stone. Keep them subtle. Avoid loud rainbow palettes.
+- Prototype-only palette switchers are allowed, but must be collapsible and clearly labelled as a prototype control. Place them low on the page, never above primary actions or floating over core content on mobile.
+- Palette choices should persist locally with `localStorage` so visual review survives refreshes.
 
 ### 2.3 Heading hierarchy
 - H1 (page title): `text-[28px] leading-tight font-bold tracking-tight max-w-[22ch]`.
@@ -60,6 +74,11 @@ border-2 border-stone-100 border-b-4 border-b-stone-200
 ```
 For interactive cards, use the `.card` class. Do **not** invent alternative shadow stacks per card.
 
+Use tonal cards only when they clarify meaning:
+- Metric cards can use a very light top wash: `linear-gradient(180deg, ${accent}12 0%, rgba(255,255,255,0.92) 72%)`.
+- Progress/ledger panels can use soft teal/paper gradients with stronger borders.
+- Premium is the exception: it should be visually special, not just another amber card.
+
 ### 2.7 Pill/tag formula (category, status)
 ```tsx
 <span
@@ -76,22 +95,63 @@ The brand dot is non-negotiable — it's what separates this pill from a generic
 - Dark bg → white text. Light bg → `text-stone-800`. Never `text-white` on `bg-white`.
 - Drop emoji prefixes. `"📚 Mulai Tryout"` → `"Mulai Tryout"`.
 - Keep border-bottom-width dynamic (4px rest → 2px active) via the existing `.btn` class — don't override it.
+- Premium CTAs should not look like regular feature buttons. Use charcoal/amber treatment:
+  ```tsx
+  style={{
+    background: "#2f281c",
+    color: "#fff7ed",
+    borderBottomColor: "#a16207",
+  }}
+  ```
+
+### 2.9 Progress meters
+Do not use a bare low-contrast thin bar for XP or leveling progress. It reads as decoration, not state.
+
+A clear progress meter needs:
+- Label: `Level Progress`
+- Remaining amount: e.g. `720 XP lagi`
+- Percent badge: e.g. `10%`
+- Refined visible track: `rounded-full border-2 border-teal-100 bg-teal-50/80 p-1`
+- Refined fill: `h-4 rounded-full` with a teal gradient `#14b8a6 → #0d9488` and a subtle top highlight.
+- Endpoint labels under the bar: current XP on the left, target XP on the right.
+- Do not add tick marks or extra mini stat boxes under the progress bar unless the task explicitly needs deeper analytics. Keep it clean but not bare.
+
+This is the minimum clarity bar for any progress UI.
 
 ---
 
 ## 3. PAGE-SPECIFIC ALIGNMENT
 
 ### 3.1 Dashboard ([src/routes/dashboard.tsx](../src/routes/dashboard.tsx))
-Current failures → fixes:
-- Greeting card has `🧪` emoji at `opacity-10 rotate-[15deg]` — **keep** (works as texture), but move `👋` off the H2 text.
-- `"📚 Mulai Tryout"` button → `"Mulai Tryout"` with separate icon tile, or drop the icon entirely.
-- Three stat cards use `📝 🎯 📊` inline — replace with icon tiles: `w-9 h-9 rounded-xl bg-teal-100 text-teal-600`, `bg-amber-100 text-amber-600`, `bg-sky-100 text-sky-600`. Mirror the `StatCard` component from the preparation screen.
-- `<h3>📚 Try-out Tersedia</h3>` → divider pattern (Rule 2.5), title `Try-out Tersedia`.
-- Amber Evaluation card uses `bg-gradient-to-r from-amber-50 to-amber-100` — replace with solid `bg-amber-50 border-2 border-amber-200` (mirror the premium callout on preparation screen).
-- `<h3>🚀 Segera Hadir</h3>` → kicker + divider. Grid cards drop the emoji-in-card pattern and adopt icon tiles.
+Dashboard is no longer just the preparation-card recipe repeated. It needs more tone while staying extremely clear.
+
+Required:
+- Use the **Clinic** background palette by default (Rule 2.2.1).
+- Keep the ambient radial header and measured greeting typography:
+  - Kicker: `Beranda`
+  - H1: `text-[28px] leading-tight font-bold tracking-tight max-w-[22ch]`
+  - Body: `text-[14px] leading-relaxed text-stone-500 max-w-[34ch]`
+- Use initials in the top profile circle instead of emoji avatars.
+- Buttons use SVG icons, not emoji prefixes.
+- Stat cards use light tonal washes, not plain identical white cards.
+- Section titles use the divider pattern. No emoji heading prefixes.
+- Progress panel must use the clear XP meter from Rule 2.9.
+- Premium must be visually special:
+  - Dark charcoal base `#2f281c`
+  - Amber borders/CTA `#f5b544`, `#a16207`
+  - Subtle radial amber + teal atmosphere
+  - Mini stats like `Akurasi`, `Review`, `Latihan`
+  - CTA copy like `Buka Premium`
+- The premium dialog must match this same dark amber/charcoal language.
+
+Avoid:
+- Flat teal hero card.
+- White-on-white page with no tone.
+- Generic amber gradient feature cards for premium.
+- Truncated level names. Let titles wrap cleanly.
 
 ### 3.2 Tryout List ([src/routes/tryout.tsx](../src/routes/tryout.tsx))
-Close, but missing atmosphere:
+The list page should feel like a sibling of the preparation screen:
 - Add an ambient radial header behind the H2 + subtitle, seeded from `--color-primary`:
   ```tsx
   <div
@@ -100,9 +160,10 @@ Close, but missing atmosphere:
   >
   ```
 - H2 needs a kicker above it: `Modul Tryout` (uppercase stone-400), then H1-size title.
-- Filter pills are fine — already match the pattern.
+- Filter pills must use the dot-pill pattern and no emoji labels. `Premium`, not `Premium ⭐`.
 - Card title `text-[13.5px] font-bold` not `text-sm font-extrabold` — the preparation screen uses tighter weights.
 - Cards inherit `border-b-4 border-b-stone-200` via the surface formula — verify they match.
+- Module icons should be SVGs in tinted tiles. Do not render raw module emoji in list cards.
 
 ### 3.3 CBT Active (question screen in [src/routes/tryout.$id.tsx](../src/routes/tryout.$id.tsx))
 - `🚩` and `⚠️` as raw button children → swap for `phosphor` / `lucide` icon components (Flag, AlertTriangle) sized `w-5 h-5`. If icons aren't installed, use inline SVGs. Raw emoji inside buttons looks amateur.
@@ -130,6 +191,12 @@ The confirm-start dialog in the preparation screen is the template:
 
 Any dialog using `🚀` or `🚨` at 48px font-size breaks the pattern.
 
+Premium dialog exception:
+- Use the premium charcoal/amber language from Rule 3.1.
+- Header can be dark with radial amber/teal atmosphere.
+- Feature rows remain light and readable below the dark header.
+- CTA uses the dark premium button, not the generic teal primary button.
+
 ---
 
 ## 4. THE FIVE QUESTIONS BEFORE COMMITTING A SCREEN
@@ -141,6 +208,9 @@ Run this checklist before declaring a page done. Fail any one → revise.
 3. **Are emojis confined to icon tiles?** (no emojis inside H1/H2/button text/body copy)
 4. **Does every heading have a `max-w-[Nch]` sibling or class?** (wraps are deliberate, not accidental)
 5. **Do all cards use the single surface formula?** (`bg-white rounded-[--radius-lg] p-5 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200`)
+6. **Does the page have enough tone?** White cards on a white shell need a subtle page/background tone.
+7. **Is premium visually special?** Premium should not look like a normal feature/action card.
+8. **Are progress meters self-explanatory without being busy?** They need a label, remaining amount, percent, endpoint values, and a visible track.
 
 ---
 
@@ -148,6 +218,9 @@ Run this checklist before declaring a page done. Fail any one → revise.
 
 - Tokens: [src/styles/app.css](../src/styles/app.css) (colors, radii, fonts, `.btn`, `.card`, `.dialog-*`).
 - Reference screen source: [src/routes/tryout.$id.tsx](../src/routes/tryout.$id.tsx#L346-L589) (Preparation + Countdown components).
+- Dashboard tonal/premium reference: [src/routes/dashboard.tsx](../src/routes/dashboard.tsx) (Clinic palette, Tone Lab, XP meter, premium module).
+- Premium dialog reference: [src/components/PremiumDialog.tsx](../src/components/PremiumDialog.tsx).
+- Navigation icon reference: [src/components/Navigation.tsx](../src/components/Navigation.tsx).
 - StatCard component pattern: [src/routes/tryout.$id.tsx:528](../src/routes/tryout.$id.tsx#L528).
 - MiniStat component pattern: [src/routes/tryout.$id.tsx:577](../src/routes/tryout.$id.tsx#L577).
 - RuleItem (checklist row) pattern: [src/routes/tryout.$id.tsx:564](../src/routes/tryout.$id.tsx#L564).
