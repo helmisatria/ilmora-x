@@ -199,36 +199,38 @@ function TryoutTakeComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl flex items-center gap-3 px-4 py-3.5 border-b-2 border-stone-200">
-        <Link to="/tryout" className="icon-btn" aria-label="Tutup tryout">
-          <CloseIcon />
-        </Link>
-        <div className="flex-1 h-3 bg-stone-200 rounded-full overflow-hidden">
-          <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
-        </div>
-        <div className="flex gap-2">
-          <div className="px-3.5 py-2 rounded-full font-extrabold text-[12px] bg-white shadow-sm border-2 border-stone-200">
-            {qIndex + 1}/{total}
+    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col relative">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b-2 border-stone-200">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3.5 flex items-center gap-3">
+          <Link to="/tryout" className="icon-btn shrink-0" aria-label="Tutup tryout">
+            <CloseIcon />
+          </Link>
+          <div className="flex-1 h-3 bg-stone-200 rounded-full overflow-hidden min-w-0">
+            <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
           </div>
-          <div className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full font-extrabold text-[12px] shadow-sm border-2 ${
-            isTimeLow ? "bg-red-50 border-red-300 text-red-600" : "bg-teal-50 border-teal-200 text-teal-700"
-          }`}>
-            <ClockIcon />
-            {timeDisplay}
+          <div className="flex gap-2 shrink-0">
+            <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full font-extrabold text-[11px] sm:text-[12px] bg-white shadow-sm border-2 border-stone-200">
+              {qIndex + 1}/{total}
+            </div>
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full font-extrabold text-[11px] sm:text-[12px] shadow-sm border-2 ${
+              isTimeLow ? "bg-red-50 border-red-300 text-red-600" : "bg-teal-50 border-teal-200 text-teal-700"
+            }`}>
+              <ClockIcon />
+              {timeDisplay}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-5 max-w-[640px] mx-auto w-full pb-24">
-        <div className="bg-white rounded-[var(--radius-xl)] p-6 mb-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
-          <div className="flex justify-between items-center mb-4">
-            <span className="bg-primary text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full tracking-wide uppercase">
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 max-w-3xl mx-auto w-full pb-28">
+        <div className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 mb-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
+          <div className="flex justify-between items-start gap-3 mb-4">
+            <span className="bg-primary text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full tracking-wide uppercase shrink-0">
               {getCategoryLabel(q.categoryId)}
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <button
-                className={`w-11 h-11 rounded-[var(--radius-md)] border-2 cursor-pointer flex items-center justify-center transition-all duration-150 ${
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-[var(--radius-md)] border-2 cursor-pointer flex items-center justify-center transition-all duration-150 ${
                   flagged.includes(qIndex) ? "bg-coral text-white border-coral-dark" : "bg-white text-stone-500 border-stone-200"
                 }`}
                 onClick={handleFlag}
@@ -238,7 +240,7 @@ function TryoutTakeComponent() {
                 <FlagIcon />
               </button>
               <button
-                className="w-11 h-11 rounded-[var(--radius-md)] border-2 border-stone-200 bg-white text-stone-500 cursor-pointer flex items-center justify-center transition-all hover:bg-stone-50 hover:border-stone-300"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-[var(--radius-md)] border-2 border-stone-200 bg-white text-stone-500 cursor-pointer flex items-center justify-center transition-all hover:bg-stone-50 hover:border-stone-300"
                 onClick={() => setShowReport(true)}
                 title="Laporkan soal"
                 type="button"
@@ -247,27 +249,27 @@ function TryoutTakeComponent() {
               </button>
             </div>
           </div>
-          <h2 className="text-xl font-bold leading-relaxed m-0 max-w-[30ch]">{q.question}</h2>
+          <h2 className="text-lg sm:text-xl font-bold leading-relaxed m-0">{q.question}</h2>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5 sm:gap-3">
           {q.options.map((opt, i) => {
             const isSelected = selected === i;
             return (
               <button
                 key={i}
-                className={`flex items-center gap-3.5 w-full text-left px-4 py-4.5 bg-white border-3 border-stone-200 rounded-[var(--radius-lg)] font-semibold text-base cursor-pointer transition-all duration-100 ${
+                className={`flex items-center gap-3 sm:gap-3.5 w-full text-left px-3.5 sm:px-4 py-3.5 sm:py-4.5 bg-white border-3 border-stone-200 rounded-[var(--radius-lg)] font-semibold text-sm sm:text-base cursor-pointer transition-all duration-100 ${
                   isSelected ? "border-primary bg-teal-50" : ""
                 }`}
                 style={{ borderBottom: isSelected ? "5px solid var(--color-primary-dark)" : "5px solid var(--color-stone-300)" }}
                 onClick={() => handleSelect(i)}
               >
-                <span className={`w-10 h-10 rounded-[10px] flex items-center justify-center font-bold shrink-0 transition-all duration-150 ${
+                <span className={`w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] flex items-center justify-center font-bold shrink-0 transition-all duration-150 ${
                   isSelected ? "bg-primary border-b-3 text-white" : "bg-stone-200 border-b-3 text-stone-500"
                 }`}>
                   {String.fromCharCode(65 + i)}
                 </span>
-                <span>{opt}</span>
+                <span className="leading-snug">{opt}</span>
               </button>
             );
           })}
@@ -279,9 +281,9 @@ function TryoutTakeComponent() {
           </div>
         )}
 
-        <div className="mt-6 bg-white rounded-[var(--radius-lg)] p-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
+        <div className="mt-6 bg-white rounded-[var(--radius-lg)] p-4 sm:p-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
           <div className="font-semibold text-xs text-stone-400 mb-3 uppercase tracking-wide">Navigasi Soal</div>
-          <div className="grid grid-cols-10 gap-2">
+          <div className="grid grid-cols-8 sm:grid-cols-10 gap-1.5 sm:gap-2">
             {questions.map((_, i) => {
               let cls = "bg-stone-100 border-stone-200 text-stone-500";
               if (i === qIndex) cls = "bg-primary border-primary-dark text-white border-b-primary-dark";
@@ -290,12 +292,12 @@ function TryoutTakeComponent() {
               return (
                 <button
                   key={i}
-                  className={`aspect-square border-2 rounded-[10px] font-extrabold text-[13px] cursor-pointer transition-all duration-150 relative ${cls}`}
+                  className={`aspect-square border-2 rounded-[8px] sm:rounded-[10px] font-extrabold text-[11px] sm:text-[13px] cursor-pointer transition-all duration-150 relative ${cls}`}
                   onClick={() => handleNav(i)}
                 >
                   {i + 1}
                   {isFlagged && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-coral rounded-full border-2 border-white" />
+                    <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-coral rounded-full border-2 border-white" />
                   )}
                 </button>
               );
@@ -304,18 +306,20 @@ function TryoutTakeComponent() {
         </div>
       </div>
 
-      <div className="sticky bottom-0 bg-white/98 backdrop-blur-xl px-4 py-4 border-t-2 border-stone-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-5">
-        <button
-          className="btn btn-primary w-full max-w-[640px] mx-auto"
-          onClick={qIndex === total - 1 ? () => setShowSubmitConfirm(true) : () => {
-            if (qIndex < total - 1) {
-              setQIndex(qIndex + 1);
-              setSelected(answers[qIndex + 1] ?? null);
-            }
-          }}
-        >
-          {qIndex === total - 1 ? "SELESAI" : "SELANJUTNYA"}
-        </button>
+      <div className="fixed bottom-0 left-0 right-0 bg-white/98 backdrop-blur-xl px-4 sm:px-6 py-4 border-t-2 border-stone-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50">
+        <div className="max-w-3xl mx-auto w-full">
+          <button
+            className="btn btn-primary w-full"
+            onClick={qIndex === total - 1 ? () => setShowSubmitConfirm(true) : () => {
+              if (qIndex < total - 1) {
+                setQIndex(qIndex + 1);
+                setSelected(answers[qIndex + 1] ?? null);
+              }
+            }}
+          >
+            {qIndex === total - 1 ? "SELESAI" : "SELANJUTNYA"}
+          </button>
+        </div>
       </div>
 
       {showSubmitConfirm && (
