@@ -24,6 +24,7 @@ Five design decisions carry the screen. Any page missing 3+ of these will feel c
 - Inline emojis in body copy, H1s, or buttons are **banned**. `"📚 Mulai Tryout"` → `"Mulai Tryout"` with optional icon-tile to the left.
 - Prefer inline SVG icons inside **icon tiles**: `w-9 h-9 rounded-xl` or `w-14 h-14 rounded-2xl` with tinted bg `${accent}18` and color `${accent}`.
 - Legacy emoji data may exist in mocks, but production-facing page chrome should render SVG icons or initials instead.
+- **Profile avatar exception:** profile picture display and the profile avatar picker may use emoji avatars because they are user identity content, not page chrome. Keep them inside avatar surfaces only: circular profile identity avatar or square picker buttons. Do not use those emojis as heading prefixes, section labels, button prefixes, badges, empty-state decoration, or body-copy decoration.
 - Loading state is not `🔄` — see Rule 4.
 
 ### 2.2 Color thread
@@ -154,6 +155,21 @@ Avoid:
 - White-on-white page with no tone.
 - Generic amber gradient feature cards for premium.
 - Truncated level names. Let titles wrap cleanly.
+
+### 3.1.1 Profile ([src/routes/profile.tsx](../src/routes/profile.tsx))
+Profile is the one screen where emoji can be visually useful, but only as the user's chosen avatar.
+
+Required:
+- The profile hero should follow the Dashboard Clinic tone: ambient radial header, measured H1/body, and the soft teal/paper progress panel.
+- The large profile identity avatar may render the selected emoji inside a `w-20 h-20 rounded-full` surface with the warm/teal diagonal wash and white border.
+- The avatar picker should use a compact 6-column grid of square buttons. Each button uses the card-button rhythm: `aspect-square rounded-2xl border-2 border-b-4 bg-white text-[24px] shadow-sm`.
+- Selected emoji avatar state should use teal tinting: `borderColor: "#14b8a655"`, `borderBottomColor: "#0d9488"`, `background: "#ccfbf1"`.
+- Account rows, stat cards, copy actions, premium upsell, and empty badge states should still use SVG icons or text-only labels.
+
+Avoid:
+- Emoji prefixes in `Profil Belajar`, `Foto Profil`, `Lencana`, `Akun`, or CTA text.
+- Emoji as copy buttons, stat icons, lock icons, premium icons, or generic decoration.
+- Reusing emoji avatars in the global top navigation if it makes the nav noisy; initials remain the preferred navigation treatment.
 
 ### 3.2 Tryout List ([src/routes/tryout.tsx](../src/routes/tryout.tsx))
 The list page should feel like a sibling of the preparation screen:
