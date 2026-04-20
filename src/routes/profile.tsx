@@ -8,7 +8,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfileComponent() {
-  const { user, badgeProgress, isPremium, togglePremium } = useApp();
+  const { user, setUser, badgeProgress, isPremium, togglePremium } = useApp();
   const navigate = useNavigate();
   const levelInfo = getLevelForXp(user.xp);
   const nextLevel = getNextLevel(user.xp);
@@ -63,6 +63,13 @@ function ProfileComponent() {
             </div>
           </div>
         </div>
+
+        <AvatarPicker
+          selectedAvatar={user.avatar}
+          onSelect={(avatar) => {
+            setUser((currentUser) => ({ ...currentUser, avatar }));
+          }}
+        />
 
         {activeBonus > 0 && (
           <div className="mt-4 bg-amber-50 rounded-[var(--radius-lg)] p-4 border-2 border-amber-300 border-b-4 border-b-amber-500 flex items-center gap-3">
@@ -160,6 +167,62 @@ function ProfileComponent() {
         </div>
       </div>
       <BottomNav active="learn" />
+    </div>
+  );
+}
+
+const avatarOptions = [
+  "🦉",
+  "🧑‍⚕️",
+  "👩‍⚕️",
+  "👨‍⚕️",
+  "🧑‍🔬",
+  "👩‍🔬",
+  "👨‍🔬",
+  "🧑‍🎓",
+  "👩‍🎓",
+  "👨‍🎓",
+  "💊",
+  "🧬",
+] as const;
+
+function AvatarPicker({
+  selectedAvatar,
+  onSelect,
+}: {
+  selectedAvatar: string;
+  onSelect: (avatar: string) => void;
+}) {
+  return (
+    <div className="mt-4 bg-white rounded-[var(--radius-lg)] p-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[13px] font-semibold uppercase tracking-wide text-stone-500">
+          Foto Profil
+        </span>
+        <div className="flex-1 h-px bg-stone-200" />
+      </div>
+      <div className="grid grid-cols-6 gap-2.5">
+        {avatarOptions.map((avatar) => {
+          const isSelected = avatar === selectedAvatar;
+
+          return (
+            <button
+              key={avatar}
+              className="aspect-square rounded-2xl border-2 border-b-4 bg-white text-[24px] shadow-sm transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0.5"
+              style={{
+                borderColor: isSelected ? "#14b8a655" : "#e7e5e4",
+                borderBottomColor: isSelected ? "#0d9488" : "#d6d3d1",
+                background: isSelected ? "#ccfbf1" : "#ffffff",
+              }}
+              onClick={() => onSelect(avatar)}
+              type="button"
+              aria-label={`Pilih avatar ${avatar}`}
+            >
+              {avatar}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

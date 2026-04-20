@@ -5,6 +5,7 @@ export function TopBar() {
   const { user } = useApp();
   const { level, xp, streak } = user;
   const initials = getInitials(user.name);
+  const avatar = user.avatar || initials;
 
   return (
     <div
@@ -17,10 +18,10 @@ export function TopBar() {
     >
       <Link
         to="/profile"
-        className="w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-black tracking-wide shadow-sm shrink-0 transition-colors no-underline border-2 border-amber-200 text-stone-800 bg-[linear-gradient(135deg,#fff7ed_0%,#ccfbf1_100%)] hover:border-teal-300"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-[21px] font-black tracking-wide shadow-sm shrink-0 transition-colors no-underline border-2 border-amber-200 text-stone-800 bg-[linear-gradient(135deg,#fff7ed_0%,#ccfbf1_100%)] hover:border-teal-300"
         title="Profil"
       >
-        {initials}
+        {avatar}
       </Link>
 
       <div className="flex items-center gap-2 flex-1 justify-center">
