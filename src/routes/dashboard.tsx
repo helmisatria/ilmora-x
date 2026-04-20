@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { getLevelForXp, getNextLevel, getXpProgress, tryouts, useApp, type Tryout } from "../data";
@@ -49,13 +49,18 @@ const dashboardPalettes = [
 
 type DashboardPalette = (typeof dashboardPalettes)[number];
 const dashboardPaletteStorageKey = "ilmorax-dashboard-palette";
+const defaultDashboardPaletteId = "clinic";
 
 function DashboardComponent() {
   const { user, isPremium, togglePremium } = useApp();
   const [showPremium, setShowPremium] = useState(false);
-  const [paletteId, setPaletteId] = useState<DashboardPalette["id"]>(getStoredDashboardPalette);
+  const [paletteId, setPaletteId] = useState<DashboardPalette["id"]>(defaultDashboardPaletteId);
   const [showToneLab, setShowToneLab] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setPaletteId(getStoredDashboardPalette());
+  }, []);
 
   const updatePalette = (nextPaletteId: DashboardPalette["id"]) => {
     setPaletteId(nextPaletteId);
@@ -224,12 +229,12 @@ function DashboardComponent() {
 }
 
 function getStoredDashboardPalette(): DashboardPalette["id"] {
-  if (typeof window === "undefined") return "clinic";
+  if (typeof window === "undefined") return defaultDashboardPaletteId;
 
   const storedPaletteId = window.localStorage.getItem(dashboardPaletteStorageKey);
   const storedPalette = dashboardPalettes.find((palette) => palette.id === storedPaletteId);
 
-  if (!storedPalette) return "clinic";
+  if (!storedPalette) return defaultDashboardPaletteId;
 
   return storedPalette.id;
 }

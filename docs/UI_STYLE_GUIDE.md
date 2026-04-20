@@ -132,6 +132,11 @@ Required:
   - H1: `text-[28px] leading-tight font-bold tracking-tight max-w-[22ch]`
   - Body: `text-[14px] leading-relaxed text-stone-500 max-w-[34ch]`
 - Use initials in the top profile circle instead of emoji avatars.
+- Navigation should not be a single flat color. Use subtle tonal surfaces:
+  - Top bar: warm paper → clinic teal → white translucent gradient.
+  - Profile circle: initials with a warm/teal diagonal wash.
+  - Metric pills: distinct amber, green, and teal surfaces.
+  - Bottom nav: softly layered white/clinic/paper background with each tab owning its own accent.
 - Buttons use SVG icons, not emoji prefixes.
 - Stat cards use light tonal washes, not plain identical white cards.
 - Section titles use the divider pattern. No emoji heading prefixes.

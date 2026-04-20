@@ -7,10 +7,17 @@ export function TopBar() {
   const initials = getInitials(user.name);
 
   return (
-    <div className="sticky top-0 z-20 bg-white/92 backdrop-blur-xl flex items-center justify-between gap-2 px-4 py-3 border-b-2 border-stone-200">
+    <div
+      className="sticky top-0 z-20 backdrop-blur-xl flex items-center justify-between gap-2 px-4 py-3 border-b-2"
+      style={{
+        background:
+          "linear-gradient(90deg, rgba(255,250,240,0.92) 0%, rgba(238,248,246,0.92) 58%, rgba(255,255,255,0.88) 100%)",
+        borderColor: "#d9ebe6",
+      }}
+    >
       <Link
         to="/profile"
-        className="w-10 h-10 rounded-full bg-teal-50 border-2 border-teal-200 flex items-center justify-center text-[12px] font-black tracking-wide text-teal-700 shadow-sm shrink-0 hover:bg-teal-100 transition-colors no-underline"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-black tracking-wide shadow-sm shrink-0 transition-colors no-underline border-2 border-amber-200 text-stone-800 bg-[linear-gradient(135deg,#fff7ed_0%,#ccfbf1_100%)] hover:border-teal-300"
         title="Profil"
       >
         {initials}
@@ -31,14 +38,22 @@ interface BottomNavProps {
 
 export function BottomNav({ active }: BottomNavProps) {
   const items = [
-    { k: "learn", label: "Belajar", icon: <HomeIcon />, to: "/dashboard" as const },
-    { k: "tryout", label: "Tryout", icon: <BookIcon />, to: "/tryout" as const },
-    { k: "rank", label: "Peringkat", icon: <TrophyIcon />, to: "/leaderboard" as const },
-    { k: "badge", label: "Lencana", icon: <BadgeIcon />, to: "/badges" as const },
+    { k: "learn", label: "Belajar", icon: <HomeIcon />, to: "/dashboard" as const, accent: "#14b8a6", bg: "#ccfbf1" },
+    { k: "tryout", label: "Tryout", icon: <BookIcon />, to: "/tryout" as const, accent: "#0ea5e9", bg: "#e0f2fe" },
+    { k: "rank", label: "Peringkat", icon: <TrophyIcon />, to: "/leaderboard" as const, accent: "#f59e0b", bg: "#fef3c7" },
+    { k: "badge", label: "Lencana", icon: <BadgeIcon />, to: "/badges" as const, accent: "#fb7185", bg: "#ffe4e6" },
   ] as const;
 
   return (
-    <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[440px] bg-white rounded-[var(--radius-xl)] flex justify-around py-2 px-1.5 z-30 shadow-xl border-2 border-stone-200 border-b-4 border-b-stone-300">
+    <nav
+      className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[440px] rounded-[var(--radius-xl)] flex justify-around py-2 px-1.5 z-30 shadow-xl border-2 border-b-4"
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(239,250,247,0.95) 52%, rgba(255,248,235,0.95) 100%)",
+        borderColor: "#d9ebe6",
+        borderBottomColor: "#c7d8d3",
+      }}
+    >
       {items.map((item) => {
         const isActive = active === item.k;
 
@@ -47,8 +62,21 @@ export function BottomNav({ active }: BottomNavProps) {
             key={item.k}
             to={item.to}
             className={`bottom-nav-a ${isActive ? "active" : ""}`}
+            style={{
+              color: isActive ? item.accent : undefined,
+              background: isActive ? item.bg : undefined,
+            }}
           >
-            <span className="transition-transform duration-200">{item.icon}</span>
+            <span
+              className="transition-transform duration-200 rounded-xl border-2 w-8 h-8 flex items-center justify-center"
+              style={{
+                color: item.accent,
+                background: isActive ? "#ffffff" : `${item.bg}88`,
+                borderColor: isActive ? `${item.accent}44` : "rgba(255,255,255,0.78)",
+              }}
+            >
+              {item.icon}
+            </span>
             <span>{item.label}</span>
           </Link>
         );
@@ -67,13 +95,28 @@ function TopBarPill({
   color: "amber" | "green" | "teal";
 }) {
   const styles = {
-    amber: "bg-amber-50 border-amber-200 text-amber-700",
-    green: "bg-green-50 border-green-200 text-green-700",
-    teal: "bg-teal-50 border-teal-200 text-teal-700",
+    amber: {
+      background: "linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)",
+      borderColor: "#fde68a",
+      color: "#b45309",
+    },
+    green: {
+      background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+      borderColor: "#bbf7d0",
+      color: "#15803d",
+    },
+    teal: {
+      background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)",
+      borderColor: "#99f6e4",
+      color: "#0f766e",
+    },
   };
 
   return (
-    <div className={`flex items-center gap-1.5 font-extrabold text-[12px] px-3 py-2 rounded-full border-2 shadow-sm ${styles[color]}`}>
+    <div
+      className="flex items-center gap-1.5 font-extrabold text-[12px] px-3 py-2 rounded-full border-2 shadow-sm"
+      style={styles[color]}
+    >
       {icon}
       {value}
     </div>
