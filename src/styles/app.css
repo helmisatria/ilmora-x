@@ -139,11 +139,19 @@
   }
 
   .app-shell {
-    @apply max-w-[480px] mx-auto bg-[var(--color-bg)] min-h-screen relative pb-28;
+    @apply w-full max-w-[1180px] mx-auto bg-[var(--color-bg)] min-h-screen relative pb-28 overflow-x-hidden;
+  }
+
+  .page-lane {
+    @apply mx-auto w-full max-w-[1040px] px-5 sm:px-6 lg:px-8;
+  }
+
+  .page-lane-wide {
+    @apply mx-auto w-full max-w-[1120px] px-5 sm:px-6 lg:px-8;
   }
 
   .bottom-nav-a {
-    @apply bg-transparent border-none py-2.5 px-4 rounded-[var(--radius-md)] flex flex-col items-center gap-1 font-extrabold text-[11px] text-stone-400 min-w-[64px] cursor-pointer transition-all duration-200 no-underline;
+    @apply bg-transparent border-none py-2.5 px-4 rounded-[var(--radius-md)] flex flex-col items-center gap-1 font-extrabold text-[11px] text-stone-400 min-w-[64px] cursor-pointer transition-all duration-200 no-underline md:min-w-[132px] md:flex-row md:justify-center md:text-[12px];
   }
   .bottom-nav-a:hover span:first-child {
     @apply scale-110;

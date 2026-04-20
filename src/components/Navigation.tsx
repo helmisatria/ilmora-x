@@ -9,7 +9,7 @@ export function TopBar() {
 
   return (
     <div
-      className="sticky top-0 z-20 backdrop-blur-xl flex items-center justify-between gap-2 px-4 py-3 border-b-2"
+      className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b-2 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8"
       style={{
         background:
           "linear-gradient(90deg, rgba(255,250,240,0.92) 0%, rgba(238,248,246,0.92) 58%, rgba(255,255,255,0.88) 100%)",
@@ -47,7 +47,7 @@ export function BottomNav({ active }: BottomNavProps) {
 
   return (
     <nav
-      className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[440px] rounded-[var(--radius-xl)] flex justify-around py-2 px-1.5 z-30 shadow-xl border-2 border-b-4"
+      className="fixed bottom-3 left-1/2 z-30 flex w-[calc(100%-24px)] max-w-[440px] -translate-x-1/2 justify-around rounded-[var(--radius-xl)] border-2 border-b-4 px-1.5 py-2 shadow-xl md:max-w-[620px] md:justify-center md:gap-2"
       style={{
         background:
           "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(239,250,247,0.95) 52%, rgba(255,248,235,0.95) 100%)",
