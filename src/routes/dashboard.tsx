@@ -465,7 +465,7 @@ function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) 
     <Link
       to={isLocked ? "/premium" : "/tryout/$id"}
       params={isLocked ? undefined : { id: String(tryout.id) }}
-      className="card shadow-sm no-underline"
+      className="card shadow-sm no-underline min-w-0"
     >
       <IconTile
         icon={isLocked ? <LockIcon /> : <TryoutIcon tryoutId={tryout.id} />}
