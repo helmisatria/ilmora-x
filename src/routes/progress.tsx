@@ -3,6 +3,14 @@ import { BottomNav, TopBar } from "../components/Navigation";
 import { useApp, getLevelForXp, getXpProgress } from "../data";
 
 export const Route = createFileRoute("/progress")({
+  head: () => ({
+    meta: [
+      { title: "Progres Belajar — IlmoraX" },
+      { name: "description", content: "Pantau perkembangan belajarmu: level, XP, akurasi, dan performa per kategori. Lihat riwayat try-out dan analisis kemajuan belajar farmasi." },
+      { property: "og:title", content: "Progres Belajar — IlmoraX" },
+      { property: "og:description", content: "Pantau perkembangan belajarmu: level, XP, akurasi, dan performa per kategori." },
+    ],
+  }),
   component: ProgressComponent,
 });
 

@@ -1,8 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useApp, questionBank, tryouts, getCategoryName, type Attempt, type Tryout } from "../data";
 
 export const Route = createFileRoute("/tryout/$id")({
+  head: ({ params }) => ({
+    meta: [
+      { title: "Try-out UKAI — IlmoraX" },
+      { name: "description", content: "Kerjakan try-out UKAI dengan timer dan sistem penilaian real-time. Latihan simulasi UKAI dengan soal pilihan ganda dan pembahasan lengkap." },
+      { property: "og:title", content: "Try-out UKAI — IlmoraX" },
+      { property: "og:description", content: "Kerjakan try-out UKAI dengan timer dan sistem penilaian real-time." },
+      { name: "robots", content: "noindex, follow" },
+    ],
+  }),
   component: TryoutTakeComponent,
 });
 
@@ -76,10 +85,33 @@ function TryoutTakeComponent() {
 
   if (!isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)]">
-        <div className="text-center text-stone-400">
-          <div className="text-3xl mb-3">🔄</div>
-          <p>Memuat tryout...</p>
+      <div className="min-h-screen flex items-center justify-center overflow-hidden bg-stone-50">
+        <div
+          className="absolute inset-0 opacity-80"
+          style={{
+            background:
+              "radial-gradient(520px 360px at 50% 30%, rgba(20,184,166,0.18), transparent 70%), radial-gradient(720px 420px at 80% 10%, rgba(14,165,233,0.14), transparent 70%)",
+          }}
+        />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
+        <div className="relative flex flex-col items-center text-center">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-stone-400">
+            Memuat
+          </div>
+          <div className="mt-5 relative h-20 w-20 rounded-full border-2 border-teal-100 bg-white shadow-sm">
+            <div
+              className="absolute inset-2 rounded-full animate-spin"
+              style={{
+                background: "conic-gradient(from 0deg, #14b8a6, #0ea5e9, #14b8a6)",
+                filter: "blur(10px)",
+                opacity: 0.45,
+              }}
+            />
+            <div className="absolute inset-4 rounded-full bg-white border-2 border-stone-100" />
+          </div>
+          <p className="mt-5 text-[13.5px] font-medium text-stone-500">
+            Menyiapkan modul tryout
+          </p>
         </div>
       </div>
     );
@@ -167,70 +199,77 @@ function TryoutTakeComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl flex items-center gap-3 px-4 py-3.5 border-b-2 border-stone-200">
-        <Link to="/tryout" className="icon-btn">✕</Link>
-        <div className="flex-1 h-3 bg-stone-200 rounded-full overflow-hidden">
-          <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
-        </div>
-        <div className="flex gap-2">
-          <div className="px-3.5 py-2 rounded-full font-extrabold text-[12px] bg-white shadow-sm border-2 border-stone-200">
-            {qIndex + 1}/{total}
+    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col relative">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b-2 border-stone-200">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3.5 flex items-center gap-3">
+          <Link to="/tryout" className="icon-btn shrink-0" aria-label="Tutup tryout">
+            <CloseIcon />
+          </Link>
+          <div className="flex-1 h-3 bg-stone-200 rounded-full overflow-hidden min-w-0">
+            <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
           </div>
-          <div className={`px-3.5 py-2 rounded-full font-extrabold text-[12px] shadow-sm border-2 ${
-            isTimeLow ? "bg-red-50 border-red-300 text-red-600" : "bg-teal-50 border-teal-200 text-teal-700"
-          }`}>
-            ⏱ {timeDisplay}
+          <div className="flex gap-2 shrink-0">
+            <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full font-extrabold text-[11px] sm:text-[12px] bg-white shadow-sm border-2 border-stone-200">
+              {qIndex + 1}/{total}
+            </div>
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full font-extrabold text-[11px] sm:text-[12px] shadow-sm border-2 ${
+              isTimeLow ? "bg-red-50 border-red-300 text-red-600" : "bg-teal-50 border-teal-200 text-teal-700"
+            }`}>
+              <ClockIcon />
+              {timeDisplay}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-5 max-w-[640px] mx-auto w-full pb-24">
-        <div className="bg-white rounded-[var(--radius-xl)] p-6 mb-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
-          <div className="flex justify-between items-center mb-4">
-            <span className="bg-primary text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full tracking-wide uppercase">
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 max-w-3xl mx-auto w-full pb-28">
+        <div className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 mb-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
+          <div className="flex justify-between items-start gap-3 mb-4">
+            <span className="bg-primary text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full tracking-wide uppercase shrink-0">
               {getCategoryLabel(q.categoryId)}
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <button
-                className={`w-11 h-11 rounded-[var(--radius-md)] border-2 text-xl cursor-pointer flex items-center justify-center transition-all duration-150 ${
-                  flagged.includes(qIndex) ? "bg-coral border-coral-dark" : "bg-white border-stone-200"
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-[var(--radius-md)] border-2 cursor-pointer flex items-center justify-center transition-all duration-150 ${
+                  flagged.includes(qIndex) ? "bg-coral text-white border-coral-dark" : "bg-white text-stone-500 border-stone-200"
                 }`}
                 onClick={handleFlag}
                 title="Ragu-ragu"
+                type="button"
               >
-                🚩
+                <FlagIcon />
               </button>
               <button
-                className="w-11 h-11 rounded-[var(--radius-md)] border-2 border-stone-200 bg-white text-xl cursor-pointer flex items-center justify-center transition-all hover:bg-stone-50 hover:border-stone-300"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-[var(--radius-md)] border-2 border-stone-200 bg-white text-stone-500 cursor-pointer flex items-center justify-center transition-all hover:bg-stone-50 hover:border-stone-300"
                 onClick={() => setShowReport(true)}
                 title="Laporkan soal"
+                type="button"
               >
-                ⚠️
+                <AlertIcon />
               </button>
             </div>
           </div>
-          <h2 className="text-xl font-bold leading-relaxed m-0">{q.question}</h2>
+          <h2 className="m-0 max-w-[34ch] text-lg font-bold leading-relaxed sm:text-xl">{q.question}</h2>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5 sm:gap-3">
           {q.options.map((opt, i) => {
             const isSelected = selected === i;
             return (
               <button
                 key={i}
-                className={`flex items-center gap-3.5 w-full text-left px-4 py-4.5 bg-white border-3 border-stone-200 rounded-[var(--radius-lg)] font-semibold text-base cursor-pointer transition-all duration-100 ${
+                className={`flex items-center gap-3 sm:gap-3.5 w-full text-left px-3.5 sm:px-4 py-3.5 sm:py-4.5 bg-white border-3 border-stone-200 rounded-[var(--radius-lg)] font-semibold text-sm sm:text-base cursor-pointer transition-all duration-100 ${
                   isSelected ? "border-primary bg-teal-50" : ""
                 }`}
                 style={{ borderBottom: isSelected ? "5px solid var(--color-primary-dark)" : "5px solid var(--color-stone-300)" }}
                 onClick={() => handleSelect(i)}
               >
-                <span className={`w-10 h-10 rounded-[10px] flex items-center justify-center font-bold shrink-0 transition-all duration-150 ${
+                <span className={`w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] flex items-center justify-center font-bold shrink-0 transition-all duration-150 ${
                   isSelected ? "bg-primary border-b-3 text-white" : "bg-stone-200 border-b-3 text-stone-500"
                 }`}>
                   {String.fromCharCode(65 + i)}
                 </span>
-                <span>{opt}</span>
+                <span className="leading-snug">{opt}</span>
               </button>
             );
           })}
@@ -242,9 +281,9 @@ function TryoutTakeComponent() {
           </div>
         )}
 
-        <div className="mt-6 bg-white rounded-[var(--radius-lg)] p-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
+        <div className="mt-6 bg-white rounded-[var(--radius-lg)] p-4 sm:p-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
           <div className="font-semibold text-xs text-stone-400 mb-3 uppercase tracking-wide">Navigasi Soal</div>
-          <div className="grid grid-cols-10 gap-2">
+          <div className="grid grid-cols-8 sm:grid-cols-10 gap-1.5 sm:gap-2">
             {questions.map((_, i) => {
               let cls = "bg-stone-100 border-stone-200 text-stone-500";
               if (i === qIndex) cls = "bg-primary border-primary-dark text-white border-b-primary-dark";
@@ -253,12 +292,12 @@ function TryoutTakeComponent() {
               return (
                 <button
                   key={i}
-                  className={`aspect-square border-2 rounded-[10px] font-extrabold text-[13px] cursor-pointer transition-all duration-150 relative ${cls}`}
+                  className={`aspect-square border-2 rounded-[8px] sm:rounded-[10px] font-extrabold text-[11px] sm:text-[13px] cursor-pointer transition-all duration-150 relative ${cls}`}
                   onClick={() => handleNav(i)}
                 >
                   {i + 1}
                   {isFlagged && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-coral rounded-full border-2 border-white" />
+                    <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-coral rounded-full border-2 border-white" />
                   )}
                 </button>
               );
@@ -267,9 +306,9 @@ function TryoutTakeComponent() {
         </div>
       </div>
 
-      <div className="sticky bottom-0 bg-white/98 backdrop-blur-xl px-4 py-4 border-t-2 border-stone-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-5">
+      <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-32px)] max-w-3xl -translate-x-1/2 rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-200 border-b-stone-300 bg-white/98 p-3 shadow-xl backdrop-blur-xl sm:p-4">
         <button
-          className="btn btn-primary w-full max-w-[640px] mx-auto"
+          className="btn btn-primary w-full"
           onClick={qIndex === total - 1 ? () => setShowSubmitConfirm(true) : () => {
             if (qIndex < total - 1) {
               setQIndex(qIndex + 1);
@@ -277,19 +316,26 @@ function TryoutTakeComponent() {
             }
           }}
         >
-          {qIndex === total - 1 ? "SELESAI" : "SELANJUTNYA"}
+          {qIndex === total - 1 ? "Selesai" : "Selanjutnya"}
         </button>
       </div>
 
       {showSubmitConfirm && (
         <div className="dialog-backdrop show" onClick={(e) => { if (e.target === e.currentTarget) setShowSubmitConfirm(false) }}>
           <div className="dialog-box text-left">
-            <div className="text-[48px] text-center mb-2">🚀</div>
-            <h3 className="text-xl font-black mb-2 text-center">Yakin submit?</h3>
-            <p className="text-sm text-stone-500 mb-4 text-center">
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-3 bg-teal-50 text-primary border-2 border-teal-100 flex items-center justify-center">
+              <SendIcon />
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-center tracking-tight">Yakin submit?</h3>
+            <p className="text-sm text-stone-500 mb-4 text-center leading-relaxed font-medium max-w-[28ch] mx-auto">
               {answers.filter((a) => a !== undefined).length}/{total} soal dijawab.
               {answers.some((a) => a === undefined) && " Soal kosong dianggap salah."}
             </p>
+            <div className="grid grid-cols-3 gap-2 mb-5 text-center">
+              <MiniStat label="Dijawab" value={`${answers.filter((a) => a !== undefined).length}`} />
+              <MiniStat label="Kosong" value={`${answers.filter((a) => a === undefined).length}`} />
+              <MiniStat label="Ragu" value={`${flagged.length}`} />
+            </div>
             <div className="flex gap-3">
               <button className="btn btn-white flex-1" onClick={() => setShowSubmitConfirm(false)}>Lanjut kerjain</button>
               <button className="btn btn-primary flex-1" onClick={handleSubmit}>Submit</button>
@@ -301,7 +347,13 @@ function TryoutTakeComponent() {
       {showReport && (
         <div className="dialog-backdrop show" onClick={(e) => { if (e.target === e.currentTarget) setShowReport(false) }}>
           <div className="dialog-box text-left">
-            <h3 className="text-xl font-black mb-3">🚨 Laporkan Soal</h3>
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-3 bg-rose-50 text-coral border-2 border-rose-100 flex items-center justify-center">
+              <AlertIcon />
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-center tracking-tight">Laporkan Soal</h3>
+            <p className="text-sm text-stone-500 mb-4 text-center leading-relaxed font-medium max-w-[28ch] mx-auto">
+              Pilih alasan yang paling dekat supaya tim bisa meninjau soal ini.
+            </p>
             <div className="space-y-3">
               {["Answer key salah", "Pembahasan keliru", "Soal tidak jelas", "Typo", "Lainnya"].map((reason) => (
                 <button
@@ -380,13 +432,13 @@ function PreparationScreen({
         <div className="max-w-[480px] mx-auto px-5 pt-8">
           <div className="flex flex-col items-center text-center">
             <div
-              className="w-20 h-20 rounded-[22px] flex items-center justify-center text-[38px] shadow-lg"
+              className="w-20 h-20 rounded-[22px] flex items-center justify-center text-white shadow-lg"
               style={{
                 background: tryout.color,
                 borderBottom: "5px solid rgba(0,0,0,0.18)",
               }}
             >
-              <span>{tryout.icon}</span>
+              <TryoutModuleIcon tryoutId={tryout.id} />
             </div>
             <span
               className="mt-5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full border-2"
@@ -411,17 +463,17 @@ function PreparationScreen({
 
       <div className="max-w-[480px] mx-auto px-5 -mt-4 pb-36 relative">
         <div className="grid grid-cols-2 gap-3">
-          <StatCard icon="📝" label="Jumlah Soal" value={`${totalQuestions}`} unit="soal" accent="#14b8a6" />
-          <StatCard icon="⏱" label="Durasi" value={`${tryout.duration}`} unit="menit" accent="#0ea5e9" />
+          <StatCard icon={<DocumentIcon />} label="Jumlah Soal" value={`${totalQuestions}`} unit="soal" accent="#14b8a6" />
+          <StatCard icon={<ClockIcon />} label="Durasi" value={`${tryout.duration}`} unit="menit" accent="#0ea5e9" />
           <StatCard
-            icon="⚡"
+            icon={<BoltIcon />}
             label="XP Reward"
             value={`+${xpReward}`}
             unit="poin"
             accent="#f59e0b"
           />
           <StatCard
-            icon="🎯"
+            icon={<TargetIcon />}
             label="Per Soal"
             value={`~${avgSecondsPerQuestion}`}
             unit="detik"
@@ -437,16 +489,16 @@ function PreparationScreen({
             <div className="flex-1 h-px bg-stone-200" />
           </div>
           <ul className="flex flex-col gap-3">
-            <RuleItem icon="📶">
+            <RuleItem icon={<SignalIcon />}>
               Pastikan koneksi internet stabil. Jawaban tersimpan otomatis tiap 30 detik.
             </RuleItem>
-            <RuleItem icon="🔕">
+            <RuleItem icon={<FocusIcon />}>
               Cari tempat tenang. Timer berjalan dan tidak dapat dijeda setelah mulai.
             </RuleItem>
-            <RuleItem icon="🚩">
+            <RuleItem icon={<FlagIcon />}>
               Tandai soal ragu-ragu supaya mudah dikunjungi ulang sebelum submit.
             </RuleItem>
-            <RuleItem icon="✅">
+            <RuleItem icon={<CheckIcon />}>
               Pastikan semua soal terjawab. Soal kosong dihitung salah saat submit.
             </RuleItem>
           </ul>
@@ -461,7 +513,9 @@ function PreparationScreen({
               color: "#92400e",
             }}
           >
-            <span className="text-lg leading-none mt-0.5">⭐</span>
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-amber-200 bg-amber-50 text-amber-700">
+              <CrownIcon />
+            </span>
             <div>
               <div className="font-semibold mb-0.5">Modul Premium</div>
               Modul ini eksklusif untuk member premium. Nikmati soal-soal pilihan dan pembahasan lengkap.
@@ -496,7 +550,7 @@ function PreparationScreen({
                 color: tryout.color,
               }}
             >
-              {tryout.icon}
+              <TryoutModuleIcon tryoutId={tryout.id} />
             </div>
             <h3 className="text-xl font-bold mb-2 text-center tracking-tight">
               Siap memulai?
@@ -532,7 +586,7 @@ function StatCard({
   unit,
   accent,
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   value: string;
   unit: string;
@@ -542,7 +596,7 @@ function StatCard({
     <div className="bg-white rounded-[var(--radius-lg)] p-4 border-2 border-stone-100 border-b-4 border-b-stone-200 shadow-sm">
       <div className="flex items-center gap-2">
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+          className="w-9 h-9 rounded-xl flex items-center justify-center"
           style={{ background: `${accent}18`, color: accent }}
         >
           {icon}
@@ -561,10 +615,10 @@ function StatCard({
   );
 }
 
-function RuleItem({ icon, children }: { icon: string; children: React.ReactNode }) {
+function RuleItem({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <li className="flex items-start gap-3">
-      <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center text-base shrink-0">
+      <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-500 flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div className="text-[13.5px] leading-relaxed text-stone-600 font-medium pt-1">
@@ -584,6 +638,171 @@ function MiniStat({ label, value }: { label: string; value: string }) {
         {label}
       </div>
     </div>
+  );
+}
+
+function TryoutModuleIcon({ tryoutId }: { tryoutId: number }) {
+  if (tryoutId === 2) return <CapsuleIcon />;
+  if (tryoutId === 3) return <HeartPulseIcon />;
+  if (tryoutId === 4) return <MicrobeIcon />;
+  if (tryoutId === 5) return <HospitalIcon />;
+  if (tryoutId === 6) return <CalculatorIcon />;
+  return <FlaskIcon />;
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FlagIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="M6 21V4.8M6 5h10.5l-1.4 4L17 13H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="M12 9v4M12 17h.1M10.4 4.6 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.6 4.6a1.8 1.8 0 0 0-3.2 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
+      <path d="m4 12 16-8-4 16-3.5-6.5L4 12Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="m12.5 13.5 3.5-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DocumentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M14 3v5h4M8 12h8M8 16h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BoltIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TargetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10ZM12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function SignalIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M4 18.5a11.5 11.5 0 0 1 16 0M7.5 15a6.5 6.5 0 0 1 9 0M11.9 19h.2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FocusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M9 4H5a1 1 0 0 0-1 1v4M15 4h4a1 1 0 0 1 1 1v4M9 20H5a1 1 0 0 1-1-1v-4M15 20h4a1 1 0 0 0 1-1v-4M9 12h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CrownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="m4 8 4 4 4-7 4 7 4-4-1.5 10h-13L4 8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M6.5 21h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FlaskIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" aria-hidden="true">
+      <path d="M9 3h6M10 3v5.8l-4.7 7.9A2.8 2.8 0 0 0 7.7 21h8.6a2.8 2.8 0 0 0 2.4-4.3L14 8.8V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.2 15h7.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CapsuleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" aria-hidden="true">
+      <path d="M10.5 20.2a5 5 0 0 1-7.1-7.1l6.2-6.2a5 5 0 0 1 7.1 7.1l-6.2 6.2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m8 8 8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HeartPulseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" aria-hidden="true">
+      <path d="M20.4 5.6a5.2 5.2 0 0 0-7.4 0L12 6.7l-1-1.1a5.2 5.2 0 0 0-7.4 7.4l8.4 8.2 8.4-8.2a5.2 5.2 0 0 0 0-7.4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 13h3l1.5-3 3 6 1.5-3h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MicrobeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" aria-hidden="true">
+      <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M10 10h.1M14 13h.1" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HospitalIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" aria-hidden="true">
+      <path d="M5 21V5.8C5 4.8 5.8 4 6.8 4h10.4c1 0 1.8.8 1.8 1.8V21M3 21h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 8v6M9 11h6M8 21v-4h8v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CalculatorIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" aria-hidden="true">
+      <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M8 7h8M8.5 12h.1M12 12h.1M15.5 12h.1M8.5 16h.1M12 16h.1M15.5 16h.1" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
   );
 }
 

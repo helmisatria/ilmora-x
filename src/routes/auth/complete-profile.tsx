@@ -3,6 +3,15 @@ import { useState } from "react";
 import { institutions } from "../../data/institutions";
 
 export const Route = createFileRoute("/auth/complete-profile")({
+  head: () => ({
+    meta: [
+      { title: "Lengkapi Profil — IlmoraX" },
+      { name: "description", content: "Lengkapi profil IlmoraX-mu. Masukkan nama lengkap dan pilih institusi untuk personalisasi pengalaman belajar." },
+      { property: "og:title", content: "Lengkapi Profil — IlmoraX" },
+      { property: "og:description", content: "Lengkapi profil IlmoraX-mu untuk personalisasi pengalaman belajar." },
+      { name: "robots", content: "noindex, follow" },
+    ],
+  }),
   component: CompleteProfileComponent,
 });
 

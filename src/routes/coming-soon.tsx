@@ -6,6 +6,14 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/coming-soon")({
+  head: () => ({
+    meta: [
+      { title: "Segera Hadir — IlmoraX" },
+      { name: "description", content: "Fitur baru IlmoraX sedang dalam pengembangan. Drilling/Games, Store, Materi, dan Affiliate Program akan segera hadir." },
+      { property: "og:title", content: "Segera Hadir — IlmoraX" },
+      { property: "og:description", content: "Fitur baru IlmoraX sedang dalam pengembangan. Stay tuned untuk update terbaru." },
+    ],
+  }),
   component: ComingSoonComponent,
   validateSearch: searchSchema,
 });

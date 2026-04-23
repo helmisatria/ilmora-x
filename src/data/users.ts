@@ -21,7 +21,7 @@ export interface User {
 
 export const currentUser: User = {
   id: 1,
-  name: "ApotekerMuda",
+  name: "David",
   email: "dewi@example.com",
   institution: "Universitas Airlangga",
   avatar: "🦉",

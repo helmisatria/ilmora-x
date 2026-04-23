@@ -9,6 +9,7 @@ export { mockEntitlements, packages } from "./entitlements";
 export { mockCoupons, applyCoupon } from "./coupons";
 export { mockMateri } from "./materi";
 export { mockPolls } from "./polls";
+export type { Poll } from "./polls";
 export { categories, getCategoryName, getSubCategoryName, getSubCategories } from "./categories";
 export { institutions } from "./institutions";
 export { AppProvider, useApp } from "./provider";

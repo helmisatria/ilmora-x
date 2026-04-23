@@ -6,6 +6,7 @@ export interface Poll {
   options: string[];
   votes: Record<string, number>;
   totalVotes: number;
+  resultsRevealed: boolean;
   timerMinutes: number | null;
   accessMode: "open_guest" | "login_required";
   createdBy: number;
@@ -22,6 +23,7 @@ export const mockPolls: Poll[] = [
     options: ["Inhibisi enzim ACE", "Blokade reseptor beta", "Vasodilatasi langsung", "Inhibisi kanal kalsium", "Diuresis osmotik"],
     votes: { "A": 12, "B": 8, "C": 5, "D": 15, "E": 3 },
     totalVotes: 43,
+    resultsRevealed: false,
     timerMinutes: 5,
     accessMode: "open_guest",
     createdBy: 99,
@@ -35,6 +37,7 @@ export const mockPolls: Poll[] = [
     options: ["Hipertensi esensial", "Hipertensi sekunder", "Hipertensi maligna", "Pre-eklamsia", "Krisis hipertensi"],
     votes: { "A": 25, "B": 18, "C": 7, "D": 12, "E": 5 },
     totalVotes: 67,
+    resultsRevealed: true,
     timerMinutes: null,
     accessMode: "login_required",
     createdBy: 99,
