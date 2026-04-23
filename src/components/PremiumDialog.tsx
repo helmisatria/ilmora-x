@@ -1,3 +1,10 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "./ui/dialog";
+
 interface PremiumDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -5,17 +12,10 @@ interface PremiumDialogProps {
 }
 
 export function PremiumDialog({ isOpen, onClose, onUpgrade }: PremiumDialogProps) {
-  if (!isOpen) return null;
-
   return (
-    <div
-      className={`dialog-backdrop ${isOpen ? "show" : ""}`}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div className="dialog-box overflow-hidden p-0 text-left border-amber-300">
-        <div className="relative overflow-hidden bg-[#2f281c] px-7 pt-7 pb-6 text-amber-50">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="border-amber-300 p-0 text-left">
+        <div className="relative shrink-0 overflow-hidden bg-[#2f281c] px-7 pt-6 pb-5 text-amber-50">
           <div
             className="absolute inset-0 opacity-90"
             style={{
@@ -23,57 +23,65 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade }: PremiumDialogProps
                 "radial-gradient(320px 180px at 88% 0%, rgba(245,158,11,0.28), transparent 70%), radial-gradient(260px 180px at 0% 100%, rgba(20,184,166,0.18), transparent 72%)",
             }}
           />
-          <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
+          <div
+            className="absolute inset-0 opacity-[0.08]"
+            style={{
+              backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)",
+              backgroundSize: "14px 14px",
+            }}
+          />
 
           <div className="relative">
-            <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2 border-amber-300/45 bg-amber-400/15 text-amber-200">
+            <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center border-2 border-amber-300/45 bg-amber-400/15 text-amber-200">
               <CrownIcon />
             </div>
-            <h3 className="text-xl font-bold mb-2 text-center tracking-tight text-amber-50">
+            <DialogTitle className="mb-2 text-center text-amber-50">
               Upgrade ke IlmoraX Premium
-            </h3>
-            <p className="text-sm text-amber-100/78 mb-0 text-center leading-relaxed font-medium max-w-[29ch] mx-auto">
+            </DialogTitle>
+            <DialogDescription className="mx-auto max-w-[29ch] text-center text-amber-100/78">
               Buka analisis performa, pembahasan prioritas, dan latihan yang lebih terarah.
-            </p>
+            </DialogDescription>
           </div>
         </div>
 
-        <div className="bg-[#fffaf0] px-7 py-5">
-          <div className="grid gap-2.5 mb-5">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#fffaf0] px-7 pt-4 pb-3">
+          <div className="grid gap-2">
             <PremiumFeature icon={<VideoIcon />} title="Video pembahasan" description="Penjelasan soal yang sulit dipahami lewat teks." />
             <PremiumFeature icon={<DocumentIcon />} title="Review detail" description="Lihat pola salah dan topik yang perlu diperbaiki." />
             <PremiumFeature icon={<TargetIcon />} title="Latihan terarah" description="Rekomendasi soal berdasarkan hasil tryout." />
           </div>
+        </div>
 
-          <div className="rounded-[var(--radius-lg)] bg-white border-2 border-amber-100 border-b-4 border-b-amber-200 p-4 text-center">
-            <p className="text-3xl font-bold text-stone-900 m-0">
+        <div className="shrink-0 bg-[#fffaf0] px-7 pb-4 pt-2">
+          <div className="rounded-(--radius-lg) bg-white border-2 border-amber-100 border-b-4 border-b-amber-200 px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-stone-900 m-0 leading-tight">
               Rp49.000
               <span className="text-sm font-bold text-stone-400">/bulan</span>
             </p>
-            <p className="text-xs text-stone-400 mt-1">Satu kali pembayaran. Tidak ada auto-renew.</p>
-          </div>
-
-          <div className="flex gap-3 mt-5">
-            <button className="btn btn-white flex-1" onClick={onClose} type="button">
-              Nanti
-            </button>
-            <button
-              className="btn flex-[2]"
-              style={{
-                background: "#2f281c",
-                color: "#fff7ed",
-                borderBottomColor: "#a16207",
-              }}
-              onClick={onUpgrade}
-              type="button"
-            >
-              <CrownIcon />
-              Berlangganan
-            </button>
+            <p className="text-[11px] text-stone-400 mt-0.5">Satu kali pembayaran. Tidak ada auto-renew.</p>
           </div>
         </div>
-      </div>
-    </div>
+
+        <div className="shrink-0 bg-[#fffaf0] px-7 pb-5 pt-0 flex gap-3">
+          <button className="btn btn-white flex-1" onClick={onClose} type="button">
+            Nanti
+          </button>
+          <button
+            className="btn flex-[2]"
+            style={{
+              background: "#2f281c",
+              color: "#fff7ed",
+              borderBottomColor: "#a16207",
+            }}
+            onClick={onUpgrade}
+            type="button"
+          >
+            <CrownIcon />
+            Berlangganan
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -87,7 +95,7 @@ function PremiumFeature({
   description: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-[var(--radius-md)] bg-white border-2 border-amber-100 px-3 py-3">
+    <div className="flex items-start gap-3 rounded-(--radius-md) bg-white border-2 border-amber-100 px-3 py-3">
       <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border-2 border-amber-100">
         {icon}
       </div>

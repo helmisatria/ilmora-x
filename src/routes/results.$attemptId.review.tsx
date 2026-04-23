@@ -1,11 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 import { useApp, questionBank, tryouts, mockMateri } from "../data";
 import { PremiumDialog } from "../components/PremiumDialog";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
+
+const FREE_WRONG_PREVIEW = 3;
+
+const searchSchema = z.object({
+  q: z.number().optional(),
+  filter: z.enum(["all", "wrong", "correct", "unanswered"]).optional(),
+});
+
+type ReviewFilter = "all" | "wrong" | "correct" | "unanswered";
 
 export const Route = createFileRoute("/results/$attemptId/review")({
   head: ({ params }) => ({
@@ -18,20 +28,37 @@ export const Route = createFileRoute("/results/$attemptId/review")({
     ],
   }),
   component: ReviewComponent,
+  validateSearch: searchSchema,
 });
 
 function ReviewComponent() {
   const { attemptId } = Route.useParams();
+  const search = Route.useSearch();
   const { attempts, isPremium } = useApp();
   const attempt = attempts.find((a) => a.id === parseInt(attemptId, 10)) || attempts[0];
   const tryout = tryouts.find((t) => t.id === attempt.tryoutId);
   const questions = questionBank[attempt.tryoutId] || [];
 
-  const [filter, setFilter] = useState<"all" | "wrong" | "correct" | "unanswered">("all");
+  const [filter, setFilter] = useState<ReviewFilter>(search.filter ?? "all");
   const [showPremium, setShowPremium] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
   const questionsRef = useRef<HTMLDivElement>(null);
+
+  const lockedIds = useMemo(() => {
+    if (isPremium) return new Set<number>();
+    const locked = new Set<number>();
+    let wrongIdx = 0;
+    for (const q of questions) {
+      const ans = attempt.answers.find((a) => a.questionId === q.id);
+      const isWrongOrEmpty = !ans || !ans.correct;
+      if (isWrongOrEmpty) {
+        if (wrongIdx >= FREE_WRONG_PREVIEW) locked.add(q.id);
+        wrongIdx++;
+      }
+    }
+    return locked;
+  }, [questions, attempt.answers, isPremium]);
 
   const filteredQuestions = questions.filter((q) => {
     const ans = attempt.answers.find((a) => a.questionId === q.id);
@@ -40,6 +67,21 @@ function ReviewComponent() {
     if (filter === "unanswered") return !ans;
     return true;
   });
+
+  useEffect(() => {
+    if (!search.q) return;
+    const id = search.q;
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-question-id="${id}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-4", "ring-teal-300", "ring-offset-2");
+      window.setTimeout(() => {
+        el.classList.remove("ring-4", "ring-teal-300", "ring-offset-2");
+      }, 1600);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [search.q, filter]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -144,12 +186,13 @@ function ReviewComponent() {
               const ans = attempt.answers.find((a) => a.questionId === q.id);
               const userSel = ans?.selected;
               const isCorrect = ans?.correct ?? false;
-              const premiumLocked = q.isPremium && !isPremium;
+              const premiumLocked = lockedIds.has(q.id);
               const relatedMateri = mockMateri.find((m) => m.subCategoryId === q.subCategoryId);
 
               return (
                 <div
                   key={q.id}
+                  data-question-id={q.id}
                   className="question-card group relative overflow-hidden rounded-[24px] border-2 bg-white transition-all duration-500 hover:shadow-xl"
                   style={{
                     borderColor: isCorrect ? "#86efac" : ans ? "#fca5a5" : "#e5e7eb",
@@ -207,15 +250,19 @@ function ReviewComponent() {
                       {q.options.map((opt, i) => {
                         const isUser = userSel === i;
                         const isRight = q.correct === i;
+                        const hideRight = premiumLocked && isRight && !isCorrect;
                         let cls = "bg-stone-50 border-stone-200 text-stone-600";
                         let icon = null;
 
-                        if (isRight) {
+                        if (isRight && !hideRight) {
                           cls = "bg-green-50 border-green-300 text-green-700";
                           icon = <CheckIcon className="w-4 h-4 text-green-600" />;
                         } else if (isUser && !isRight) {
                           cls = "bg-red-50 border-red-300 text-red-700";
                           icon = <XIcon className="w-4 h-4 text-red-500" />;
+                        } else if (hideRight) {
+                          cls = "bg-amber-50 border-amber-200 text-amber-700";
+                          icon = <LockIcon className="w-4 h-4 text-amber-600" />;
                         }
 
                         return (
@@ -226,7 +273,7 @@ function ReviewComponent() {
                             <span className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs bg-white border border-stone-200 shrink-0">
                               {String.fromCharCode(65 + i)}
                             </span>
-                            <span className="flex-1">{opt}</span>
+                            <span className={`flex-1 ${hideRight ? "select-none blur-sm" : ""}`}>{opt}</span>
                             {icon}
                           </div>
                         );
@@ -289,8 +336,20 @@ function ReviewComponent() {
 
                     {q.videoUrl && !isPremium && (
                       <div className="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-200 flex items-center gap-3">
-                        <PlayIcon className="w-5 h-5 text-amber-600" />
-                        <span className="text-sm font-medium text-amber-800">Video pembahasan tersedia untuk member Premium</span>
+                        <div className="w-9 h-9 rounded-lg bg-amber-100 border-2 border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+                          <PlayIcon className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm text-amber-900">Video Pembelajaran</div>
+                          <div className="text-xs font-medium text-amber-700">Tersedia untuk member Premium</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowPremium(true)}
+                          className="shrink-0 px-4 py-2 rounded-lg bg-amber-600 text-white font-bold text-xs border-b-4 border-amber-800 hover:bg-amber-700 transition-all active:translate-y-[2px] active:border-b-0"
+                        >
+                          Unlock
+                        </button>
                       </div>
                     )}
 

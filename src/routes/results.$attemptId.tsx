@@ -5,6 +5,8 @@ import { runConfetti } from "../utils/confetti";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { BottomNav, TopBar } from "../components/Navigation";
 
+const FREE_WRONG_PREVIEW = 3;
+
 export const Route = createFileRoute("/results/$attemptId")({
   head: () => ({
     meta: [
@@ -72,7 +74,7 @@ function ResultsComponent() {
         user: ans !== undefined ? q.options[ans.selected] : "Tidak dijawab",
       };
     });
-  const premiumCount = wrongs.filter((w) => w.isPremium && !isPremium).length;
+  const lockedCount = isPremium ? 0 : Math.max(0, wrongs.length - FREE_WRONG_PREVIEW);
 
   useEffect(() => {
     const duration = 900;
@@ -125,8 +127,8 @@ function ResultsComponent() {
         </div>
 
         <div className="page-lane relative -mt-4 pb-28">
-          {premiumCount > 0 && (
-            <PremiumUnlockBanner count={premiumCount} onOpen={() => setShowPremiumDialog(true)} />
+          {lockedCount > 0 && (
+            <PremiumUnlockBanner count={lockedCount} onOpen={() => setShowPremiumDialog(true)} />
           )}
 
           <div
@@ -275,14 +277,31 @@ function ResultsComponent() {
             <div className="mt-10">
               <SectionHeader
                 title={`Soal Salah · ${wrongs.length}`}
-                action={wrongs.length > 3 ? "Lihat semua" : undefined}
+                action="Lihat semua"
                 attemptId={attempt.id}
+                filter="wrong"
               />
               <div className="grid gap-3">
-                {wrongs.slice(0, 3).map((w) => (
-                  <WrongCard key={w.id} wrong={w} locked={w.isPremium && !isPremium} />
+                {wrongs.map((w, i) => (
+                  <WrongCard
+                    key={w.id}
+                    wrong={w}
+                    locked={!isPremium && i >= FREE_WRONG_PREVIEW}
+                    attemptId={attempt.id}
+                  />
                 ))}
               </div>
+              {correct > 0 && (
+                <Link
+                  to="/results/$attemptId/review"
+                  params={{ attemptId: String(attempt.id) }}
+                  search={{ filter: "correct" as const }}
+                  className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-stone-500 no-underline hover:text-stone-800"
+                >
+                  <CheckIcon />
+                  Lihat soal benar ({correct})
+                </Link>
+              )}
             </div>
           )}
         </div>
@@ -388,10 +407,12 @@ function SectionHeader({
   title,
   action,
   attemptId,
+  filter,
 }: {
   title: string;
   action?: string;
   attemptId: number;
+  filter?: "all" | "wrong" | "correct" | "unanswered";
 }) {
   return (
     <div className="mb-3 flex items-center gap-2">
@@ -403,6 +424,7 @@ function SectionHeader({
         <Link
           to="/results/$attemptId/review"
           params={{ attemptId: String(attemptId) }}
+          search={filter ? { filter } : {}}
           className="text-[12px] font-bold text-primary no-underline"
         >
           {action}
@@ -412,9 +434,22 @@ function SectionHeader({
   );
 }
 
-function WrongCard({ wrong, locked }: { wrong: WrongAnswer; locked: boolean }) {
+function WrongCard({
+  wrong,
+  locked,
+  attemptId,
+}: {
+  wrong: WrongAnswer;
+  locked: boolean;
+  attemptId: number;
+}) {
   return (
-    <div className="rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-4 shadow-sm transition-all duration-150 hover:-translate-y-[2px] hover:shadow-md">
+    <Link
+      to="/results/$attemptId/review"
+      params={{ attemptId: String(attemptId) }}
+      search={{ q: wrong.id, filter: "wrong" as const }}
+      className="group relative block rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-4 pr-10 no-underline shadow-sm transition-all duration-150 hover:-translate-y-[2px] hover:border-stone-200 hover:shadow-md"
+    >
       <span
         className="inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide"
         style={{ color: "#0d9488", borderColor: "#14b8a633", background: "#14b8a610" }}
@@ -430,18 +465,24 @@ function WrongCard({ wrong, locked }: { wrong: WrongAnswer; locked: boolean }) {
           <XIcon />
           <span className="max-w-[26ch] truncate">{wrong.user}</span>
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-lg border-2 border-green-200 bg-green-50 px-2.5 py-1 text-green-700">
-          <CheckIcon />
-          <span className="max-w-[26ch] truncate">{wrong.options[wrong.correct]}</span>
-        </span>
-        {locked && (
+        {locked ? (
           <span className="inline-flex items-center gap-1.5 rounded-lg border-2 border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
-            <LockIcon />
-            Premium
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" aria-hidden="true">
+              <path d="M7 11V8a5 5 0 0 1 10 0v3M6.8 11h10.4c1 0 1.8.8 1.8 1.8v5.4c0 1-.8 1.8-1.8 1.8H6.8c-1 0-1.8-.8-1.8-1.8v-5.4c0-1 .8-1.8 1.8-1.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Jawaban terkunci
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-lg border-2 border-green-200 bg-green-50 px-2.5 py-1 text-green-700">
+            <CheckIcon />
+            <span className="max-w-[26ch] truncate">{wrong.options[wrong.correct]}</span>
           </span>
         )}
       </div>
-    </div>
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-300 transition-colors group-hover:text-stone-500">
+        <ChevronRightIcon />
+      </span>
+    </Link>
   );
 }
 
@@ -575,6 +616,14 @@ function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" aria-hidden="true">
       <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" aria-hidden="true">
+      <path d="m9 18 6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
