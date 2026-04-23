@@ -329,34 +329,34 @@ const finalCalloutCards = [
   {
     title: "STREAK",
     value: "7 hari",
-    position: "left-4 top-8 -rotate-6 xl:left-10",
+    position: "left-4 top-10 -rotate-[5deg] xl:left-10",
     icon: <FlameIcon />,
     tone: "#f5a623",
-    width: "w-[166px]",
+    width: "w-[178px]",
   },
   {
     title: "LEVEL",
     value: "12",
-    position: "left-0 top-[34%] -rotate-6 xl:left-6",
+    position: "left-6 top-[44%] -rotate-[8deg] xl:left-12",
     icon: <ShieldBadgeIcon />,
     tone: "#18b7a1",
-    width: "w-[140px]",
+    width: "w-[178px]",
   },
   {
     title: "XP HARI INI",
     value: "+150 poin",
-    position: "right-4 top-8 rotate-6 xl:right-10",
+    position: "right-4 top-10 rotate-[5deg] xl:right-10",
     icon: <BoltBadgeIcon />,
     tone: "#2dbf57",
-    width: "w-[176px]",
+    width: "w-[178px]",
   },
   {
     title: "XP TOTAL",
     value: "4,280",
-    position: "right-0 top-[36%] -rotate-6 xl:right-6",
+    position: "right-6 top-[44%] rotate-[8deg] xl:right-12",
     icon: <BoltBadgeIcon />,
     tone: "#51c764",
-    width: "w-[168px]",
+    width: "w-[178px]",
   },
 ] as const;
 
@@ -457,25 +457,25 @@ function LandingNav() {
   return (
     <header className="fixed inset-x-0 top-0 z-30 px-4 pt-5">
       <nav className="landing-reveal mx-auto flex w-full max-w-[1240px] items-center justify-between rounded-full border border-[rgba(214,234,228,0.95)] bg-[rgba(255,255,255,0.92)] px-3 py-3 shadow-[0_16px_42px_rgba(144,181,170,0.18)] backdrop-blur-2xl sm:px-4">
-        <Link to="/" className="flex items-center gap-3 no-underline">
+        <Link to="/" className="flex min-w-0 shrink items-center gap-3 no-underline">
           <BrandMark />
-          <span className="text-[17px] font-black tracking-tight text-[#1f2937]">
+          <span className="whitespace-nowrap text-[17px] font-black tracking-tight text-[#1f2937]">
             Ilmora<span className="text-[#18b7a1]">X</span>
           </span>
         </Link>
 
         <LandingNavMenu />
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Link
             to="/auth/login"
-            className="inline-flex items-center justify-center rounded-full border border-[#dce9e4] bg-white px-5 py-2.5 text-[13px] font-black text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#dce9e4] bg-white px-3.5 py-2 text-[13px] font-black text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
           >
             Masuk
           </Link>
           <Link
             to="/tryout"
-            className="inline-flex items-center justify-center rounded-full bg-[#18b7a1] px-5 py-2.5 text-[13px] font-black text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[#18b7a1] px-3.5 py-2 text-[13px] font-black text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
           >
             Daftar Gratis
           </Link>
@@ -1113,9 +1113,9 @@ function ResultFeatureCard({
 }) {
   return (
     <article className="landing-panel rounded-[1.9rem] border border-[#e5ece9] bg-white p-6 shadow-[0_16px_38px_rgba(120,165,152,0.08)]">
-      <div className="flex items-start gap-5">
+      <div className="flex flex-col items-start gap-5 sm:flex-row">
         <div
-          className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.6rem] border"
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.4rem] border sm:h-24 sm:w-24 sm:rounded-[1.6rem]"
           style={{ background: card.tone, color: card.accent, borderColor: `${card.accent}20` }}
         >
           <LargeStepIcon>{card.icon}</LargeStepIcon>
@@ -1566,13 +1566,13 @@ function FreePricingCard() {
   return (
     <article className="landing-panel rounded-[2.1rem] border border-[#cfeee8] bg-white p-5 shadow-[0_20px_44px_rgba(116,168,154,0.1)]">
       <div className="rounded-[1.7rem] bg-white p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-[1.4rem] bg-[#e9faf6] text-[#18b7a1]">
+        <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.2rem] bg-[#e9faf6] text-[#18b7a1] sm:h-18 sm:w-18 sm:rounded-[1.4rem]">
               <LargeStepIcon>{plan.icon}</LargeStepIcon>
             </div>
-            <div>
-              <h3 className="text-[30px] font-bold tracking-tight text-stone-800">
+            <div className="min-w-0">
+              <h3 className="text-[26px] font-bold tracking-tight text-stone-800 sm:text-[30px]">
                 {plan.name}
               </h3>
               <p className="mt-2 max-w-[28ch] text-[16px] leading-[1.6] text-stone-500">
@@ -1581,7 +1581,7 @@ function FreePricingCard() {
             </div>
           </div>
 
-          <span className="rounded-full border border-[#bfece4] bg-[#eff9f6] px-4 py-2 text-[13px] font-bold text-[#18b7a1]">
+          <span className="inline-flex w-fit whitespace-nowrap rounded-full border border-[#bfece4] bg-[#eff9f6] px-4 py-2 text-[13px] font-bold text-[#18b7a1]">
             {plan.badge}
           </span>
         </div>
@@ -1600,32 +1600,32 @@ function FreePricingCard() {
           ))}
         </ul>
 
-        <div className="mt-6 rounded-[1.55rem] border border-[#cfeee8] bg-[linear-gradient(180deg,#f9fffe_0%,#f5fffc_100%)] p-4">
-          <div className="flex items-center justify-between gap-4">
+        <div className="mt-6 rounded-[1.55rem] border border-[#cfeee8] bg-[linear-gradient(180deg,#f9fffe_0%,#f5fffc_100%)] p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="text-[15px] font-bold text-[#178c7d]">
               Try-out yang tersedia
             </div>
-            <span className="rounded-full bg-[#def7f1] px-3 py-1.5 text-[13px] font-bold text-[#18b7a1]">
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#def7f1] px-3 py-1.5 text-[13px] font-bold text-[#18b7a1]">
               4 modul
             </span>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
             {pricingPreviewTryouts.map((item) => (
               <div
                 key={item.title}
-                className="rounded-[1.15rem] border border-[#e3eeea] bg-white px-3 py-4 text-center shadow-[0_8px_18px_rgba(131,170,157,0.06)]"
+                className="flex flex-col items-center rounded-[1.15rem] border border-[#e3eeea] bg-white px-3 py-3 text-center shadow-[0_8px_18px_rgba(131,170,157,0.06)]"
               >
                 <div
-                  className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl"
                   style={{ background: item.tone, color: item.accent }}
                 >
                   {item.icon}
                 </div>
-                <div className="mt-4 text-[14px] font-bold leading-tight text-stone-800">
+                <div className="mt-2 flex min-h-[2.6em] items-center text-[14px] font-bold leading-[1.3] text-stone-800">
                   {item.title}
                 </div>
-                <div className="mt-2 text-[13px] text-stone-500">{item.meta}</div>
+                <div className="mt-0.5 text-[12.5px] text-stone-500">{item.meta}</div>
               </div>
             ))}
           </div>
@@ -1654,13 +1654,13 @@ function PremiumPricingCard() {
       <div className="pointer-events-none absolute inset-x-8 bottom-0 h-20 bg-[radial-gradient(circle_at_bottom,_rgba(19,184,161,0.38),_transparent_65%)]" />
 
       <div className="relative rounded-[1.7rem] border border-[rgba(242,177,46,0.14)] bg-[rgba(255,255,255,0.03)] p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-[1.4rem] border border-[rgba(242,177,46,0.32)] bg-[rgba(242,177,46,0.08)] text-[#f4bf4b]">
+        <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.2rem] border border-[rgba(242,177,46,0.32)] bg-[rgba(242,177,46,0.08)] text-[#f4bf4b] sm:h-18 sm:w-18 sm:rounded-[1.4rem]">
               <LargeStepIcon>{plan.icon}</LargeStepIcon>
             </div>
-            <div>
-              <h3 className="text-[30px] font-bold tracking-tight text-[#ffd36d]">
+            <div className="min-w-0">
+              <h3 className="text-[26px] font-bold tracking-tight text-[#ffd36d] sm:text-[30px]">
                 {plan.name}
               </h3>
               <p className="mt-2 max-w-[30ch] text-[16px] leading-[1.6] text-white/78">
@@ -1669,7 +1669,7 @@ function PremiumPricingCard() {
             </div>
           </div>
 
-          <span className="rounded-full border border-[rgba(242,177,46,0.38)] bg-[rgba(242,177,46,0.12)] px-4 py-2 text-[13px] font-bold text-[#ffd36d]">
+          <span className="inline-flex w-fit whitespace-nowrap rounded-full border border-[rgba(242,177,46,0.38)] bg-[rgba(242,177,46,0.12)] px-4 py-2 text-[13px] font-bold text-[#ffd36d]">
             {plan.badge}
           </span>
         </div>
@@ -1788,7 +1788,7 @@ function FooterCta() {
             <FloatingStatCard key={card.title} card={card} />
           ))}
 
-          <div className="absolute bottom-[18%] left-0 z-10 hidden w-[250px] rotate-[-6deg] rounded-[1.8rem] border border-[#d9e8ea] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(110,149,174,0.18)] lg:block xl:left-6">
+          <div className="absolute bottom-[12%] left-4 z-10 hidden w-[240px] rotate-[-4deg] rounded-[1.8rem] border border-[#d9e8ea] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(110,149,174,0.18)] lg:block xl:left-10">
             <div className="flex items-center justify-between gap-3 text-[12px] font-black uppercase tracking-[0.08em] text-stone-500">
               Pemimpin mingguan
               <span className="text-[#f4a620]">
@@ -1815,7 +1815,7 @@ function FooterCta() {
             </div>
           </div>
 
-          <div className="absolute bottom-[22%] right-0 z-10 hidden w-[238px] rotate-[6deg] rounded-[1.8rem] border border-[#d9e8ea] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(110,149,174,0.18)] lg:block xl:right-6">
+          <div className="absolute bottom-[12%] right-4 z-10 hidden w-[240px] rotate-[4deg] rounded-[1.8rem] border border-[#d9e8ea] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(110,149,174,0.18)] lg:block xl:right-10">            
             <div className="flex items-center justify-between gap-3 text-[12px] font-black uppercase tracking-[0.08em] text-stone-500">
               Lencana terbaru
               <span className="text-[#aa7bff]">

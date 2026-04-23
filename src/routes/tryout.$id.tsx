@@ -721,7 +721,10 @@ function TargetIcon() {
 function SignalIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path d="M4 18.5a11.5 11.5 0 0 1 16 0M7.5 15a6.5 6.5 0 0 1 9 0M11.9 19h.2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M2 8.82a15 15 0 0 1 20 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M5 12.859a10 10 0 0 1 14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M8.5 16.429a5 5 0 0 1 7 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="20" r="1" fill="currentColor" />
     </svg>
   );
 }
@@ -729,7 +732,8 @@ function SignalIcon() {
 function FocusIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path d="M9 4H5a1 1 0 0 0-1 1v4M15 4h4a1 1 0 0 1 1 1v4M9 20H5a1 1 0 0 1-1-1v-4M15 20h4a1 1 0 0 0 1-1v-4M9 12h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M4 9V6a2 2 0 0 1 2-2h3M20 9V6a2 2 0 0 0-2-2h-3M4 15v3a2 2 0 0 0 2 2h3M20 15v3a2 2 0 0 1-2 2h-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }

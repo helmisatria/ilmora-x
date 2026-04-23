@@ -86,12 +86,13 @@ function DashboardComponent() {
 
   return (
     <>
-      <div
-        className="app-shell"
-        style={{
-          background: palette.page,
-        }}
-      >
+      <div style={{ background: palette.page }}>
+        <div
+          className="app-shell"
+          style={{
+            background: "transparent",
+          }}
+        >
         <div
           className="relative overflow-hidden pb-8"
           style={{
@@ -222,6 +223,7 @@ function DashboardComponent() {
         </div>
 
         <BottomNav active="learn" />
+      </div>
       </div>
 
       <PremiumDialog

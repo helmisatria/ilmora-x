@@ -34,14 +34,14 @@ function TryoutComponent() {
 
   return (
     <>
-      <div className="app-shell">
-        <div
-          className="relative overflow-hidden pb-8"
-          style={{
-            background:
-              "radial-gradient(1000px 300px at 15% -20%, #14b8a622, transparent 60%), radial-gradient(760px 360px at 95% -18%, #14b8a614, transparent 68%), var(--color-bg)",
-          }}
-        >
+      <div
+        style={{
+          background:
+            "radial-gradient(1000px 300px at 50% 0%, #14b8a61a, transparent 70%), var(--color-bg)",
+        }}
+      >
+      <div className="app-shell" style={{ background: "transparent" }}>
+        <div className="relative overflow-hidden pb-8">
           <TopBar />
           <div className="page-lane pt-7 pb-5 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
@@ -82,6 +82,7 @@ function TryoutComponent() {
           {filtered.length === 0 && <EmptyState filter={filter} />}
         </div>
         <BottomNav active="tryout" />
+      </div>
       </div>
       <PremiumDialog
         isOpen={showPremium}
