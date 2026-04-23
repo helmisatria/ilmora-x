@@ -52,7 +52,7 @@ export const Route = createRootRoute({
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" },
       
       // Favicon
       { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
@@ -99,6 +99,11 @@ function RootComponent() {
   return (
     <html lang="id">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: 'document.documentElement.dataset.js = "ready";',
+          }}
+        />
         <HeadContent />
       </head>
       <body className="antialiased">
