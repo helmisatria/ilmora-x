@@ -107,7 +107,7 @@ function ResultsComponent() {
 
   return (
     <>
-      <div className="app-shell relative" style={{ background: pageBg }}>
+      <div className="app-shell page-enter relative" style={{ background: pageBg }}>
         <canvas id="confetti" className="pointer-events-none fixed inset-0 z-[5]" />
 
         <div className="relative overflow-hidden pb-8" style={{ background: headerBg }}>

@@ -48,6 +48,7 @@ function TryoutTakeComponent() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const [lastSaved, setLastSaved] = useState<string>("");
+  const [submitting, setSubmitting] = useState<{ attemptId: number } | null>(null);
 
   useEffect(() => {
     setIsReady(true);
@@ -71,6 +72,14 @@ function TryoutTakeComponent() {
       );
     }
   }, [timeLeft, phase]);
+
+  useEffect(() => {
+    if (!submitting) return;
+    const timer = setTimeout(() => {
+      navigate({ to: "/results/$attemptId", params: { attemptId: String(submitting.attemptId) } });
+    }, 8200);
+    return () => clearTimeout(timer);
+  }, [submitting, navigate]);
 
   useEffect(() => {
     if (phase !== "countdown") return;
@@ -144,6 +153,10 @@ function TryoutTakeComponent() {
     return <CountdownOverlay value={countdownValue} />;
   }
 
+  if (submitting) {
+    return <CalculatingOverlay />;
+  }
+
   const q = questions[qIndex];
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -201,7 +214,8 @@ function TryoutTakeComponent() {
       markedQuestionIds: flagged.map((fi) => questions[fi].id),
     };
     addAttempt(attempt);
-    navigate({ to: "/results/$attemptId", params: { attemptId: String(newId) } });
+    setShowSubmitConfirm(false);
+    setSubmitting({ attemptId: newId });
   };
 
   return (
@@ -806,6 +820,100 @@ function CalculatorIcon() {
       <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M8 7h8M8.5 12h.1M12 12h.1M15.5 12h.1M8.5 16h.1M12 16h.1M15.5 16h.1" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function CalculatingOverlay() {
+  const steps = [
+    "Memeriksa jawaban",
+    "Menghitung skor",
+    "Menganalisis performa",
+    "Menyusun pembahasan",
+    "Menyiapkan hasil",
+  ];
+  const [stepIdx, setStepIdx] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStepIdx((i) => (i < steps.length ? i + 1 : i));
+    }, 1400);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-stone-50">
+      <div
+        className="absolute inset-0 opacity-80"
+        style={{
+          background:
+            "radial-gradient(520px 360px at 50% 30%, rgba(20,184,166,0.18), transparent 70%), radial-gradient(720px 420px at 80% 10%, rgba(14,165,233,0.14), transparent 70%)",
+        }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ backgroundImage: "radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px)", backgroundSize: "18px 18px" }}
+      />
+      <div className="relative flex flex-col items-center text-center px-6">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-stone-400">
+          Memproses
+        </div>
+        <div className="mt-5 relative h-20 w-20 rounded-full border-2 border-teal-100 bg-white shadow-sm">
+          <div
+            className="absolute inset-2 rounded-full animate-spin"
+            style={{
+              background: "conic-gradient(from 0deg, #14b8a6, #0ea5e9, #14b8a6)",
+              filter: "blur(10px)",
+              opacity: 0.45,
+            }}
+          />
+          <div className="absolute inset-4 rounded-full bg-white border-2 border-stone-100 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" className="h-7 w-7 text-primary" fill="none" aria-hidden="true">
+              <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
+              <path d="M8 12.5l2.5 2.5L16 9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        </div>
+        <p className="mt-5 text-[15px] font-semibold text-stone-700">
+          Menghitung hasil tryout
+        </p>
+        <p className="mt-1 text-[13px] font-medium text-stone-500 max-w-[32ch]">
+          Tunggu sebentar, kami sedang menyiapkan nilai dan pembahasanmu.
+        </p>
+
+        <ul className="mt-6 flex flex-col gap-2.5 text-left">
+          {steps.map((s, i) => {
+            const done = i < stepIdx;
+            const active = i === stepIdx;
+            return (
+              <li key={s} className="flex items-center gap-3 text-[13px] font-medium">
+                <span
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                    done
+                      ? "border-teal-300 bg-teal-50 text-teal-600"
+                      : active
+                      ? "border-teal-200 bg-white text-teal-600"
+                      : "border-stone-200 bg-white text-stone-300"
+                  }`}
+                >
+                  {done ? (
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                      <path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : active ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" />
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-stone-300" />
+                  )}
+                </span>
+                <span className={done ? "text-stone-500" : active ? "text-stone-800" : "text-stone-400"}>
+                  {s}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
   );
 }
 
