@@ -101,15 +101,16 @@ function DashboardComponent() {
         >
           <TopBar />
 
-          <div className="page-lane pt-7 lg:pt-10">
+          <div className="page-lane pt-5 sm:pt-7 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Beranda
             </div>
-            <h1 className="mt-2 max-w-[18ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
+            <h1 className="mt-1 max-w-[18ch] text-[20px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
               Halo, {user.name}
             </h1>
-            <p className="m-0 mt-3 max-w-[54ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-              Lanjutkan latihan UKAI dari progres terakhir dan pantau ritme belajarmu hari ini.
+            <p className="m-0 mt-1.5 max-w-[54ch] text-[12.5px] font-medium leading-snug text-stone-500 sm:mt-3 sm:text-[15px] sm:leading-relaxed">
+              Lanjutkan latihan UKAI dari progres terakhir.
+              <span className="hidden sm:inline"> Pantau ritme belajarmu hari ini.</span>
             </p>
 
             <ProgressPanel
@@ -123,10 +124,10 @@ function DashboardComponent() {
           </div>
         </div>
 
-        <div className="page-lane relative -mt-4 pb-24">
+        <div className="page-lane relative -mt-4 pb-28">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <button
-              className="btn btn-primary col-span-2"
+              className={`btn btn-primary px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] ${isPremium ? "col-span-2" : "col-span-1 md:col-span-2"}`}
               onClick={() => navigate({ to: "/tryout" })}
               type="button"
             >
@@ -136,7 +137,7 @@ function DashboardComponent() {
 
             {!isPremium && (
               <button
-                className="btn col-span-2"
+                className="btn col-span-1 px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] md:col-span-2"
                 style={{
                   background: "#2f281c",
                   color: "#fff7ed",
@@ -337,7 +338,7 @@ function ProgressPanel({
 
   return (
     <div
-      className="mt-6 rounded-[var(--radius-xl)] p-5 shadow-sm border-2 border-b-4"
+      className="mt-5 rounded-[var(--radius-xl)] p-4 sm:p-5 shadow-sm border-2 border-b-4"
       style={{
         background:
           "linear-gradient(135deg, rgba(235,250,247,0.98) 0%, rgba(255,252,245,0.98) 100%)",
@@ -351,38 +352,39 @@ function ProgressPanel({
       </div>
 
       {nextXp && (
-        <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-teal-100 bg-white/76 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
+        <div className="mt-3 rounded-[var(--radius-lg)] border-2 border-teal-100 bg-white/76 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:mt-4 sm:p-3.5">
+          <div className="flex items-center justify-between gap-3 sm:items-start">
+            <div className="min-w-0">
+              <div className="hidden text-[10px] font-semibold uppercase tracking-wide text-stone-400 sm:block">
                 Level Progress
               </div>
-              <div className="mt-1 text-[13px] font-bold text-stone-800">
-                {remainingXp.toLocaleString()} XP lagi
+              <div className="text-[12px] font-bold text-stone-800 sm:mt-1 sm:text-[13px]">
+                <span className="sm:hidden">{xp.toLocaleString()} / {nextXp.toLocaleString()} XP</span>
+                <span className="hidden sm:inline">{remainingXp.toLocaleString()} XP lagi</span>
               </div>
             </div>
-            <div className="rounded-full border-2 border-teal-200 bg-teal-50 px-2.5 py-1 text-[12px] font-bold text-primary-dark">
+            <div className="shrink-0 rounded-full border-2 border-teal-200 bg-teal-50 px-2 py-0.5 text-[11px] font-bold text-primary-dark sm:px-2.5 sm:py-1 sm:text-[12px]">
               {xpProgress}%
             </div>
           </div>
 
-          <div className="mt-3 rounded-full border-2 border-teal-100 bg-teal-50/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]">
-            <div className="h-4 overflow-hidden rounded-full bg-white/90">
+          <div className="mt-2 rounded-full border-2 border-teal-100 bg-teal-50/80 p-0.5 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)] sm:mt-3 sm:p-1">
+            <div className="h-2.5 overflow-hidden rounded-full bg-white/90 sm:h-4">
               <div
                 className="relative h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${xpProgress}%`,
-                  minWidth: xpProgress > 0 ? "28px" : "0",
+                  minWidth: xpProgress > 0 ? "20px" : "0",
                   background:
                     "linear-gradient(90deg, #14b8a6 0%, #0d9488 100%)",
                 }}
               >
-                <div className="absolute inset-x-1 top-1 h-0.75 rounded-full bg-white/30" />
+                <div className="absolute inset-x-1 top-1 hidden h-0.75 rounded-full bg-white/30 sm:block" />
               </div>
             </div>
           </div>
 
-          <div className="mt-2 flex justify-between text-[11px] font-semibold text-stone-500">
+          <div className="mt-2 hidden justify-between text-[11px] font-semibold text-stone-500 sm:flex">
             <span>{xp.toLocaleString()} XP</span>
             <span>{nextXp.toLocaleString()} XP</span>
           </div>
@@ -404,13 +406,13 @@ function ProgressMetric({
   accent: string;
 }) {
   return (
-    <div className="rounded-[var(--radius-lg)] bg-white/72 p-3.5 border-2 border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-      <div className="flex items-start gap-2">
+    <div className="rounded-[var(--radius-lg)] bg-white/72 p-2.5 border-2 border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] sm:p-3.5">
+      <div className="flex items-center gap-2">
         <IconTile icon={icon} accent={accent} size="sm" />
-        <div className="min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">{label}</div>
-          <div className="text-[14px] font-bold text-stone-800 leading-snug">{value}</div>
-        </div>
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">{label}</div>
+      </div>
+      <div className="mt-1.5 text-[13px] font-bold text-stone-800 leading-snug break-words sm:text-[14px]">
+        {value}
       </div>
     </div>
   );
