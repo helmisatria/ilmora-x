@@ -43,7 +43,7 @@ function LeaderboardComponent() {
           "linear-gradient(180deg, #fff8eb 0%, #fbfaf7 42%, #eef8f6 100%)",
       }}
     >
-      <div className="app-shell" style={{ background: "transparent" }}>
+      <div className="app-shell page-enter" style={{ background: "transparent" }}>
         <div
           className="relative overflow-hidden pb-8"
           style={{

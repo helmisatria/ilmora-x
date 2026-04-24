@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ interface PremiumDialogProps {
 }
 
 export function PremiumDialog({ isOpen, onClose, onUpgrade }: PremiumDialogProps) {
+  const navigate = useNavigate();
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="border-amber-300 p-0 text-left">
@@ -73,7 +75,10 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade }: PremiumDialogProps
               color: "#fff7ed",
               borderBottomColor: "#a16207",
             }}
-            onClick={onUpgrade}
+            onClick={() => {
+              onUpgrade();
+              navigate({ to: "/premium" });
+            }}
             type="button"
           >
             <CrownIcon />

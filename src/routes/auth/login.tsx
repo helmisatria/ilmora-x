@@ -59,7 +59,7 @@ function LoginComponent() {
 
   return (
     <main
-      className="min-h-screen overflow-hidden"
+      className="min-h-screen overflow-hidden page-enter"
       style={{
         background:
           "radial-gradient(960px 360px at 8% -18%, #14b8a632, transparent 62%), radial-gradient(720px 360px at 94% -12%, #0ea5e918, transparent 68%), radial-gradient(640px 320px at 82% 100%, #f59e0b14, transparent 62%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 48%, #f7f3ea 100%)",

@@ -48,7 +48,7 @@ function ProfileComponent() {
 
   return (
     <main
-      className="app-shell overflow-x-hidden"
+      className="app-shell page-enter overflow-x-hidden"
       style={{
         background:
           "linear-gradient(180deg, #eef8f6 0%, #f6fbfa 44%, #f7f3ea 100%)",

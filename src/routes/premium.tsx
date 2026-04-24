@@ -20,14 +20,10 @@ const premiumAccent = "#f5b544";
 const premiumDark = "#2f281c";
 
 const features = [
-  { label: "Akses semua tryout", free: true, premium: true },
-  { label: "Tryout khusus premium", free: false, premium: true },
-  { label: "Materi belajar lengkap", free: "basic", premium: true },
-  { label: "Video pembahasan", free: false, premium: true },
-  { label: "Evaluation Dashboard", free: "basic", premium: true },
-  { label: "Analisis per kategori", free: false, premium: true },
-  { label: "Leaderboard mingguan", free: true, premium: true },
-  { label: "Koleksi lencana", free: true, premium: true },
+  "Tryout premium",
+  "Video",
+  "Evaluasi",
+  "Rekomendasi",
 ] as const;
 
 function PremiumComponent() {
@@ -37,7 +33,7 @@ function PremiumComponent() {
 
   return (
     <main
-      className="app-shell overflow-x-hidden"
+      className="premium-shell overflow-x-hidden"
       style={{
         background:
           "linear-gradient(180deg, #fff8eb 0%, #fbfaf7 42%, #eef8f6 100%)",
@@ -52,90 +48,92 @@ function PremiumComponent() {
       >
         <TopBar />
 
-        <div className="px-5 pt-7">
-          <Link to="/dashboard" className="mb-5 inline-flex items-center gap-2 text-[12px] font-bold text-stone-500 no-underline">
-            <ArrowLeftIcon />
-            Kembali
-          </Link>
+        <div className="premium-lane pt-7 lg:pt-9">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:items-end">
+            <div>
+              <Link to="/dashboard" className="mb-5 inline-flex items-center gap-2 text-[12px] font-bold text-stone-500 no-underline">
+                <ArrowLeftIcon />
+                Kembali
+              </Link>
 
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
-            IlmoraX Premium
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
+                IlmoraX Premium
+              </div>
+              <h1 className="mt-2 max-w-[22ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px]">
+                Upgrade latihan dengan evaluasi yang lebih tajam
+              </h1>
+              <p className="m-0 mt-3 max-w-[34ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
+                Buka tryout premium, pembahasan video, dan dashboard evaluasi lengkap dalam satu paket belajar.
+              </p>
+            </div>
+
+            <PremiumHeroPanel className="lg:mt-0" />
           </div>
-          <h1 className="mt-2 max-w-[22ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800">
-            Upgrade latihan dengan evaluasi yang lebih tajam
-          </h1>
-          <p className="m-0 mt-3 max-w-[34ch] text-[14px] font-medium leading-relaxed text-stone-500">
-            Buka tryout premium, pembahasan video, dan dashboard evaluasi lengkap dalam satu paket belajar.
-          </p>
-
-          <PremiumHeroPanel />
         </div>
       </div>
 
-      <div className="relative -mt-4 px-5 pb-24">
-        <SectionHeader title="Pilih Paket" />
-        <div className="grid gap-3">
-          {activePackages.map((pkg) => (
-            <PackageCard
-              key={pkg.id}
-              pkg={pkg}
-              isSelected={selectedPackageId === pkg.id}
-              onSelect={() => setSelectedPackageId(pkg.id)}
-            />
-          ))}
-        </div>
-
-        <div className="mt-6">
-          <SectionHeader title="Fitur Premium" />
-          <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
-            <div className="grid grid-cols-[1fr_74px_84px] gap-2 border-b border-stone-100 bg-stone-50 px-4 py-3">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">Fitur</span>
-              <span className="text-center text-[11px] font-semibold uppercase tracking-wide text-stone-400">Gratis</span>
-              <span className="text-center text-[11px] font-semibold uppercase tracking-wide text-amber-700">Premium</span>
+      <div className="premium-lane relative -mt-2 pb-24">
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+          <div>
+            <SectionHeader title="Pilih Paket" />
+            <div className="grid gap-3">
+              {activePackages.map((pkg) => (
+                <PackageCard
+                  key={pkg.id}
+                  pkg={pkg}
+                  isSelected={selectedPackageId === pkg.id}
+                  onSelect={() => setSelectedPackageId(pkg.id)}
+                />
+              ))}
             </div>
-            {features.map((feature) => (
-              <FeatureRow key={feature.label} feature={feature} />
-            ))}
-          </div>
-        </div>
 
-        <div className="mt-6 rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm">
-          <div className="flex items-start gap-3">
-            <IconTile icon={<ReceiptIcon />} accent={premiumAccent} />
-            <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
-                Sekali Bayar
+            <FeatureComparison />
+          </div>
+
+          <aside className="xl:sticky xl:top-24">
+            <div className="mt-6 rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm xl:mt-0">
+              <div className="flex items-start gap-3">
+                <IconTile icon={<ReceiptIcon />} accent={premiumAccent} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
+                    Sekali Bayar
+                  </div>
+                  <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
+                    Tidak auto-renew
+                  </h2>
+                  <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
+                    Durasi paket akan ditambahkan ke tanggal aktif yang sudah ada, lalu kembali ke akses gratis saat selesai.
+                  </p>
+                </div>
               </div>
-              <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
-                Tidak auto-renew
-              </h2>
-              <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
-                Durasi paket akan ditambahkan ke tanggal aktif yang sudah ada, lalu kembali ke akses gratis saat selesai.
-              </p>
             </div>
-          </div>
-        </div>
 
-        <Link
-          to="/checkout"
-          search={{ packageId: selectedPackage.id }}
-          className="btn btn-lg mt-5 w-full"
-          style={{
-            background: premiumDark,
-            color: "#fff7ed",
-            borderBottomColor: "#a16207",
-          }}
-        >
-          Lanjut ke Pembayaran - Rp{selectedPackage.price.toLocaleString("id-ID")}
-        </Link>
+            <Link
+              to="/checkout"
+              search={{ packageId: selectedPackage.id }}
+              className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
+              style={{
+                background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
+                borderBottomWidth: 5,
+                borderBottomColor: "#b45309",
+              }}
+            >
+              <span>Lanjut bayar</span>
+              <span className="flex items-center gap-2">
+                Rp{selectedPackage.price.toLocaleString("id-ID")}
+                <ArrowRightIcon />
+              </span>
+            </Link>
+          </aside>
+        </div>
       </div>
     </main>
   );
 }
 
-function PremiumHeroPanel() {
+function PremiumHeroPanel({ className = "" }: { className?: string }) {
   return (
-    <div className="relative mt-6 overflow-hidden rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm">
+    <div className={`relative mt-6 overflow-hidden rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm sm:p-6 ${className}`}>
       <div
         className="absolute inset-0 opacity-90"
         style={{
@@ -152,25 +150,22 @@ function PremiumHeroPanel() {
       />
 
       <div className="relative">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-4">
           <IconTile icon={<CrownIcon />} accent={premiumAccent} />
           <div className="min-w-0 flex-1">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
-              Paket Belajar
+              Paket Premium
             </div>
-            <b className="mt-1 block text-[18px] font-bold leading-tight text-amber-50">
-              Evaluation Dashboard lengkap
+            <b className="mt-1 block text-[22px] font-bold leading-tight text-amber-50">
+              Latihan lebih terarah
             </b>
-            <p className="m-0 mt-2 max-w-[28ch] text-sm font-medium leading-relaxed text-amber-100/78">
-              Lihat pola salah, prioritas kategori, dan rekomendasi latihan berikutnya.
-            </p>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 grid-flow-dense">
-          <PremiumMiniStat label="Akurasi" value="Detail" />
-          <PremiumMiniStat label="Review" value="Video" />
-          <PremiumMiniStat label="Latihan" value="Target" />
+        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+          <PremiumBenefitPill icon={<VideoIcon />} label="Video" />
+          <PremiumBenefitPill icon={<DocumentIcon />} label="Review" />
+          <PremiumBenefitPill icon={<TargetIcon />} label="Latihan" />
         </div>
       </div>
     </div>
@@ -186,84 +181,130 @@ function PackageCard({
   isSelected: boolean;
   onSelect: () => void;
 }) {
-  const monthlyPrice = Math.round(pkg.price / (pkg.durationDays / 30));
-  const saving = Math.max(packages[0].price - monthlyPrice, 0);
+  const savingPercent = getSavingPercent(pkg);
   const isPopular = pkg.id === 2;
 
   return (
     <button
-      className="group rounded-[var(--radius-lg)] border-2 border-b-4 bg-white p-5 text-left shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2"
+      className="group rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 sm:px-5 sm:py-5"
       style={{
-        borderColor: isSelected ? "#14b8a655" : "#f5f5f4",
+        borderColor: isSelected ? "#14b8a6" : "#f5f5f4",
         borderBottomColor: isSelected ? "#0d9488" : "#e7e5e4",
         background: isSelected
-          ? "linear-gradient(180deg, #ccfbf12e 0%, rgba(255,255,255,0.94) 78%)"
+          ? "linear-gradient(180deg, #f0fdfa 0%, rgba(255,255,255,0.96) 76%)"
           : "#ffffff",
       }}
       onClick={onSelect}
       type="button"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <b className="text-base font-bold leading-tight text-stone-800">{pkg.name}</b>
-            {isPopular && <StatusPill label="Populer" accent={premiumAccent} />}
-          </div>
-          <p className="m-0 mt-1 max-w-[25ch] text-[13px] font-medium leading-relaxed text-stone-500">
-            {pkg.description}
-          </p>
-          {saving > 0 && (
-            <p className="m-0 mt-2 text-[12px] font-bold text-primary-dark">
-              Rp{monthlyPrice.toLocaleString("id-ID")}/bulan - hemat Rp{saving.toLocaleString("id-ID")}
-            </p>
-          )}
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-lg font-bold leading-none tracking-tight text-stone-800">
-            Rp{pkg.price.toLocaleString("id-ID")}
-          </div>
-          <div className="mt-1 text-[11px] font-semibold text-stone-400">{pkg.durationDays} hari</div>
-        </div>
-      </div>
-
-      <div className="mt-4 flex justify-end">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-5">
         <span
-          className="flex h-6 w-6 items-center justify-center rounded-full border-2"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2"
           style={{
-            background: isSelected ? "#14b8a6" : "#ffffff",
+            background: isSelected ? "#ccfbf1" : "#ffffff",
             borderColor: isSelected ? "#14b8a6" : "#d6d3d1",
-            color: "#ffffff",
+            color: "#14b8a6",
           }}
         >
-          {isSelected && <CheckIcon />}
+          {isSelected && <span className="h-3.5 w-3.5 rounded-full bg-primary" />}
         </span>
+
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+          <b className="text-base font-bold leading-tight text-stone-800 sm:text-lg">{pkg.name}</b>
+          <DurationPill days={pkg.durationDays} />
+          {isPopular && <StatusPill label="Populer" accent={premiumAccent} />}
+        </div>
+
+        <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-4">
+          <div className="text-right">
+            <div className="text-lg font-bold leading-none tracking-tight text-stone-900 sm:text-xl">
+              Rp{pkg.price.toLocaleString("id-ID")}
+            </div>
+          </div>
+
+          {savingPercent > 0 && <SavingPill value={savingPercent} />}
+
+          <span
+            className="hidden h-9 w-9 items-center justify-center rounded-full border-2 sm:flex"
+            style={{
+              background: isSelected ? "#14b8a6" : "#ffffff",
+              borderColor: isSelected ? "#14b8a6" : "#d6d3d1",
+              color: "#ffffff",
+            }}
+          >
+            {isSelected && <CheckIcon />}
+          </span>
+        </div>
       </div>
     </button>
   );
 }
 
-function FeatureRow({ feature }: { feature: (typeof features)[number] }) {
+function getSavingPercent(pkg: Package) {
+  if (pkg.id === 2) return 15;
+  if (pkg.id === 3) return 32;
+
+  return 0;
+}
+
+function FeatureComparison() {
   return (
-    <div className="grid grid-cols-[1fr_74px_84px] items-center gap-2 border-b border-stone-100 px-4 py-3 last:border-b-0">
-      <span className="text-[13.5px] font-semibold leading-snug text-stone-700">{feature.label}</span>
-      <FeatureValue value={feature.free} />
-      <FeatureValue value={feature.premium} isPremium />
+    <div className="mt-6 overflow-x-auto rounded-[var(--radius-lg)] border-2 border-amber-100 border-b-4 border-b-amber-100 bg-[#fffaf0]/72 px-4 py-4 shadow-sm sm:px-5">
+      <div className="min-w-[620px]">
+        <div className="grid grid-cols-[1fr_repeat(4,minmax(90px,1fr))] items-center gap-3 border-b border-amber-100 py-3">
+          <span className="text-[13px] font-semibold text-stone-700">Fitur</span>
+          {features.map((feature) => (
+            <span key={feature} className="text-center text-[13px] font-semibold leading-tight text-stone-800">
+              {feature}
+            </span>
+          ))}
+        </div>
+
+        <ComparisonRow label="Gratis" isPremium={false} />
+        <ComparisonRow label="Premium" isPremium />
+      </div>
     </div>
   );
 }
 
-function FeatureValue({ value, isPremium = false }: { value: boolean | "basic"; isPremium?: boolean }) {
-  if (value === "basic") {
-    return <span className="text-center text-[11px] font-bold text-stone-400">Basic</span>;
-  }
+function ComparisonRow({ label, isPremium }: { label: string; isPremium: boolean }) {
+  return (
+    <div className="grid grid-cols-[1fr_repeat(4,minmax(90px,1fr))] items-center gap-3 border-b border-amber-100 py-3 last:border-b-0">
+      <span className="text-[13px] font-semibold text-stone-600">{label}</span>
+      {features.map((feature) => (
+        <FeatureValue key={`${label}-${feature}`} isPremium={isPremium} />
+      ))}
+    </div>
+  );
+}
 
-  if (!value) {
-    return <span className="text-center text-sm font-bold text-stone-300">-</span>;
-  }
+function FeatureValue({ isPremium }: { isPremium: boolean }) {
+  if (!isPremium) return <MinusIcon />;
+
+  return <CheckBadgeIcon />;
+}
+
+function DurationPill({ days }: { days: number }) {
+  const isAmber = days === 180;
 
   return (
-    <span className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full border-2 ${isPremium ? "border-amber-200 bg-amber-50 text-amber-700" : "border-teal-100 bg-teal-50 text-primary"}`}>
-      <CheckIcon />
+    <span
+      className="rounded-full border-2 px-3 py-1 text-[12px] font-semibold leading-none"
+      style={{
+        color: isAmber ? "#b45309" : "#0f766e",
+        borderColor: isAmber ? "#fed7aa" : "#ccfbf1",
+        background: isAmber ? "#fff7ed" : "#f0fdfa",
+      }}
+    >
+      {days} hari
+    </span>
+  );
+}
+
+function SavingPill({ value }: { value: number }) {
+  return (
+    <span className="hidden rounded-full border-2 border-green-100 bg-green-50 px-3 py-1 text-[12px] font-semibold leading-none text-green-700 md:inline-flex">
+      Hemat {value}%
     </span>
   );
 }
@@ -289,11 +330,13 @@ function StatusPill({ label, accent }: { label: string; accent: string }) {
   );
 }
 
-function PremiumMiniStat({ label, value }: { label: string; value: string }) {
+function PremiumBenefitPill({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <div className="rounded-[var(--radius-sm)] border-2 border-amber-200/16 bg-white/8 px-2 py-2.5 text-center">
-      <div className="text-[12px] font-bold leading-none text-amber-50">{value}</div>
-      <div className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-amber-100/55">{label}</div>
+    <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border-2 border-amber-200/16 bg-white/8 px-3 py-2.5 text-amber-50">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-300/12 text-amber-300">
+        {icon}
+      </span>
+      <span className="text-sm font-bold leading-none">{label}</span>
     </div>
   );
 }
@@ -321,11 +364,37 @@ function ArrowLeftIcon() {
   );
 }
 
+function ArrowRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" aria-hidden="true">
+      <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
       <path d="m5 12 4.2 4.2L19 6.8" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function CheckBadgeIcon() {
+  return (
+    <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white">
+      <CheckIcon />
+    </span>
+  );
+}
+
+function MinusIcon() {
+  return (
+    <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-stone-300 text-white">
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+        <path d="M7 12h10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    </span>
   );
 }
 
@@ -343,6 +412,33 @@ function ReceiptIcon() {
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
       <path d="M7 3h10a2 2 0 0 1 2 2v16l-3-1.8-2 1.8-2-1.8-2 1.8-2-1.8L5 21V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function VideoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M4 7.8C4 6.8 4.8 6 5.8 6h8.4c1 0 1.8.8 1.8 1.8v8.4c0 1-.8 1.8-1.8 1.8H5.8c-1 0-1.8-.8-1.8-1.8V7.8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="m16 10 4-2.5v9L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function DocumentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M14 3v5h5M8 13h8M8 17h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TargetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10ZM12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }

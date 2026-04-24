@@ -88,7 +88,7 @@ function DashboardComponent() {
     <>
       <div style={{ background: palette.page }}>
         <div
-          className="app-shell"
+          className="app-shell page-enter"
           style={{
             background: "transparent",
           }}

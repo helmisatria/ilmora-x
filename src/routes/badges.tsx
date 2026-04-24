@@ -47,7 +47,7 @@ function BadgesComponent() {
           "linear-gradient(180deg, #fff1f3 0%, #fbfaf7 40%, #eef8f6 100%)",
       }}
     >
-    <div className="app-shell" style={{ background: "transparent" }}>
+    <div className="app-shell page-enter" style={{ background: "transparent" }}>
       <div
         className="relative overflow-hidden pb-8"
         style={{

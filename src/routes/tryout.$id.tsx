@@ -1,5 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { useApp, questionBank, tryouts, getCategoryName, type Attempt, type Tryout } from "../data";
 
 export const Route = createFileRoute("/tryout/$id")({
@@ -409,7 +415,7 @@ function PreparationScreen({
   const categoryName = getCategoryName(tryout.categoryId);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] antialiased">
+    <div className="min-h-screen bg-[var(--color-bg)] antialiased page-enter">
       <div
         className="relative overflow-hidden pb-10"
         style={{
@@ -535,46 +541,39 @@ function PreparationScreen({
         </div>
       </div>
 
-      {confirmOpen && (
-        <div
-          className="dialog-backdrop show"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) onConfirmCancel();
-          }}
-        >
-          <div className="dialog-box text-left">
-            <div
-              className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center text-[26px]"
-              style={{
-                background: `${tryout.color}1A`,
-                color: tryout.color,
-              }}
-            >
-              <TryoutModuleIcon tryoutId={tryout.id} />
-            </div>
-            <h3 className="text-xl font-bold mb-2 text-center tracking-tight">
-              Siap memulai?
-            </h3>
-            <p className="text-sm text-stone-500 mb-4 text-center leading-relaxed font-medium">
-              Timer akan berjalan selama {tryout.duration} menit dan tidak dapat dijeda.
-              Pastikan kamu sudah siap.
-            </p>
-            <div className="grid grid-cols-3 gap-2 mb-5 text-center">
-              <MiniStat label="Soal" value={`${totalQuestions}`} />
-              <MiniStat label="Menit" value={`${tryout.duration}`} />
-              <MiniStat label="XP" value={`+${xpReward}`} />
-            </div>
-            <div className="flex gap-3">
-              <button className="btn btn-white flex-1" onClick={onConfirmCancel}>
-                Nanti dulu
-              </button>
-              <button className="btn btn-primary flex-1" onClick={onConfirmStart}>
-                Ya, mulai
-              </button>
-            </div>
+      <Dialog open={confirmOpen} onOpenChange={(open) => !open && onConfirmCancel()}>
+        <DialogContent className="p-6 text-left">
+          <div
+            className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+            style={{
+              background: `${tryout.color}1A`,
+              color: tryout.color,
+            }}
+          >
+            <TryoutModuleIcon tryoutId={tryout.id} />
           </div>
-        </div>
-      )}
+          <DialogTitle className="mb-2 text-center">
+            Siap memulai?
+          </DialogTitle>
+          <DialogDescription className="mb-4 text-center text-stone-500">
+            Timer akan berjalan selama {tryout.duration} menit dan tidak dapat dijeda.
+            Pastikan kamu sudah siap.
+          </DialogDescription>
+          <div className="grid grid-cols-3 gap-2 mb-5 text-center">
+            <MiniStat label="Soal" value={`${totalQuestions}`} />
+            <MiniStat label="Menit" value={`${tryout.duration}`} />
+            <MiniStat label="XP" value={`+${xpReward}`} />
+          </div>
+          <div className="flex gap-3">
+            <button className="btn btn-white flex-1" onClick={onConfirmCancel} type="button">
+              Nanti dulu
+            </button>
+            <button className="btn btn-primary flex-1" onClick={onConfirmStart} type="button">
+              Ya, mulai
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

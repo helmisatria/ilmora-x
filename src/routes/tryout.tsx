@@ -40,7 +40,7 @@ function TryoutComponent() {
             "radial-gradient(1000px 300px at 50% 0%, #14b8a61a, transparent 70%), var(--color-bg)",
         }}
       >
-      <div className="app-shell" style={{ background: "transparent" }}>
+      <div className="app-shell page-enter" style={{ background: "transparent" }}>
         <div className="relative overflow-hidden pb-8">
           <TopBar />
           <div className="page-lane pt-7 pb-5 lg:pt-10">
