@@ -42,12 +42,12 @@ function BadgesComponent() {
 
   return (
     <div
-      className="app-shell"
       style={{
         background:
           "linear-gradient(180deg, #fff1f3 0%, #fbfaf7 40%, #eef8f6 100%)",
       }}
     >
+    <div className="app-shell" style={{ background: "transparent" }}>
       <div
         className="relative overflow-hidden pb-8"
         style={{
@@ -142,6 +142,7 @@ function BadgesComponent() {
       </div>
 
       <BottomNav active="badge" />
+    </div>
     </div>
   );
 }
