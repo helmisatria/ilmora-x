@@ -14,7 +14,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#14b8a6" },
+      { name: "theme-color", content: "#205072" },
       { name: "color-scheme", content: "light" },
       
       // Primary SEO
@@ -72,11 +72,11 @@ export const Route = createRootRoute({
         className="relative flex min-h-screen items-center justify-center px-5 py-16"
         style={{
           background:
-            "radial-gradient(900px 340px at 10% -16%, #14b8a62f, transparent 62%), radial-gradient(760px 360px at 92% 0%, #f59e0b20, transparent 66%)",
+            "radial-gradient(900px 340px at 10% -16%, rgba(32,80,114,0.18), transparent 62%), radial-gradient(760px 360px at 92% 0%, rgba(121,183,217,0.2), transparent 66%)",
         }}
       >
         <div className="w-full max-w-[440px] rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-6 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-teal-100 bg-teal-50 text-primary">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary-soft bg-primary-tint text-primary">
             <NotFoundIcon />
           </div>
           <div className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-stone-400">

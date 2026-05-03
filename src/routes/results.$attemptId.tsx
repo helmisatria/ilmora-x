@@ -43,8 +43,8 @@ function ResultsComponent() {
   const dash = 339;
   const off = dash - (dash * score) / 100;
   const passed = score >= 70;
-  const accent = passed ? "#14b8a6" : "#f59e0b";
-  const accentDark = passed ? "#0d9488" : "#b45309";
+  const accent = passed ? "#205072" : "#f59e0b";
+  const accentDark = passed ? "#153d5c" : "#b45309";
 
   const answered = attempt.answers.length;
   const wrongCount = Math.max(answered - correct, 0);
@@ -98,8 +98,8 @@ function ResultsComponent() {
     : "linear-gradient(180deg, #fff8eb 0%, #fbfaf7 42%, #eef8f6 100%)";
 
   const headerBg = passed
-    ? "radial-gradient(900px 340px at 10% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)"
-    : "radial-gradient(900px 340px at 10% -18%, #f59e0b33, transparent 62%), radial-gradient(760px 340px at 94% -14%, #14b8a616, transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)";
+    ? "radial-gradient(900px 340px at 10% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)"
+    : "radial-gradient(900px 340px at 10% -18%, #f59e0b33, transparent 62%), radial-gradient(760px 340px at 94% -14%, rgba(32,80,114,0.09), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)";
 
   if (isChildRoute) {
     return <Outlet />;
@@ -226,7 +226,7 @@ function ResultsComponent() {
                 </div>
 
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[12.5px] font-medium text-stone-500">
-                  <BreakdownDot color="#14b8a6" label="Benar" value={correct} />
+                  <BreakdownDot color="#205072" label="Benar" value={correct} />
                   <BreakdownDot color="#ef4444" label="Salah" value={wrongCount} />
                   <BreakdownDot color="#a8a29e" label="Kosong" value={unansweredCount} />
                 </div>
@@ -241,7 +241,7 @@ function ResultsComponent() {
           </div>
 
           <div className="mt-5 grid grid-flow-dense grid-cols-3 gap-3">
-            <StatCard icon={<TargetIcon />} label="Benar" value={`${correct}/${total}`} accent="#14b8a6" />
+            <StatCard icon={<TargetIcon />} label="Benar" value={`${correct}/${total}`} accent="#205072" />
             <StatCard icon={<ClockIcon />} label="Durasi" value={duration > 0 ? `${duration} min` : "-"} accent="#0ea5e9" />
             <StatCard icon={<FlameIcon />} label="Streak" value={`${user.streak} hari`} accent="#f59e0b" />
           </div>
@@ -452,9 +452,9 @@ function WrongCard({
     >
       <span
         className="inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide"
-        style={{ color: "#0d9488", borderColor: "#14b8a633", background: "#14b8a610" }}
+        style={{ color: "#153d5c", borderColor: "rgba(32,80,114,0.20)", background: "rgba(32,80,114,0.06)" }}
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
         {wrong.subject}
       </span>
       <p className="m-0 mt-2 max-w-[52ch] text-[14px] font-semibold leading-relaxed text-stone-800">

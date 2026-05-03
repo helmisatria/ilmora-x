@@ -30,7 +30,7 @@ Membangun **clickable prototype** seluruh flow utama IlmoraX sebagai web app res
 | ------------- | -------------------------------------------------------------------------- |
 | Nama platform | **IlmoraX**                                                                |
 | Logo          | Ilmora Logo (sudah disediakan client)                                      |
-| Primary color | Teal/green (existing `#14b8a6`)                                            |
+| Primary color | Navy blue (theme token `--brand-primary`/`--color-primary`)                                            |
 | Font          | Inter (body) + Poppins (heading)                                           |
 | Tone          | Joyful, playful, not-too-formal — feels closer to Duolingo than a textbook |
 | Responsive    | Mobile-first, responsive hingga desktop                                    |

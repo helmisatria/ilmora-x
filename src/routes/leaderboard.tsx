@@ -48,7 +48,7 @@ function LeaderboardComponent() {
           className="relative overflow-hidden pb-8"
           style={{
             background:
-              "radial-gradient(900px 320px at 14% -18%, #f59e0b33, transparent 62%), radial-gradient(760px 340px at 94% -14%, #14b8a61f, transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
+              "radial-gradient(900px 320px at 14% -18%, #f59e0b33, transparent 62%), radial-gradient(760px 340px at 94% -14%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
           }}
         >
           <TopBar />
@@ -68,7 +68,7 @@ function LeaderboardComponent() {
               <SummaryCard
                 label="Peringkatmu"
                 value={currentUser ? `#${currentUser.r}` : "-"}
-                accent="#14b8a6"
+                accent="#205072"
               />
               <SummaryCard
                 label="Jarak leader"
@@ -112,7 +112,7 @@ function LeaderboardComponent() {
 
             <div className="rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-5 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 text-primary border-2 border-teal-100 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-primary-tint text-primary border-2 border-primary-soft flex items-center justify-center shrink-0">
                   <ClockIcon />
                 </div>
                 <div>
@@ -224,7 +224,7 @@ function LeaderboardRow({ user }: { user: LeaderboardEntry }) {
       params={getProfileParams(user)}
       className={`group flex items-center gap-3 rounded-[var(--radius-lg)] bg-white px-3.5 py-3 shadow-sm border-2 border-b-4 transition-all duration-150 hover:translate-x-1 no-underline ${
         user.me
-          ? "border-primary bg-teal-50 border-b-primary-dark"
+          ? "border-primary bg-primary-tint border-b-primary-dark"
           : "border-stone-100 border-b-stone-200"
       }`}
     >
@@ -269,7 +269,7 @@ function getRankTone(rank: number) {
   if (rank === 1) return "#f59e0b";
   if (rank === 2) return "#94a3b8";
   if (rank === 3) return "#c08457";
-  return "#14b8a6";
+  return "#205072";
 }
 
 function getRankSymbol(rank: number) {

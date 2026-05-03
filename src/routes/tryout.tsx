@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import { useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
-import { getCategoryName, tryouts, useApp, type Tryout } from "../data";
+import { getCategoryColor, getCategoryName, tryouts, useApp, type Tryout } from "../data";
 
 export const Route = createFileRoute("/tryout")({
   head: () => ({
@@ -37,7 +37,7 @@ function TryoutComponent() {
       <div
         style={{
           background:
-            "radial-gradient(1000px 300px at 50% 0%, #14b8a61a, transparent 70%), var(--color-bg)",
+            "radial-gradient(1000px 300px at 50% 0%, rgba(32,80,114,0.10), transparent 70%), var(--color-bg)",
         }}
       >
       <div className="app-shell page-enter" style={{ background: "transparent" }}>
@@ -111,8 +111,8 @@ function FilterButton({
       className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full border-2 transition-all duration-150 active:translate-y-[1px]"
       style={{
         color: isActive ? "var(--color-primary-dark)" : "var(--color-stone-500)",
-        borderColor: isActive ? "#14b8a633" : "var(--color-stone-200)",
-        background: isActive ? "#14b8a610" : "#ffffff",
+        borderColor: isActive ? "rgba(32,80,114,0.20)" : "var(--color-stone-200)",
+        background: isActive ? "rgba(32,80,114,0.06)" : "#ffffff",
       }}
       onClick={onClick}
       type="button"
@@ -135,7 +135,8 @@ function TryoutCard({
   isLocked: boolean;
   onLockedClick: () => void;
 }) {
-  const accent = isLocked ? "var(--color-amber)" : tryout.color;
+  const categoryColor = getCategoryColor(tryout.categoryId);
+  const accent = isLocked ? "var(--color-amber)" : categoryColor;
   const categoryName = getCategoryName(tryout.categoryId);
 
   return (
@@ -216,7 +217,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 function EmptyState({ filter }: { filter: "all" | "free" | "premium" }) {
   return (
     <div className="mt-5 bg-white rounded-[var(--radius-lg)] p-5 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
-      <div className="mx-auto w-14 h-14 rounded-2xl bg-teal-50 text-primary border-2 border-teal-100 flex items-center justify-center">
+      <div className="mx-auto w-14 h-14 rounded-2xl bg-primary-tint text-primary border-2 border-primary-soft flex items-center justify-center">
         <ArchiveIcon />
       </div>
       <h2 className="mt-4 text-xl font-bold tracking-tight text-stone-800">Belum ada modul</h2>

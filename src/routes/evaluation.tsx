@@ -73,7 +73,7 @@ function EvaluationComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #f59e0b20, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
+            "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #f59e0b20, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
@@ -100,7 +100,7 @@ function EvaluationComponent() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 grid-flow-dense">
-            <SummaryCard label="Soal Dikerjakan" value={String(totalQuestions)} accent="#14b8a6" icon={<DocumentIcon />} />
+            <SummaryCard label="Soal Dikerjakan" value={String(totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
             <SummaryCard label="Jawaban Benar" value={String(totalCorrect)} accent="#22c55e" icon={<CheckCircleIcon />} />
             <SummaryCard label="Jawaban Salah" value={String(totalWrong)} accent="#fb7185" icon={<XCircleIcon />} />
             <SummaryCard label="Akurasi" value={`${pctCorrect}%`} accent="#f59e0b" icon={<TargetIcon />} />
@@ -169,7 +169,7 @@ function InsightPanel({
       }}
     >
       <div className="flex items-start gap-3">
-        <IconTile icon={<SparkIcon />} accent="#14b8a6" />
+        <IconTile icon={<SparkIcon />} accent="#205072" />
         <div className="min-w-0 flex-1">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
             Rekomendasi
@@ -215,7 +215,7 @@ function CategoryCard({
               {categoryCorrect}/{categoryTotal} soal benar
             </div>
           </div>
-          <span className="rounded-full border-2 border-teal-200 bg-teal-50 px-2.5 py-1 text-[12px] font-bold text-primary-dark">
+          <span className="rounded-full border-2 border-brand-sky bg-primary-tint px-2.5 py-1 text-[12px] font-bold text-primary-dark">
             {categoryPct}%
           </span>
         </div>
@@ -339,14 +339,14 @@ function SummaryCard({
 
 function ProgressBar({ value, size = "md" }: { value: number; size?: "sm" | "md" }) {
   return (
-    <div className={`${size === "md" ? "mt-3" : ""} rounded-full border-2 border-teal-100 bg-teal-50/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]`}>
+    <div className={`${size === "md" ? "mt-3" : ""} rounded-full border-2 border-primary-soft bg-primary-tint/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]`}>
       <div className={`${size === "md" ? "h-3" : "h-2"} overflow-hidden rounded-full bg-white/90`}>
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
             width: `${value}%`,
             minWidth: value > 0 ? "20px" : "0",
-            background: "linear-gradient(90deg, #14b8a6 0%, #0d9488 100%)",
+            background: "linear-gradient(90deg, #205072 0%, #153d5c 100%)",
           }}
         />
       </div>

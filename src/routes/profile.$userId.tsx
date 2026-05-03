@@ -39,7 +39,7 @@ function PublicProfileComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
+            "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
@@ -63,7 +63,7 @@ function PublicProfileComponent() {
       <div className="page-lane relative -mt-4 grid gap-6 pb-28 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.15fr)] lg:items-start">
         <div className="rounded-[var(--radius-xl)] border-2 border-b-4 border-[#cfe7df] border-b-[#a9d1c6] bg-[linear-gradient(135deg,rgba(235,250,247,0.98)_0%,rgba(255,252,245,0.98)_100%)] p-5 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#ccfbf1_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
               {viewedUser.avatar}
             </div>
             <div className="min-w-0 flex-1">
@@ -73,7 +73,7 @@ function PublicProfileComponent() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-teal-100 bg-white/76 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-primary-soft bg-white/76 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
@@ -81,18 +81,18 @@ function PublicProfileComponent() {
                 </div>
                 <div className="mt-1 text-[14px] font-bold leading-snug text-stone-800">{grade}</div>
               </div>
-              <div className="rounded-full border-2 border-teal-200 bg-teal-50 px-2.5 py-1 text-[12px] font-bold text-primary-dark">
+              <div className="rounded-full border-2 border-brand-sky bg-primary-tint px-2.5 py-1 text-[12px] font-bold text-primary-dark">
                 {xpProgress}%
               </div>
             </div>
-            <div className="mt-3 rounded-full border-2 border-teal-100 bg-teal-50/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]">
+            <div className="mt-3 rounded-full border-2 border-primary-soft bg-primary-tint/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]">
               <div className="h-4 overflow-hidden rounded-full bg-white/90">
                 <div
                   className="relative h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${xpProgress}%`,
                     minWidth: xpProgress > 0 ? "28px" : "0",
-                    background: "linear-gradient(90deg, #14b8a6 0%, #0d9488 100%)",
+                    background: "linear-gradient(90deg, #205072 0%, #153d5c 100%)",
                   }}
                 >
                   <div className="absolute inset-x-1 top-1 h-0.75 rounded-full bg-white/30" />
@@ -108,7 +108,7 @@ function PublicProfileComponent() {
 
         <div className="grid gap-6">
           <div className="grid grid-flow-dense grid-cols-3 gap-3">
-            <StatCard label="Soal" value={String(viewedUser.totalQuestions)} accent="#14b8a6" icon={<DocumentIcon />} />
+            <StatCard label="Soal" value={String(viewedUser.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
             <StatCard label="Try-out" value={String(viewedUser.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
             <StatCard label="Streak" value={String(viewedUser.streak)} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
@@ -117,7 +117,7 @@ function PublicProfileComponent() {
             <SectionHeader title={`Koleksi Lencana ${unlockedBadgeList.length}/${badges.length}`} />
             {unlockedBadgeList.length === 0 ? (
               <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-6 text-center shadow-sm">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-teal-100 bg-teal-50 text-primary">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary-soft bg-primary-tint text-primary">
                   <BadgeIcon />
                 </div>
                 <p className="m-0 mx-auto mt-3 max-w-[28ch] text-sm font-semibold leading-relaxed text-stone-500">Belum ada lencana</p>

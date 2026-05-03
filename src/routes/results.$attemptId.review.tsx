@@ -75,9 +75,9 @@ function ReviewComponent() {
       const el = document.querySelector<HTMLElement>(`[data-question-id="${id}"]`);
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-4", "ring-teal-300", "ring-offset-2");
+      el.classList.add("ring-4", "ring-primary-light", "ring-offset-2");
       window.setTimeout(() => {
-        el.classList.remove("ring-4", "ring-teal-300", "ring-offset-2");
+        el.classList.remove("ring-4", "ring-primary-light", "ring-offset-2");
       }, 1600);
     }, 400);
     return () => window.clearTimeout(timer);
@@ -137,7 +137,7 @@ function ReviewComponent() {
 
           <div className="hidden sm:flex items-center gap-6 text-sm">
             <div className="text-center">
-              <div className="text-lg font-black text-teal-600">{attempt.correct}</div>
+              <div className="text-lg font-black text-primary">{attempt.correct}</div>
               <div className="text-xs font-medium text-stone-400 uppercase">Benar</div>
             </div>
             <div className="w-px h-8 bg-stone-200" />
@@ -167,7 +167,7 @@ function ReviewComponent() {
                 onClick={() => setFilter(f.k)}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap border-2 transition-all ${
                   filter === f.k
-                    ? "bg-teal-600 text-white border-teal-700"
+                    ? "bg-primary text-white border-primary-dark"
                     : "bg-white text-stone-600 border-stone-200 hover:border-stone-300"
                 }`}
               >
@@ -217,12 +217,12 @@ function ReviewComponent() {
                         <span
                           className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full border-2"
                           style={{
-                            color: "#0d9488",
-                            borderColor: "#99f6e455",
-                            background: "#f0fdfa",
+                            color: "#153d5c",
+                            borderColor: "#79b7d955",
+                            background: "#f1f7fb",
                           }}
                         >
-                          <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                           {getCategoryLabel(q.categoryId)}
                         </span>
                       </div>
@@ -281,12 +281,12 @@ function ReviewComponent() {
                     </div>
 
                     {/* Explanation */}
-                    <div className="rounded-[20px] border-2 overflow-hidden" style={{ borderColor: premiumLocked ? "#fcd34d" : "#14b8a630" }}>
-                      <div className="px-4 py-3 border-b-2 flex items-center gap-2" style={{ borderColor: premiumLocked ? "#fcd34d" : "#14b8a630", background: premiumLocked ? "#fffbeb" : "#f0fdfa" }}>
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${premiumLocked ? "bg-amber-100 text-amber-600" : "bg-teal-100 text-teal-600"}`}>
+                    <div className="rounded-[20px] border-2 overflow-hidden" style={{ borderColor: premiumLocked ? "#fcd34d" : "rgba(32,80,114,0.19)" }}>
+                      <div className="px-4 py-3 border-b-2 flex items-center gap-2" style={{ borderColor: premiumLocked ? "#fcd34d" : "rgba(32,80,114,0.19)", background: premiumLocked ? "#fffbeb" : "#f1f7fb" }}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${premiumLocked ? "bg-amber-100 text-amber-600" : "bg-primary-soft text-primary"}`}>
                           {premiumLocked ? <LockIcon /> : <FileTextIcon />}
                         </div>
-                        <span className="font-bold text-sm" style={{ color: premiumLocked ? "#92400e" : "#0f766e" }}>
+                        <span className="font-bold text-sm" style={{ color: premiumLocked ? "#92400e" : "#0b2135" }}>
                           {premiumLocked ? "Pembahasan Terkunci" : "Pembahasan"}
                         </span>
                       </div>
@@ -358,16 +358,16 @@ function ReviewComponent() {
                       <Link
                         to="/coming-soon"
                         search={{ feature: "materi" }}
-                        className="mt-4 flex items-center gap-4 p-4 rounded-xl bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 transition-colors group"
+                        className="mt-4 flex items-center gap-4 p-4 rounded-xl bg-primary-tint border-2 border-brand-sky hover:bg-primary-soft transition-colors group"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-teal-100 border-2 border-teal-200 flex items-center justify-center text-teal-600">
+                        <div className="w-10 h-10 rounded-xl bg-primary-soft border-2 border-brand-sky flex items-center justify-center text-primary">
                           <BookIcon />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm text-teal-900 truncate">{relatedMateri.title}</div>
-                          <div className="text-xs font-medium text-teal-600">Pelajari topik ini lebih dalam</div>
+                          <div className="font-bold text-sm text-primary-darker truncate">{relatedMateri.title}</div>
+                          <div className="text-xs font-medium text-primary">Pelajari topik ini lebih dalam</div>
                         </div>
-                        <ArrowRightIcon className="w-5 h-5 text-teal-600 group-hover:translate-x-1 transition-transform" />
+                        <ArrowRightIcon className="w-5 h-5 text-primary group-hover:translate-x-1 transition-transform" />
                       </Link>
                     )}
                   </div>
@@ -388,7 +388,7 @@ function ReviewComponent() {
             </Link>
             <Link
               to="/dashboard"
-              className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-teal-600 text-white font-bold border-b-4 border-teal-800 hover:bg-teal-700 transition-all active:translate-y-[2px] active:border-b-0 shadow-lg shadow-teal-600/20"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-primary text-white font-bold border-b-4 border-primary-darker hover:bg-primary-dark transition-all active:translate-y-[2px] active:border-b-0 shadow-lg shadow-primary/20"
             >
               <HomeIcon />
               Dashboard

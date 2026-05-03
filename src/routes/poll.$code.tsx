@@ -75,9 +75,9 @@ function PollActiveComponent() {
                 className="group aspect-square rounded-[var(--radius-lg)] border-2 border-b-4 bg-white text-[24px] font-black shadow-sm transition-all duration-150 hover:-translate-y-1 active:translate-y-0 sm:text-[32px]"
                 style={{
                   color: isSelected ? "#ffffff" : "#57534e",
-                  background: isSelected ? "#14b8a6" : "#ffffff",
-                  borderColor: isSelected ? "#0d9488" : "#e7e5e4",
-                  borderBottomColor: isSelected ? "#0f766e" : "#d6d3d1",
+                  background: isSelected ? "#205072" : "#ffffff",
+                  borderColor: isSelected ? "#153d5c" : "#e7e5e4",
+                  borderBottomColor: isSelected ? "#0b2135" : "#d6d3d1",
                 }}
                 onClick={() => setSelected(index)}
                 type="button"
@@ -132,7 +132,7 @@ function PollTopBar({ poll, stateLabel, stateTone }: { poll: Poll; stateLabel: s
 function SubmittedState({ title, selected }: { title: string; selected: string }) {
   return (
     <StateShell title="Jawaban terkirim" kicker="Menunggu hasil" description={title}>
-      <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-[var(--radius-md)] border-2 border-teal-200 bg-teal-50 px-4 py-2">
+      <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-[var(--radius-md)] border-2 border-brand-sky bg-primary-tint px-4 py-2">
         <span className="text-xs font-bold uppercase tracking-wide text-stone-400">Pilihan</span>
         <span className="text-lg font-black text-primary">{selected}</span>
       </div>
@@ -153,7 +153,7 @@ function ResultsState({ poll }: { poll: Poll }) {
 
       <div className="mx-auto w-full max-w-[720px] px-5 py-8 pb-24 sm:px-6">
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-teal-100 bg-teal-50 text-primary">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary-soft bg-primary-tint text-primary">
             <ChartIcon />
           </div>
           <div className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-stone-400">
@@ -206,11 +206,11 @@ function StateShell({ title, kicker, description, children }: { title: string; k
       className="flex min-h-screen items-center justify-center overflow-hidden px-5 py-12"
       style={{
         background:
-          "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 48%, #f7f3ea 100%)",
+          "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 48%, #f7f3ea 100%)",
       }}
     >
       <div className="w-full max-w-[440px] rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-6 text-center shadow-sm">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-teal-100 bg-teal-50 text-primary">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary-soft bg-primary-tint text-primary">
           <SignalIcon />
         </div>
         <div className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-stone-400">

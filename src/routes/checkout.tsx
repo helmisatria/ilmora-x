@@ -136,7 +136,7 @@ function CheckoutComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(900px 340px at 10% -18%, #f59e0b35, transparent 62%), radial-gradient(720px 340px at 94% -12%, #14b8a61f, transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
+            "radial-gradient(900px 340px at 10% -18%, #f59e0b35, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
@@ -284,7 +284,7 @@ function DiscountMessage({ discount, onClear }: { discount: DiscountState; onCle
       : `Diskon referral dari ${discount.referrerName}`;
 
   return (
-    <div className="mt-3 flex items-center gap-2 rounded-[var(--radius-md)] border-2 border-teal-100 bg-teal-50 p-3">
+    <div className="mt-3 flex items-center gap-2 rounded-[var(--radius-md)] border-2 border-primary-soft bg-primary-tint p-3">
       <CheckBadgeIcon />
       <div className="min-w-0 flex-1 text-xs font-bold text-primary-dark">{message}</div>
       <button className="text-xs font-bold text-stone-400 transition-colors hover:text-stone-700" onClick={onClear} type="button">
@@ -307,9 +307,9 @@ function PaymentMethodButton({
     <button
       className="group flex items-center gap-3 rounded-[var(--radius-lg)] border-2 border-b-4 p-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:translate-y-[1px]"
       style={{
-        borderColor: isSelected ? "#14b8a6" : "#f5f5f4",
-        borderBottomColor: isSelected ? "#0d9488" : "#d6d3d1",
-        background: isSelected ? "linear-gradient(180deg, #f0fdfa 0%, rgba(255,255,255,0.96) 76%)" : "#ffffff",
+        borderColor: isSelected ? "#205072" : "#f5f5f4",
+        borderBottomColor: isSelected ? "#153d5c" : "#d6d3d1",
+        background: isSelected ? "linear-gradient(180deg, #f1f7fb 0%, rgba(255,255,255,0.96) 76%)" : "#ffffff",
       }}
       onClick={onSelect}
       type="button"
@@ -317,9 +317,9 @@ function PaymentMethodButton({
       <span
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-transform duration-700 ease-out group-hover:scale-105"
         style={{
-          color: isSelected ? "#14b8a6" : "#78716c",
-          background: isSelected ? "#ccfbf1" : "#f5f5f4",
-          borderColor: isSelected ? "#99f6e4" : "#e7e5e4",
+          color: isSelected ? "#205072" : "#78716c",
+          background: isSelected ? "#dcecf7" : "#f5f5f4",
+          borderColor: isSelected ? "#79b7d9" : "#e7e5e4",
         }}
       >
         {paymentMethod.icon}
@@ -331,8 +331,8 @@ function PaymentMethodButton({
       <span
         className="flex h-7 w-7 items-center justify-center rounded-full border-2"
         style={{
-          background: isSelected ? "#14b8a6" : "#ffffff",
-          borderColor: isSelected ? "#14b8a6" : "#d6d3d1",
+          background: isSelected ? "#205072" : "#ffffff",
+          borderColor: isSelected ? "#205072" : "#d6d3d1",
           color: "#ffffff",
         }}
       >
@@ -417,7 +417,7 @@ function CheckIcon() {
 
 function CheckBadgeIcon() {
   return (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-teal-200 bg-white text-primary">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-sky bg-white text-primary">
       <CheckIcon />
     </span>
   );

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/profile")({
   component: ProfileComponent,
 });
 
-const profileAccent = "#14b8a6";
+const profileAccent = "#205072";
 const avatarOptions = [
   "🦉",
   "🧑‍⚕️",
@@ -58,7 +58,7 @@ function ProfileComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
+            "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
@@ -102,7 +102,7 @@ function ProfileComponent() {
           )}
 
           <div className="grid grid-flow-dense grid-cols-3 gap-3">
-            <StatCard label="Soal" value={String(user.totalQuestions)} accent="#14b8a6" icon={<DocumentIcon />} />
+            <StatCard label="Soal" value={String(user.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
             <StatCard label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
             <StatCard label="Streak" value={`${user.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
@@ -191,7 +191,7 @@ function ProfileHero({
       }}
     >
       <div className="flex items-center gap-4">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#ccfbf1_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
           {avatar}
         </div>
         <div className="min-w-0 flex-1">
@@ -201,7 +201,7 @@ function ProfileHero({
         </div>
       </div>
 
-      <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-teal-100 bg-white/76 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+      <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-primary-soft bg-white/76 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
@@ -210,7 +210,7 @@ function ProfileHero({
             <div className="mt-1 text-[14px] font-bold leading-snug text-stone-800">{grade}</div>
           </div>
           <div className="text-right">
-            <div className="rounded-full border-2 border-teal-200 bg-teal-50 px-2.5 py-1 text-[12px] font-bold text-primary-dark">
+            <div className="rounded-full border-2 border-brand-sky bg-primary-tint px-2.5 py-1 text-[12px] font-bold text-primary-dark">
               {xpProgress}%
             </div>
             {nextXp && (
@@ -223,14 +223,14 @@ function ProfileHero({
 
         {nextXp && (
           <>
-            <div className="mt-3 rounded-full border-2 border-teal-100 bg-teal-50/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]">
+            <div className="mt-3 rounded-full border-2 border-primary-soft bg-primary-tint/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]">
               <div className="h-4 overflow-hidden rounded-full bg-white/90">
                 <div
                   className="relative h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${xpProgress}%`,
                     minWidth: xpProgress > 0 ? "28px" : "0",
-                    background: "linear-gradient(90deg, #14b8a6 0%, #0d9488 100%)",
+                    background: "linear-gradient(90deg, #205072 0%, #153d5c 100%)",
                   }}
                 >
                   <div className="absolute inset-x-1 top-1 h-0.75 rounded-full bg-white/30" />
@@ -261,10 +261,10 @@ function AvatarPicker({ selectedAvatar, onSelect }: { selectedAvatar: string; on
               key={avatar}
               className="aspect-square rounded-2xl border-2 border-b-4 bg-white text-[24px] shadow-sm transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0.5"
               style={{
-                borderColor: isSelected ? "#14b8a655" : "#e7e5e4",
-                borderBottomColor: isSelected ? "#0d9488" : "#d6d3d1",
-                background: isSelected ? "#ccfbf1" : "#ffffff",
-                color: isSelected ? "#0f766e" : "#57534e",
+                borderColor: isSelected ? "rgba(32,80,114,0.33)" : "#e7e5e4",
+                borderBottomColor: isSelected ? "#153d5c" : "#d6d3d1",
+                background: isSelected ? "#dcecf7" : "#ffffff",
+                color: isSelected ? "#0b2135" : "#57534e",
               }}
               onClick={() => onSelect(avatar)}
               type="button"
@@ -313,7 +313,7 @@ function StatCard({ label, value, accent, icon }: { label: string; value: string
 function EmptyBadges() {
   return (
     <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-6 text-center shadow-sm">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-teal-100 bg-teal-50 text-primary">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary-soft bg-primary-tint text-primary">
         <BadgeIcon />
       </div>
       <p className="mx-auto mt-3 max-w-[28ch] text-sm font-semibold leading-relaxed text-stone-500">
@@ -343,7 +343,11 @@ function AccountRow({ label, value, copyable }: { label: string; value: string; 
         {copyable && (
           <button
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-stone-100 bg-stone-50 text-stone-400 transition-colors hover:text-primary"
-            onClick={() => navigator.clipboard?.writeText(value)}
+            onClick={() => {
+              if (typeof navigator !== 'undefined') {
+                void navigator.clipboard?.writeText(value);
+              }
+            }}
             title="Salin"
             type="button"
           >

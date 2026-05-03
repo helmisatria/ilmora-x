@@ -54,12 +54,12 @@ export interface Attempt {
 }
 
 export const tryouts: Tryout[] = [
-  { id: 1, title: "UKAI Tryout 1", icon: "🧪", color: "#14b8a6", questionCount: 20, categoryId: "klinis", duration: 30, isPremium: false, description: "Simulasi UKAI lengkap dengan soal terkini" },
+  { id: 1, title: "UKAI Tryout 1", icon: "🧪", color: "#205072", questionCount: 20, categoryId: "klinis", duration: 30, isPremium: false, description: "Simulasi UKAI lengkap dengan soal terkini" },
   { id: 2, title: "Farmakologi Dasar", icon: "💊", color: "#58cc02", questionCount: 25, categoryId: "farmakologi", duration: 40, isPremium: false, description: "Soal farmakologi dasar dan khusus" },
-  { id: 3, title: "Kardiovaskular", icon: "❤️", color: "#fb7185", questionCount: 20, categoryId: "klinis", duration: 30, isPremium: false, description: "Soal khusus sistem kardiovaskular" },
-  { id: 4, title: "Antibiotik & Antiinfeksi", icon: "🦠", color: "#a855f7", questionCount: 15, categoryId: "farmakologi", duration: 25, isPremium: false, description: "Soal antibiotik dan antiinfeksi" },
+  { id: 3, title: "Kardiovaskular", icon: "❤️", color: "#205072", questionCount: 20, categoryId: "klinis", duration: 30, isPremium: false, description: "Soal khusus sistem kardiovaskular" },
+  { id: 4, title: "Antibiotik & Antiinfeksi", icon: "🦠", color: "#58cc02", questionCount: 15, categoryId: "farmakologi", duration: 25, isPremium: false, description: "Soal antibiotik dan antiinfeksi" },
   { id: 5, title: "Farmasi Klinik Lanjut", icon: "🏥", color: "#0ea5e9", questionCount: 30, categoryId: "farmasi-klinik", duration: 45, isPremium: true, description: "Soal farmasi klinik tingkat lanjut" },
-  { id: 6, title: "Perhitungan Dosis", icon: "🧮", color: "#f59e0b", questionCount: 20, categoryId: "farmasi-klinik", duration: 35, isPremium: true, description: "Soalhitung dosis dan farmakokinetik" },
+  { id: 6, title: "Perhitungan Dosis", icon: "🧮", color: "#0ea5e9", questionCount: 20, categoryId: "farmasi-klinik", duration: 35, isPremium: true, description: "Soalhitung dosis dan farmakokinetik" },
 ];
 
 export const questionBank: Record<number, Question[]> = {

@@ -38,9 +38,9 @@ const trustPills = [
   },
   {
     label: "Lv.12",
-    tone: "#0f766e",
+    tone: "#0b2135",
     bg: "#ecfeff",
-    border: "#99f6e4",
+    border: "#79b7d9",
     icon: <ShieldIconMini />,
   },
 ] as const;
@@ -62,7 +62,7 @@ function LoginComponent() {
       className="min-h-screen overflow-hidden page-enter"
       style={{
         background:
-          "radial-gradient(960px 360px at 8% -18%, #14b8a632, transparent 62%), radial-gradient(720px 360px at 94% -12%, #0ea5e918, transparent 68%), radial-gradient(640px 320px at 82% 100%, #f59e0b14, transparent 62%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 48%, #f7f3ea 100%)",
+          "radial-gradient(960px 360px at 8% -18%, rgba(32,80,114,0.20), transparent 62%), radial-gradient(720px 360px at 94% -12%, #0ea5e918, transparent 68%), radial-gradient(640px 320px at 82% 100%, #f59e0b14, transparent 62%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 48%, #f7f3ea 100%)",
       }}
     >
       <div
@@ -105,7 +105,7 @@ function LoginComponent() {
           <section className="w-full max-w-[460px]">
             <div className="rounded-[32px] border border-white/70 bg-white/72 p-2 shadow-[0_28px_80px_rgba(20,184,166,0.10)] backdrop-blur-xl">
               <div className="rounded-[28px] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfaf7_100%)] px-6 py-7 text-center sm:px-8 sm:py-8">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border-2 border-teal-100 bg-teal-50 text-primary shadow-sm">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border-2 border-primary-soft bg-primary-tint text-primary shadow-sm">
                   <ShieldIcon />
                 </div>
 

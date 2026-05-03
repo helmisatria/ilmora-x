@@ -10,7 +10,7 @@ export { mockCoupons, applyCoupon } from "./coupons";
 export { mockMateri } from "./materi";
 export { mockPolls } from "./polls";
 export type { Poll } from "./polls";
-export { categories, getCategoryName, getSubCategoryName, getSubCategories } from "./categories";
+export { categories, getCategoryName, getCategoryColor, getSubCategoryName, getSubCategories } from "./categories";
 export { institutions } from "./institutions";
 export { AppProvider, useApp } from "./provider";
 export type { AppState, LeaderboardEntry } from "./provider";

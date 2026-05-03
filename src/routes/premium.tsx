@@ -43,7 +43,7 @@ function PremiumComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(900px 340px at 10% -18%, #f59e0b38, transparent 62%), radial-gradient(720px 340px at 94% -12%, #14b8a61f, transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
+            "radial-gradient(900px 340px at 10% -18%, #f59e0b38, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
@@ -188,10 +188,10 @@ function PackageCard({
     <button
       className="group rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 sm:px-5 sm:py-5"
       style={{
-        borderColor: isSelected ? "#14b8a6" : "#f5f5f4",
-        borderBottomColor: isSelected ? "#0d9488" : "#e7e5e4",
+        borderColor: isSelected ? "#205072" : "#f5f5f4",
+        borderBottomColor: isSelected ? "#153d5c" : "#e7e5e4",
         background: isSelected
-          ? "linear-gradient(180deg, #f0fdfa 0%, rgba(255,255,255,0.96) 76%)"
+          ? "linear-gradient(180deg, #f1f7fb 0%, rgba(255,255,255,0.96) 76%)"
           : "#ffffff",
       }}
       onClick={onSelect}
@@ -201,9 +201,9 @@ function PackageCard({
         <span
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2"
           style={{
-            background: isSelected ? "#ccfbf1" : "#ffffff",
-            borderColor: isSelected ? "#14b8a6" : "#d6d3d1",
-            color: "#14b8a6",
+            background: isSelected ? "#dcecf7" : "#ffffff",
+            borderColor: isSelected ? "#205072" : "#d6d3d1",
+            color: "#205072",
           }}
         >
           {isSelected && <span className="h-3.5 w-3.5 rounded-full bg-primary" />}
@@ -227,8 +227,8 @@ function PackageCard({
           <span
             className="hidden h-9 w-9 items-center justify-center rounded-full border-2 sm:flex"
             style={{
-              background: isSelected ? "#14b8a6" : "#ffffff",
-              borderColor: isSelected ? "#14b8a6" : "#d6d3d1",
+              background: isSelected ? "#205072" : "#ffffff",
+              borderColor: isSelected ? "#205072" : "#d6d3d1",
               color: "#ffffff",
             }}
           >
@@ -291,9 +291,9 @@ function DurationPill({ days }: { days: number }) {
     <span
       className="rounded-full border-2 px-3 py-1 text-[12px] font-semibold leading-none"
       style={{
-        color: isAmber ? "#b45309" : "#0f766e",
-        borderColor: isAmber ? "#fed7aa" : "#ccfbf1",
-        background: isAmber ? "#fff7ed" : "#f0fdfa",
+        color: isAmber ? "#b45309" : "#0b2135",
+        borderColor: isAmber ? "#fed7aa" : "#dcecf7",
+        background: isAmber ? "#fff7ed" : "#f1f7fb",
       }}
     >
       {days} hari

@@ -6,7 +6,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../components/ui/dialog";
-import { useApp, questionBank, tryouts, getCategoryName, type Attempt, type Tryout } from "../data";
+import { useApp, questionBank, tryouts, getCategoryColor, getCategoryName, type Attempt, type Tryout } from "../data";
 
 export const Route = createFileRoute("/tryout/$id")({
   head: ({ params }) => ({
@@ -113,11 +113,11 @@ function TryoutTakeComponent() {
           <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-stone-400">
             Memuat
           </div>
-          <div className="mt-5 relative h-20 w-20 rounded-full border-2 border-teal-100 bg-white shadow-sm">
+          <div className="mt-5 relative h-20 w-20 rounded-full border-2 border-primary-soft bg-white shadow-sm">
             <div
               className="absolute inset-2 rounded-full animate-spin"
               style={{
-                background: "conic-gradient(from 0deg, #14b8a6, #0ea5e9, #14b8a6)",
+                background: "conic-gradient(from 0deg, #205072, #0ea5e9, #205072)",
                 filter: "blur(10px)",
                 opacity: 0.45,
               }}
@@ -233,7 +233,7 @@ function TryoutTakeComponent() {
               {qIndex + 1}/{total}
             </div>
             <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full font-extrabold text-[11px] sm:text-[12px] shadow-sm border-2 ${
-              isTimeLow ? "bg-red-50 border-red-300 text-red-600" : "bg-teal-50 border-teal-200 text-teal-700"
+              isTimeLow ? "bg-red-50 border-red-300 text-red-600" : "bg-primary-tint border-brand-sky text-primary-dark"
             }`}>
               <ClockIcon />
               {timeDisplay}
@@ -279,7 +279,7 @@ function TryoutTakeComponent() {
               <button
                 key={i}
                 className={`flex items-center gap-3 sm:gap-3.5 w-full text-left px-3.5 sm:px-4 py-3.5 sm:py-4.5 bg-white border-3 border-stone-200 rounded-[var(--radius-lg)] font-semibold text-sm sm:text-base cursor-pointer transition-all duration-100 ${
-                  isSelected ? "border-primary bg-teal-50" : ""
+                  isSelected ? "border-primary bg-primary-tint" : ""
                 }`}
                 style={{ borderBottom: isSelected ? "5px solid var(--color-primary-dark)" : "5px solid var(--color-stone-300)" }}
                 onClick={() => handleSelect(i)}
@@ -306,9 +306,17 @@ function TryoutTakeComponent() {
           <div className="grid grid-cols-8 sm:grid-cols-10 gap-1.5 sm:gap-2">
             {questions.map((_, i) => {
               let cls = "bg-stone-100 border-stone-200 text-stone-500";
-              if (i === qIndex) cls = "bg-primary border-primary-dark text-white border-b-primary-dark";
-              else if (answers[i] !== undefined) cls = "bg-success border-success-dark text-white border-b-success-dark";
               const isFlagged = flagged.includes(i);
+              const isAnswered = answers[i] !== undefined;
+              if (i === qIndex) {
+                cls = "bg-primary border-primary-dark text-white border-b-primary-dark ring-2 ring-primary-light ring-offset-2";
+              } else if (isAnswered) {
+                if (isFlagged) {
+                  cls = "bg-amber border-amber-dark text-white border-b-amber-dark";
+                } else {
+                  cls = "bg-success border-success-dark text-white border-b-success-dark";
+                }
+              }
               return (
                 <button
                   key={i}
@@ -343,7 +351,7 @@ function TryoutTakeComponent() {
       {showSubmitConfirm && (
         <div className="dialog-backdrop show" onClick={(e) => { if (e.target === e.currentTarget) setShowSubmitConfirm(false) }}>
           <div className="dialog-box text-left">
-            <div className="w-14 h-14 rounded-2xl mx-auto mb-3 bg-teal-50 text-primary border-2 border-teal-100 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-3 bg-primary-tint text-primary border-2 border-primary-soft flex items-center justify-center">
               <SendIcon />
             </div>
             <h3 className="text-xl font-bold mb-2 text-center tracking-tight">Yakin submit?</h3>
@@ -378,7 +386,7 @@ function TryoutTakeComponent() {
               {["Answer key salah", "Pembahasan keliru", "Soal tidak jelas", "Typo", "Lainnya"].map((reason) => (
                 <button
                   key={reason}
-                  className="w-full text-left px-4 py-3 rounded-[var(--radius-md)] border-2 border-stone-200 font-semibold text-sm hover:border-primary hover:bg-teal-50 transition-all"
+                  className="w-full text-left px-4 py-3 rounded-[var(--radius-md)] border-2 border-stone-200 font-semibold text-sm hover:border-primary hover:bg-primary-tint transition-all"
                   onClick={() => {
                     setShowReport(false);
                     alert("Laporan kami terima. Terima kasih!");
@@ -427,6 +435,7 @@ function PreparationScreen({
   const avgSecondsPerQuestion = Math.round((tryout.duration * 60) / totalQuestions);
   const xpReward = 50 + totalQuestions * 20;
   const categoryName = getCategoryName(tryout.categoryId);
+  const color = getCategoryColor(tryout.categoryId);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] antialiased page-enter">
@@ -434,7 +443,7 @@ function PreparationScreen({
         className="relative overflow-hidden pb-10"
         style={{
           background:
-            `radial-gradient(1200px 400px at 20% -10%, ${tryout.color}22, transparent 60%), radial-gradient(900px 500px at 90% -20%, ${tryout.color}18, transparent 70%), var(--color-bg)`,
+            `radial-gradient(1200px 400px at 20% -10%, ${color}22, transparent 60%), radial-gradient(900px 500px at 90% -20%, ${color}18, transparent 70%), var(--color-bg)`,
         }}
       >
         <div className="sticky top-0 z-10 bg-white/75 backdrop-blur-xl flex items-center gap-3 px-4 py-3.5 border-b-2 border-stone-200">
@@ -454,7 +463,7 @@ function PreparationScreen({
             <div
               className="w-20 h-20 rounded-[22px] flex items-center justify-center text-white shadow-lg"
               style={{
-                background: tryout.color,
+                background: color,
                 borderBottom: "5px solid rgba(0,0,0,0.18)",
               }}
             >
@@ -463,12 +472,12 @@ function PreparationScreen({
             <span
               className="mt-5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full border-2"
               style={{
-                color: tryout.color,
-                borderColor: `${tryout.color}33`,
-                background: `${tryout.color}10`,
+                color: color,
+                borderColor: `${color}33`,
+                background: `${color}10`,
               }}
             >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: tryout.color }} />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
               {categoryName}
             </span>
             <h1 className="mt-4 text-[28px] leading-tight font-bold text-stone-800 max-w-[22ch]">
@@ -483,7 +492,7 @@ function PreparationScreen({
 
       <div className="max-w-[480px] mx-auto px-5 -mt-4 pb-36 relative">
         <div className="grid grid-cols-2 gap-3">
-          <StatCard icon={<DocumentIcon />} label="Jumlah Soal" value={`${totalQuestions}`} unit="soal" accent="#14b8a6" />
+          <StatCard icon={<DocumentIcon />} label="Jumlah Soal" value={`${totalQuestions}`} unit="soal" accent="#205072" />
           <StatCard icon={<ClockIcon />} label="Durasi" value={`${tryout.duration}`} unit="menit" accent="#0ea5e9" />
           <StatCard
             icon={<BoltIcon />}
@@ -560,8 +569,8 @@ function PreparationScreen({
           <div
             className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
             style={{
-              background: `${tryout.color}1A`,
-              color: tryout.color,
+              background: `${color}1A`,
+              color: color,
             }}
           >
             <TryoutModuleIcon tryoutId={tryout.id} />
@@ -857,11 +866,11 @@ function CalculatingOverlay() {
         <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-stone-400">
           Memproses
         </div>
-        <div className="mt-5 relative h-20 w-20 rounded-full border-2 border-teal-100 bg-white shadow-sm">
+        <div className="mt-5 relative h-20 w-20 rounded-full border-2 border-primary-soft bg-white shadow-sm">
           <div
             className="absolute inset-2 rounded-full animate-spin"
             style={{
-              background: "conic-gradient(from 0deg, #14b8a6, #0ea5e9, #14b8a6)",
+              background: "conic-gradient(from 0deg, #205072, #0ea5e9, #205072)",
               filter: "blur(10px)",
               opacity: 0.45,
             }}
@@ -889,9 +898,9 @@ function CalculatingOverlay() {
                 <span
                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     done
-                      ? "border-teal-300 bg-teal-50 text-teal-600"
+                      ? "border-primary-light bg-primary-tint text-primary"
                       : active
-                      ? "border-teal-200 bg-white text-teal-600"
+                      ? "border-brand-sky bg-white text-primary"
                       : "border-stone-200 bg-white text-stone-300"
                   }`}
                 >
@@ -900,7 +909,7 @@ function CalculatingOverlay() {
                       <path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   ) : active ? (
-                    <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                   ) : (
                     <span className="h-1.5 w-1.5 rounded-full bg-stone-300" />
                   )}
@@ -931,7 +940,7 @@ function CountdownOverlay({ value }: { value: number | "GO" }) {
       <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
 
       <div className="relative flex flex-col items-center">
-        <div className="text-[11px] font-semibold tracking-[0.28em] uppercase text-teal-200/80 mb-6">
+        <div className="text-[11px] font-semibold tracking-[0.28em] uppercase text-primary-soft/80 mb-6">
           Bersiap
         </div>
         <div

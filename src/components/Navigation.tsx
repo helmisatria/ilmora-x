@@ -18,7 +18,7 @@ export function TopBar() {
     >
       <Link
         to="/profile"
-        className="w-10 h-10 rounded-full flex items-center justify-center text-[21px] font-black tracking-wide shadow-sm shrink-0 transition-colors no-underline border-2 border-amber-200 text-stone-800 bg-[linear-gradient(135deg,#fff7ed_0%,#ccfbf1_100%)] hover:border-teal-300"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-[21px] font-black tracking-wide shadow-sm shrink-0 transition-colors no-underline border-2 border-amber-200 text-stone-800 bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] hover:border-primary-light"
         title="Profil"
       >
         {avatar}
@@ -39,7 +39,7 @@ interface BottomNavProps {
 
 export function BottomNav({ active }: BottomNavProps) {
   const items = [
-    { k: "learn", label: "Belajar", icon: <HomeIcon />, to: "/dashboard" as const, accent: "#14b8a6", bg: "#ccfbf1" },
+    { k: "learn", label: "Belajar", icon: <HomeIcon />, to: "/dashboard" as const, accent: "var(--brand-primary)", bg: "var(--brand-primary-soft)" },
     { k: "tryout", label: "Tryout", icon: <BookIcon />, to: "/tryout" as const, accent: "#0ea5e9", bg: "#e0f2fe" },
     { k: "rank", label: "Peringkat", icon: <TrophyIcon />, to: "/leaderboard" as const, accent: "#f59e0b", bg: "#fef3c7" },
     { k: "badge", label: "Lencana", icon: <BadgeIcon />, to: "/badges" as const, accent: "#fb7185", bg: "#ffe4e6" },
@@ -107,9 +107,9 @@ function TopBarPill({
       color: "#15803d",
     },
     teal: {
-      background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)",
-      borderColor: "#99f6e4",
-      color: "#0f766e",
+      background: "linear-gradient(135deg, var(--brand-primary-tint) 0%, var(--brand-primary-soft) 100%)",
+      borderColor: "var(--brand-sky)",
+      color: "var(--brand-primary-darker)",
     },
   };
 
