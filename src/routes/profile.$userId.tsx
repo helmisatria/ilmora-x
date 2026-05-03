@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
+import { AvatarDisplay } from "../components/AvatarDisplay";
 import { useApp, badges, mockUsers, getLevelForXp, getXpProgress, isUserPremium } from "../data";
 import { getLevelGrade } from "../data/users";
 
@@ -63,8 +64,8 @@ function PublicProfileComponent() {
       <div className="page-lane relative -mt-4 grid gap-6 pb-28 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.15fr)] lg:items-start">
         <div className="rounded-[var(--radius-xl)] border-2 border-b-4 border-[#cfe7df] border-b-[#a9d1c6] bg-[linear-gradient(135deg,rgba(235,250,247,0.98)_0%,rgba(255,252,245,0.98)_100%)] p-5 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
-              {viewedUser.avatar}
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
+              <AvatarDisplay avatar={viewedUser.avatar} photoUrl={viewedUser.googlePhotoUrl} className="h-full w-full" />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-xl font-bold tracking-tight text-stone-800">{viewedUser.name}</h2>

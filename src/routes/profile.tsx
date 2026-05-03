@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BottomNav, TopBar } from "../components/Navigation";
+import { AvatarDisplay } from "../components/AvatarDisplay";
 import { badges, getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
 import { getLevelGrade } from "../data/users";
 
@@ -28,7 +29,6 @@ const avatarOptions = [
   "👩‍🎓",
   "👨‍🎓",
   "💊",
-  "🧬",
 ] as const;
 
 function ProfileComponent() {
@@ -76,6 +76,7 @@ function ProfileComponent() {
 
           <ProfileHero
             avatar={user.avatar}
+            photoUrl={user.googlePhotoUrl}
             name={user.name}
             institution={user.institution}
             isPremium={isPremium}
@@ -92,6 +93,7 @@ function ProfileComponent() {
         <div className="grid gap-5">
           <AvatarPicker
             selectedAvatar={user.avatar}
+            googlePhotoUrl={user.googlePhotoUrl}
             onSelect={(avatar) => {
               setUser((currentUser) => ({ ...currentUser, avatar }));
             }}
@@ -122,6 +124,15 @@ function ProfileComponent() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div>
+            <SectionHeader title="Langganan" />
+            <SubscriptionCard
+              isPremium={isPremium}
+              startsAt={user.entitlementStartsAt}
+              endsAt={user.entitlementEndsAt}
+            />
           </div>
 
           <div>
@@ -159,6 +170,7 @@ function ProfileComponent() {
 
 function ProfileHero({
   avatar,
+  photoUrl,
   name,
   institution,
   isPremium,
@@ -169,6 +181,7 @@ function ProfileHero({
   xpProgress,
 }: {
   avatar: string;
+  photoUrl?: string | null;
   name: string;
   institution: string;
   isPremium: boolean;
@@ -191,8 +204,8 @@ function ProfileHero({
       }}
     >
       <div className="flex items-center gap-4">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
-          {avatar}
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
+          <AvatarDisplay avatar={avatar} photoUrl={photoUrl} className="h-full w-full" />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-xl font-bold tracking-tight text-stone-800">{name}</h2>
@@ -248,11 +261,42 @@ function ProfileHero({
   );
 }
 
-function AvatarPicker({ selectedAvatar, onSelect }: { selectedAvatar: string; onSelect: (avatar: string) => void }) {
+function AvatarPicker({
+  selectedAvatar,
+  googlePhotoUrl,
+  onSelect,
+}: {
+  selectedAvatar: string;
+  googlePhotoUrl: string | null;
+  onSelect: (avatar: string) => void;
+}) {
+  const googleKey = "google";
+  const hasGooglePhoto = !!googlePhotoUrl;
+
   return (
     <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm">
       <SectionHeader title="Foto Profil" />
       <div className="grid grid-cols-6 gap-2.5">
+        {hasGooglePhoto && (
+          <button
+            key={googleKey}
+            className="aspect-square overflow-hidden rounded-2xl border-2 border-b-4 bg-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0.5"
+            style={{
+              borderColor: selectedAvatar === googleKey ? "rgba(32,80,114,0.33)" : "#e7e5e4",
+              borderBottomColor: selectedAvatar === googleKey ? "#153d5c" : "#d6d3d1",
+              background: selectedAvatar === googleKey ? "#dcecf7" : "#ffffff",
+            }}
+            onClick={() => onSelect(googleKey)}
+            type="button"
+            aria-label="Pilih foto profil Google"
+          >
+            <img
+              src={googlePhotoUrl}
+              alt="Foto profil Google"
+              className="h-full w-full object-cover"
+            />
+          </button>
+        )}
         {avatarOptions.map((avatar) => {
           const isSelected = avatar === selectedAvatar;
 
@@ -330,6 +374,94 @@ function BadgePreview({ name, icon }: { name: string; icon: string }) {
         {icon}
       </div>
       <span className="line-clamp-2 text-[10px] font-bold leading-tight text-stone-600">{name}</span>
+    </div>
+  );
+}
+
+function SubscriptionCard({
+  isPremium,
+  startsAt,
+  endsAt,
+}: {
+  isPremium: boolean;
+  startsAt: string | null | undefined;
+  endsAt: string | null;
+}) {
+  if (isPremium && startsAt && endsAt) {
+    const daysLeft = Math.ceil(
+      (new Date(endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+
+    return (
+      <div
+        className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-b-4 bg-white shadow-sm"
+        style={{
+          borderColor: "#fcd34d",
+          borderBottomColor: "#f59e0b",
+          background: "linear-gradient(180deg, #fffbeb 0%, #ffffff 100%)",
+        }}
+      >
+        <div className="flex items-center gap-3 px-4 py-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-amber-200 bg-amber-100 text-amber-600">
+            <CrownIcon />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-amber-900">Premium</span>
+              <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                Aktif
+              </span>
+            </div>
+            {daysLeft <= 7 && daysLeft > 0 && (
+              <p className="m-0 mt-0.5 text-[11px] font-semibold text-amber-700">
+                Berakhir dalam {daysLeft} hari
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="border-t border-amber-100">
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
+            <span className="text-xs font-bold tracking-wide text-amber-700/70">
+              Berlangganan sejak
+            </span>
+            <span className="text-sm font-bold text-amber-900">
+              {new Date(startsAt).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-4 border-t border-amber-50 px-4 py-3">
+            <span className="text-xs font-bold tracking-wide text-amber-700/70">
+              Berakhir pada
+            </span>
+            <span className="text-sm font-bold text-amber-900">
+              {new Date(endsAt).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-stone-200 bg-stone-100 text-stone-500">
+          <CrownIcon />
+        </div>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm font-bold text-stone-700">Gratis</span>
+          <p className="m-0 mt-0.5 text-[11px] font-semibold text-stone-500">
+            Upgrade ke Premium untuk akses penuh
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

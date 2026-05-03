@@ -479,13 +479,13 @@ function LandingNav() {
         <div className="flex shrink-0 items-center gap-2">
           <Link
             to="/auth/login"
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#dce9e4] bg-white px-3.5 py-2 text-[13px] font-black text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#dce9e4] bg-white px-3.5 py-2 text-[13px] font-semibold text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
           >
             Masuk
           </Link>
           <Link
             to="/tryout"
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[var(--brand-primary)] px-3.5 py-2 text-[13px] font-black text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[var(--brand-primary)] px-3.5 py-2 text-[13px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
           >
             Daftar Gratis
           </Link>
@@ -2079,7 +2079,7 @@ function HeroPrimaryLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] bg-[var(--brand-primary)] px-8 py-5 text-[17px] font-black text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
+      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] bg-[var(--brand-primary)] px-8 py-5 text-[17px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
     >
       <BookFrameIcon />
       {children}
@@ -2097,7 +2097,7 @@ function HeroSecondaryLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] border border-[#e3ece8] bg-white px-8 py-5 text-[17px] font-black text-stone-900 no-underline shadow-[0_12px_24px_rgba(39,68,58,0.08)] transition-transform duration-200 hover:-translate-y-0.5"
+      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] border border-[#e3ece8] bg-white px-8 py-5 text-[17px] font-semibold text-stone-900 no-underline shadow-[0_12px_24px_rgba(39,68,58,0.08)] transition-transform duration-200 hover:-translate-y-0.5"
     >
       <LoginArrowIcon />
       {children}

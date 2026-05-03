@@ -4,8 +4,10 @@ export interface User {
   email: string;
   institution: string;
   avatar: string;
+  googlePhotoUrl: string | null;
   isAdmin: boolean;
   adminTier: "admin" | "super_admin" | null;
+  entitlementStartsAt?: string | null;
   entitlementEndsAt: string | null;
   level: number;
   xp: number;
@@ -25,8 +27,10 @@ export const currentUser: User = {
   email: "dewi@example.com",
   institution: "Universitas Airlangga",
   avatar: "🦉",
+  googlePhotoUrl: "https://i.pravatar.cc/150?u=dewi@example.com",
   isAdmin: false,
   adminTier: null,
+  entitlementStartsAt: null,
   entitlementEndsAt: null,
   level: 12,
   xp: 4280,
@@ -46,8 +50,10 @@ export const mockAdminUser: User = {
   email: "admin@ilmorax.com",
   institution: "IlmoraX HQ",
   avatar: "🛡️",
+  googlePhotoUrl: null,
   isAdmin: true,
   adminTier: "super_admin",
+  entitlementStartsAt: "2026-01-01",
   entitlementEndsAt: "2099-12-31",
   level: 50,
   xp: 100000,
@@ -69,8 +75,10 @@ export const mockUsers: User[] = [
     email: "dewi.rahayu@example.com",
     institution: "Universitas Airlangga",
     avatar: "👩‍⚕️",
+    googlePhotoUrl: "https://i.pravatar.cc/150?u=dewi.rahayu@example.com",
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: "2026-04-01",
     entitlementEndsAt: "2026-06-15",
     level: 18,
     xp: 8900,
@@ -89,8 +97,10 @@ export const mockUsers: User[] = [
     email: "budi.s@example.com",
     institution: "Universitas Gadjah Mada",
     avatar: "👨‍⚕️",
+    googlePhotoUrl: null,
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: null,
     entitlementEndsAt: null,
     level: 15,
     xp: 5200,
@@ -109,8 +119,10 @@ export const mockUsers: User[] = [
     email: "rani.s@example.com",
     institution: "Universitas Indonesia",
     avatar: "👩",
+    googlePhotoUrl: "https://i.pravatar.cc/150?u=rani.s@example.com",
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: "2026-03-01",
     entitlementEndsAt: "2026-08-01",
     level: 16,
     xp: 5800,
@@ -129,8 +141,10 @@ export const mockUsers: User[] = [
     email: "joko.p@example.com",
     institution: "Universitas Padjadjaran",
     avatar: "🧑‍🔬",
+    googlePhotoUrl: null,
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: null,
     entitlementEndsAt: null,
     level: 10,
     xp: 1850,
@@ -149,8 +163,10 @@ export const mockUsers: User[] = [
     email: "siti.a@example.com",
     institution: "Universitas Hasanuddin",
     avatar: "👩‍🎓",
+    googlePhotoUrl: null,
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: "2026-04-10",
     entitlementEndsAt: "2026-07-01",
     level: 14,
     xp: 4100,
@@ -169,8 +185,10 @@ export const mockUsers: User[] = [
     email: "andi.w@example.com",
     institution: "Universitas Brawijaya",
     avatar: "👨",
+    googlePhotoUrl: null,
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: null,
     entitlementEndsAt: null,
     level: 8,
     xp: 1200,
@@ -189,8 +207,10 @@ export const mockUsers: User[] = [
     email: "maya.p@example.com",
     institution: "Universitas Diponegoro",
     avatar: "👩‍💻",
+    googlePhotoUrl: null,
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: null,
     entitlementEndsAt: null,
     level: 6,
     xp: 550,
@@ -209,8 +229,10 @@ export const mockUsers: User[] = [
     email: "rizky.f@example.com",
     institution: "Universitas Andalas",
     avatar: "🧑‍💻",
+    googlePhotoUrl: null,
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: "2026-03-15",
     entitlementEndsAt: "2026-09-01",
     level: 20,
     xp: 10500,
@@ -229,8 +251,10 @@ export const mockUsers: User[] = [
     email: "lina.k@example.com",
     institution: "Universitas Udayana",
     avatar: "👩‍🏫",
+    googlePhotoUrl: null,
     isAdmin: false,
     adminTier: null,
+    entitlementStartsAt: null,
     entitlementEndsAt: null,
     level: 4,
     xp: 200,
@@ -250,13 +274,28 @@ export function isPremium(user: User): boolean {
   return new Date(user.entitlementEndsAt) > new Date();
 }
 
+export function getGradeForLevel(level: number): string {
+  if (level >= 46) return "Pharmacy Authority";
+  if (level >= 36) return "Pharmacy Legend";
+  if (level >= 26) return "Pharmacy Expert";
+  if (level >= 16) return "Pharmacy Professional";
+  if (level >= 11) return "Pharmacy Practitioner";
+  if (level >= 6) return "Pharmacy Trainee";
+  if (level >= 3) return "Pharmacy Novice";
+  return "Pharmacy Newbie";
+}
+
 export function getLevelGrade(user: User): string {
-  if (user.level >= 46) return "Pharmacy Authority";
-  if (user.level >= 36) return "Pharmacy Legend";
-  if (user.level >= 26) return "Pharmacy Expert";
-  if (user.level >= 16) return "Pharmacy Professional";
-  if (user.level >= 11) return "Pharmacy Practitioner";
-  if (user.level >= 6) return "Pharmacy Trainee";
-  if (user.level >= 3) return "Pharmacy Novice";
+  return getGradeByLevel(user.level);
+}
+
+export function getGradeByLevel(level: number): string {
+  if (level >= 46) return "Pharmacy Authority";
+  if (level >= 36) return "Pharmacy Legend";
+  if (level >= 26) return "Pharmacy Expert";
+  if (level >= 16) return "Pharmacy Professional";
+  if (level >= 11) return "Pharmacy Practitioner";
+  if (level >= 6) return "Pharmacy Trainee";
+  if (level >= 3) return "Pharmacy Novice";
   return "Pharmacy Newbie";
 }

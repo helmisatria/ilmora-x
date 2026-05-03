@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import { currentUser, mockUsers, type User } from "./users";
+import { currentUser, mockUsers, getGradeForLevel, type User } from "./users";
 import { mockAttempts, type Attempt } from "./questions";
 import { mockBadgeProgress } from "./badges";
 
@@ -8,9 +8,11 @@ export interface LeaderboardEntry {
   n: string;
   xp: number;
   a: string;
+  photoUrl?: string;
   ch: "up" | "down";
   me: boolean;
   level: number;
+  grade: string;
 }
 
 export interface AppState {
@@ -38,9 +40,11 @@ const leaderboardData: LeaderboardEntry[] = mockUsers
     n: u.name,
     xp: u.weeklyXp,
     a: u.avatar,
+    photoUrl: u.googlePhotoUrl || undefined,
     ch: (i === 0 ? "up" : i === 1 ? "up" : i % 2 === 0 ? "up" : "down") as "up" | "down",
     me: u.id === currentUser.id,
     level: u.level,
+    grade: getGradeForLevel(u.level),
   }));
 
 const AppContext = createContext<AppState | null>(null);
@@ -53,8 +57,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isPremium = premiumOverride !== null ? premiumOverride : checkPremium(user);
 
   const togglePremium = useCallback(() => {
-    setPremiumOverride((prev) => (prev !== null ? !prev : !checkPremium(user)));
-  }, [user]);
+    const nextPremium = premiumOverride !== null ? !premiumOverride : !checkPremium(user);
+    setPremiumOverride(nextPremium);
+    if (nextPremium) {
+      const today = new Date();
+      const end = new Date();
+      end.setDate(today.getDate() + 30);
+      setUser((u) => ({
+        ...u,
+        entitlementStartsAt: today.toISOString().split('T')[0],
+        entitlementEndsAt: end.toISOString().split('T')[0],
+      }));
+    } else {
+      setUser((u) => ({
+        ...u,
+        entitlementStartsAt: null,
+        entitlementEndsAt: null,
+      }));
+    }
+  }, [premiumOverride, user, setUser]);
 
   const addAttempt = useCallback((attempt: Attempt) => {
     setAttemptState((prev) => [...prev, attempt]);
