@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { useApp, questionBank, tryouts, mockMateri } from "../data";
@@ -34,22 +34,39 @@ export const Route = createFileRoute("/results/$attemptId/review")({
 function ReviewComponent() {
   const { attemptId } = Route.useParams();
   const search = Route.useSearch();
-  const { attempts, isPremium } = useApp();
+  const navigate = useNavigate();
+  const { attempts, hasPremiumMembership, canAccessTryout, canAccessQuestion } = useApp();
   const attempt = attempts.find((a) => a.id === parseInt(attemptId, 10)) || attempts[0];
   const tryout = tryouts.find((t) => t.id === attempt.tryoutId);
   const questions = questionBank[attempt.tryoutId] || [];
+  const hasFullTryoutAccess = Boolean(tryout && canAccessTryout(tryout) && tryout.accessLevel !== "free");
 
   const [filter, setFilter] = useState<ReviewFilter>(search.filter ?? "all");
   const [showPremium, setShowPremium] = useState(false);
+
+  const openPremiumAccess = () => {
+    if (tryout?.accessLevel === "platinum") {
+      setShowPremium(true);
+      return;
+    }
+
+    navigate({ to: "/premium" });
+  };
 
   const headerRef = useRef<HTMLDivElement>(null);
   const questionsRef = useRef<HTMLDivElement>(null);
 
   const lockedIds = useMemo(() => {
-    if (isPremium) return new Set<number>();
+    if (hasPremiumMembership || hasFullTryoutAccess) return new Set<number>();
+
     const locked = new Set<number>();
     let wrongIdx = 0;
     for (const q of questions) {
+      if (tryout && !canAccessQuestion(q, tryout)) {
+        locked.add(q.id);
+        continue;
+      }
+
       const ans = attempt.answers.find((a) => a.questionId === q.id);
       const isWrongOrEmpty = !ans || !ans.correct;
       if (isWrongOrEmpty) {
@@ -58,7 +75,7 @@ function ReviewComponent() {
       }
     }
     return locked;
-  }, [questions, attempt.answers, isPremium]);
+  }, [questions, attempt.answers, tryout, canAccessQuestion, hasPremiumMembership, hasFullTryoutAccess]);
 
   const filteredQuestions = questions.filter((q) => {
     const ans = attempt.answers.find((a) => a.questionId === q.id);
@@ -299,7 +316,7 @@ function ReviewComponent() {
                             </p>
                             <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm">
                               <button
-                                onClick={() => setShowPremium(true)}
+                                onClick={openPremiumAccess}
                                 className="px-6 py-3 rounded-xl bg-amber-600 text-white font-bold text-sm border-b-4 border-amber-800 hover:bg-amber-700 transition-all active:translate-y-[2px] active:border-b-0 shadow-lg"
                               >
                                 <LockIcon className="w-4 h-4 inline mr-2" />
@@ -314,7 +331,7 @@ function ReviewComponent() {
                     </div>
 
                     {/* Video */}
-                    {q.videoUrl && !premiumLocked && isPremium && (
+                    {q.videoUrl && !premiumLocked && (hasPremiumMembership || hasFullTryoutAccess) && (
                       <div className="mt-4">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-8 h-8 rounded-lg bg-rose-100 border-2 border-rose-200 flex items-center justify-center text-rose-600">
@@ -334,7 +351,7 @@ function ReviewComponent() {
                       </div>
                     )}
 
-                    {q.videoUrl && !isPremium && (
+                    {q.videoUrl && !(hasPremiumMembership || hasFullTryoutAccess) && (
                       <div className="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-200 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-amber-100 border-2 border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
                           <PlayIcon className="w-4 h-4" />
@@ -345,7 +362,7 @@ function ReviewComponent() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setShowPremium(true)}
+                          onClick={openPremiumAccess}
                           className="shrink-0 px-4 py-2 rounded-lg bg-amber-600 text-white font-bold text-xs border-b-4 border-amber-800 hover:bg-amber-700 transition-all active:translate-y-[2px] active:border-b-0"
                         >
                           Unlock
@@ -354,7 +371,7 @@ function ReviewComponent() {
                     )}
 
                     {/* Related Materi */}
-                    {!isCorrect && relatedMateri && isPremium && (
+                    {!isCorrect && relatedMateri && (hasPremiumMembership || hasFullTryoutAccess) && (
                       <Link
                         to="/coming-soon"
                         search={{ feature: "materi" }}
@@ -401,6 +418,8 @@ function ReviewComponent() {
         isOpen={showPremium}
         onClose={() => setShowPremium(false)}
         onUpgrade={() => setShowPremium(false)}
+        hasPremiumMembership={hasPremiumMembership}
+        tryout={tryout}
       />
     </main>
   );

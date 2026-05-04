@@ -26,7 +26,7 @@ type Phase = "preparation" | "countdown" | "active";
 function TryoutTakeComponent() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { user, attempts, addAttempt } = useApp();
+  const { user, attempts, addAttempt, canAccessTryout } = useApp();
   const testId = parseInt(id, 10);
   const [isReady, setIsReady] = useState(false);
   const [phase, setPhase] = useState<Phase>("preparation");
@@ -54,6 +54,11 @@ function TryoutTakeComponent() {
     setIsReady(true);
     setAnswers(new Array(questions.length).fill(undefined));
   }, [testId]);
+
+  useEffect(() => {
+    if (canAccessTryout(tryout)) return;
+    navigate({ to: "/tryout" });
+  }, [canAccessTryout, navigate, tryout]);
 
   useEffect(() => {
     if (phase !== "active") return;
@@ -533,7 +538,7 @@ function PreparationScreen({
           </ul>
         </div>
 
-        {tryout.isPremium && (
+        {tryout.accessLevel !== "free" && (
           <div
             className="mt-4 rounded-[var(--radius-lg)] p-4 text-[13px] font-medium flex items-start gap-3 border-2"
             style={{
@@ -546,8 +551,8 @@ function PreparationScreen({
               <CrownIcon />
             </span>
             <div>
-              <div className="font-semibold mb-0.5">Modul Premium</div>
-              Modul ini eksklusif untuk member premium. Nikmati soal-soal pilihan dan pembahasan lengkap.
+              <div className="font-semibold mb-0.5">Modul {tryout.accessLevel === "platinum" ? "Platinum" : "Premium"}</div>
+              Modul ini membuka soal pilihan dan pembahasan lengkap untuk akses yang sesuai.
             </div>
           </div>
         )}

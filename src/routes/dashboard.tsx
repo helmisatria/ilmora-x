@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
-import { PremiumDialog } from "../components/PremiumDialog";
 import { getCategoryColor, getLevelForXp, getNextLevel, getXpProgress, tryouts, useApp, type Tryout } from "../data";
 
 export const Route = createFileRoute("/dashboard")({
@@ -60,8 +59,7 @@ const dashboardPaletteStorageKey = "ilmorax-dashboard-palette";
 const defaultDashboardPaletteId = "clinic";
 
 function DashboardComponent() {
-  const { user, isPremium, togglePremium } = useApp();
-  const [showPremium, setShowPremium] = useState(false);
+  const { user, hasPremiumMembership, togglePremiumMembership, canAccessTryout } = useApp();
   const [paletteId, setPaletteId] = useState<DashboardPalette["id"]>(defaultDashboardPaletteId);
   const [showToneLab, setShowToneLab] = useState(false);
   const navigate = useNavigate();
@@ -127,7 +125,7 @@ function DashboardComponent() {
         <div className="page-lane relative -mt-4 pb-28">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <button
-              className={`btn btn-primary px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] ${isPremium ? "col-span-full justify-self-center" : "col-span-1 md:col-span-2"}`}
+              className={`btn btn-primary px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] ${hasPremiumMembership ? "col-span-full justify-self-center" : "col-span-1 md:col-span-2"}`}
               onClick={() => navigate({ to: "/tryout" })}
               type="button"
             >
@@ -135,7 +133,7 @@ function DashboardComponent() {
               Mulai Tryout
             </button>
 
-            {!isPremium && (
+            {!hasPremiumMembership && (
               <button
                 className="btn col-span-1 px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] md:col-span-2"
                 style={{
@@ -143,7 +141,7 @@ function DashboardComponent() {
                   color: "#fff7ed",
                   borderBottomColor: "#a16207",
                 }}
-                onClick={() => setShowPremium(true)}
+                onClick={() => navigate({ to: "/premium" })}
                 type="button"
               >
                 <CrownIcon />
@@ -163,13 +161,13 @@ function DashboardComponent() {
               <SectionHeader title="Try-out Tersedia" action="Lihat semua" to="/tryout" />
               <div className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-1">
                 {tryouts.slice(0, 4).map((tryout) => (
-                  <TryoutRow key={tryout.id} tryout={tryout} isLocked={tryout.isPremium && !isPremium} />
+                  <TryoutRow key={tryout.id} tryout={tryout} isLocked={!canAccessTryout(tryout)} />
                 ))}
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-              {isPremium ? (
+              {hasPremiumMembership ? (
                 <FeatureCallout
                   title="Evaluation Dashboard"
                   description="Lihat analisis performa lengkapmu"
@@ -179,7 +177,7 @@ function DashboardComponent() {
                   icon={<ChartIcon />}
                 />
               ) : (
-                <PremiumFeatureCallout onOpenPremium={() => setShowPremium(true)} />
+                <PremiumFeatureCallout />
               )}
 
               <FeatureCallout
@@ -214,11 +212,11 @@ function DashboardComponent() {
 
           <div className="mt-4 mb-20 text-center">
             <button
-              onClick={togglePremium}
+              onClick={togglePremiumMembership}
               className="text-xs text-stone-300 hover:text-stone-500 transition-colors font-medium"
               type="button"
             >
-              Premium mode {isPremium ? "ON" : "OFF"}
+              Premium mode {hasPremiumMembership ? "ON" : "OFF"}
             </button>
           </div>
         </div>
@@ -226,15 +224,6 @@ function DashboardComponent() {
         <BottomNav active="learn" />
       </div>
       </div>
-
-      <PremiumDialog
-        isOpen={showPremium}
-        onClose={() => setShowPremium(false)}
-        onUpgrade={() => {
-          setShowPremium(false);
-          navigate({ to: "/premium" });
-        }}
-      />
     </>
   );
 }
@@ -489,7 +478,7 @@ function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) 
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
-            {isLocked ? "Premium" : `${tryout.duration} menit`}
+            {isLocked ? getAccessLabel(tryout.accessLevel) : `${tryout.duration} menit`}
           </span>
         </div>
         <div className="text-sm text-stone-400 font-medium">{tryout.questionCount} soal</div>
@@ -499,7 +488,13 @@ function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) 
   );
 }
 
-function PremiumFeatureCallout({ onOpenPremium }: { onOpenPremium: () => void }) {
+function getAccessLabel(accessLevel: Tryout["accessLevel"]) {
+  if (accessLevel === "platinum") return "Platinum";
+  if (accessLevel === "premium") return "Premium";
+  return "Gratis";
+}
+
+function PremiumFeatureCallout() {
   return (
     <div className="relative overflow-hidden rounded-[var(--radius-xl)] p-5 shadow-sm border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] text-amber-50">
       <div
@@ -535,19 +530,18 @@ function PremiumFeatureCallout({ onOpenPremium }: { onOpenPremium: () => void })
           <PremiumMiniStat label="Latihan" value="Target" />
         </div>
 
-        <button
+        <Link
+          to="/premium"
           className="btn w-full mt-4"
           style={{
             background: "#f5b544",
             color: "#2f281c",
             borderBottomColor: "#b45309",
           }}
-          onClick={onOpenPremium}
-          type="button"
         >
           <CrownIcon />
           Buka Premium
-        </button>
+        </Link>
       </div>
     </div>
   );

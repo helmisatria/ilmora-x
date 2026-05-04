@@ -269,11 +269,6 @@ export const mockUsers: User[] = [
   },
 ];
 
-export function isPremium(user: User): boolean {
-  if (!user.entitlementEndsAt) return false;
-  return new Date(user.entitlementEndsAt) > new Date();
-}
-
 export function getGradeForLevel(level: number): string {
   if (level >= 46) return "Pharmacy Authority";
   if (level >= 36) return "Pharmacy Legend";

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
@@ -18,9 +18,11 @@ export const Route = createFileRoute("/tryout")({
 
 function TryoutComponent() {
   const location = useLocation();
-  const { isPremium } = useApp();
+  const navigate = useNavigate();
+  const { hasPremiumMembership, canAccessTryout, ownsTryout } = useApp();
   const [showPremium, setShowPremium] = useState(false);
-  const [filter, setFilter] = useState<"all" | "free" | "premium">("all");
+  const [selectedTryout, setSelectedTryout] = useState<Tryout | null>(null);
+  const [filter, setFilter] = useState<"all" | "free" | "premium" | "platinum" | "owned">("all");
 
   if (location.pathname !== "/tryout") {
     return <Outlet />;
@@ -28,8 +30,8 @@ function TryoutComponent() {
 
   const filtered = tryouts.filter((t) => {
     if (filter === "all") return true;
-    if (filter === "free") return !t.isPremium;
-    return t.isPremium;
+    if (filter === "owned") return ownsTryout(t.id);
+    return t.accessLevel === filter;
   });
 
   return (
@@ -56,7 +58,7 @@ function TryoutComponent() {
           </div>
 
           <div className="page-lane flex gap-2 overflow-x-auto pb-1">
-            {(["all", "free", "premium"] as const).map((option) => (
+            {(["all", "free", "premium", "platinum", "owned"] as const).map((option) => (
               <FilterButton
                 key={option}
                 filter={option}
@@ -73,8 +75,17 @@ function TryoutComponent() {
               <TryoutCard
                 key={tryout.id}
                 tryout={tryout}
-                isLocked={tryout.isPremium && !isPremium}
-                onLockedClick={() => setShowPremium(true)}
+                isLocked={!canAccessTryout(tryout)}
+                isOwned={ownsTryout(tryout.id)}
+                onLockedClick={() => {
+                  if (tryout.accessLevel === "premium") {
+                    navigate({ to: "/premium" });
+                    return;
+                  }
+
+                  setSelectedTryout(tryout);
+                  setShowPremium(true);
+                }}
               />
             ))}
           </div>
@@ -90,6 +101,8 @@ function TryoutComponent() {
         onUpgrade={() => {
           setShowPremium(false);
         }}
+        hasPremiumMembership={hasPremiumMembership}
+        tryout={selectedTryout}
       />
     </>
   );
@@ -100,7 +113,7 @@ function FilterButton({
   isActive,
   onClick,
 }: {
-  filter: "all" | "free" | "premium";
+  filter: "all" | "free" | "premium" | "platinum" | "owned";
   isActive: boolean;
   onClick: () => void;
 }) {
@@ -129,10 +142,12 @@ function FilterButton({
 function TryoutCard({
   tryout,
   isLocked,
+  isOwned,
   onLockedClick,
 }: {
   tryout: Tryout;
   isLocked: boolean;
+  isOwned: boolean;
   onLockedClick: () => void;
 }) {
   const categoryColor = getCategoryColor(tryout.categoryId);
@@ -151,7 +166,7 @@ function TryoutCard({
         onLockedClick();
       }}
     >
-      {tryout.isPremium && <PremiumPill />}
+      {tryout.accessLevel !== "free" && <AccessPill accessLevel={tryout.accessLevel} isOwned={isOwned} />}
 
       <div
         className="w-14 h-14 rounded-2xl flex items-center justify-center border-2"
@@ -194,11 +209,16 @@ function TryoutCard({
   );
 }
 
-function PremiumPill() {
+function AccessPill({ accessLevel, isOwned }: { accessLevel: Tryout["accessLevel"]; isOwned: boolean }) {
+  const label = isOwned ? "Dimiliki" : accessLevel === "platinum" ? "Platinum" : "Premium";
+  const className = accessLevel === "platinum" && !isOwned
+    ? "absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-sky-500 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm"
+    : "absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-amber px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm";
+
   return (
-    <div className="absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-amber px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
+    <div className={className}>
       <CrownIcon />
-      Premium
+      {label}
     </div>
   );
 }
@@ -214,7 +234,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState({ filter }: { filter: "all" | "free" | "premium" }) {
+function EmptyState({ filter }: { filter: "all" | "free" | "premium" | "platinum" | "owned" }) {
   return (
     <div className="mt-5 bg-white rounded-[var(--radius-lg)] p-5 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
       <div className="mx-auto w-14 h-14 rounded-2xl bg-primary-tint text-primary border-2 border-primary-soft flex items-center justify-center">
@@ -228,9 +248,11 @@ function EmptyState({ filter }: { filter: "all" | "free" | "premium" }) {
   );
 }
 
-function getFilterLabel(filter: "all" | "free" | "premium") {
+function getFilterLabel(filter: "all" | "free" | "premium" | "platinum" | "owned") {
   if (filter === "free") return "Gratis";
   if (filter === "premium") return "Premium";
+  if (filter === "platinum") return "Platinum";
+  if (filter === "owned") return "Dimiliki";
   return "Semua";
 }
 

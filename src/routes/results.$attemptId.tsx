@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApp, tryouts, questionBank, type WrongAnswer } from "../data";
 import { runConfetti } from "../utils/confetti";
@@ -23,13 +23,15 @@ export const Route = createFileRoute("/results/$attemptId")({
 function ResultsComponent() {
   const { attemptId } = Route.useParams();
   const location = useLocation();
-  const { user, isPremium, attempts } = useApp();
+  const navigate = useNavigate();
+  const { user, hasPremiumMembership, canAccessTryout, attempts } = useApp();
   const isChildRoute = location.pathname !== `/results/${attemptId}`;
 
   const attempt = attempts.find((a) => a.id === parseInt(attemptId, 10)) || attempts[0];
 
   const tryout = tryouts.find((t) => t.id === attempt.tryoutId);
   const questions = questionBank[attempt.tryoutId] || [];
+  const hasFullTryoutAccess = Boolean(tryout && canAccessTryout(tryout) && tryout.accessLevel !== "free");
 
   const score = attempt.score;
   const correct = attempt.correct;
@@ -70,11 +72,21 @@ function ResultsComponent() {
         explanation: q.explanation,
         explanationPreview: q.explanation.slice(0, 120) + "...",
         videoUrl: q.videoUrl,
-        isPremium: q.isPremium,
+        accessLevel: q.accessLevel,
         user: ans !== undefined ? q.options[ans.selected] : "Tidak dijawab",
       };
     });
-  const lockedCount = isPremium ? 0 : Math.max(0, wrongs.length - FREE_WRONG_PREVIEW);
+  const hasFullReviewAccess = hasPremiumMembership || hasFullTryoutAccess;
+  const lockedCount = hasFullReviewAccess ? 0 : Math.max(0, wrongs.length - FREE_WRONG_PREVIEW);
+
+  const openPremiumAccess = () => {
+    if (tryout?.accessLevel === "platinum") {
+      setShowPremiumDialog(true);
+      return;
+    }
+
+    navigate({ to: "/premium" });
+  };
 
   useEffect(() => {
     const duration = 900;
@@ -128,7 +140,7 @@ function ResultsComponent() {
 
         <div className="page-lane relative -mt-4 pb-28">
           {lockedCount > 0 && (
-            <PremiumUnlockBanner count={lockedCount} onOpen={() => setShowPremiumDialog(true)} />
+            <PremiumUnlockBanner count={lockedCount} onOpen={openPremiumAccess} />
           )}
 
           <div
@@ -286,7 +298,7 @@ function ResultsComponent() {
                   <WrongCard
                     key={w.id}
                     wrong={w}
-                    locked={!isPremium && i >= FREE_WRONG_PREVIEW}
+                    locked={!hasFullReviewAccess && i >= FREE_WRONG_PREVIEW}
                     attemptId={attempt.id}
                   />
                 ))}
@@ -313,6 +325,8 @@ function ResultsComponent() {
         isOpen={showPremiumDialog}
         onClose={() => setShowPremiumDialog(false)}
         onUpgrade={() => setShowPremiumDialog(false)}
+        hasPremiumMembership={hasPremiumMembership}
+        tryout={tryout}
       />
     </>
   );

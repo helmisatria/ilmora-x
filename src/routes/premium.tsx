@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { TopBar } from "../components/Navigation";
-import { packages } from "../data";
-import type { Package } from "../data/entitlements";
+import { membershipProducts } from "../data";
+import type { Product } from "../data/entitlements";
 
 export const Route = createFileRoute("/premium")({
   head: () => ({
@@ -27,9 +27,9 @@ const features = [
 ] as const;
 
 function PremiumComponent() {
-  const [selectedPackageId, setSelectedPackageId] = useState(packages.find((pkg) => pkg.active)?.id ?? 1);
-  const selectedPackage = packages.find((pkg) => pkg.id === selectedPackageId) ?? packages[0];
-  const activePackages = packages.filter((pkg) => pkg.active);
+  const [selectedProductId, setSelectedProductId] = useState(membershipProducts.find((product) => product.active)?.id ?? 1);
+  const selectedProduct = membershipProducts.find((product) => product.id === selectedProductId) ?? membershipProducts[0];
+  const activeProducts = membershipProducts.filter((product) => product.active);
 
   return (
     <main
@@ -77,12 +77,12 @@ function PremiumComponent() {
           <div>
             <SectionHeader title="Pilih Paket" />
             <div className="grid gap-3">
-              {activePackages.map((pkg) => (
+              {activeProducts.map((product) => (
                 <PackageCard
-                  key={pkg.id}
-                  pkg={pkg}
-                  isSelected={selectedPackageId === pkg.id}
-                  onSelect={() => setSelectedPackageId(pkg.id)}
+                  key={product.id}
+                  product={product}
+                  isSelected={selectedProductId === product.id}
+                  onSelect={() => setSelectedProductId(product.id)}
                 />
               ))}
             </div>
@@ -110,7 +110,7 @@ function PremiumComponent() {
 
             <Link
               to="/checkout"
-              search={{ packageId: selectedPackage.id }}
+              search={{ productId: selectedProduct.id }}
               className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
               style={{
                 background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
@@ -120,7 +120,7 @@ function PremiumComponent() {
             >
               <span>Lanjut bayar</span>
               <span className="flex items-center gap-2">
-                Rp{selectedPackage.price.toLocaleString("id-ID")}
+                Rp{selectedProduct.price.toLocaleString("id-ID")}
                 <ArrowRightIcon />
               </span>
             </Link>
@@ -173,16 +173,16 @@ function PremiumHeroPanel({ className = "" }: { className?: string }) {
 }
 
 function PackageCard({
-  pkg,
+  product,
   isSelected,
   onSelect,
 }: {
-  pkg: Package;
+  product: Product;
   isSelected: boolean;
   onSelect: () => void;
 }) {
-  const savingPercent = getSavingPercent(pkg);
-  const isPopular = pkg.id === 2;
+  const savingPercent = getSavingPercent(product);
+  const isPopular = product.id === 2;
 
   return (
     <button
@@ -210,15 +210,15 @@ function PackageCard({
         </span>
 
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-          <b className="text-base font-bold leading-tight text-stone-800 sm:text-lg">{pkg.name}</b>
-          <DurationPill days={pkg.durationDays} />
+          <b className="text-base font-bold leading-tight text-stone-800 sm:text-lg">{product.name}</b>
+          <DurationPill days={product.durationDays ?? 0} />
           {isPopular && <StatusPill label="Populer" accent={premiumAccent} />}
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-4">
           <div className="text-right">
             <div className="text-lg font-bold leading-none tracking-tight text-stone-900 sm:text-xl">
-              Rp{pkg.price.toLocaleString("id-ID")}
+              Rp{product.price.toLocaleString("id-ID")}
             </div>
           </div>
 
@@ -240,9 +240,9 @@ function PackageCard({
   );
 }
 
-function getSavingPercent(pkg: Package) {
-  if (pkg.id === 2) return 15;
-  if (pkg.id === 3) return 32;
+function getSavingPercent(product: Product) {
+  if (product.id === 2) return 15;
+  if (product.id === 3) return 32;
 
   return 0;
 }

@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { currentUser, mockUsers, getGradeForLevel, type User } from "./users";
-import { mockAttempts, type Attempt } from "./questions";
+import { mockAttempts, type Attempt, type Question, type Tryout } from "./questions";
 import { mockBadgeProgress } from "./badges";
+import { mockEntitlements, type Entitlement } from "./entitlements";
 
 export interface LeaderboardEntry {
   r: number;
@@ -17,19 +18,34 @@ export interface LeaderboardEntry {
 
 export interface AppState {
   user: User;
-  isPremium: boolean;
-  togglePremium: () => void;
+  hasPremiumMembership: boolean;
+  ownedTryoutIds: number[];
+  togglePremiumMembership: () => void;
   setUser: React.Dispatch<React.SetStateAction<User>>;
   badgeProgress: typeof mockBadgeProgress;
   leaderboardUsers: LeaderboardEntry[];
   attempts: Attempt[];
+  entitlements: Entitlement[];
   addAttempt: (attempt: Attempt) => void;
+  addEntitlement: (entitlement: Entitlement) => void;
+  canAccessTryout: (tryout: Tryout) => boolean;
+  canAccessQuestion: (question: Question, tryout: Tryout) => boolean;
+  ownsTryout: (tryoutId: number) => boolean;
   updateAttempt: (id: number, partial: Partial<Attempt>) => void;
 }
 
-function checkPremium(user: User): boolean {
+function checkPremiumMembership(user: User): boolean {
   if (!user.entitlementEndsAt) return false;
   return new Date(user.entitlementEndsAt) > new Date();
+}
+
+function getOwnedTryoutIds(userId: number, entitlements: Entitlement[]) {
+  return entitlements
+    .filter((entitlement) => entitlement.userId === userId)
+    .filter((entitlement) => entitlement.contentType === "tryout")
+    .filter((entitlement) => !entitlement.endsAt || new Date(entitlement.endsAt) > new Date())
+    .map((entitlement) => entitlement.contentId)
+    .filter((contentId): contentId is number => typeof contentId === "number");
 }
 
 const leaderboardData: LeaderboardEntry[] = mockUsers
@@ -53,11 +69,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User>(currentUser);
   const [premiumOverride, setPremiumOverride] = useState<boolean | null>(null);
   const [attemptState, setAttemptState] = useState<Attempt[]>(mockAttempts);
+  const [entitlementState, setEntitlementState] = useState<Entitlement[]>(mockEntitlements);
 
-  const isPremium = premiumOverride !== null ? premiumOverride : checkPremium(user);
+  const hasPremiumMembership = premiumOverride !== null ? premiumOverride : checkPremiumMembership(user);
+  const ownedTryoutIds = getOwnedTryoutIds(user.id, entitlementState);
 
-  const togglePremium = useCallback(() => {
-    const nextPremium = premiumOverride !== null ? !premiumOverride : !checkPremium(user);
+  const togglePremiumMembership = useCallback(() => {
+    const nextPremium = premiumOverride !== null ? !premiumOverride : !checkPremiumMembership(user);
     setPremiumOverride(nextPremium);
     if (nextPremium) {
       const today = new Date();
@@ -87,17 +105,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const addEntitlement = useCallback((entitlement: Entitlement) => {
+    setEntitlementState((prev) => [...prev, entitlement]);
+  }, []);
+
+  const ownsTryout = useCallback((tryoutId: number) => {
+    return getOwnedTryoutIds(user.id, entitlementState).includes(tryoutId);
+  }, [entitlementState, user.id]);
+
+  const canAccessTryout = useCallback((tryout: Tryout) => {
+    if (tryout.accessLevel === "free") return true;
+    if (hasPremiumMembership) return true;
+    if (tryout.accessLevel === "platinum") return ownsTryout(tryout.id);
+    return false;
+  }, [hasPremiumMembership, ownsTryout]);
+
+  const canAccessQuestion = useCallback((question: Question, tryout: Tryout) => {
+    if (canAccessTryout(tryout)) return true;
+    if (question.accessLevel === "free") return true;
+    return hasPremiumMembership;
+  }, [canAccessTryout, hasPremiumMembership]);
+
   return (
     <AppContext.Provider
       value={{
         user,
         setUser,
-        isPremium,
-        togglePremium,
+        hasPremiumMembership,
+        ownedTryoutIds,
+        togglePremiumMembership,
         badgeProgress: mockBadgeProgress,
         leaderboardUsers: leaderboardData,
         attempts: attemptState,
+        entitlements: entitlementState,
         addAttempt,
+        addEntitlement,
+        canAccessTryout,
+        canAccessQuestion,
+        ownsTryout,
         updateAttempt,
       }}
     >

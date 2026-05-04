@@ -7,7 +7,7 @@ export interface Question {
   correct: number;
   explanation: string;
   videoUrl?: string;
-  isPremium: boolean;
+  accessLevel: "free" | "premium";
   published: boolean;
 }
 
@@ -20,9 +20,11 @@ export interface WrongAnswer {
   explanation: string;
   explanationPreview?: string;
   videoUrl?: string;
-  isPremium: boolean;
+  accessLevel: "free" | "premium";
   user: string;
 }
+
+export type TryoutAccessLevel = "free" | "premium" | "platinum";
 
 export interface Tryout {
   id: number;
@@ -32,7 +34,8 @@ export interface Tryout {
   questionCount: number;
   categoryId: string;
   duration: number;
-  isPremium: boolean;
+  accessLevel: TryoutAccessLevel;
+  productId?: number;
   description: string;
 }
 
@@ -54,12 +57,12 @@ export interface Attempt {
 }
 
 export const tryouts: Tryout[] = [
-  { id: 1, title: "UKAI Tryout 1", icon: "🧪", color: "#205072", questionCount: 20, categoryId: "klinis", duration: 30, isPremium: false, description: "Simulasi UKAI lengkap dengan soal terkini" },
-  { id: 2, title: "Farmakologi Dasar", icon: "💊", color: "#58cc02", questionCount: 25, categoryId: "farmakologi", duration: 40, isPremium: false, description: "Soal farmakologi dasar dan khusus" },
-  { id: 3, title: "Kardiovaskular", icon: "❤️", color: "#205072", questionCount: 20, categoryId: "klinis", duration: 30, isPremium: false, description: "Soal khusus sistem kardiovaskular" },
-  { id: 4, title: "Antibiotik & Antiinfeksi", icon: "🦠", color: "#58cc02", questionCount: 15, categoryId: "farmakologi", duration: 25, isPremium: false, description: "Soal antibiotik dan antiinfeksi" },
-  { id: 5, title: "Farmasi Klinik Lanjut", icon: "🏥", color: "#0ea5e9", questionCount: 30, categoryId: "farmasi-klinik", duration: 45, isPremium: true, description: "Soal farmasi klinik tingkat lanjut" },
-  { id: 6, title: "Perhitungan Dosis", icon: "🧮", color: "#0ea5e9", questionCount: 20, categoryId: "farmasi-klinik", duration: 35, isPremium: true, description: "Soalhitung dosis dan farmakokinetik" },
+  { id: 1, title: "UKAI Tryout 1", icon: "🧪", color: "#205072", questionCount: 20, categoryId: "klinis", duration: 30, accessLevel: "free", description: "Simulasi UKAI lengkap dengan soal terkini" },
+  { id: 2, title: "Farmakologi Dasar", icon: "💊", color: "#58cc02", questionCount: 25, categoryId: "farmakologi", duration: 40, accessLevel: "free", description: "Soal farmakologi dasar dan khusus" },
+  { id: 3, title: "Kardiovaskular", icon: "❤️", color: "#205072", questionCount: 20, categoryId: "klinis", duration: 30, accessLevel: "premium", description: "Soal khusus sistem kardiovaskular" },
+  { id: 4, title: "Antibiotik & Antiinfeksi", icon: "🦠", color: "#58cc02", questionCount: 15, categoryId: "farmakologi", duration: 25, accessLevel: "free", description: "Soal antibiotik dan antiinfeksi" },
+  { id: 5, title: "Farmasi Klinik Lanjut", icon: "🏥", color: "#0ea5e9", questionCount: 30, categoryId: "farmasi-klinik", duration: 45, accessLevel: "platinum", productId: 101, description: "Soal farmasi klinik tingkat lanjut" },
+  { id: 6, title: "Perhitungan Dosis", icon: "🧮", color: "#0ea5e9", questionCount: 20, categoryId: "farmasi-klinik", duration: 35, accessLevel: "platinum", productId: 102, description: "Soal hitung dosis dan farmakokinetik" },
 ];
 
 export const questionBank: Record<number, Question[]> = {
@@ -71,7 +74,7 @@ export const questionBank: Record<number, Question[]> = {
       correct: 1,
       explanation: "Captopril adalah ACE Inhibitor yang menghambat konversi Angiotensin I menjadi II, menurunkan tekanan darah. Obat ini bekerja dengan menghambat enzim ACE (Angiotensin Converting Enzyme) sehingga mengurangi pembentukan angiotensin II, sebuah zat yang menyebabkan pembuluh darah menyempit.",
       videoUrl: "https://www.youtube.com/embed/6R4DtneE5IY",
-      isPremium: false, published: true,
+      accessLevel: "free", published: true,
     },
     {
       id: 2, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
@@ -80,7 +83,7 @@ export const questionBank: Record<number, Question[]> = {
       correct: 1,
       explanation: "Dosis loading digoxin 0.75-1.5 mg dibagi dalam 3 dosis selama 24 jam pertama, kemudian maintenance 0.125-0.25 mg/hari. Digoxin adalah glikosida jantung yang meningkatkan kontraktilitas miokard dan memperlambat konduksi AV.",
       videoUrl: "https://www.youtube.com/embed/vK1n2sN2lQc",
-      isPremium: true, published: true,
+      accessLevel: "premium", published: true,
     },
     {
       id: 3, categoryId: "farmakologi", subCategoryId: "farmakologi-nsaid",
@@ -88,7 +91,7 @@ export const questionBank: Record<number, Question[]> = {
       options: ["Vitamin K", "Protamin sulfat", "Naloxone", "Flumazenil"],
       correct: 1,
       explanation: "Protamin sulfat adalah antidot spesifik untuk heparin yang mengikat heparin membentuk kompleks inaktif. Setiap 1 mg protamin sulfat dapat menetralkan sekitar 100 unit heparin.",
-      isPremium: false, published: true,
+      accessLevel: "free", published: true,
     },
     {
       id: 4, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
@@ -96,7 +99,7 @@ export const questionBank: Record<number, Question[]> = {
       options: ["30 menit", "1-1.5 jam", "6-8 jam", "12 jam"],
       correct: 1,
       explanation: "Amoksisilin memiliki waktu paruh (t½) 1-1.5 jam, sehingga diberikan 3x sehari untuk menjaga konsentrasi terapeutik. Amoksisilin adalah antibiotik spektrum luas dari golongan penisilin.",
-      isPremium: true, published: true,
+      accessLevel: "premium", published: true,
     },
     {
       id: 5, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular-hipertensi",
@@ -105,7 +108,7 @@ export const questionBank: Record<number, Question[]> = {
       correct: 2,
       explanation: "ACE Inhibitor dan ARB bersifat teratogenik dan sangat kontraindikasi pada kehamilan. Alternatif yang aman adalah metildopa, nifedipin, atau labetalol.",
       videoUrl: "https://www.youtube.com/embed/2k3Ih_-8yHc",
-      isPremium: true, published: true,
+      accessLevel: "premium", published: true,
     },
   ],
   2: [
@@ -115,7 +118,7 @@ export const questionBank: Record<number, Question[]> = {
       options: ["Menghambat sintesis protein", "Menghambat sintesis dinding sel", "Menghambat replikasi DNA", "Menghambat sintesis folat"],
       correct: 1,
       explanation: "Penisilin menghambat sintesis dinding sel bakteri dengan mengikat protein pengikat penisilin (PBP), sehingga menghambat transpeptidasi dinding sel.",
-      isPremium: false, published: true,
+      accessLevel: "free", published: true,
     },
     {
       id: 12, categoryId: "farmakologi", subCategoryId: "farmakologi-nsaid",
@@ -123,7 +126,7 @@ export const questionBank: Record<number, Question[]> = {
       options: ["Ibuprofen", "Celecoxib", "Aspirin", "Diklofenak"],
       correct: 1,
       explanation: "Celecoxib adalah NSAID selektif COX-2 yang menurunkan risiko gangguan gastrointestinal dibandingkan NSAID non-selektif.",
-      isPremium: false, published: true,
+      accessLevel: "free", published: true,
     },
   ],
 };

@@ -32,7 +32,7 @@ const avatarOptions = [
 ] as const;
 
 function ProfileComponent() {
-  const { user, setUser, badgeProgress, isPremium, togglePremium } = useApp();
+  const { user, setUser, badgeProgress, hasPremiumMembership, togglePremiumMembership } = useApp();
   const navigate = useNavigate();
   const levelInfo = getLevelForXp(user.xp);
   const nextLevel = getNextLevel(user.xp);
@@ -79,7 +79,7 @@ function ProfileComponent() {
             photoUrl={user.googlePhotoUrl}
             name={user.name}
             institution={user.institution}
-            isPremium={isPremium}
+            isPremium={hasPremiumMembership}
             level={levelInfo.level}
             grade={grade}
             xp={user.xp}
@@ -109,7 +109,7 @@ function ProfileComponent() {
             <StatCard label="Streak" value={`${user.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
 
-          {!isPremium && <PremiumProfileCallout />}
+          {!hasPremiumMembership && <PremiumProfileCallout />}
         </div>
 
         <div className="grid gap-6">
@@ -129,7 +129,7 @@ function ProfileComponent() {
           <div>
             <SectionHeader title="Langganan" />
             <SubscriptionCard
-              isPremium={isPremium}
+              isPremium={hasPremiumMembership}
               startsAt={user.entitlementStartsAt}
               endsAt={user.entitlementEndsAt}
             />
@@ -153,8 +153,8 @@ function ProfileComponent() {
           </div>
 
           <div className="flex gap-3">
-            <button className="btn btn-white flex-1 text-xs" onClick={togglePremium} type="button">
-              {isPremium ? "Demo Premium ON" : "Demo Premium OFF"}
+            <button className="btn btn-white flex-1 text-xs" onClick={togglePremiumMembership} type="button">
+              {hasPremiumMembership ? "Demo Premium ON" : "Demo Premium OFF"}
             </button>
             <button className="btn btn-white flex-1 text-xs" onClick={() => navigate({ to: "/auth/login" })} type="button">
               Keluar

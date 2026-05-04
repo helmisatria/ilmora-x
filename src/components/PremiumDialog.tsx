@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { getPlatinumProductForTryout, membershipProducts, type Tryout } from "../data";
 import {
   Dialog,
   DialogContent,
@@ -10,19 +11,32 @@ interface PremiumDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onUpgrade: () => void;
+  hasPremiumMembership?: boolean;
+  tryout?: Tryout | null;
 }
 
-export function PremiumDialog({ isOpen, onClose, onUpgrade }: PremiumDialogProps) {
+export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership = false, tryout = null }: PremiumDialogProps) {
   const navigate = useNavigate();
+  const monthlyProduct = membershipProducts[0];
+  const tryoutProduct = tryout ? getPlatinumProductForTryout(tryout.id) : null;
+  const showTryoutPurchase = Boolean(tryoutProduct && !hasPremiumMembership);
+  const showMembershipPrice = !tryout;
+  const hasStickyMobilePrice = showMembershipPrice || showTryoutPurchase;
+
+  const handleSubscribe = () => {
+    onUpgrade();
+    navigate({ to: "/premium" });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="border-amber-300 p-0 text-left">
-        <div className="relative shrink-0 overflow-hidden bg-[#2f281c] px-7 pt-6 pb-5 text-amber-50">
+      <DialogContent className="w-[min(94vw,940px)] max-w-[min(94vw,940px)] max-h-[min(92dvh,740px)] border-amber-300 p-0 text-left md:grid md:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="relative shrink-0 overflow-hidden bg-[#2f281c] px-5 py-5 text-amber-50 md:min-h-[560px] md:px-8 md:py-8">
           <div
             className="absolute inset-0 opacity-90"
             style={{
               background:
-                "radial-gradient(320px 180px at 88% 0%, rgba(245,158,11,0.28), transparent 70%), radial-gradient(260px 180px at 0% 100%, rgba(20,184,166,0.18), transparent 72%)",
+                "radial-gradient(320px 180px at 88% 0%, rgba(245,158,11,0.28), transparent 70%), radial-gradient(260px 180px at 0% 100%, rgba(20,184,166,0.16), transparent 72%)",
             }}
           />
           <div
@@ -33,60 +47,165 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade }: PremiumDialogProps
             }}
           />
 
-          <div className="relative">
-            <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center border-2 border-amber-300/45 bg-amber-400/15 text-amber-200">
-              <CrownIcon />
+          <div className="relative grid grid-cols-[48px_minmax(0,1fr)] items-center gap-4 md:flex md:h-full md:flex-col md:items-start md:justify-between md:gap-6">
+            <div className="self-start">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-amber-300/45 bg-amber-400/15 text-amber-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] md:h-16 md:w-16">
+                <CrownIcon />
+              </div>
             </div>
-            <DialogTitle className="mb-2 text-center text-amber-50">
-              Upgrade ke IlmoraX Premium
-            </DialogTitle>
-            <DialogDescription className="mx-auto max-w-[29ch] text-center text-amber-100/78">
-              Buka analisis performa, pembahasan prioritas, dan latihan yang lebih terarah.
-            </DialogDescription>
+
+            <div className="min-w-0">
+              <div className="mb-2 hidden sm:inline-flex rounded-full border border-amber-300/20 bg-amber-200/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-amber-100/80 md:mb-3 md:px-3 md:text-[10px]">
+                {tryout ? "Try-out terkunci" : "Premium access"}
+              </div>
+              <DialogTitle className="max-w-[14ch] text-[25px] font-black leading-[1] tracking-tight text-amber-50 md:max-w-[11ch] md:text-[42px] md:leading-[0.95]">
+                {tryout ? "Buka akses try-out" : "Upgrade ke Premium"}
+              </DialogTitle>
+              <DialogDescription className="mt-1.5 max-w-[32ch] text-[11px] font-semibold leading-snug text-amber-100/72 sm:text-[12px] md:mt-4 md:max-w-[28ch] md:text-[15px] md:leading-relaxed">
+                {tryout
+                  ? "Pilih akses penuh lewat Premium atau beli try-out ini saja."
+                  : "Buka analisis performa, pembahasan prioritas, dan latihan yang lebih terarah."}
+              </DialogDescription>
+            </div>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[#fffaf0] px-7 pt-4 pb-3">
-          <div className="grid gap-2">
-            <PremiumFeature icon={<VideoIcon />} title="Video pembahasan" description="Penjelasan soal yang sulit dipahami lewat teks." />
-            <PremiumFeature icon={<DocumentIcon />} title="Review detail" description="Lihat pola salah dan topik yang perlu diperbaiki." />
-            <PremiumFeature icon={<TargetIcon />} title="Latihan terarah" description="Rekomendasi soal berdasarkan hasil tryout." />
-          </div>
-        </div>
+        <div className="flex min-h-0 flex-1 flex-col bg-[#fffaf0]">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 md:px-7 md:py-6">
+            <div className="grid gap-2.5">
+              <PremiumFeature icon={<VideoIcon />} title="Video pembahasan" description="Penjelasan soal yang sulit dipahami lewat teks." />
+              <PremiumFeature icon={<DocumentIcon />} title="Review detail" description="Lihat pola salah dan topik yang perlu diperbaiki." />
+              <PremiumFeature icon={<TargetIcon />} title="Latihan terarah" description="Rekomendasi soal berdasarkan hasil tryout." />
+            </div>
 
-        <div className="shrink-0 bg-[#fffaf0] px-7 pb-4 pt-2">
-          <div className="rounded-(--radius-lg) bg-white border-2 border-amber-100 border-b-4 border-b-amber-200 px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-stone-900 m-0 leading-tight">
-              Rp49.000
-              <span className="text-sm font-bold text-stone-400">/bulan</span>
-            </p>
-            <p className="text-[11px] text-stone-400 mt-0.5">Satu kali pembayaran. Tidak ada auto-renew.</p>
+            <div className={`mt-4 hidden gap-3 md:grid ${showMembershipPrice && showTryoutPurchase ? "md:grid-cols-2" : ""}`}>
+              {showMembershipPrice && (
+                <PriceOption
+                  title="Premium"
+                  price={`Rp${(monthlyProduct?.price ?? 49000).toLocaleString("id-ID")}`}
+                  suffix="/bulan"
+                  description="Satu kali pembayaran. Tidak ada auto-renew."
+                  tone="premium"
+                />
+              )}
+              {showTryoutPurchase && tryoutProduct && (
+                <PriceOption
+                  title="Try-out ini"
+                  price={`Rp${tryoutProduct.price.toLocaleString("id-ID")}`}
+                  description={`Akses lifetime untuk ${tryout?.title}`}
+                  tone="platinum"
+                />
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="shrink-0 bg-[#fffaf0] px-7 pb-5 pt-0 flex gap-3">
-          <button className="btn btn-white flex-1" onClick={onClose} type="button">
-            Nanti
-          </button>
-          <button
-            className="btn flex-[2]"
-            style={{
-              background: "#2f281c",
-              color: "#fff7ed",
-              borderBottomColor: "#a16207",
-            }}
-            onClick={() => {
-              onUpgrade();
-              navigate({ to: "/premium" });
-            }}
-            type="button"
-          >
-            <CrownIcon />
-            Berlangganan
-          </button>
+          <div className="shrink-0 border-t-2 border-amber-100/75 bg-[#fffaf0] px-4 pb-4 pt-3 sm:px-6 md:px-7 md:pb-6">
+            {hasStickyMobilePrice && (
+              <div className="mb-3 grid gap-2 md:hidden">
+                {showMembershipPrice && (
+                  <StickyPrice
+                    label="Premium"
+                    price={`Rp${(monthlyProduct?.price ?? 49000).toLocaleString("id-ID")}`}
+                    suffix="/bulan"
+                    tone="premium"
+                  />
+                )}
+                {showTryoutPurchase && tryoutProduct && (
+                  <StickyPrice
+                    label="Try-out ini"
+                    price={`Rp${tryoutProduct.price.toLocaleString("id-ID")}`}
+                    tone="platinum"
+                  />
+                )}
+              </div>
+            )}
+
+            <div className={`grid gap-2 ${showTryoutPurchase ? "md:grid-cols-[0.8fr_1.25fr_1.35fr]" : "md:grid-cols-[0.8fr_1.4fr]"}`}>
+              <button className="btn btn-white min-h-13 w-full whitespace-nowrap px-4 text-sm md:min-h-14" onClick={onClose} type="button">
+                Nanti
+              </button>
+              {showTryoutPurchase && tryoutProduct && (
+                <button
+                  className="btn btn-white min-h-13 w-full whitespace-nowrap px-4 text-sm md:min-h-14"
+                  onClick={() => {
+                    onClose();
+                    navigate({ to: "/checkout", search: { productId: tryoutProduct.id } });
+                  }}
+                  type="button"
+                >
+                  <DocumentIcon />
+                  Beli Try-out Ini
+                </button>
+              )}
+              <button
+                className="btn min-h-13 w-full whitespace-nowrap px-4 text-sm md:min-h-14"
+                style={{
+                  background: "#2f281c",
+                  color: "#fff7ed",
+                  borderBottomColor: "#a16207",
+                }}
+                onClick={handleSubscribe}
+                type="button"
+              >
+                <CrownIcon />
+                Berlangganan
+              </button>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function StickyPrice({
+  label,
+  price,
+  suffix,
+  tone,
+}: {
+  label: string;
+  price: string;
+  suffix?: string;
+  tone: "premium" | "platinum";
+}) {
+  const borderClass = tone === "premium" ? "border-amber-100" : "border-sky-100";
+
+  return (
+    <div className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border-2 bg-white px-3 py-2.5 ${borderClass}`}>
+      <span className="text-[10px] font-black uppercase tracking-wide text-stone-400">{label}</span>
+      <span className="text-[18px] font-black leading-none tracking-tight text-stone-900">
+        {price}
+        {suffix && <span className="ml-0.5 text-[11px] text-stone-400">{suffix}</span>}
+      </span>
+    </div>
+  );
+}
+
+function PriceOption({
+  title,
+  price,
+  suffix,
+  description,
+  tone,
+}: {
+  title: string;
+  price: string;
+  suffix?: string;
+  description: string;
+  tone: "premium" | "platinum";
+}) {
+  const borderClass = tone === "premium" ? "border-amber-100 border-b-amber-200" : "border-sky-100 border-b-sky-200";
+
+  return (
+    <div className={`rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 ${borderClass}`}>
+      <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">{title}</div>
+      <p className="m-0 mt-1 text-[30px] font-black leading-none tracking-tight text-stone-900 md:text-[32px]">
+        {price}
+        {suffix && <span className="text-[15px] font-black text-stone-400">{suffix}</span>}
+      </p>
+      <p className="m-0 mt-2 text-[11px] font-semibold leading-snug text-stone-400">{description}</p>
+    </div>
   );
 }
 
@@ -100,13 +219,13 @@ function PremiumFeature({
   description: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-(--radius-md) bg-white border-2 border-amber-100 px-3 py-3">
-      <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border-2 border-amber-100">
+    <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3 rounded-[var(--radius-md)] border-2 border-amber-100 bg-white px-3 py-3">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-amber-100 bg-amber-50 text-amber-700">
         {icon}
       </div>
-      <div>
-        <div className="text-sm font-bold text-stone-800 leading-tight">{title}</div>
-        <div className="text-xs text-stone-500 font-medium leading-relaxed mt-0.5">{description}</div>
+      <div className="min-w-0">
+        <div className="text-[14px] font-black leading-tight text-stone-800">{title}</div>
+        <div className="mt-0.5 text-[12px] font-semibold leading-snug text-stone-500">{description}</div>
       </div>
     </div>
   );
