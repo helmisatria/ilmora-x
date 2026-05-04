@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
+import gsap from "gsap";
 import { TopBar } from "../components/Navigation";
 import { applyCoupon, getProductById, mockCoupons, useApp } from "../data";
 import type { Product } from "../data";
@@ -56,6 +57,45 @@ function CheckoutComponent() {
   const subtotal = product.price;
   const discountAmount = discount.type === "coupon" ? discount.amount : 0;
   const total = Math.max(0, subtotal - discountAmount);
+
+  const heroRef = useRef<HTMLDivElement>(null);
+  const couponRef = useRef<HTMLDivElement>(null);
+  const methodsRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        heroRef.current,
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.65, ease: "power3.out" }
+      );
+
+      gsap.fromTo(
+        couponRef.current,
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, ease: "power3.out", delay: 0.12 }
+      );
+
+      if (methodsRef.current) {
+        gsap.fromTo(
+          methodsRef.current.children,
+          { y: 15, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.55, ease: "power3.out", stagger: 0.06, delay: 0.22 }
+        );
+      }
+
+      if (sidebarRef.current) {
+        gsap.fromTo(
+          sidebarRef.current.children,
+          { x: 30, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.6, ease: "power3.out", stagger: 0.1, delay: 0.28 }
+        );
+      }
+    });
+
+    return () => ctx.revert();
+  }, []);
 
   const handleApplyCode = () => {
     const trimmedCode = code.trim().toUpperCase();
@@ -145,7 +185,7 @@ function CheckoutComponent() {
         <TopBar />
 
         <div className="premium-lane pt-7 lg:pt-9">
-          <div className="max-w-[560px]">
+          <div ref={heroRef} className="max-w-[560px]" style={{ opacity: 0 }}>
             <Link to="/premium" className="mb-5 inline-flex items-center gap-2 text-[12px] font-bold text-stone-500 no-underline">
               <ArrowLeftIcon />
               Kembali
@@ -167,9 +207,15 @@ function CheckoutComponent() {
       <div className="premium-lane relative -mt-2 pb-20">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           <div>
-            <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm">
+            <div ref={couponRef} className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm" style={{ opacity: 0 }}>
               <SectionHeader title="Kode Kupon" />
-              <div className="flex gap-2">
+              <form
+                className="flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleApplyCode();
+                }}
+              >
                 <input
                   type="text"
                   value={code}
@@ -180,10 +226,10 @@ function CheckoutComponent() {
                   placeholder="Kode kupon"
                   className="min-w-0 flex-1 rounded-[var(--radius-md)] border-2 border-stone-200 px-4 py-3 text-sm font-semibold uppercase outline-none transition-colors focus:border-primary"
                 />
-                <button className="btn btn-white px-4 text-sm" onClick={handleApplyCode} disabled={!code.trim()} type="button">
+                <button className="btn btn-white px-4 text-sm" disabled={!code.trim()} type="submit">
                   Pakai
                 </button>
-              </div>
+              </form>
 
               <DiscountMessage discount={discount} onClear={clearDiscount} />
 
@@ -194,44 +240,51 @@ function CheckoutComponent() {
 
             <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm">
               <SectionHeader title="Metode Pembayaran" />
-              <div className="grid gap-2">
+              <div ref={methodsRef} className="grid gap-2">
                 {paymentMethods.map((paymentMethod) => (
-                  <PaymentMethodButton
-                    key={paymentMethod.key}
-                    paymentMethod={paymentMethod}
-                    isSelected={method === paymentMethod.key}
-                    onSelect={() => setMethod(paymentMethod.key)}
-                  />
+                  <div key={paymentMethod.key} style={{ opacity: 0 }}>
+                    <PaymentMethodButton
+                      paymentMethod={paymentMethod}
+                      isSelected={method === paymentMethod.key}
+                      onSelect={() => setMethod(paymentMethod.key)}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <aside className="xl:sticky xl:top-24">
-            <OrderSummary productName={product.name} accessLabel={getAccessLabel(product)} subtotal={subtotal} />
-            <PaymentLedger subtotal={subtotal} discount={discount} total={total} />
-
-            <button
-              className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5 disabled:pointer-events-none disabled:opacity-60"
-              style={{
-                background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
-                borderBottomWidth: 5,
-                borderBottomColor: "#b45309",
-              }}
-              onClick={handlePay}
-              disabled={processing}
-              type="button"
-            >
-              <span>{processing ? "Memproses" : "Bayar sekarang"}</span>
-              <span className="flex items-center gap-2">
-                Rp{total.toLocaleString("id-ID")}
-                {!processing && <ArrowRightIcon />}
-              </span>
-            </button>
-
-            <p className="mx-auto mt-3 max-w-[34ch] text-center text-[11px] font-medium leading-relaxed text-stone-400">
-              Satu kali bayar, tanpa auto-renew.
-            </p>
+          <aside ref={sidebarRef} className="xl:sticky xl:top-24">
+            <div style={{ opacity: 0 }}>
+              <OrderSummary productName={product.name} accessLabel={getAccessLabel(product)} subtotal={subtotal} />
+            </div>
+            <div style={{ opacity: 0 }}>
+              <PaymentLedger subtotal={subtotal} discount={discount} total={total} />
+            </div>
+            <div style={{ opacity: 0 }}>
+              <button
+                className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5 disabled:pointer-events-none disabled:opacity-60"
+                style={{
+                  background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
+                  borderBottomWidth: 5,
+                  borderBottomColor: "#b45309",
+                }}
+                onClick={handlePay}
+                disabled={processing}
+                type="button"
+              >
+                <span>{processing ? "Memproses" : "Bayar sekarang"}</span>
+                <span className="flex items-center gap-2">
+                  Rp{total.toLocaleString("id-ID")}
+                  {!processing && <ArrowRightIcon />}
+                </span>
+              </button>
+            </div>
+            <div style={{ opacity: 0 }}>
+              <p className="mx-auto mt-3 max-w-[34ch] text-center text-[11px] font-medium leading-relaxed text-stone-400">
+                Satu kali bayar, tanpa auto-renew.
+              </p>
+            </div>
           </aside>
         </div>
       </div>
@@ -305,7 +358,7 @@ function PaymentMethodButton({
 }) {
   return (
     <button
-      className="group flex items-center gap-3 rounded-[var(--radius-lg)] border-2 border-b-4 p-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:translate-y-[1px]"
+      className="group flex w-full items-center gap-3 rounded-[var(--radius-lg)] border-2 border-b-4 p-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:translate-y-[1px]"
       style={{
         borderColor: isSelected ? "#205072" : "#f5f5f4",
         borderBottomColor: isSelected ? "#153d5c" : "#d6d3d1",

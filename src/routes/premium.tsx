@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import gsap from "gsap";
 import { TopBar } from "../components/Navigation";
 import { membershipProducts } from "../data";
 import type { Product } from "../data/entitlements";
@@ -31,6 +32,52 @@ function PremiumComponent() {
   const selectedProduct = membershipProducts.find((product) => product.id === selectedProductId) ?? membershipProducts[0];
   const activeProducts = membershipProducts.filter((product) => product.active);
 
+  const heroRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const comparisonRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        heroRef.current,
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.65, ease: "power3.out" }
+      );
+
+      gsap.fromTo(
+        panelRef.current,
+        { y: 40, opacity: 0, scale: 0.98 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.7, ease: "power3.out", delay: 0.12 }
+      );
+
+      if (cardsRef.current) {
+        gsap.fromTo(
+          cardsRef.current.children,
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.55, ease: "power3.out", stagger: 0.08, delay: 0.2 }
+        );
+      }
+
+      gsap.fromTo(
+        comparisonRef.current,
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, ease: "power3.out", delay: 0.45 }
+      );
+
+      if (sidebarRef.current) {
+        gsap.fromTo(
+          sidebarRef.current.children,
+          { x: 30, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.6, ease: "power3.out", stagger: 0.1, delay: 0.3 }
+        );
+      }
+    });
+
+    return () => ctx.revert();
+  }, []);
+
   return (
     <main
       className="premium-shell overflow-x-hidden"
@@ -50,7 +97,7 @@ function PremiumComponent() {
 
         <div className="premium-lane pt-7 lg:pt-9">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:items-end">
-            <div>
+            <div ref={heroRef} style={{ opacity: 0 }}>
               <Link to="/dashboard" className="mb-5 inline-flex items-center gap-2 text-[12px] font-bold text-stone-500 no-underline">
                 <ArrowLeftIcon />
                 Kembali
@@ -67,7 +114,9 @@ function PremiumComponent() {
               </p>
             </div>
 
-            <PremiumHeroPanel className="lg:mt-0" />
+            <div ref={panelRef} style={{ opacity: 0 }}>
+              <PremiumHeroPanel className="lg:mt-0" />
+            </div>
           </div>
         </div>
       </div>
@@ -76,54 +125,61 @@ function PremiumComponent() {
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           <div>
             <SectionHeader title="Pilih Paket" />
-            <div className="grid gap-3">
+            <div ref={cardsRef} className="grid gap-3">
               {activeProducts.map((product) => (
-                <PackageCard
-                  key={product.id}
-                  product={product}
-                  isSelected={selectedProductId === product.id}
-                  onSelect={() => setSelectedProductId(product.id)}
-                />
+                <div key={product.id} style={{ opacity: 0 }}>
+                  <PackageCard
+                    product={product}
+                    isSelected={selectedProductId === product.id}
+                    onSelect={() => setSelectedProductId(product.id)}
+                  />
+                </div>
               ))}
             </div>
 
-            <FeatureComparison />
+            <div ref={comparisonRef} style={{ opacity: 0 }}>
+              <FeatureComparison />
+            </div>
           </div>
 
-          <aside className="xl:sticky xl:top-24">
-            <div className="mt-6 rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm xl:mt-0">
-              <div className="flex items-start gap-3">
-                <IconTile icon={<ReceiptIcon />} accent={premiumAccent} />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
-                    Sekali Bayar
+          <aside ref={sidebarRef} className="xl:sticky xl:top-24">
+            <div style={{ opacity: 0 }}>
+              <div className="mt-6 rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm xl:mt-0">
+                <div className="flex items-start gap-3">
+                  <IconTile icon={<ReceiptIcon />} accent={premiumAccent} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
+                      Sekali Bayar
+                    </div>
+                    <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
+                      Tidak auto-renew
+                    </h2>
+                    <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
+                      Durasi paket akan ditambahkan ke tanggal aktif yang sudah ada, lalu kembali ke akses gratis saat selesai.
+                    </p>
                   </div>
-                  <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
-                    Tidak auto-renew
-                  </h2>
-                  <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
-                    Durasi paket akan ditambahkan ke tanggal aktif yang sudah ada, lalu kembali ke akses gratis saat selesai.
-                  </p>
                 </div>
               </div>
             </div>
 
-            <Link
-              to="/checkout"
-              search={{ productId: selectedProduct.id }}
-              className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
-              style={{
-                background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
-                borderBottomWidth: 5,
-                borderBottomColor: "#b45309",
-              }}
-            >
-              <span>Lanjut bayar</span>
-              <span className="flex items-center gap-2">
-                Rp{selectedProduct.price.toLocaleString("id-ID")}
-                <ArrowRightIcon />
-              </span>
-            </Link>
+            <div style={{ opacity: 0 }}>
+              <Link
+                to="/checkout"
+                search={{ productId: selectedProduct.id }}
+                className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
+                style={{
+                  background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
+                  borderBottomWidth: 5,
+                  borderBottomColor: "#b45309",
+                }}
+              >
+                <span>Lanjut bayar</span>
+                <span className="flex items-center gap-2">
+                  Rp{selectedProduct.price.toLocaleString("id-ID")}
+                  <ArrowRightIcon />
+                </span>
+              </Link>
+            </div>
           </aside>
         </div>
       </div>
@@ -186,7 +242,7 @@ function PackageCard({
 
   return (
     <button
-      className="group rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 sm:px-5 sm:py-5"
+      className="group w-full rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 sm:px-5 sm:py-5"
       style={{
         borderColor: isSelected ? "#205072" : "#f5f5f4",
         borderBottomColor: isSelected ? "#153d5c" : "#e7e5e4",
