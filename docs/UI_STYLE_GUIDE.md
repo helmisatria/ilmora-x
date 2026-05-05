@@ -39,7 +39,7 @@ Five design decisions carry the screen. Any page missing 3+ of these will feel c
   page:
     "linear-gradient(180deg, #eef8f6 0%, #f6fbfa 44%, #f7f3ea 100%)"
   header:
-    "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)"
+    "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)"
   ```
 - Good alternate tones: Mist, Paper, Stone. Keep them subtle. Avoid loud rainbow palettes.
 - Prototype-only palette switchers are allowed, but must be collapsible and clearly labelled as a prototype control. Place them low on the page, never above primary actions or floating over core content on mobile.
@@ -113,7 +113,7 @@ A clear progress meter needs:
 - Remaining amount: e.g. `720 XP lagi`
 - Percent badge: e.g. `10%`
 - Refined visible track: `rounded-full border-2 border-teal-100 bg-teal-50/80 p-1`
-- Refined fill: `h-4 rounded-full` with a teal gradient `#14b8a6 → #0d9488` and a subtle top highlight.
+- Refined fill: `h-4 rounded-full` with a teal gradient `var(--brand-primary) → var(--brand-primary-dark)` and a subtle top highlight.
 - Endpoint labels under the bar: current XP on the left, target XP on the right.
 - Do not add tick marks or extra mini stat boxes under the progress bar unless the task explicitly needs deeper analytics. Keep it clean but not bare.
 
@@ -163,7 +163,7 @@ Required:
 - The profile hero should follow the Dashboard Clinic tone: ambient radial header, measured H1/body, and the soft teal/paper progress panel.
 - The large profile identity avatar may render the selected emoji inside a `w-20 h-20 rounded-full` surface with the warm/teal diagonal wash and white border.
 - The avatar picker should use a compact 6-column grid of square buttons. Each button uses the card-button rhythm: `aspect-square rounded-2xl border-2 border-b-4 bg-white text-[24px] shadow-sm`.
-- Selected emoji avatar state should use teal tinting: `borderColor: "#14b8a655"`, `borderBottomColor: "#0d9488"`, `background: "#ccfbf1"`.
+- Selected emoji avatar state should use teal tinting: `borderColor: "rgba(32,80,114,0.33)"`, `borderBottomColor: "var(--brand-primary-dark)"`, `background: "#dcecf7"`.
 - Account rows, stat cards, copy actions, premium upsell, and empty badge states should still use SVG icons or text-only labels.
 
 Avoid:
@@ -177,7 +177,7 @@ The list page should feel like a sibling of the preparation screen:
   ```tsx
   <div
     className="relative overflow-hidden pb-6"
-    style={{ background: `radial-gradient(1000px 300px at 15% -20%, #14b8a622, transparent 60%), var(--color-bg)` }}
+    style={{ background: `radial-gradient(1000px 300px at 15% -20%, rgba(32,80,114,0.13), transparent 60%), var(--color-bg)` }}
   >
   ```
 - H2 needs a kicker above it: `Modul Tryout` (uppercase stone-400), then H1-size title.

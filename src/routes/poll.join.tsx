@@ -54,7 +54,7 @@ function PollJoinComponent() {
       className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eef8f6_0%,#fbfaf7_44%,#f7f3ea_100%)]"
       style={{
         background:
-          "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 48%, #f7f3ea 100%)",
+          "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 48%, #f7f3ea 100%)",
       }}
     >
       <div className="mx-auto flex min-h-screen w-full max-w-[1040px] flex-col px-5 py-5 sm:px-6 lg:px-8">
@@ -116,7 +116,7 @@ function PollJoinComponent() {
             )}
 
             {poll?.accessMode === "login_required" && (
-              <div className="mt-4 flex items-start gap-3 rounded-[var(--radius-md)] border-2 border-teal-100 bg-teal-50 p-3 text-xs font-bold text-teal-800">
+              <div className="mt-4 flex items-start gap-3 rounded-[var(--radius-md)] border-2 border-primary-soft bg-primary-tint p-3 text-xs font-bold text-primary-darker">
                 <LockIcon />
                 <span>Poll ini memakai akunmu: {user.name}</span>
               </div>

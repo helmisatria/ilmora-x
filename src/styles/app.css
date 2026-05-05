@@ -1,10 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #14b8a6;
-  --color-primary-light: #2dd4bf;
-  --color-primary-dark: #0d9488;
-  --color-primary-darker: #0f766e;
+  --color-primary: #205072;
+  --color-primary-light: #2f79a5;
+  --color-primary-dark: #153d5c;
+  --color-primary-darker: #0b2135;
+  --color-primary-soft: #dcecf7;
+  --color-primary-tint: #f1f7fb;
+  --color-brand-aqua: #329d9c;
+  --color-brand-mint: #56c596;
+  --color-brand-sky: #79b7d9;
 
   --color-amber: #f59e0b;
   --color-amber-light: #fbbf24;
@@ -27,6 +32,20 @@
   --radius-lg: 20px;
   --radius-xl: 24px;
   --radius-full: 9999px;
+}
+
+:root {
+  --brand-primary: var(--color-primary);
+  --brand-primary-light: var(--color-primary-light);
+  --brand-primary-dark: var(--color-primary-dark);
+  --brand-primary-darker: var(--color-primary-darker);
+  --brand-primary-soft: var(--color-primary-soft);
+  --brand-primary-tint: var(--color-primary-tint);
+  --brand-aqua: var(--color-brand-aqua);
+  --brand-mint: var(--color-brand-mint);
+  --brand-sky: var(--color-brand-sky);
+  --brand-page-bg: linear-gradient(180deg, #f1f7fb 0%, #fbfdff 48%, #ffffff 100%);
+  --brand-page-radial: radial-gradient(900px 340px at 10% -16%, rgba(32, 80, 114, 0.2), transparent 62%), radial-gradient(760px 360px at 92% 0%, rgba(121, 183, 217, 0.2), transparent 66%);
 }
 
 @layer base {
@@ -194,7 +213,7 @@
     @apply scale-110;
   }
   .bottom-nav-a.active {
-    @apply text-primary bg-teal-50;
+    @apply text-primary bg-primary-soft;
   }
   .bottom-nav-a.active span:first-child {
     @apply scale-110;

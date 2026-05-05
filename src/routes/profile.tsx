@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BottomNav, TopBar } from "../components/Navigation";
+import { AvatarDisplay } from "../components/AvatarDisplay";
 import { badges, getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
 import { getLevelGrade } from "../data/users";
 
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/profile")({
   component: ProfileComponent,
 });
 
-const profileAccent = "#14b8a6";
+const profileAccent = "#205072";
 const avatarOptions = [
   "🦉",
   "🧑‍⚕️",
@@ -28,11 +29,10 @@ const avatarOptions = [
   "👩‍🎓",
   "👨‍🎓",
   "💊",
-  "🧬",
 ] as const;
 
 function ProfileComponent() {
-  const { user, setUser, badgeProgress, isPremium, togglePremium } = useApp();
+  const { user, setUser, badgeProgress, hasPremiumMembership, togglePremiumMembership } = useApp();
   const navigate = useNavigate();
   const levelInfo = getLevelForXp(user.xp);
   const nextLevel = getNextLevel(user.xp);
@@ -58,7 +58,7 @@ function ProfileComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
+            "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
@@ -76,9 +76,10 @@ function ProfileComponent() {
 
           <ProfileHero
             avatar={user.avatar}
+            photoUrl={user.googlePhotoUrl}
             name={user.name}
             institution={user.institution}
-            isPremium={isPremium}
+            isPremium={hasPremiumMembership}
             level={levelInfo.level}
             grade={grade}
             xp={user.xp}
@@ -92,6 +93,7 @@ function ProfileComponent() {
         <div className="grid gap-5">
           <AvatarPicker
             selectedAvatar={user.avatar}
+            googlePhotoUrl={user.googlePhotoUrl}
             onSelect={(avatar) => {
               setUser((currentUser) => ({ ...currentUser, avatar }));
             }}
@@ -102,12 +104,12 @@ function ProfileComponent() {
           )}
 
           <div className="grid grid-flow-dense grid-cols-3 gap-3">
-            <StatCard label="Soal" value={String(user.totalQuestions)} accent="#14b8a6" icon={<DocumentIcon />} />
+            <StatCard label="Soal" value={String(user.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
             <StatCard label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
             <StatCard label="Streak" value={`${user.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
 
-          {!isPremium && <PremiumProfileCallout />}
+          {!hasPremiumMembership && <PremiumProfileCallout />}
         </div>
 
         <div className="grid gap-6">
@@ -122,6 +124,15 @@ function ProfileComponent() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div>
+            <SectionHeader title="Langganan" />
+            <SubscriptionCard
+              isPremium={hasPremiumMembership}
+              startsAt={user.entitlementStartsAt}
+              endsAt={user.entitlementEndsAt}
+            />
           </div>
 
           <div>
@@ -142,8 +153,8 @@ function ProfileComponent() {
           </div>
 
           <div className="flex gap-3">
-            <button className="btn btn-white flex-1 text-xs" onClick={togglePremium} type="button">
-              {isPremium ? "Demo Premium ON" : "Demo Premium OFF"}
+            <button className="btn btn-white flex-1 text-xs" onClick={togglePremiumMembership} type="button">
+              {hasPremiumMembership ? "Demo Premium ON" : "Demo Premium OFF"}
             </button>
             <button className="btn btn-white flex-1 text-xs" onClick={() => navigate({ to: "/auth/login" })} type="button">
               Keluar
@@ -159,6 +170,7 @@ function ProfileComponent() {
 
 function ProfileHero({
   avatar,
+  photoUrl,
   name,
   institution,
   isPremium,
@@ -169,6 +181,7 @@ function ProfileHero({
   xpProgress,
 }: {
   avatar: string;
+  photoUrl?: string | null;
   name: string;
   institution: string;
   isPremium: boolean;
@@ -191,8 +204,8 @@ function ProfileHero({
       }}
     >
       <div className="flex items-center gap-4">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#ccfbf1_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
-          {avatar}
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
+          <AvatarDisplay avatar={avatar} photoUrl={photoUrl} className="h-full w-full" />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-xl font-bold tracking-tight text-stone-800">{name}</h2>
@@ -201,7 +214,7 @@ function ProfileHero({
         </div>
       </div>
 
-      <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-teal-100 bg-white/76 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+      <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-primary-soft bg-white/76 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
@@ -210,7 +223,7 @@ function ProfileHero({
             <div className="mt-1 text-[14px] font-bold leading-snug text-stone-800">{grade}</div>
           </div>
           <div className="text-right">
-            <div className="rounded-full border-2 border-teal-200 bg-teal-50 px-2.5 py-1 text-[12px] font-bold text-primary-dark">
+            <div className="rounded-full border-2 border-brand-sky bg-primary-tint px-2.5 py-1 text-[12px] font-bold text-primary-dark">
               {xpProgress}%
             </div>
             {nextXp && (
@@ -223,14 +236,14 @@ function ProfileHero({
 
         {nextXp && (
           <>
-            <div className="mt-3 rounded-full border-2 border-teal-100 bg-teal-50/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]">
+            <div className="mt-3 rounded-full border-2 border-primary-soft bg-primary-tint/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]">
               <div className="h-4 overflow-hidden rounded-full bg-white/90">
                 <div
                   className="relative h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${xpProgress}%`,
                     minWidth: xpProgress > 0 ? "28px" : "0",
-                    background: "linear-gradient(90deg, #14b8a6 0%, #0d9488 100%)",
+                    background: "linear-gradient(90deg, #205072 0%, #153d5c 100%)",
                   }}
                 >
                   <div className="absolute inset-x-1 top-1 h-0.75 rounded-full bg-white/30" />
@@ -248,11 +261,42 @@ function ProfileHero({
   );
 }
 
-function AvatarPicker({ selectedAvatar, onSelect }: { selectedAvatar: string; onSelect: (avatar: string) => void }) {
+function AvatarPicker({
+  selectedAvatar,
+  googlePhotoUrl,
+  onSelect,
+}: {
+  selectedAvatar: string;
+  googlePhotoUrl: string | null;
+  onSelect: (avatar: string) => void;
+}) {
+  const googleKey = "google";
+  const hasGooglePhoto = !!googlePhotoUrl;
+
   return (
     <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm">
       <SectionHeader title="Foto Profil" />
       <div className="grid grid-cols-6 gap-2.5">
+        {hasGooglePhoto && (
+          <button
+            key={googleKey}
+            className="aspect-square overflow-hidden rounded-2xl border-2 border-b-4 bg-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0.5"
+            style={{
+              borderColor: selectedAvatar === googleKey ? "rgba(32,80,114,0.33)" : "#e7e5e4",
+              borderBottomColor: selectedAvatar === googleKey ? "#153d5c" : "#d6d3d1",
+              background: selectedAvatar === googleKey ? "#dcecf7" : "#ffffff",
+            }}
+            onClick={() => onSelect(googleKey)}
+            type="button"
+            aria-label="Pilih foto profil Google"
+          >
+            <img
+              src={googlePhotoUrl}
+              alt="Foto profil Google"
+              className="h-full w-full object-cover"
+            />
+          </button>
+        )}
         {avatarOptions.map((avatar) => {
           const isSelected = avatar === selectedAvatar;
 
@@ -261,10 +305,10 @@ function AvatarPicker({ selectedAvatar, onSelect }: { selectedAvatar: string; on
               key={avatar}
               className="aspect-square rounded-2xl border-2 border-b-4 bg-white text-[24px] shadow-sm transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0.5"
               style={{
-                borderColor: isSelected ? "#14b8a655" : "#e7e5e4",
-                borderBottomColor: isSelected ? "#0d9488" : "#d6d3d1",
-                background: isSelected ? "#ccfbf1" : "#ffffff",
-                color: isSelected ? "#0f766e" : "#57534e",
+                borderColor: isSelected ? "rgba(32,80,114,0.33)" : "#e7e5e4",
+                borderBottomColor: isSelected ? "#153d5c" : "#d6d3d1",
+                background: isSelected ? "#dcecf7" : "#ffffff",
+                color: isSelected ? "#0b2135" : "#57534e",
               }}
               onClick={() => onSelect(avatar)}
               type="button"
@@ -313,7 +357,7 @@ function StatCard({ label, value, accent, icon }: { label: string; value: string
 function EmptyBadges() {
   return (
     <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-6 text-center shadow-sm">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-teal-100 bg-teal-50 text-primary">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary-soft bg-primary-tint text-primary">
         <BadgeIcon />
       </div>
       <p className="mx-auto mt-3 max-w-[28ch] text-sm font-semibold leading-relaxed text-stone-500">
@@ -334,6 +378,94 @@ function BadgePreview({ name, icon }: { name: string; icon: string }) {
   );
 }
 
+function SubscriptionCard({
+  isPremium,
+  startsAt,
+  endsAt,
+}: {
+  isPremium: boolean;
+  startsAt: string | null | undefined;
+  endsAt: string | null;
+}) {
+  if (isPremium && startsAt && endsAt) {
+    const daysLeft = Math.ceil(
+      (new Date(endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+
+    return (
+      <div
+        className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-b-4 bg-white shadow-sm"
+        style={{
+          borderColor: "#fcd34d",
+          borderBottomColor: "#f59e0b",
+          background: "linear-gradient(180deg, #fffbeb 0%, #ffffff 100%)",
+        }}
+      >
+        <div className="flex items-center gap-3 px-4 py-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-amber-200 bg-amber-100 text-amber-600">
+            <CrownIcon />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-amber-900">Premium</span>
+              <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                Aktif
+              </span>
+            </div>
+            {daysLeft <= 7 && daysLeft > 0 && (
+              <p className="m-0 mt-0.5 text-[11px] font-semibold text-amber-700">
+                Berakhir dalam {daysLeft} hari
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="border-t border-amber-100">
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
+            <span className="text-xs font-bold tracking-wide text-amber-700/70">
+              Berlangganan sejak
+            </span>
+            <span className="text-sm font-bold text-amber-900">
+              {new Date(startsAt).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-4 border-t border-amber-50 px-4 py-3">
+            <span className="text-xs font-bold tracking-wide text-amber-700/70">
+              Berakhir pada
+            </span>
+            <span className="text-sm font-bold text-amber-900">
+              {new Date(endsAt).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-stone-200 bg-stone-100 text-stone-500">
+          <CrownIcon />
+        </div>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm font-bold text-stone-700">Gratis</span>
+          <p className="m-0 mt-0.5 text-[11px] font-semibold text-stone-500">
+            Upgrade ke Premium untuk akses penuh
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AccountRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-stone-100 px-4 py-3.5 last:border-b-0">
@@ -343,7 +475,11 @@ function AccountRow({ label, value, copyable }: { label: string; value: string; 
         {copyable && (
           <button
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-stone-100 bg-stone-50 text-stone-400 transition-colors hover:text-primary"
-            onClick={() => navigator.clipboard?.writeText(value)}
+            onClick={() => {
+              if (typeof navigator !== 'undefined') {
+                void navigator.clipboard?.writeText(value);
+              }
+            }}
             title="Salin"
             type="button"
           >

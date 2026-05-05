@@ -30,7 +30,7 @@ Membangun **clickable prototype** seluruh flow utama IlmoraX sebagai web app res
 | ------------- | -------------------------------------------------------------------------- |
 | Nama platform | **IlmoraX**                                                                |
 | Logo          | Ilmora Logo (sudah disediakan client)                                      |
-| Primary color | Teal/green (existing `#14b8a6`)                                            |
+| Primary color | Navy blue (theme token `--brand-primary`/`--color-primary`)                                            |
 | Font          | Inter (body) + Poppins (heading)                                           |
 | Tone          | Joyful, playful, not-too-formal — feels closer to Duolingo than a textbook |
 | Responsive    | Mobile-first, responsive hingga desktop                                    |
@@ -128,7 +128,7 @@ Dua layout utama:
 /admin/insights             → Users Insights analytics
 /admin/coupons              → Coupon management
 /admin/coupons/new          → Create coupon
-/admin/packages             → Package / pricing management
+/admin/products             → Product / pricing management
 /admin/moderation           → Question moderation (reports)
 /admin/polls                → Live Poll management
 /admin/polls/new            → Create new poll
@@ -396,20 +396,20 @@ Free users see the full layout with premium sections blurred and a CTA to upgrad
 | Elemen             | Detail                                                                                                                                                            |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Feature comparison | Free vs Premium feature table                                                                                                                                     |
-| Pricing            | Single tier "Premium" with time-boxed Packages (e.g. 1 bulan / 6 bulan / 1 tahun). Package prices TBD by client. One-time charge per Package — **no auto-renew**. |
+| Pricing            | Premium Membership time-boxed packages (e.g. 1 bulan / 6 bulan / 1 tahun) plus Platinum Try-out lifetime products. One payment flow, no auto-renew.               |
 | CTA                | "Berlangganan Sekarang" → checkout                                                                                                                                |
 
 ### 4.17 Checkout (`/checkout`)
 
 | Elemen            | Detail                                                                                                                                     |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Order summary     | Package name, harga, durasi                                                                                                                |
-| Discount input    | **Single field** labeled "Kode promo / referral". Accepts a Coupon code OR a referral code, not both. Stacking disallowed.                 |
-| Referral behavior | Referee-only discount. Validated: code exists, referrer's email ≠ referee's email, referee has not used a referral discount before.        |
+| Order summary     | Product name, harga, duration/lifetime access                                                                                               |
+| Discount input    | **Single field** labeled "Kode Kupon". Accepts one admin-created Coupon only. Stacking disallowed.                                         |
+| Coupon scope      | Coupon has admin-configured product scope: Premium Membership, Platinum Try-out, Materi, or all paid products.                              |
 | Total             | Harga setelah diskon                                                                                                                       |
 | Payment method    | Mock payment gateway (Xendit/Midtrans mock)                                                                                                |
 | CTA               | "Bayar Sekarang" → mock success → dashboard                                                                                                |
-| Post-purchase     | Creates an **Entitlement** for the Student. If an Entitlement already exists, the new duration **extends** `ends_at` instead of replacing. |
+| Post-purchase     | Creates an **Entitlement** for the Student. Membership purchases extend `ends_at`; Platinum Try-out purchases grant lifetime access.       |
 
 ---
 
@@ -533,14 +533,13 @@ Admins use the same Google sign-in as students. There is no `/admin/auth/login` 
 | Create form | Kode (auto-generate or custom), discount type (% atau nominal), start time, end time, `max_total_uses` (optional cap — set to 1 for first-come-first-served single-claim code; leave empty for unlimited during validity window) |
 | Rule        | Each Coupon is redeemable **at most once per Student** regardless of the global cap. Unique constraint `(coupon_id, student_id)` on the redemption ledger.                                                                       |
 
-### 5.12 Package/Pricing Management (`/admin/packages`)
+### 5.12 Product/Pricing Management (`/admin/products`)
 
-| Elemen            | Detail                                                                                                                                                |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Package list      | Nama, harga, durasi (days), aktif?                                                                                                                    |
-| Actions           | Create, edit, activate/deactivate                                                                                                                     |
-| Referral settings | Global referral discount rule (% or nominal) — applied uniformly to any referee's first purchase. Per-Package referral rules are out of scope for M2. |
-| Model             | Single tier "Premium"; multiple time-boxed Packages (e.g. 1 bulan, 6 bulan, 1 tahun). No auto-renew.                                                  |
+| Elemen       | Detail                                                                                                                                       |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product list | Nama, tipe produk, harga, durasi/target konten, aktif?                                                                                       |
+| Actions      | Create, edit, activate/deactivate                                                                                                            |
+| Model        | Premium Membership products are time-boxed. Platinum Try-out products target one Try-out and grant lifetime access. No auto-renew.           |
 
 ### 5.13 Question Moderation (`/admin/moderation`)
 
@@ -651,7 +650,7 @@ Semua data di prototype menggunakan mock/hardcoded data. Berikut entity yang per
 | institution       | UNAIR, UGM, UI, etc. (from reference list)                         |
 | isAdmin           | false for students; true for ~1 mock admin user to demo admin flow |
 | adminTier         | null / `admin` / `super_admin` (only when `isAdmin` = true)        |
-| entitlementEndsAt | ISO date or null — source of truth for premium status              |
+| entitlementEndsAt | ISO date or null — source of truth for active Premium Membership   |
 | level             | 1-50                                                               |
 | xp                | based on level table                                               |
 | weeklyXp          | EXP earned in current week (for leaderboard)                       |
@@ -672,7 +671,7 @@ Semua data di prototype menggunakan mock/hardcoded data. Berikut entity yang per
 | correctAnswer | 0-4                                                              |
 | explanation   | pembahasan text                                                  |
 | videoUrl      | optional **unlisted YouTube URL**                                |
-| isPremium     | true/false                                                       |
+| accessLevel   | `free` / `premium`                                               |
 | published     | true/false                                                       |
 
 ### 7.3 Tryouts (6+ mock tryouts)
@@ -683,7 +682,8 @@ Semua data di prototype menggunakan mock/hardcoded data. Berikut entity yang per
 | title         | "UKAI Tryout 1", "Farmakologi", etc. |
 | questionCount | 20-50                                |
 | category      | Klinis, Farmakologi, etc.            |
-| isPremium     | true/false                           |
+| accessLevel   | `free` / `premium` / `platinum`      |
+| productId     | optional Product id for Platinum Try-out purchase |
 | duration      | 30-60 minutes                        |
 
 ### 7.4 Attempts (per user per tryout)
@@ -777,7 +777,14 @@ Untuk demo purposes, prototype harus bisa menunjukkan kedua state:
 | Leaderboard          | Sama                                                                             | Sama                                             |
 | Live Poll            | Sama                                                                             | Sama                                             |
 
-Implementasi: URL param `?premium=true` atau toggle button di developer menu. In production the state comes from the Student's active **Entitlement** (non-expired = premium).
+Implementasi: developer toggle may switch active Premium Membership for demo purposes. In production, global Premium Membership comes from a non-expired membership **Entitlement**. Platinum Try-out access comes from a content Entitlement for that Try-out.
+
+Platinum Try-out rules:
+
+- Free Students can see locked Platinum Try-outs in the catalog and buy one Try-out only through the same checkout.
+- Premium Students can access Platinum Try-outs while membership is active, but the lifetime purchase option is hidden for now.
+- If Premium expires, access falls back to Free plus owned Platinum Try-outs.
+- Purchased Platinum access unlocks the complete per-Try-out experience only, not global premium features.
 
 ---
 
@@ -897,7 +904,7 @@ src/
 │   │   ├── coupons.tsx            # Coupon list
 │   │   ├── coupons/
 │   │   │   └── new.tsx            # Create coupon
-│   │   ├── packages.tsx           # Package management
+│   │   ├── products.tsx           # Product management
 │   │   ├── moderation.tsx         # Question reports
 │   │   ├── polls.tsx               # Poll list
 │   │   ├── polls/
@@ -972,7 +979,7 @@ Phase 0 dianggap selesai ketika:
 | Day 3-4   | Dashboard expansion + Try-out list + Try-out taking (wall-clock timer, snapshot, autosave) + result + celebration annotations |
 | Day 5-6   | My Progress + Evaluation Dashboard (two-tier) + badges (26) + leaderboard (weekly WIB reset) |
 | Day 7-8   | Admin pages (admins whitelist, questions, users + evaluation, materi Markdown, categories 2-level, moderation clustered) |
-| Day 9-10  | Admin pages (insights, coupons with max-cap, packages time-boxed, polls with 3s polling, badges mgmt, leaderboard threshold) + Live Poll student |
+| Day 9-10  | Admin pages (insights, coupons with product scope, products/pricing, polls with 3s polling, badges mgmt, leaderboard threshold) + Live Poll student |
 | Day 11-12 | Premium/checkout (Entitlement creation, single discount field) + responsive polish + Coming Soon pages |
 | Day 13-14 | Review preparation + adjustments from design review                               |
 

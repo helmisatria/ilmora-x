@@ -22,8 +22,8 @@ function ProgressComponent() {
   const pctCorrect = user.totalQuestions > 0 ? Math.round((user.totalCorrect / user.totalQuestions) * 100) : 0;
 
   const categoryBreakdown = [
-    { name: "Klinis", total: 85, correct: 68, color: "#fb7185" },
-    { name: "Farmakologi", total: 95, correct: 72, color: "#14b8a6" },
+    { name: "Klinis", total: 85, correct: 68, color: "#205072" },
+    { name: "Farmakologi", total: 95, correct: 72, color: "#58cc02" },
     { name: "Farmasi Klinik", total: 65, correct: 49, color: "#0ea5e9" },
   ];
 

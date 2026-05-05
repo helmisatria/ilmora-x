@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useApp } from "../data";
+import { AvatarDisplay } from "./AvatarDisplay";
 
 export function TopBar() {
   const { user } = useApp();
@@ -18,10 +19,20 @@ export function TopBar() {
     >
       <Link
         to="/profile"
-        className="w-10 h-10 rounded-full flex items-center justify-center text-[21px] font-black tracking-wide shadow-sm shrink-0 transition-colors no-underline border-2 border-amber-200 text-stone-800 bg-[linear-gradient(135deg,#fff7ed_0%,#ccfbf1_100%)] hover:border-teal-300"
+        className="flex items-center gap-2.5 shrink-0 no-underline"
         title="Profil"
       >
-        {avatar}
+        <span className="w-10 h-10 rounded-full flex items-center justify-center text-[21px] font-black tracking-wide shadow-sm border-2 border-amber-200 text-stone-800 bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] overflow-hidden hover:border-primary-light transition-colors">
+          <AvatarDisplay avatar={avatar} photoUrl={user.googlePhotoUrl} className="w-full h-full" />
+        </span>
+        <div className="flex flex-col leading-none">
+          <span className="text-[13px] font-bold text-stone-800 truncate max-w-[120px]">
+            {user.name}
+          </span>
+          <span className="text-[11px] font-extrabold text-[var(--brand-primary-darker)] mt-0.5">
+            Lv.{level}
+          </span>
+        </div>
       </Link>
 
       <div className="flex items-center gap-2 flex-1 justify-center">
@@ -39,7 +50,7 @@ interface BottomNavProps {
 
 export function BottomNav({ active }: BottomNavProps) {
   const items = [
-    { k: "learn", label: "Belajar", icon: <HomeIcon />, to: "/dashboard" as const, accent: "#14b8a6", bg: "#ccfbf1" },
+    { k: "learn", label: "Belajar", icon: <HomeIcon />, to: "/dashboard" as const, accent: "var(--brand-primary)", bg: "var(--brand-primary-soft)" },
     { k: "tryout", label: "Tryout", icon: <BookIcon />, to: "/tryout" as const, accent: "#0ea5e9", bg: "#e0f2fe" },
     { k: "rank", label: "Peringkat", icon: <TrophyIcon />, to: "/leaderboard" as const, accent: "#f59e0b", bg: "#fef3c7" },
     { k: "badge", label: "Lencana", icon: <BadgeIcon />, to: "/badges" as const, accent: "#fb7185", bg: "#ffe4e6" },
@@ -107,9 +118,9 @@ function TopBarPill({
       color: "#15803d",
     },
     teal: {
-      background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)",
-      borderColor: "#99f6e4",
-      color: "#0f766e",
+      background: "linear-gradient(135deg, var(--brand-primary-tint) 0%, var(--brand-primary-soft) 100%)",
+      borderColor: "var(--brand-sky)",
+      color: "var(--brand-primary-darker)",
     },
   };
 

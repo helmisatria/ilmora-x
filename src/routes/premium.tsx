@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import gsap from "gsap";
 import { TopBar } from "../components/Navigation";
-import { packages } from "../data";
-import type { Package } from "../data/entitlements";
+import { membershipProducts } from "../data";
+import type { Product } from "../data/entitlements";
 
 export const Route = createFileRoute("/premium")({
   head: () => ({
@@ -27,9 +28,55 @@ const features = [
 ] as const;
 
 function PremiumComponent() {
-  const [selectedPackageId, setSelectedPackageId] = useState(packages.find((pkg) => pkg.active)?.id ?? 1);
-  const selectedPackage = packages.find((pkg) => pkg.id === selectedPackageId) ?? packages[0];
-  const activePackages = packages.filter((pkg) => pkg.active);
+  const [selectedProductId, setSelectedProductId] = useState(membershipProducts.find((product) => product.active)?.id ?? 1);
+  const selectedProduct = membershipProducts.find((product) => product.id === selectedProductId) ?? membershipProducts[0];
+  const activeProducts = membershipProducts.filter((product) => product.active);
+
+  const heroRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const comparisonRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        heroRef.current,
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.65, ease: "power3.out" }
+      );
+
+      gsap.fromTo(
+        panelRef.current,
+        { y: 40, opacity: 0, scale: 0.98 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.7, ease: "power3.out", delay: 0.12 }
+      );
+
+      if (cardsRef.current) {
+        gsap.fromTo(
+          cardsRef.current.children,
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.55, ease: "power3.out", stagger: 0.08, delay: 0.2 }
+        );
+      }
+
+      gsap.fromTo(
+        comparisonRef.current,
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, ease: "power3.out", delay: 0.45 }
+      );
+
+      if (sidebarRef.current) {
+        gsap.fromTo(
+          sidebarRef.current.children,
+          { x: 30, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.6, ease: "power3.out", stagger: 0.1, delay: 0.3 }
+        );
+      }
+    });
+
+    return () => ctx.revert();
+  }, []);
 
   return (
     <main
@@ -43,14 +90,14 @@ function PremiumComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(900px 340px at 10% -18%, #f59e0b38, transparent 62%), radial-gradient(720px 340px at 94% -12%, #14b8a61f, transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
+            "radial-gradient(900px 340px at 10% -18%, #f59e0b38, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
 
         <div className="premium-lane pt-7 lg:pt-9">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:items-end">
-            <div>
+            <div ref={heroRef} style={{ opacity: 0 }}>
               <Link to="/dashboard" className="mb-5 inline-flex items-center gap-2 text-[12px] font-bold text-stone-500 no-underline">
                 <ArrowLeftIcon />
                 Kembali
@@ -67,7 +114,9 @@ function PremiumComponent() {
               </p>
             </div>
 
-            <PremiumHeroPanel className="lg:mt-0" />
+            <div ref={panelRef} style={{ opacity: 0 }}>
+              <PremiumHeroPanel className="lg:mt-0" />
+            </div>
           </div>
         </div>
       </div>
@@ -76,54 +125,61 @@ function PremiumComponent() {
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           <div>
             <SectionHeader title="Pilih Paket" />
-            <div className="grid gap-3">
-              {activePackages.map((pkg) => (
-                <PackageCard
-                  key={pkg.id}
-                  pkg={pkg}
-                  isSelected={selectedPackageId === pkg.id}
-                  onSelect={() => setSelectedPackageId(pkg.id)}
-                />
+            <div ref={cardsRef} className="grid gap-3">
+              {activeProducts.map((product) => (
+                <div key={product.id} style={{ opacity: 0 }}>
+                  <PackageCard
+                    product={product}
+                    isSelected={selectedProductId === product.id}
+                    onSelect={() => setSelectedProductId(product.id)}
+                  />
+                </div>
               ))}
             </div>
 
-            <FeatureComparison />
+            <div ref={comparisonRef} style={{ opacity: 0 }}>
+              <FeatureComparison />
+            </div>
           </div>
 
-          <aside className="xl:sticky xl:top-24">
-            <div className="mt-6 rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm xl:mt-0">
-              <div className="flex items-start gap-3">
-                <IconTile icon={<ReceiptIcon />} accent={premiumAccent} />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
-                    Sekali Bayar
+          <aside ref={sidebarRef} className="xl:sticky xl:top-24">
+            <div style={{ opacity: 0 }}>
+              <div className="mt-6 rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm xl:mt-0">
+                <div className="flex items-start gap-3">
+                  <IconTile icon={<ReceiptIcon />} accent={premiumAccent} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
+                      Sekali Bayar
+                    </div>
+                    <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
+                      Tidak auto-renew
+                    </h2>
+                    <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
+                      Durasi paket akan ditambahkan ke tanggal aktif yang sudah ada, lalu kembali ke akses gratis saat selesai.
+                    </p>
                   </div>
-                  <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
-                    Tidak auto-renew
-                  </h2>
-                  <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
-                    Durasi paket akan ditambahkan ke tanggal aktif yang sudah ada, lalu kembali ke akses gratis saat selesai.
-                  </p>
                 </div>
               </div>
             </div>
 
-            <Link
-              to="/checkout"
-              search={{ packageId: selectedPackage.id }}
-              className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
-              style={{
-                background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
-                borderBottomWidth: 5,
-                borderBottomColor: "#b45309",
-              }}
-            >
-              <span>Lanjut bayar</span>
-              <span className="flex items-center gap-2">
-                Rp{selectedPackage.price.toLocaleString("id-ID")}
-                <ArrowRightIcon />
-              </span>
-            </Link>
+            <div style={{ opacity: 0 }}>
+              <Link
+                to="/checkout"
+                search={{ productId: selectedProduct.id }}
+                className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
+                style={{
+                  background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
+                  borderBottomWidth: 5,
+                  borderBottomColor: "#b45309",
+                }}
+              >
+                <span>Lanjut bayar</span>
+                <span className="flex items-center gap-2">
+                  Rp{selectedProduct.price.toLocaleString("id-ID")}
+                  <ArrowRightIcon />
+                </span>
+              </Link>
+            </div>
           </aside>
         </div>
       </div>
@@ -173,25 +229,25 @@ function PremiumHeroPanel({ className = "" }: { className?: string }) {
 }
 
 function PackageCard({
-  pkg,
+  product,
   isSelected,
   onSelect,
 }: {
-  pkg: Package;
+  product: Product;
   isSelected: boolean;
   onSelect: () => void;
 }) {
-  const savingPercent = getSavingPercent(pkg);
-  const isPopular = pkg.id === 2;
+  const savingPercent = getSavingPercent(product);
+  const isPopular = product.id === 2;
 
   return (
     <button
-      className="group rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 sm:px-5 sm:py-5"
+      className="group w-full rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 sm:px-5 sm:py-5"
       style={{
-        borderColor: isSelected ? "#14b8a6" : "#f5f5f4",
-        borderBottomColor: isSelected ? "#0d9488" : "#e7e5e4",
+        borderColor: isSelected ? "#205072" : "#f5f5f4",
+        borderBottomColor: isSelected ? "#153d5c" : "#e7e5e4",
         background: isSelected
-          ? "linear-gradient(180deg, #f0fdfa 0%, rgba(255,255,255,0.96) 76%)"
+          ? "linear-gradient(180deg, #f1f7fb 0%, rgba(255,255,255,0.96) 76%)"
           : "#ffffff",
       }}
       onClick={onSelect}
@@ -201,24 +257,24 @@ function PackageCard({
         <span
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2"
           style={{
-            background: isSelected ? "#ccfbf1" : "#ffffff",
-            borderColor: isSelected ? "#14b8a6" : "#d6d3d1",
-            color: "#14b8a6",
+            background: isSelected ? "#dcecf7" : "#ffffff",
+            borderColor: isSelected ? "#205072" : "#d6d3d1",
+            color: "#205072",
           }}
         >
           {isSelected && <span className="h-3.5 w-3.5 rounded-full bg-primary" />}
         </span>
 
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-          <b className="text-base font-bold leading-tight text-stone-800 sm:text-lg">{pkg.name}</b>
-          <DurationPill days={pkg.durationDays} />
+          <b className="text-base font-bold leading-tight text-stone-800 sm:text-lg">{product.name}</b>
+          <DurationPill days={product.durationDays ?? 0} />
           {isPopular && <StatusPill label="Populer" accent={premiumAccent} />}
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-4">
           <div className="text-right">
             <div className="text-lg font-bold leading-none tracking-tight text-stone-900 sm:text-xl">
-              Rp{pkg.price.toLocaleString("id-ID")}
+              Rp{product.price.toLocaleString("id-ID")}
             </div>
           </div>
 
@@ -227,8 +283,8 @@ function PackageCard({
           <span
             className="hidden h-9 w-9 items-center justify-center rounded-full border-2 sm:flex"
             style={{
-              background: isSelected ? "#14b8a6" : "#ffffff",
-              borderColor: isSelected ? "#14b8a6" : "#d6d3d1",
+              background: isSelected ? "#205072" : "#ffffff",
+              borderColor: isSelected ? "#205072" : "#d6d3d1",
               color: "#ffffff",
             }}
           >
@@ -240,9 +296,9 @@ function PackageCard({
   );
 }
 
-function getSavingPercent(pkg: Package) {
-  if (pkg.id === 2) return 15;
-  if (pkg.id === 3) return 32;
+function getSavingPercent(product: Product) {
+  if (product.id === 2) return 15;
+  if (product.id === 3) return 32;
 
   return 0;
 }
@@ -291,9 +347,9 @@ function DurationPill({ days }: { days: number }) {
     <span
       className="rounded-full border-2 px-3 py-1 text-[12px] font-semibold leading-none"
       style={{
-        color: isAmber ? "#b45309" : "#0f766e",
-        borderColor: isAmber ? "#fed7aa" : "#ccfbf1",
-        background: isAmber ? "#fff7ed" : "#f0fdfa",
+        color: isAmber ? "#b45309" : "#0b2135",
+        borderColor: isAmber ? "#fed7aa" : "#dcecf7",
+        background: isAmber ? "#fff7ed" : "#f1f7fb",
       }}
     >
       {days} hari

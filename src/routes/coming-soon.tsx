@@ -32,7 +32,7 @@ const features: Record<string, { name: string; icon: string; desc: string }> = {
   affiliate: {
     name: "Affiliate Program",
     icon: "🤝",
-    desc: "Undang teman pakai kode referralmu dan dapatkan bonus saat mereka upgrade ke Premium.",
+    desc: "Program undangan siswa sedang disiapkan untuk fase berikutnya.",
   },
   materi: {
     name: "Materi",

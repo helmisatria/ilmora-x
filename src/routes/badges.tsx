@@ -24,7 +24,7 @@ const categories: Array<{
   accent: string;
   icon: ReactNode;
 }> = [
-  { key: "General", label: "General", accent: "#14b8a6", icon: <TargetIcon /> },
+  { key: "General", label: "General", accent: "#205072", icon: <TargetIcon /> },
   { key: "Level", label: "Level", accent: "#0ea5e9", icon: <LevelIcon /> },
   { key: "Streak", label: "Streak", accent: "#f59e0b", icon: <FlameIcon /> },
   { key: "Prestige", label: "Prestige", accent: "#fb7185", icon: <StarIcon /> },
@@ -52,7 +52,7 @@ function BadgesComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(920px 320px at 10% -18%, #fb71852e, transparent 62%), radial-gradient(760px 340px at 92% -16%, #14b8a622, transparent 68%), linear-gradient(180deg, #fff1f3 0%, #fbfaf7 100%)",
+            "radial-gradient(920px 320px at 10% -18%, #fb71852e, transparent 62%), radial-gradient(760px 340px at 92% -16%, rgba(32,80,114,0.13), transparent 68%), linear-gradient(180deg, #fff1f3 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
@@ -68,7 +68,7 @@ function BadgesComponent() {
           </p>
 
           <div className="mt-5 grid max-w-[560px] grid-flow-dense grid-cols-2 gap-3">
-            <SummaryCard label="Terbuka" value={`${unlockedCount}/${badges.length}`} accent="#14b8a6" />
+            <SummaryCard label="Terbuka" value={`${unlockedCount}/${badges.length}`} accent="#205072" />
             <SummaryCard label={activeMeta.label} value={`${activeUnlocked}/${filteredBadges.length}`} accent={activeMeta.accent} />
           </div>
         </div>

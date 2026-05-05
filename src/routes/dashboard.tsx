@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
-import { PremiumDialog } from "../components/PremiumDialog";
-import { getLevelForXp, getNextLevel, getXpProgress, tryouts, useApp, type Tryout } from "../data";
+import { getCategoryColor, getLevelForXp, getNextLevel, getXpProgress, tryouts, useApp, type Tryout } from "../data";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -23,8 +22,8 @@ const dashboardPalettes = [
     page:
       "linear-gradient(180deg, #f4f8f7 0%, #f8faf8 38%, #f5f2ec 100%)",
     header:
-      "radial-gradient(900px 340px at 10% -18%, #14b8a626, transparent 62%), radial-gradient(720px 340px at 94% -12%, #d6c6a81f, transparent 68%), linear-gradient(180deg, #f4f8f7 0%, #fafaf9 100%)",
-    swatches: ["#f4f8f7", "#d6c6a8", "#14b8a6"],
+      "radial-gradient(900px 340px at 10% -18%, rgba(32,80,114,0.15), transparent 62%), radial-gradient(720px 340px at 94% -12%, #d6c6a81f, transparent 68%), linear-gradient(180deg, #f4f8f7 0%, #fafaf9 100%)",
+    swatches: ["#f4f8f7", "#d6c6a8", "#205072"],
   },
   {
     id: "paper",
@@ -32,8 +31,8 @@ const dashboardPalettes = [
     page:
       "linear-gradient(180deg, #f8f5ef 0%, #fbfaf7 45%, #f1f7f5 100%)",
     header:
-      "radial-gradient(900px 340px at 10% -18%, #14b8a620, transparent 62%), radial-gradient(720px 340px at 94% -12%, #c59f5d24, transparent 68%), linear-gradient(180deg, #f8f5ef 0%, #fbfaf7 100%)",
-    swatches: ["#f8f5ef", "#c59f5d", "#14b8a6"],
+      "radial-gradient(900px 340px at 10% -18%, rgba(32,80,114,0.13), transparent 62%), radial-gradient(720px 340px at 94% -12%, #c59f5d24, transparent 68%), linear-gradient(180deg, #f8f5ef 0%, #fbfaf7 100%)",
+    swatches: ["#f8f5ef", "#c59f5d", "#205072"],
   },
   {
     id: "clinic",
@@ -41,8 +40,8 @@ const dashboardPalettes = [
     page:
       "linear-gradient(180deg, #eef8f6 0%, #f6fbfa 44%, #f7f3ea 100%)",
     header:
-      "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
-    swatches: ["#eef8f6", "#0ea5e9", "#14b8a6"],
+      "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
+    swatches: ["#eef8f6", "#0ea5e9", "#205072"],
   },
   {
     id: "stone",
@@ -50,8 +49,8 @@ const dashboardPalettes = [
     page:
       "linear-gradient(180deg, #f2f0eb 0%, #fafaf9 42%, #eef6f3 100%)",
     header:
-      "radial-gradient(900px 340px at 10% -18%, #78716c20, transparent 62%), radial-gradient(720px 340px at 94% -12%, #14b8a620, transparent 68%), linear-gradient(180deg, #f2f0eb 0%, #fafaf9 100%)",
-    swatches: ["#f2f0eb", "#78716c", "#14b8a6"],
+      "radial-gradient(900px 340px at 10% -18%, #78716c20, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.13), transparent 68%), linear-gradient(180deg, #f2f0eb 0%, #fafaf9 100%)",
+    swatches: ["#f2f0eb", "#78716c", "#205072"],
   },
 ] as const;
 
@@ -60,8 +59,7 @@ const dashboardPaletteStorageKey = "ilmorax-dashboard-palette";
 const defaultDashboardPaletteId = "clinic";
 
 function DashboardComponent() {
-  const { user, isPremium, togglePremium } = useApp();
-  const [showPremium, setShowPremium] = useState(false);
+  const { user, hasPremiumMembership, togglePremiumMembership, canAccessTryout } = useApp();
   const [paletteId, setPaletteId] = useState<DashboardPalette["id"]>(defaultDashboardPaletteId);
   const [showToneLab, setShowToneLab] = useState(false);
   const navigate = useNavigate();
@@ -127,7 +125,7 @@ function DashboardComponent() {
         <div className="page-lane relative -mt-4 pb-28">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <button
-              className={`btn btn-primary px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] ${isPremium ? "col-span-2" : "col-span-1 md:col-span-2"}`}
+              className={`btn btn-primary px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] ${hasPremiumMembership ? "col-span-full justify-self-center" : "col-span-1 md:col-span-2"}`}
               onClick={() => navigate({ to: "/tryout" })}
               type="button"
             >
@@ -135,7 +133,7 @@ function DashboardComponent() {
               Mulai Tryout
             </button>
 
-            {!isPremium && (
+            {!hasPremiumMembership && (
               <button
                 className="btn col-span-1 px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] md:col-span-2"
                 style={{
@@ -143,7 +141,7 @@ function DashboardComponent() {
                   color: "#fff7ed",
                   borderBottomColor: "#a16207",
                 }}
-                onClick={() => setShowPremium(true)}
+                onClick={() => navigate({ to: "/premium" })}
                 type="button"
               >
                 <CrownIcon />
@@ -153,7 +151,7 @@ function DashboardComponent() {
           </div>
 
           <div className="mt-5 grid grid-cols-3 gap-3">
-            <StatCard icon={<DocumentIcon />} label="Soal dikerjakan" value={String(user.totalQuestions)} accent="#14b8a6" />
+            <StatCard icon={<DocumentIcon />} label="Soal dikerjakan" value={String(user.totalQuestions)} accent="#205072" />
             <StatCard icon={<TargetIcon />} label="Akurasi" value={`${accuracy}%`} accent="#f59e0b" />
             <StatCard icon={<ChartIcon />} label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" />
           </div>
@@ -163,13 +161,13 @@ function DashboardComponent() {
               <SectionHeader title="Try-out Tersedia" action="Lihat semua" to="/tryout" />
               <div className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-1">
                 {tryouts.slice(0, 4).map((tryout) => (
-                  <TryoutRow key={tryout.id} tryout={tryout} isLocked={tryout.isPremium && !isPremium} />
+                  <TryoutRow key={tryout.id} tryout={tryout} isLocked={!canAccessTryout(tryout)} />
                 ))}
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-              {isPremium ? (
+              {hasPremiumMembership ? (
                 <FeatureCallout
                   title="Evaluation Dashboard"
                   description="Lihat analisis performa lengkapmu"
@@ -179,7 +177,7 @@ function DashboardComponent() {
                   icon={<ChartIcon />}
                 />
               ) : (
-                <PremiumFeatureCallout onOpenPremium={() => setShowPremium(true)} />
+                <PremiumFeatureCallout />
               )}
 
               <FeatureCallout
@@ -187,7 +185,7 @@ function DashboardComponent() {
                 description="Masukkan kode 6 digit dari pembimbingmu"
                 to="/poll/join"
                 cta="Masuk Poll"
-                accent="#14b8a6"
+                accent="#205072"
                 icon={<SignalIcon />}
               />
             </div>
@@ -196,7 +194,7 @@ function DashboardComponent() {
           <div className="mt-6">
             <SectionHeader title="Segera Hadir" />
             <div className="grid grid-cols-3 gap-3 md:grid-cols-3">
-              <ComingSoonCard feature="drilling" title="Drilling" description="Latihan" icon={<GameIcon />} accent="#14b8a6" />
+              <ComingSoonCard feature="drilling" title="Drilling" description="Latihan" icon={<GameIcon />} accent="#205072" />
               <ComingSoonCard feature="store" title="Store" description="Power-up" icon={<StoreIcon />} accent="#f59e0b" />
               <ComingSoonCard feature="affiliate" title="Affiliate" description="Referral" icon={<HandshakeIcon />} accent="#0ea5e9" />
             </div>
@@ -214,11 +212,11 @@ function DashboardComponent() {
 
           <div className="mt-4 mb-20 text-center">
             <button
-              onClick={togglePremium}
+              onClick={togglePremiumMembership}
               className="text-xs text-stone-300 hover:text-stone-500 transition-colors font-medium"
               type="button"
             >
-              Premium mode {isPremium ? "ON" : "OFF"}
+              Premium mode {hasPremiumMembership ? "ON" : "OFF"}
             </button>
           </div>
         </div>
@@ -226,15 +224,6 @@ function DashboardComponent() {
         <BottomNav active="learn" />
       </div>
       </div>
-
-      <PremiumDialog
-        isOpen={showPremium}
-        onClose={() => setShowPremium(false)}
-        onUpgrade={() => {
-          setShowPremium(false);
-          navigate({ to: "/premium" });
-        }}
-      />
     </>
   );
 }
@@ -294,7 +283,7 @@ function DashboardToneDevtool({
                 key={palette.id}
                 className={`flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border-2 px-2 py-1.5 text-left transition-all duration-150 ${
                   isSelected
-                    ? "border-primary bg-teal-50 text-stone-900"
+                    ? "border-primary bg-primary-tint text-stone-900"
                     : "border-stone-100 bg-white text-stone-500 hover:border-stone-200"
                 }`}
                 onClick={() => onSelect(palette.id)}
@@ -348,11 +337,11 @@ function ProgressPanel({
     >
       <div className="grid grid-cols-2 gap-3">
         <ProgressMetric label="Streak" value={`${streak} hari`} icon={<FlameIcon />} accent="#f59e0b" />
-        <ProgressMetric label={`Level ${level}`} value={levelTitle} icon={<ShieldIcon />} accent="#14b8a6" />
+        <ProgressMetric label={`Level ${level}`} value={levelTitle} icon={<ShieldIcon />} accent="#205072" />
       </div>
 
       {nextXp && (
-        <div className="mt-3 rounded-[var(--radius-lg)] border-2 border-teal-100 bg-white/76 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:mt-4 sm:p-3.5">
+        <div className="mt-3 rounded-[var(--radius-lg)] border-2 border-primary-soft bg-white/76 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:mt-4 sm:p-3.5">
           <div className="flex items-center justify-between gap-3 sm:items-start">
             <div className="min-w-0">
               <div className="hidden text-[10px] font-semibold uppercase tracking-wide text-stone-400 sm:block">
@@ -363,12 +352,12 @@ function ProgressPanel({
                 <span className="hidden sm:inline">{remainingXp.toLocaleString()} XP lagi</span>
               </div>
             </div>
-            <div className="shrink-0 rounded-full border-2 border-teal-200 bg-teal-50 px-2 py-0.5 text-[11px] font-bold text-primary-dark sm:px-2.5 sm:py-1 sm:text-[12px]">
+            <div className="shrink-0 rounded-full border-2 border-brand-sky bg-primary-tint px-2 py-0.5 text-[11px] font-bold text-primary-dark sm:px-2.5 sm:py-1 sm:text-[12px]">
               {xpProgress}%
             </div>
           </div>
 
-          <div className="mt-2 rounded-full border-2 border-teal-100 bg-teal-50/80 p-0.5 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)] sm:mt-3 sm:p-1">
+          <div className="mt-2 rounded-full border-2 border-primary-soft bg-primary-tint/80 p-0.5 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)] sm:mt-3 sm:p-1">
             <div className="h-2.5 overflow-hidden rounded-full bg-white/90 sm:h-4">
               <div
                 className="relative h-full rounded-full transition-all duration-500"
@@ -376,7 +365,7 @@ function ProgressPanel({
                   width: `${xpProgress}%`,
                   minWidth: xpProgress > 0 ? "20px" : "0",
                   background:
-                    "linear-gradient(90deg, #14b8a6 0%, #0d9488 100%)",
+                    "linear-gradient(90deg, #205072 0%, #153d5c 100%)",
                 }}
               >
                 <div className="absolute inset-x-1 top-1 hidden h-0.75 rounded-full bg-white/30 sm:block" />
@@ -462,8 +451,9 @@ function SectionHeader({ title, action, to }: { title: string; action?: string; 
 }
 
 function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) {
-  const accent = isLocked ? "var(--color-amber)" : tryout.color;
-  const color = isLocked ? "#f59e0b" : tryout.color;
+  const categoryColor = getCategoryColor(tryout.categoryId);
+  const accent = isLocked ? "var(--color-amber)" : categoryColor;
+  const color = isLocked ? "#f59e0b" : categoryColor;
 
   return (
     <Link
@@ -488,7 +478,7 @@ function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) 
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
-            {isLocked ? "Premium" : `${tryout.duration} menit`}
+            {isLocked ? getAccessLabel(tryout.accessLevel) : `${tryout.duration} menit`}
           </span>
         </div>
         <div className="text-sm text-stone-400 font-medium">{tryout.questionCount} soal</div>
@@ -498,7 +488,13 @@ function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) 
   );
 }
 
-function PremiumFeatureCallout({ onOpenPremium }: { onOpenPremium: () => void }) {
+function getAccessLabel(accessLevel: Tryout["accessLevel"]) {
+  if (accessLevel === "platinum") return "Platinum";
+  if (accessLevel === "premium") return "Premium";
+  return "Gratis";
+}
+
+function PremiumFeatureCallout() {
   return (
     <div className="relative overflow-hidden rounded-[var(--radius-xl)] p-5 shadow-sm border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] text-amber-50">
       <div
@@ -534,19 +530,18 @@ function PremiumFeatureCallout({ onOpenPremium }: { onOpenPremium: () => void })
           <PremiumMiniStat label="Latihan" value="Target" />
         </div>
 
-        <button
+        <Link
+          to="/premium"
           className="btn w-full mt-4"
           style={{
             background: "#f5b544",
             color: "#2f281c",
             borderBottomColor: "#b45309",
           }}
-          onClick={onOpenPremium}
-          type="button"
         >
           <CrownIcon />
           Buka Premium
-        </button>
+        </Link>
       </div>
     </div>
   );

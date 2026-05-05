@@ -1,7 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { BottomNav, TopBar } from "../components/Navigation";
-import { PremiumDialog } from "../components/PremiumDialog";
 import { useApp } from "../data";
 
 export const Route = createFileRoute("/evaluation")({
@@ -48,8 +46,7 @@ const attempts = [
 ];
 
 function EvaluationComponent() {
-  const { isPremium, togglePremium } = useApp();
-  const [showPremium, setShowPremium] = useState(false);
+  const { hasPremiumMembership, togglePremiumMembership } = useApp();
   const totalQuestions = categoryBreakdown.reduce(
     (sum, category) => sum + category.subcategories.reduce((subSum, subcategory) => subSum + subcategory.total, 0),
     0,
@@ -73,7 +70,7 @@ function EvaluationComponent() {
         className="relative overflow-hidden pb-8"
         style={{
           background:
-            "radial-gradient(900px 340px at 8% -18%, #14b8a638, transparent 62%), radial-gradient(720px 340px at 94% -12%, #f59e0b20, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
+            "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #f59e0b20, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
         <TopBar />
@@ -92,15 +89,15 @@ function EvaluationComponent() {
             </div>
             <button
               className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-500 transition-all duration-150 hover:border-primary hover:text-primary active:translate-y-[1px]"
-              onClick={togglePremium}
+              onClick={togglePremiumMembership}
               type="button"
             >
-              {isPremium ? "Premium ON" : "Free"}
+              {hasPremiumMembership ? "Premium ON" : "Free"}
             </button>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 grid-flow-dense">
-            <SummaryCard label="Soal Dikerjakan" value={String(totalQuestions)} accent="#14b8a6" icon={<DocumentIcon />} />
+            <SummaryCard label="Soal Dikerjakan" value={String(totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
             <SummaryCard label="Jawaban Benar" value={String(totalCorrect)} accent="#22c55e" icon={<CheckCircleIcon />} />
             <SummaryCard label="Jawaban Salah" value={String(totalWrong)} accent="#fb7185" icon={<XCircleIcon />} />
             <SummaryCard label="Akurasi" value={`${pctCorrect}%`} accent="#f59e0b" icon={<TargetIcon />} />
@@ -109,7 +106,7 @@ function EvaluationComponent() {
       </div>
 
       <div className="relative -mt-4 px-5 pb-28">
-        <InsightPanel pctCorrect={pctCorrect} isPremium={isPremium} onOpenPremium={() => setShowPremium(true)} />
+        <InsightPanel pctCorrect={pctCorrect} isPremium={hasPremiumMembership} />
 
         <div className="mt-6">
           <SectionHeader title="Breakdown Kategori" />
@@ -118,8 +115,7 @@ function EvaluationComponent() {
               <CategoryCard
                 key={category.name}
                 category={category}
-                isPremium={isPremium}
-                onOpenPremium={() => setShowPremium(true)}
+                isPremium={hasPremiumMembership}
               />
             ))}
           </div>
@@ -127,8 +123,8 @@ function EvaluationComponent() {
 
         <div className="mt-6">
           <SectionHeader title="Riwayat Attempt" />
-          {!isPremium ? (
-            <LockedAttempts onOpenPremium={() => setShowPremium(true)} />
+          {!hasPremiumMembership ? (
+            <LockedAttempts />
           ) : (
             <div className="grid gap-3">
               {attempts.map((attempt) => (
@@ -140,11 +136,6 @@ function EvaluationComponent() {
       </div>
 
       <BottomNav active="learn" />
-      <PremiumDialog
-        isOpen={showPremium}
-        onClose={() => setShowPremium(false)}
-        onUpgrade={() => setShowPremium(false)}
-      />
     </main>
   );
 }
@@ -152,11 +143,9 @@ function EvaluationComponent() {
 function InsightPanel({
   pctCorrect,
   isPremium,
-  onOpenPremium,
 }: {
   pctCorrect: number;
   isPremium: boolean;
-  onOpenPremium: () => void;
 }) {
   return (
     <div
@@ -169,7 +158,7 @@ function InsightPanel({
       }}
     >
       <div className="flex items-start gap-3">
-        <IconTile icon={<SparkIcon />} accent="#14b8a6" />
+        <IconTile icon={<SparkIcon />} accent="#205072" />
         <div className="min-w-0 flex-1">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
             Rekomendasi
@@ -184,9 +173,9 @@ function InsightPanel({
       </div>
 
       {!isPremium && (
-        <button className="btn mt-4 w-full" onClick={onOpenPremium} type="button" style={{ background: "#2f281c", color: "#fff7ed", borderBottomColor: "#a16207" }}>
+        <Link to="/premium" className="btn mt-4 w-full" style={{ background: "#2f281c", color: "#fff7ed", borderBottomColor: "#a16207" }}>
           Buka Analisis Premium
-        </button>
+        </Link>
       )}
     </div>
   );
@@ -195,11 +184,9 @@ function InsightPanel({
 function CategoryCard({
   category,
   isPremium,
-  onOpenPremium,
 }: {
   category: (typeof categoryBreakdown)[number];
   isPremium: boolean;
-  onOpenPremium: () => void;
 }) {
   const categoryTotal = category.subcategories.reduce((sum, subcategory) => sum + subcategory.total, 0);
   const categoryCorrect = category.subcategories.reduce((sum, subcategory) => sum + subcategory.correct, 0);
@@ -215,7 +202,7 @@ function CategoryCard({
               {categoryCorrect}/{categoryTotal} soal benar
             </div>
           </div>
-          <span className="rounded-full border-2 border-teal-200 bg-teal-50 px-2.5 py-1 text-[12px] font-bold text-primary-dark">
+          <span className="rounded-full border-2 border-brand-sky bg-primary-tint px-2.5 py-1 text-[12px] font-bold text-primary-dark">
             {categoryPct}%
           </span>
         </div>
@@ -235,9 +222,9 @@ function CategoryCard({
 
         {!isPremium && (
           <div className="absolute inset-0 flex items-center justify-center rounded-b-[var(--radius-lg)] bg-amber-50/86 px-5 backdrop-blur-[1px]">
-            <button className="btn btn-sm" onClick={onOpenPremium} type="button" style={{ background: "#2f281c", color: "#fff7ed", borderBottomColor: "#a16207" }}>
+            <Link to="/premium" className="btn btn-sm" style={{ background: "#2f281c", color: "#fff7ed", borderBottomColor: "#a16207" }}>
               Unlock Breakdown
-            </button>
+            </Link>
           </div>
         )}
       </div>
@@ -266,7 +253,7 @@ function SubcategoryRow({
   );
 }
 
-function LockedAttempts({ onOpenPremium }: { onOpenPremium: () => void }) {
+function LockedAttempts() {
   return (
     <div className="rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-center text-amber-50 shadow-sm">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[var(--radius-md)] border-2 border-amber-300/45 bg-amber-400/15 text-amber-200">
@@ -276,9 +263,9 @@ function LockedAttempts({ onOpenPremium }: { onOpenPremium: () => void }) {
       <p className="mx-auto mt-2 max-w-[30ch] text-sm font-medium leading-relaxed text-amber-100/72">
         Buka tren attempt, XP, dan kualitas skor dari waktu ke waktu.
       </p>
-      <button className="btn mt-4 w-full" onClick={onOpenPremium} type="button" style={{ background: "#f5b544", color: "#2f281c", borderBottomColor: "#b45309" }}>
+      <Link to="/premium" className="btn mt-4 w-full" style={{ background: "#f5b544", color: "#2f281c", borderBottomColor: "#b45309" }}>
         Upgrade ke Premium
-      </button>
+      </Link>
     </div>
   );
 }
@@ -339,14 +326,14 @@ function SummaryCard({
 
 function ProgressBar({ value, size = "md" }: { value: number; size?: "sm" | "md" }) {
   return (
-    <div className={`${size === "md" ? "mt-3" : ""} rounded-full border-2 border-teal-100 bg-teal-50/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]`}>
+    <div className={`${size === "md" ? "mt-3" : ""} rounded-full border-2 border-primary-soft bg-primary-tint/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]`}>
       <div className={`${size === "md" ? "h-3" : "h-2"} overflow-hidden rounded-full bg-white/90`}>
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
             width: `${value}%`,
             minWidth: value > 0 ? "20px" : "0",
-            background: "linear-gradient(90deg, #14b8a6 0%, #0d9488 100%)",
+            background: "linear-gradient(90deg, #205072 0%, #153d5c 100%)",
           }}
         />
       </div>

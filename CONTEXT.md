@@ -20,21 +20,22 @@ The second and final level of question classification, scoped under a **Category
 _Avoid_: Topic, tag, sub-sub-category
 
 **Question**:
-A single item a student answers inside a **Try-out**. Carries the explanation ("pembahasan"), a free/premium flag, and one `(Category, Sub-category)` pair.
+A single item a student answers inside a **Try-out**. Carries the explanation ("pembahasan"), an access level, and one `(Category, Sub-category)` pair.
 _Avoid_: Soal (Bahasa only — ok in UI), item
 
 **Engagement surface**:
 The complete set of gamification concepts in scope: **EXP**, **Level** (1–50), **Badge**, **Streak** (daily Try-out consecutive days), **Leaderboard**. Hearts (lives) and Gems (currency) are **out of scope** and must not appear in the prototype top bar.
 
 **Coupon**:
-An admin-created discount code redeemable at checkout during a validity window (`start_time`, `end_time`). Each **Student** may redeem a given Coupon at most once. Admin may additionally set a `max_total_uses` cap (≥1) on the Coupon itself — setting it to `1` produces a first-come-first-served single-claim code; leaving it unset allows unlimited redemptions across students within the validity window.
+An admin-created discount code redeemable at checkout during a validity window (`start_time`, `end_time`). Each **Student** may redeem a given Coupon at most once. Admin may additionally set a `max_total_uses` cap (≥1) on the Coupon itself — setting it to `1` produces a first-come-first-served single-claim code; leaving it unset allows unlimited redemptions across students within the validity window. A Coupon has an explicit product scope so it cannot accidentally apply to the wrong paid product type.
 _Avoid_: Promo, voucher, discount code
 
 ## Rules (payment)
 
 - **Coupon redemption is per-Student.** Unique constraint `(coupon_id, student_id)` on the redemption ledger. A Student cannot redeem the same Coupon twice even if the global `max_total_uses` hasn't been reached.
-- **Referral is referee-only, code-based, single-use per Student lifetime.** Each Student has a unique human-readable referral code in their profile. A new Student pastes it at checkout for a one-time discount. The referrer gets nothing (no rewards, no EXP bonus, no wallet). Self-referral blocked by email match.
-- **Checkout accepts at most one discount: Coupon OR referral code, not both.** Single input field labeled "Kode promo / referral". Stacking is explicitly disallowed.
+- **Referral discounts are out of scope for now.** Students may still have referral codes in profile for future use, but checkout does not validate or advertise referral discounts.
+- **Checkout accepts at most one Coupon.** Single input field labeled "Kode Kupon". Stacking is explicitly disallowed.
+- **Coupon scope is product-aware.** Admin chooses whether a Coupon applies to Premium Membership, Platinum Try-out, Materi, or all paid products.
 
 ## Language (Live Poll)
 
@@ -84,20 +85,32 @@ An Admin with the power to add/remove other Admins via the CMS. Seeded via env v
 
 ## Language (Premium access)
 
-**Entitlement**:
-A record that grants a **Student** premium access for a bounded period. Unified shape regardless of origin — a paid package purchase and an admin grant are both Entitlements, distinguished only by a `source` field (`purchase | admin_grant`). Has `starts_at`, `ends_at`, and an optional reference to the **Package** purchased.
+**Product**:
+A sellable item in checkout. Product types include **Premium Membership** packages, **Platinum Try-out** lifetime purchases, and later Materi purchases. Checkout has one payment flow for all Product types.
 
-**Package**:
-A sellable time-boxed premium plan (e.g. "Premium 1 Bulan", "Premium 6 Bulan"). One tier — "Premium" — in M2. Buying a Package creates an Entitlement.
+**Premium Membership**:
+A time-boxed Product that grants global full-feature access while active. It unlocks premium try-outs, Platinum try-outs while active, premium explanations/videos, full evaluation dashboard, premium Materi, and future premium features. It is a one-time payment package, not auto-renew.
+
+**Platinum Try-out**:
+A Try-out that can be purchased individually for lifetime access to that Try-out. It is also included while Premium Membership is active. Buying a Platinum Try-out grants the full per-tryout experience only: taking, retaking, full explanations, video explanations, result review, and related Materi links inside that Try-out.
+
+**Entitlement**:
+A record that grants a **Student** access to a Product or content target. A Premium Membership Entitlement has `starts_at` and `ends_at`. A Platinum Try-out Entitlement has no expiry and targets a specific Try-out. Entitlements can come from purchase or admin grant.
 
 ## Rules (Premium access)
 
-- **Premium is time-boxed, not recurring.** Students buy a Package as a one-time charge; Entitlement expires; renewal requires another purchase. No auto-renew in M2.
-- **Effective premium = any non-expired Entitlement** for this Student. One access check across all surfaces (try-outs, materi, question-level, evaluation breakdowns, video explanations).
+- **Premium Membership is time-boxed, not recurring.** Students buy a Product as a one-time charge; Entitlement expires; renewal requires another purchase. No auto-renew in M2.
+- **Effective Premium Membership = any non-expired membership Entitlement** for this Student. It is one global access check across all premium surfaces.
+- **Platinum ownership = any non-expired or lifetime content Entitlement** for the specific Try-out. It survives Premium Membership expiry.
+- **Try-out access levels are explicit:** `free`, `premium`, or `platinum`. Do not model this as `isPremium`.
+- **Question access levels are explicit:** `free` or `premium`. If a Student can access a Try-out, that access unlocks premium questions inside that Try-out.
 - **Overlapping purchases extend the expiry** — buying while an Entitlement is still active adds the new duration to the existing `ends_at`. Never blocks re-purchase.
 - **Single premium tier in M2** — no "Premium Plus." Multi-tier is post-M2.
 - **Hard expiry cut**, with proactive email warnings at T-7d and T-1d before `ends_at`. No grace period.
-- **Admin-granted premium must specify a duration** — there is no "forever" Entitlement. Admins can issue long durations (e.g. 10 years) if truly needed.
+- **Admin-granted Premium Membership must specify a duration.** Admin-granted Platinum Try-out access is a separate action and is lifetime by default.
+- **Lifetime access means no expiry while the content remains available.** Admin may retire/unpublish a purchased Try-out. If a replacement Try-out is explicitly linked, owners get access to the replacement.
+- **Catalog cards have one primary action.** Locked Platinum cards open a context-aware upgrade dialog. The dialog can offer Premium Membership or buying that one Try-out only, then routes to the same checkout.
+- **Active Premium members do not see the Platinum lifetime purchase option for now.** Platinum Try-outs appear accessible/included while membership is active.
 
 ## Product principles
 
@@ -110,7 +123,7 @@ A sellable time-boxed premium plan (e.g. "Premium 1 Bulan", "Premium 6 Bulan"). 
 ## Language (Materi)
 
 **Materi**:
-A standalone study-material unit tagged with one `(Category, Sub-category)` pair (same taxonomy as Questions). Carries a free/premium flag, a Markdown body, optional YouTube embed URL, and an optional PDF attachment.
+A standalone study-material unit tagged with one `(Category, Sub-category)` pair (same taxonomy as Questions). Carries an access level, a Markdown body, optional YouTube embed URL, and an optional PDF attachment.
 _Avoid_: Article, lesson, module
 
 ## Rules (Materi)

@@ -6,6 +6,16 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
+const brandColors = {
+  primary: "#205072",
+  primaryLight: "#2f79a5",
+  primaryDark: "#153d5c",
+  primaryDarker: "#0b2135",
+  primarySoft: "#dcecf7",
+  primaryTint: "#f1f7fb",
+  sky: "#79b7d9",
+} as const;
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -34,7 +44,7 @@ const heroMetrics = [
     label: "Soal UKAI",
     value: "500+",
     accent: "#19b39d",
-    tone: "#e9faf6",
+    tone: brandColors.primaryTint,
     icon: <DocumentIcon />,
   },
   {
@@ -67,8 +77,8 @@ const popularTryouts = [
     title: "UKAI Tryout 1",
     meta: "20 soal  •  30 menit",
     pill: "KLINIS",
-    tone: "#dff7f2",
-    accent: "#16b29c",
+    tone: brandColors.primarySoft,
+    accent: brandColors.primary,
     icon: <FlaskIcon />,
   },
   {
@@ -128,8 +138,8 @@ const learningBadges = [
   {
     title: "Terarah",
     body: "Fokus materi prioritas.",
-    tone: "#e8faf6",
-    accent: "#1ab6a0",
+    tone: brandColors.primaryTint,
+    accent: brandColors.primary,
     icon: <TargetBadgeIcon />,
   },
   {
@@ -153,8 +163,8 @@ const focusCards = [
     title: "Tahu prioritas belajar",
     body: "Analisis performa menunjukkan topik lemah dan memberi rekomendasi latihan yang paling berdampak.",
     number: "01",
-    tone: "#e8faf6",
-    accent: "#1ab6a0",
+    tone: brandColors.primaryTint,
+    accent: brandColors.primary,
     chips: ["Topik lemah terarah", "Rekomendasi personal"],
     icon: <TargetBadgeIcon />,
   },
@@ -188,8 +198,8 @@ const recommendedActions = [
   {
     title: "Ulangi topik Kardiovaskular",
     meta: "20 soal rekomendasi",
-    tone: "#e9faf6",
-    accent: "#1ab6a0",
+    tone: brandColors.primaryTint,
+    accent: brandColors.primary,
     icon: <DocumentIcon />,
   },
   {
@@ -249,8 +259,8 @@ const pricingPreviewTryouts = [
     title: "UKAI Tryout 1",
     meta: "20 soal • 30 menit",
     icon: <FlaskIcon />,
-    tone: "#e9faf6",
-    accent: "#18b7a1",
+    tone: brandColors.primaryTint,
+    accent: brandColors.primary,
   },
   {
     title: "Farmakologi Dasar",
@@ -303,13 +313,13 @@ const pricingTrustItems = [
     title: "Aman & Terpercaya",
     body: "Data kamu selalu dilindungi",
     icon: <ShieldBadgeIcon />,
-    tone: "#18b7a1",
+    tone: brandColors.primary,
   },
   {
     title: "Selalu Diperbarui",
     body: "Soal & pembahasan terkini",
     icon: <RefreshIcon />,
-    tone: "#18b7a1",
+    tone: brandColors.primary,
   },
   {
     title: "Butuh Bantuan?",
@@ -339,7 +349,7 @@ const finalCalloutCards = [
     value: "12",
     position: "left-6 top-[44%] -rotate-[8deg] xl:left-12",
     icon: <ShieldBadgeIcon />,
-    tone: "#18b7a1",
+    tone: brandColors.primary,
     width: "w-[178px]",
   },
   {
@@ -460,7 +470,7 @@ function LandingNav() {
         <Link to="/" className="flex min-w-0 shrink items-center gap-3 no-underline">
           <BrandMark />
           <span className="whitespace-nowrap text-[17px] font-black tracking-tight text-[#1f2937]">
-            Ilmora<span className="text-[#18b7a1]">X</span>
+            Ilmora<span className="text-[var(--brand-primary)]">X</span>
           </span>
         </Link>
 
@@ -469,13 +479,13 @@ function LandingNav() {
         <div className="flex shrink-0 items-center gap-2">
           <Link
             to="/auth/login"
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#dce9e4] bg-white px-3.5 py-2 text-[13px] font-black text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#dce9e4] bg-white px-3.5 py-2 text-[13px] font-semibold text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
           >
             Masuk
           </Link>
           <Link
             to="/tryout"
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[#18b7a1] px-3.5 py-2 text-[13px] font-black text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[var(--brand-primary)] px-3.5 py-2 text-[13px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
           >
             Daftar Gratis
           </Link>
@@ -534,6 +544,35 @@ function LandingNavMenu() {
     setActiveHref(nextHref as (typeof heroNavItems)[number]["href"]);
   }
 
+  function getActiveHrefFromScroll() {
+    const scanLine = window.innerHeight * 0.36;
+    let nextHref: (typeof heroNavItems)[number]["href"] = defaultActiveNavHref;
+
+    for (const item of heroNavItems) {
+      const section = document.getElementById(item.href.replace("#", ""));
+
+      if (!section) {
+        continue;
+      }
+
+      const bounds = section.getBoundingClientRect();
+
+      if (bounds.top <= scanLine && bounds.bottom > scanLine) {
+        return item.href;
+      }
+
+      if (bounds.top <= scanLine) {
+        nextHref = item.href;
+      }
+    }
+
+    return nextHref;
+  }
+
+  function syncActiveHrefFromScroll() {
+    setActiveHref(getActiveHrefFromScroll());
+  }
+
   function handleNavClick(
     event: MouseEvent<HTMLAnchorElement>,
     href: (typeof heroNavItems)[number]["href"],
@@ -562,6 +601,35 @@ function LandingNavMenu() {
     };
   }, []);
 
+  useEffect(() => {
+    let animationFrame = 0;
+
+    function requestActiveSync() {
+      if (animationFrame) {
+        return;
+      }
+
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = 0;
+        syncActiveHrefFromScroll();
+      });
+    }
+
+    syncActiveHrefFromScroll();
+
+    window.addEventListener("scroll", requestActiveSync, { passive: true });
+    window.addEventListener("resize", requestActiveSync);
+
+    return () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+
+      window.removeEventListener("scroll", requestActiveSync);
+      window.removeEventListener("resize", requestActiveSync);
+    };
+  }, []);
+
   useSafeLayoutEffect(() => {
     updateIndicator(activeHref);
   }, [activeHref]);
@@ -582,7 +650,7 @@ function LandingNavMenu() {
     <div ref={menuRef} className="relative hidden items-center gap-1 md:flex">
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 h-[3px] rounded-full bg-[#18b7a1] transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className="pointer-events-none absolute bottom-0 h-[3px] rounded-full bg-[var(--brand-primary)] transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         style={{
           width: `${indicator.width}px`,
           opacity: indicator.opacity,
@@ -599,9 +667,9 @@ function LandingNavMenu() {
             data-nav-href={item.href}
             href={item.href}
             onClick={(event) => handleNavClick(event, item.href)}
-            className={`relative rounded-full px-4 py-3 text-[13px] font-bold no-underline transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`relative rounded-full px-4 py-3 text-[13px] font-semibold no-underline transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isActive
-                ? "text-[#18b7a1]"
+                ? "text-[var(--brand-primary)]"
                 : "text-stone-600 hover:text-stone-900"
             }`}
           >
@@ -629,14 +697,14 @@ function HeroSection() {
 
       <div className="mx-auto grid w-full max-w-[1240px] items-start gap-14 lg:grid-cols-[1.04fr_0.96fr]">
         <div className="landing-reveal">
-          <span className="inline-flex items-center gap-3 rounded-full bg-[#eaf7f3] px-5 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-[#118f7d] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#18b7a1]" />
+          <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-[var(--brand-primary-dark)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
             Platform latihan UKAI
           </span>
 
           <h1 className="mt-7 max-w-[12ch] text-[clamp(2.9rem,5.3vw,4.95rem)] font-[780] leading-[0.93] tracking-[-0.05em] text-[#202124]">
             Simulasi UKAI yang terasa seperti{" "}
-            <span className="text-[#18a796]">ujian asli</span>
+            <span className="text-[var(--brand-primary-dark)]">ujian asli</span>
           </h1>
 
           <p className="mt-5 max-w-[40ch] text-[16px] font-medium leading-relaxed text-stone-600 sm:text-[17px]">
@@ -697,7 +765,7 @@ function HeroProductFrame() {
             <div className="text-[13px] font-bold uppercase tracking-[0.08em] text-stone-500">
               Try-out terpopuler
             </div>
-            <a href="#cara-kerja" className="text-[13px] font-bold text-[#16ae99] no-underline">
+            <a href="#cara-kerja" className="text-[13px] font-bold text-[var(--brand-primary-dark)] no-underline">
               Lihat semua
             </a>
           </div>
@@ -731,7 +799,7 @@ function HeroProductFrame() {
 
             <a
               href="#hasil"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[#eef9f7] px-4 py-3 text-[14px] font-bold text-[#159d8a] no-underline"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[var(--brand-primary-tint)] px-4 py-3 text-[14px] font-bold text-[var(--brand-primary-dark)] no-underline"
             >
               Lihat analisis lengkap
             </a>
@@ -740,11 +808,11 @@ function HeroProductFrame() {
 
         <div className="mt-4 flex flex-col gap-4 rounded-[1.5rem] border border-[#d7ece6] bg-[linear-gradient(180deg,#fbfffe_0%,#f6fffd_100%)] px-5 py-4 shadow-[0_10px_24px_rgba(130,174,160,0.08)] md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#e9faf6] text-[#18b7a1]">
+            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand-primary-tint)] text-[var(--brand-primary)]">
               <SparkIcon />
             </div>
             <div>
-              <div className="text-[15px] font-bold text-[#129684]">
+              <div className="text-[15px] font-bold text-[var(--brand-primary-dark)]">
                 Evaluasi cerdas, rekomendasi personal
               </div>
               <p className="mt-1 text-[15px] text-stone-600">
@@ -755,7 +823,7 @@ function HeroProductFrame() {
 
           <a
             href="#cara-kerja"
-            className="inline-flex items-center justify-center rounded-full border border-[#95d8ce] px-5 py-3 text-[14px] font-bold text-[#18a796] no-underline"
+            className="inline-flex items-center justify-center rounded-full border border-[#95d8ce] px-5 py-3 text-[14px] font-bold text-[var(--brand-primary-dark)] no-underline"
           >
             Pelajari cara kerja
           </a>
@@ -848,8 +916,8 @@ function TimerRing() {
           />
           <defs>
             <linearGradient id="timer-ring" x1="0%" x2="100%" y1="0%" y2="0%">
-              <stop offset="0%" stopColor="#1bc0b0" />
-              <stop offset="100%" stopColor="#9be2d9" />
+              <stop offset="0%" stopColor="var(--brand-primary-light)" />
+              <stop offset="100%" stopColor="var(--brand-sky)" />
             </linearGradient>
           </defs>
         </svg>
@@ -862,7 +930,7 @@ function TimerRing() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-full bg-[#eaf7f4] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[#16aa97]">
+      <div className="mt-3 rounded-full bg-[var(--brand-primary-tint)] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[var(--brand-primary-dark)]">
         30 MENIT
       </div>
     </div>
@@ -907,8 +975,8 @@ function JourneySection() {
 
       <div className="relative mx-auto grid w-full max-w-[1240px] gap-12 lg:grid-cols-[1fr_1.16fr] lg:items-start">
         <div className="landing-panel pt-6 lg:sticky lg:top-28 lg:self-start">
-          <div className="flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.18em] text-[#17af9a]">
-            <span className="h-3.5 w-3.5 rounded-full bg-[#18b7a1]" />
+          <div className="flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.18em] text-[var(--brand-primary)]">
+            <span className="h-3.5 w-3.5 rounded-full bg-[var(--brand-primary)]" />
             Cara belajar
           </div>
 
@@ -953,14 +1021,14 @@ function JourneySection() {
           </div>
 
           <div className="mt-10 flex items-center gap-4 rounded-[1.45rem] border border-[#bce8e0] bg-[linear-gradient(180deg,#f8fffd_0%,#f3fffc_100%)] px-5 py-5 shadow-[0_16px_36px_rgba(110,170,153,0.08)]">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] bg-[#18b7a1] text-white shadow-[0_12px_24px_rgba(24,183,161,0.22)]">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] bg-[var(--brand-primary)] text-white shadow-[0_12px_24px_rgba(24,183,161,0.22)]">
               <BarChartIcon />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[16px] text-stone-600">
                 Ribuan calon apoteker sudah merasakan bedanya.
               </div>
-              <div className="mt-1 text-[16px] font-bold text-[#13a28e]">
+              <div className="mt-1 text-[16px] font-bold text-[var(--brand-primary-dark)]">
                 Sekarang giliranmu!
               </div>
             </div>
@@ -993,8 +1061,8 @@ function ProofSection() {
 
       <div className="relative mx-auto w-full max-w-[1240px]">
         <div className="landing-panel">
-          <span className="inline-flex items-center gap-3 rounded-full bg-[#eff9f6] px-5 py-3 text-[12px] font-black uppercase tracking-[0.16em] text-[#17af9a] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#18b7a1]" />
+          <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[12px] font-black uppercase tracking-[0.16em] text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
             Hasil belajar
           </span>
 
@@ -1017,7 +1085,7 @@ function ProofSection() {
             ))}
 
             <div className="landing-panel flex items-center gap-4 rounded-[1.6rem] border border-[#cceee7] bg-[linear-gradient(180deg,#f7fffd_0%,#f2fdfb_100%)] px-5 py-4 shadow-[0_14px_30px_rgba(112,174,160,0.08)]">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e7faf6] text-[#18b7a1]">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--brand-primary-tint)] text-[var(--brand-primary)]">
                 <ShieldBadgeIcon />
               </div>
               <p className="text-[16px] leading-relaxed text-stone-500">
@@ -1036,7 +1104,7 @@ function ResultAnalyticsCard() {
     <article className="landing-panel rounded-[2.1rem] border border-[#dcefeb] bg-white p-6 shadow-[0_18px_46px_rgba(120,165,152,0.1)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-[1.2rem] bg-[#e9faf6] text-[#18b7a1]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[1.2rem] bg-[var(--brand-primary-tint)] text-[var(--brand-primary)]">
             <LargeStepIcon><FlaskIcon /></LargeStepIcon>
           </div>
           <div>
@@ -1047,18 +1115,18 @@ function ResultAnalyticsCard() {
           </div>
         </div>
 
-        <span className="rounded-full bg-[#eff9f6] px-4 py-2 text-[13px] font-bold text-[#17af9a]">
+        <span className="rounded-full bg-[var(--brand-primary-tint)] px-4 py-2 text-[13px] font-bold text-[var(--brand-primary)]">
           KLINIS
         </span>
       </div>
 
       <div className="mt-6 rounded-[1.7rem] border border-[#d6efea] bg-[linear-gradient(180deg,#fafdfe_0%,#fbfffd_100%)] p-5">
         <div className="grid gap-5 md:grid-cols-[1fr_1fr_1fr_116px] md:items-center">
-          <MetricBlock label="SKOR ANDA" value="86" suffix="/100" subtext="Di atas rata-rata" tone="#18b7a1" />
+          <MetricBlock label="SKOR ANDA" value="86" suffix="/100" subtext="Di atas rata-rata" tone="var(--brand-primary)" />
           <MetricBlock label="PERSENTIL" value="78" suffix="/100" subtext="Lebih baik dari 78% peserta" />
           <MetricBlock label="PERINGKAT" value="#12" subtext="dari 1.248 peserta" />
           <div className="flex justify-center md:justify-end">
-            <div className="flex h-24 w-24 items-center justify-center rounded-[1.6rem] bg-[linear-gradient(180deg,#edfdfa_0%,#f8fffd_100%)] text-[#18b7a1] shadow-[0_12px_24px_rgba(120,180,164,0.12)]">
+            <div className="flex h-24 w-24 items-center justify-center rounded-[1.6rem] bg-[linear-gradient(180deg,var(--brand-primary-tint)_0%,#f8fffd_100%)] text-[var(--brand-primary)] shadow-[0_12px_24px_rgba(120,180,164,0.12)]">
               <ShieldCheckIcon />
             </div>
           </div>
@@ -1078,7 +1146,7 @@ function ResultAnalyticsCard() {
             ))}
           </div>
 
-          <a href="#paket" className="mt-6 inline-flex items-center gap-2 text-[15px] font-bold text-[#18b7a1] no-underline">
+          <a href="#paket" className="mt-6 inline-flex items-center gap-2 text-[15px] font-bold text-[var(--brand-primary)] no-underline">
             Lihat analisis lengkap
             <ArrowUpRightIcon />
           </a>
@@ -1285,9 +1353,9 @@ function JourneyStepCard({
       ? {
           border: "#cdeee7",
           glow: "rgba(35,191,174,0.22)",
-          tileBg: "#e7faf6",
+          tileBg: "var(--brand-primary-tint)",
           tileColor: "#1db39d",
-          pillBg: "#e7faf6",
+          pillBg: "var(--brand-primary-tint)",
           pillColor: "#1db39d",
         }
       : step.number === "02"
@@ -1385,7 +1453,7 @@ function SimulationPreview() {
           <div className="text-[13px] text-stone-500">Soal ke</div>
           <div className="mt-2 flex items-end justify-between gap-2">
             <span className="text-[18px] font-black text-stone-800">12 / 20</span>
-            <span className="text-[#18b7a1]">
+            <span className="text-[var(--brand-primary)]">
               <MenuGridIcon />
             </span>
           </div>
@@ -1402,7 +1470,7 @@ function SimulationPreview() {
               key={item}
               className="flex h-10 items-center justify-center rounded-full border text-[13px] font-bold"
               style={{
-                background: isAnswered ? (item === "12" ? "#18b7a1" : "#eefaf7") : isPending ? "#fff4f5" : "#ffffff",
+                background: isAnswered ? (item === "12" ? "var(--brand-primary)" : "#eefaf7") : isPending ? "#fff4f5" : "#ffffff",
                 color: isAnswered ? (item === "12" ? "#ffffff" : "#15a390") : isPending ? "#ff7d89" : "#777777",
                 borderColor: isAnswered ? "#bce8df" : isPending ? "#ffd7dc" : "#e5ece9",
               }}
@@ -1414,7 +1482,7 @@ function SimulationPreview() {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-stone-500">
-        <LegendItem tone="#18b7a1" label="Terjawab" />
+        <LegendItem tone="var(--brand-primary)" label="Terjawab" />
         <LegendItem tone="#f4ab2c" label="Ragu-ragu" />
         <LegendItem tone="#ff7b88" label="Belum dijawab" />
       </div>
@@ -1466,7 +1534,7 @@ function WeakTopicPreview() {
 
 function RecommendationPreview() {
   const chips = [
-    { label: "Ringkasan Materi", tone: "#1ab6a0", bg: "#e9faf6" },
+    { label: "Ringkasan Materi", tone: brandColors.primary, bg: brandColors.primaryTint },
     { label: "Latihan Topik", tone: "#2d9cff", bg: "#edf5ff" },
     { label: "Video Pembahasan", tone: "#f0a22c", bg: "#fff4df" },
     { label: "Soal Sejenis", tone: "#a86bff", bg: "#f5ecff" },
@@ -1520,7 +1588,7 @@ function PricingSection() {
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute right-0 top-0 h-[360px] w-[360px] bg-[radial-gradient(circle,_rgba(255,226,173,0.72)_0%,_transparent_70%)]" />
-        <div className="absolute left-[6%] top-[24%] text-[#18b7a1] opacity-90">
+        <div className="absolute left-[6%] top-[24%] text-[var(--brand-primary)] opacity-90">
           <SparkIcon />
         </div>
         <div className="absolute right-[12%] top-[12%] text-[#f5b12e] opacity-90">
@@ -1530,8 +1598,8 @@ function PricingSection() {
 
       <div className="relative mx-auto w-full max-w-[1240px]">
         <div className="landing-panel">
-          <span className="inline-flex items-center gap-3 rounded-full bg-[#eff9f6] px-5 py-3 text-[12px] font-black uppercase tracking-[0.16em] text-[#17af9a] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#18b7a1]" />
+          <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[12px] font-black uppercase tracking-[0.16em] text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
             Paket belajar
           </span>
 
@@ -1568,7 +1636,7 @@ function FreePricingCard() {
       <div className="rounded-[1.7rem] bg-white p-4">
         <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.2rem] bg-[#e9faf6] text-[#18b7a1] sm:h-18 sm:w-18 sm:rounded-[1.4rem]">
+            <div className="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.2rem] bg-[var(--brand-primary-tint)] text-[var(--brand-primary)] sm:h-18 sm:w-18 sm:rounded-[1.4rem]">
               <LargeStepIcon>{plan.icon}</LargeStepIcon>
             </div>
             <div className="min-w-0">
@@ -1581,7 +1649,7 @@ function FreePricingCard() {
             </div>
           </div>
 
-          <span className="inline-flex w-fit whitespace-nowrap rounded-full border border-[#bfece4] bg-[#eff9f6] px-4 py-2 text-[13px] font-bold text-[#18b7a1]">
+          <span className="inline-flex w-fit whitespace-nowrap rounded-full border border-[#bfece4] bg-[var(--brand-primary-tint)] px-4 py-2 text-[13px] font-bold text-[var(--brand-primary)]">
             {plan.badge}
           </span>
         </div>
@@ -1592,7 +1660,7 @@ function FreePricingCard() {
               key={feature}
               className="flex items-center gap-3 border-b border-[#eef2f1] py-3 last:border-b-0"
             >
-              <span className="text-[#20baa7]">
+              <span className="text-[var(--brand-primary)]">
                 <CheckCircleIcon />
               </span>
               <span className="text-[16px] text-stone-700">{feature}</span>
@@ -1602,10 +1670,10 @@ function FreePricingCard() {
 
         <div className="mt-6 rounded-[1.55rem] border border-[#cfeee8] bg-[linear-gradient(180deg,#f9fffe_0%,#f5fffc_100%)] p-3 sm:p-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-[15px] font-bold text-[#178c7d]">
+            <div className="text-[15px] font-bold text-[var(--brand-primary-dark)]">
               Try-out yang tersedia
             </div>
-            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#def7f1] px-3 py-1.5 text-[13px] font-bold text-[#18b7a1]">
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#def7f1] px-3 py-1.5 text-[13px] font-bold text-[var(--brand-primary)]">
               4 modul
             </span>
           </div>
@@ -1755,7 +1823,7 @@ function PricingPrimaryButton({
   const className =
     theme === "gold"
       ? "inline-flex w-full items-center justify-center gap-3 rounded-[1.2rem] bg-[#f4b844] px-6 py-5 text-[18px] font-black text-[#2d220f] no-underline shadow-[0_12px_22px_rgba(244,184,68,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
-      : "inline-flex w-full items-center justify-center gap-3 rounded-[1.2rem] bg-[#18b7a1] px-6 py-5 text-[18px] font-black text-white no-underline shadow-[0_12px_22px_rgba(24,183,161,0.22)] transition-transform duration-200 hover:-translate-y-0.5";
+      : "inline-flex w-full items-center justify-center gap-3 rounded-[1.2rem] bg-[var(--brand-primary)] px-6 py-5 text-[18px] font-black text-white no-underline shadow-[0_12px_22px_rgba(24,183,161,0.22)] transition-transform duration-200 hover:-translate-y-0.5";
 
   return (
     <Link to={to} className={className}>
@@ -1836,7 +1904,7 @@ function FooterCta() {
           </div>
 
           <div className="relative z-20 mx-auto max-w-[840px] rounded-[3rem] border border-[#c9ece6] bg-white px-6 py-12 text-center shadow-[0_24px_60px_rgba(111,160,173,0.18)] sm:px-10 md:px-14 md:py-16">
-            <div className="text-[12px] font-black uppercase tracking-[0.2em] text-[#17af9a]">
+            <div className="text-[12px] font-black uppercase tracking-[0.2em] text-[var(--brand-primary)]">
               Langkah berikutnya
             </div>
             <h2
@@ -1871,7 +1939,7 @@ function FooterCta() {
                 <HeartLineIcon />
               </div>
               <p className="text-[17px] leading-relaxed text-stone-500">
-                Bergabung bersama <span className="font-bold text-[#18b7a1]">25.000+</span> apoteker muda yang sedang berjuang meraih mimpi.
+                Bergabung bersama <span className="font-bold text-[var(--brand-primary)]">25.000+</span> apoteker muda yang sedang berjuang meraih mimpi.
               </p>
             </div>
           </div>
@@ -1919,7 +1987,7 @@ function FooterActionButton({
 }) {
   const className =
     variant === "primary"
-      ? "inline-flex min-w-[280px] items-center justify-center gap-3 rounded-[1.35rem] bg-[#18b7a1] px-8 py-5 text-[18px] font-black text-white no-underline shadow-[0_12px_24px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
+      ? "inline-flex min-w-[280px] items-center justify-center gap-3 rounded-[1.35rem] bg-[var(--brand-primary)] px-8 py-5 text-[18px] font-black text-white no-underline shadow-[0_12px_24px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
       : "inline-flex min-w-[280px] items-center justify-center gap-3 rounded-[1.35rem] border border-[#c9ece6] bg-white px-8 py-5 text-[18px] font-black text-stone-800 no-underline shadow-[0_12px_24px_rgba(111,160,173,0.12)] transition-transform duration-200 hover:-translate-y-0.5";
 
   return (
@@ -2011,7 +2079,7 @@ function HeroPrimaryLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] bg-[#18b7a1] px-8 py-5 text-[17px] font-black text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
+      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] bg-[var(--brand-primary)] px-8 py-5 text-[17px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
     >
       <BookFrameIcon />
       {children}
@@ -2029,7 +2097,7 @@ function HeroSecondaryLink({
   return (
     <Link
       to={to}
-      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] border border-[#e3ece8] bg-white px-8 py-5 text-[17px] font-black text-stone-900 no-underline shadow-[0_12px_24px_rgba(39,68,58,0.08)] transition-transform duration-200 hover:-translate-y-0.5"
+      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] border border-[#e3ece8] bg-white px-8 py-5 text-[17px] font-semibold text-stone-900 no-underline shadow-[0_12px_24px_rgba(39,68,58,0.08)] transition-transform duration-200 hover:-translate-y-0.5"
     >
       <LoginArrowIcon />
       {children}
@@ -2075,7 +2143,7 @@ function LightLink({
 
 function BrandMark() {
   return (
-    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#fef3df_0%,#dff7f2_100%)] shadow-[0_10px_24px_rgba(51,100,89,0.12)] ring-1 ring-[#d9ebe4]">
+    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#fef3df_0%,var(--brand-primary-soft)_100%)] shadow-[0_10px_24px_rgba(51,100,89,0.12)] ring-1 ring-[#d9ebe4]">
       <svg viewBox="0 0 28 28" className="h-7 w-7" aria-hidden="true">
         <path
           d="M14 5c-4.8 0-8.5 3.8-8.5 8.7 0 2.8 1.2 5.2 3.2 6.8v1.8c0 .9.7 1.5 1.5 1.5h7.6c.9 0 1.5-.7 1.5-1.5V20.5c2-1.6 3.2-4 3.2-6.8C22.5 8.8 18.8 5 14 5Z"
