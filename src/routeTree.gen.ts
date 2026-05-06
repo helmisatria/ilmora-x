@@ -28,6 +28,7 @@ import { Route as PollCodeRouteImport } from './routes/poll.$code'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCompleteProfileRouteImport } from './routes/auth/complete-profile'
 import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const TryoutRoute = TryoutRouteImport.update({
   id: '/tryout',
@@ -124,6 +125,11 @@ const ResultsAttemptIdReviewRoute = ResultsAttemptIdReviewRouteImport.update({
   path: '/review',
   getParentRoute: () => ResultsAttemptIdRoute,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
 export interface FileRoutesByTo {
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
 export interface FileRoutesById {
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
 export interface FileRouteTypes {
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/results/$attemptId'
     | '/tryout/$id'
+    | '/api/auth/$'
     | '/results/$attemptId/review'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/results/$attemptId'
     | '/tryout/$id'
+    | '/api/auth/$'
     | '/results/$attemptId/review'
   id:
     | '__root__'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/results/$attemptId'
     | '/tryout/$id'
+    | '/api/auth/$'
     | '/results/$attemptId/review'
   fileRoutesById: FileRoutesById
 }
@@ -272,6 +284,7 @@ export interface RootRouteChildren {
   PollCodeRoute: typeof PollCodeRoute
   PollJoinRoute: typeof PollJoinRoute
   ResultsAttemptIdRoute: typeof ResultsAttemptIdRouteWithChildren
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -409,6 +422,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResultsAttemptIdReviewRouteImport
       parentRoute: typeof ResultsAttemptIdRoute
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -462,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   PollCodeRoute: PollCodeRoute,
   PollJoinRoute: PollJoinRoute,
   ResultsAttemptIdRoute: ResultsAttemptIdRouteWithChildren,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

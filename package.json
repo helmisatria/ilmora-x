@@ -1,25 +1,35 @@
 {
-  "name": "tanstack-start-example-basic",
+  "name": "ilmora-x",
   "private": true,
   "sideEffects": false,
   "type": "module",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/lib/db/seed.ts",
+    "auth:generate": "pnpm dlx auth@latest generate --config src/lib/auth.ts",
+    "secret:generate": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.9",
     "@radix-ui/react-dialog": "^1.1.15",
     "@tanstack/react-router": "^1.168.18",
     "@tanstack/react-router-devtools": "^1.166.13",
     "@tanstack/react-start": "^1.167.32",
+    "better-auth": "^1.6.9",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
     "gsap": "^3.15.0",
+    "postgres": "^3.4.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.6.0",
-    "zod": "^3.24.2"
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -27,8 +37,11 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "nitro": "^3.0.260311-beta",
     "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
