@@ -1,6 +1,8 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, redirect } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AppProvider } from "../data/provider";
+import { getCurrentViewer } from "../lib/auth-functions";
+import { getProtectedRedirect, needsProtectedViewer } from "../lib/route-protection";
 import "../styles/app.css";
 
 const SITE_URL = "https://ilmorax.id";
@@ -10,6 +12,20 @@ const DEFAULT_DESCRIPTION = "Platform latihan UKAI terbaik untuk calon apoteker.
 const OG_IMAGE = "/og-image.svg";
 
 export const Route = createRootRoute({
+  beforeLoad: async ({ location }) => {
+    if (!needsProtectedViewer(location.pathname)) {
+      return { viewer: null };
+    }
+
+    const viewer = await getCurrentViewer();
+    const redirectTo = getProtectedRedirect(location.pathname, viewer);
+
+    if (redirectTo) {
+      throw redirect({ to: redirectTo });
+    }
+
+    return { viewer };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

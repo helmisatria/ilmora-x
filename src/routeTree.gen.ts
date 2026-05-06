@@ -19,6 +19,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as BadgesRouteImport } from './routes/badges'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TryoutIdRouteImport } from './routes/tryout.$id'
 import { Route as ResultsAttemptIdRouteImport } from './routes/results.$attemptId'
@@ -27,6 +28,12 @@ import { Route as PollJoinRouteImport } from './routes/poll.join'
 import { Route as PollCodeRouteImport } from './routes/poll.$code'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCompleteProfileRouteImport } from './routes/auth/complete-profile'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminTryoutsRouteImport } from './routes/admin/tryouts'
+import { Route as AdminReportsRouteImport } from './routes/admin/reports'
+import { Route as AdminQuestionsRouteImport } from './routes/admin/questions'
+import { Route as AdminMateriRouteImport } from './routes/admin/materi'
+import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
 import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -80,6 +87,11 @@ const BadgesRoute = BadgesRouteImport.update({
   path: '/badges',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -120,6 +132,36 @@ const AuthCompleteProfileRoute = AuthCompleteProfileRouteImport.update({
   path: '/auth/complete-profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTryoutsRoute = AdminTryoutsRouteImport.update({
+  id: '/tryouts',
+  path: '/tryouts',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminQuestionsRoute = AdminQuestionsRouteImport.update({
+  id: '/questions',
+  path: '/questions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMateriRoute = AdminMateriRouteImport.update({
+  id: '/materi',
+  path: '/materi',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInsightsRoute = AdminInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ResultsAttemptIdReviewRoute = ResultsAttemptIdReviewRouteImport.update({
   id: '/review',
   path: '/review',
@@ -133,6 +175,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/badges': typeof BadgesRoute
   '/checkout': typeof CheckoutRoute
   '/coming-soon': typeof ComingSoonRoute
@@ -143,6 +186,12 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/insights': typeof AdminInsightsRoute
+  '/admin/materi': typeof AdminMateriRoute
+  '/admin/questions': typeof AdminQuestionsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/tryouts': typeof AdminTryoutsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/poll/$code': typeof PollCodeRoute
@@ -155,6 +204,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/badges': typeof BadgesRoute
   '/checkout': typeof CheckoutRoute
   '/coming-soon': typeof ComingSoonRoute
@@ -165,6 +215,12 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/insights': typeof AdminInsightsRoute
+  '/admin/materi': typeof AdminMateriRoute
+  '/admin/questions': typeof AdminQuestionsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/tryouts': typeof AdminTryoutsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/poll/$code': typeof PollCodeRoute
@@ -178,6 +234,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/badges': typeof BadgesRoute
   '/checkout': typeof CheckoutRoute
   '/coming-soon': typeof ComingSoonRoute
@@ -188,6 +245,12 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/insights': typeof AdminInsightsRoute
+  '/admin/materi': typeof AdminMateriRoute
+  '/admin/questions': typeof AdminQuestionsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/tryouts': typeof AdminTryoutsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/poll/$code': typeof PollCodeRoute
@@ -202,6 +265,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/badges'
     | '/checkout'
     | '/coming-soon'
@@ -212,6 +276,12 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/tryout'
+    | '/admin/insights'
+    | '/admin/materi'
+    | '/admin/questions'
+    | '/admin/reports'
+    | '/admin/tryouts'
+    | '/admin/users'
     | '/auth/complete-profile'
     | '/auth/login'
     | '/poll/$code'
@@ -224,6 +294,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/badges'
     | '/checkout'
     | '/coming-soon'
@@ -234,6 +305,12 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/tryout'
+    | '/admin/insights'
+    | '/admin/materi'
+    | '/admin/questions'
+    | '/admin/reports'
+    | '/admin/tryouts'
+    | '/admin/users'
     | '/auth/complete-profile'
     | '/auth/login'
     | '/poll/$code'
@@ -246,6 +323,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/badges'
     | '/checkout'
     | '/coming-soon'
@@ -256,6 +334,12 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/tryout'
+    | '/admin/insights'
+    | '/admin/materi'
+    | '/admin/questions'
+    | '/admin/reports'
+    | '/admin/tryouts'
+    | '/admin/users'
     | '/auth/complete-profile'
     | '/auth/login'
     | '/poll/$code'
@@ -269,6 +353,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   BadgesRoute: typeof BadgesRoute
   CheckoutRoute: typeof CheckoutRoute
   ComingSoonRoute: typeof ComingSoonRoute
@@ -359,6 +444,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BadgesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -415,6 +507,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCompleteProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tryouts': {
+      id: '/admin/tryouts'
+      path: '/tryouts'
+      fullPath: '/admin/tryouts'
+      preLoaderRoute: typeof AdminTryoutsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/questions': {
+      id: '/admin/questions'
+      path: '/questions'
+      fullPath: '/admin/questions'
+      preLoaderRoute: typeof AdminQuestionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/materi': {
+      id: '/admin/materi'
+      path: '/materi'
+      fullPath: '/admin/materi'
+      preLoaderRoute: typeof AdminMateriRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/insights': {
+      id: '/admin/insights'
+      path: '/insights'
+      fullPath: '/admin/insights'
+      preLoaderRoute: typeof AdminInsightsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/results/$attemptId/review': {
       id: '/results/$attemptId/review'
       path: '/review'
@@ -431,6 +565,26 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminInsightsRoute: typeof AdminInsightsRoute
+  AdminMateriRoute: typeof AdminMateriRoute
+  AdminQuestionsRoute: typeof AdminQuestionsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminTryoutsRoute: typeof AdminTryoutsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminInsightsRoute: AdminInsightsRoute,
+  AdminMateriRoute: AdminMateriRoute,
+  AdminQuestionsRoute: AdminQuestionsRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminTryoutsRoute: AdminTryoutsRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ProfileRouteChildren {
   ProfileUserIdRoute: typeof ProfileUserIdRoute
@@ -467,6 +621,7 @@ const ResultsAttemptIdRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   BadgesRoute: BadgesRoute,
   CheckoutRoute: CheckoutRoute,
   ComingSoonRoute: ComingSoonRoute,

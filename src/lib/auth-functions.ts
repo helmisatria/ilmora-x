@@ -1,13 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "./auth";
-import { db } from "./db/client";
-import { activityEvents, studentProfiles } from "./db/schema";
-import { getActiveAdminMembership } from "./domain/admin";
-import { getStudentProfile, isProfileComplete } from "./domain/users";
-import { unauthorized } from "./http/errors";
 import { parseInput } from "./http/validation";
 
 export type Viewer = {
@@ -36,12 +29,15 @@ const completeProfileSchema = z.object({
 });
 
 export async function getSessionFromHeaders(headers: Headers) {
+  const { auth } = await import("./auth");
+
   return auth.api.getSession({
     headers,
   });
 }
 
 export async function ensureSessionFromHeaders(headers: Headers) {
+  const { unauthorized } = await import("./http/errors");
   const session = await getSessionFromHeaders(headers);
 
   if (session) {
@@ -52,6 +48,8 @@ export async function ensureSessionFromHeaders(headers: Headers) {
 }
 
 export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Viewer | null> {
+  const { getActiveAdminMembership } = await import("./domain/admin");
+  const { getStudentProfile, isProfileComplete } = await import("./domain/users");
   const session = await getSessionFromHeaders(headers);
 
   if (!session) return null;
@@ -79,64 +77,126 @@ export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Vie
 }
 
 export function getPostLoginRedirectForViewer(viewer: Viewer) {
+  if (viewer.profile?.status === "suspended") return "/auth/login";
   if (viewer.admin) return "/admin";
   if (!viewer.profile?.completed) return "/auth/complete-profile";
   return "/dashboard";
 }
 
 export const getCurrentViewer = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getRequest();
-  return getCurrentViewerFromHeaders(request.headers);
+  const { observeServerOperation } = await import("./observability");
+
+  return observeServerOperation(
+    {
+      operation: "auth.get_current_viewer",
+      kind: "server_function",
+      method: "GET",
+    },
+    async () => {
+      const request = getRequest();
+      const viewer = await getCurrentViewerFromHeaders(request.headers);
+
+      return viewer;
+    },
+  );
 });
 
 export const getPostLoginRedirect = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getRequest();
-  const viewer = await getCurrentViewerFromHeaders(request.headers);
+  const { observeServerOperation } = await import("./observability");
 
-  if (!viewer) {
-    return "/auth/login";
-  }
+  return observeServerOperation(
+    {
+      operation: "auth.get_post_login_redirect",
+      kind: "server_function",
+      method: "GET",
+    },
+    async (logger) => {
+      const request = getRequest();
+      const viewer = await getCurrentViewerFromHeaders(request.headers);
 
-  return getPostLoginRedirectForViewer(viewer);
+      if (!viewer) {
+        logger.set({ redirectTo: "/auth/login" });
+        return "/auth/login";
+      }
+
+      const redirectTo = getPostLoginRedirectForViewer(viewer);
+      logger.set({
+        user: { id: viewer.userId },
+        redirectTo,
+      });
+
+      return redirectTo;
+    },
+  );
 });
 
 export const completeProfile = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(completeProfileSchema, input))
   .handler(async ({ data }) => {
-    const request = getRequest();
-    const session = await ensureSessionFromHeaders(request.headers);
-    const now = new Date();
+    const { observeServerOperation } = await import("./observability");
 
-    const profile = {
-      userId: session.user.id,
-      displayName: data.displayName,
-      institution: data.institution,
-      phone: data.phone || null,
-      photoUrl: data.photoUrl || session.user.image || null,
-      profileCompletedAt: now,
-      updatedAt: now,
-    };
+    return observeServerOperation(
+      {
+        operation: "auth.complete_profile",
+        kind: "server_function",
+        method: "POST",
+      },
+      async (logger) => {
+        const { eq } = await import("drizzle-orm");
+        const { db } = await import("./db/client");
+        const { activityEvents, studentProfiles } = await import("./db/schema");
+        const { getStudentProfile } = await import("./domain/users");
+        const request = getRequest();
+        const session = await ensureSessionFromHeaders(request.headers);
+        const now = new Date();
 
-    const existingProfile = await getStudentProfile(session.user.id);
+        logger.set({
+          user: { id: session.user.id },
+          profile: {
+            hasPhone: Boolean(data.phone),
+            hasPhotoUrl: Boolean(data.photoUrl),
+          },
+        });
 
-    if (!existingProfile) {
-      await db.insert(studentProfiles).values({
-        ...profile,
-      });
-    } else {
-      await db
-        .update(studentProfiles)
-        .set(profile)
-        .where(eq(studentProfiles.userId, session.user.id));
-    }
+        const profile = {
+          userId: session.user.id,
+          displayName: data.displayName,
+          institution: data.institution,
+          phone: data.phone || null,
+          photoUrl: data.photoUrl || session.user.image || null,
+          profileCompletedAt: now,
+          updatedAt: now,
+        };
 
-    await db.insert(activityEvents).values({
-      studentUserId: session.user.id,
-      eventType: "profile_completed",
-      metadata: {},
-    }).catch(() => undefined);
+        const existingProfile = await getStudentProfile(session.user.id);
 
-    return {
-      redirectTo: "/dashboard",
-    };
+        if (!existingProfile) {
+          await db.insert(studentProfiles).values({
+            ...profile,
+          });
+          logger.set({ profile: { operation: "insert" } });
+        } else {
+          await db
+            .update(studentProfiles)
+            .set(profile)
+            .where(eq(studentProfiles.userId, session.user.id));
+          logger.set({ profile: { operation: "update" } });
+        }
+
+        await db.insert(activityEvents).values({
+          studentUserId: session.user.id,
+          eventType: "profile_completed",
+          metadata: {},
+        }).catch((error) => {
+          logger.warn("activity event insert failed", {
+            activityEvent: { type: "profile_completed" },
+          });
+          logger.error(error);
+        });
+
+        return {
+          redirectTo: "/dashboard",
+        };
+      },
+    );
   });

@@ -1,8 +1,22 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { institutions } from "../../data/institutions";
+import { completeProfile, getCurrentViewer, getPostLoginRedirectForViewer } from "../../lib/auth-functions";
 
 export const Route = createFileRoute("/auth/complete-profile")({
+  loader: async () => {
+    const viewer = await getCurrentViewer();
+
+    if (!viewer) {
+      throw redirect({ to: "/auth/login" });
+    }
+
+    if (viewer.admin || viewer.profile?.completed) {
+      throw redirect({ to: getPostLoginRedirectForViewer(viewer) });
+    }
+
+    return { viewer };
+  },
   head: () => ({
     meta: [
       { title: "Lengkapi Profil — IlmoraX" },
@@ -16,17 +30,39 @@ export const Route = createFileRoute("/auth/complete-profile")({
 });
 
 function CompleteProfileComponent() {
+  const { viewer } = Route.useLoaderData();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [name, setName] = useState("");
-  const [institution, setInstitution] = useState("");
+  const [name, setName] = useState(viewer?.profile?.displayName ?? viewer?.name ?? "");
+  const [institution, setInstitution] = useState(viewer?.profile?.institution ?? "");
   const [phone, setPhone] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const canProceed = step === 1 ? name.trim().length > 0 : institution.trim().length > 0;
 
-  const handleSubmit = () => {
-    navigate({ to: "/dashboard" });
+  const handleSubmit = async () => {
+    if (!canProceed || saving) return;
+
+    setSaving(true);
+    setErrorMessage("");
+
+    try {
+      const result = await completeProfile({
+        data: {
+          displayName: name,
+          institution,
+          phone,
+          photoUrl,
+        },
+      });
+
+      navigate({ to: result.redirectTo });
+    } catch {
+      setErrorMessage("Profil belum tersimpan. Coba lagi sebentar.");
+      setSaving(false);
+    }
   };
 
   return (
@@ -100,11 +136,17 @@ function CompleteProfileComponent() {
 
               <button
                 onClick={() => canProceed && handleSubmit()}
-                disabled={!canProceed}
+                disabled={!canProceed || saving}
                 className="btn btn-primary w-full mt-6"
               >
-                🚀 Mulai Belajar
+                {saving ? "Menyimpan profil..." : "Mulai Belajar"}
               </button>
+
+              {errorMessage && (
+                <p className="mt-4 text-center text-sm font-semibold text-red-500">
+                  {errorMessage}
+                </p>
+              )}
 
               <button
                 onClick={() => setStep(1)}

@@ -1,10 +1,25 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { AvatarDisplay } from "../components/AvatarDisplay";
 import { badges, getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
 import { getLevelGrade } from "../data/users";
+import { signOut } from "../lib/auth-client";
+import { getCurrentViewer } from "../lib/auth-functions";
 
 export const Route = createFileRoute("/profile")({
+  loader: async () => {
+    const viewer = await getCurrentViewer();
+
+    if (!viewer) {
+      throw redirect({ to: "/auth/login" });
+    }
+
+    if (!viewer.admin && !viewer.profile?.completed) {
+      throw redirect({ to: "/auth/complete-profile" });
+    }
+
+    return { viewer };
+  },
   head: () => ({
     meta: [
       { title: "Profil Belajar — IlmoraX" },
@@ -32,8 +47,13 @@ const avatarOptions = [
 ] as const;
 
 function ProfileComponent() {
+  const { viewer } = Route.useLoaderData();
   const { user, setUser, badgeProgress, hasPremiumMembership, togglePremiumMembership } = useApp();
   const navigate = useNavigate();
+  const profileName = viewer?.profile?.displayName ?? viewer?.name ?? user.name;
+  const profileEmail = viewer?.email ?? user.email;
+  const profileInstitution = viewer?.profile?.institution ?? user.institution;
+  const profilePhotoUrl = viewer?.profile?.photoUrl ?? viewer?.image ?? user.googlePhotoUrl;
   const levelInfo = getLevelForXp(user.xp);
   const nextLevel = getNextLevel(user.xp);
   const xpProgress = getXpProgress(user.xp);
@@ -45,6 +65,11 @@ function ProfileComponent() {
     .filter((badge) => badge.category === "Level" && badge.id >= 4 && badge.id <= 11)
     .sort((a, b) => b.id - a.id)[0];
   const activeBonus = highestLevelBadge ? getBonusByBadge(highestLevelBadge.id) : 0;
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/auth/login" });
+  };
 
   return (
     <main
@@ -76,9 +101,9 @@ function ProfileComponent() {
 
           <ProfileHero
             avatar={user.avatar}
-            photoUrl={user.googlePhotoUrl}
-            name={user.name}
-            institution={user.institution}
+            photoUrl={profilePhotoUrl}
+            name={profileName}
+            institution={profileInstitution}
             isPremium={hasPremiumMembership}
             level={levelInfo.level}
             grade={grade}
@@ -93,7 +118,7 @@ function ProfileComponent() {
         <div className="grid gap-5">
           <AvatarPicker
             selectedAvatar={user.avatar}
-            googlePhotoUrl={user.googlePhotoUrl}
+            googlePhotoUrl={profilePhotoUrl}
             onSelect={(avatar) => {
               setUser((currentUser) => ({ ...currentUser, avatar }));
             }}
@@ -138,8 +163,8 @@ function ProfileComponent() {
           <div>
             <SectionHeader title="Akun" />
             <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
-              <AccountRow label="Email" value={user.email} />
-              <AccountRow label="Institusi" value={user.institution} />
+              <AccountRow label="Email" value={profileEmail} />
+              <AccountRow label="Institusi" value={profileInstitution} />
               <AccountRow label="Kode Referral" value={user.referralCode} copyable />
               <AccountRow
                 label="Bergabung"
@@ -156,7 +181,7 @@ function ProfileComponent() {
             <button className="btn btn-white flex-1 text-xs" onClick={togglePremiumMembership} type="button">
               {hasPremiumMembership ? "Demo Premium ON" : "Demo Premium OFF"}
             </button>
-            <button className="btn btn-white flex-1 text-xs" onClick={() => navigate({ to: "/auth/login" })} type="button">
+            <button className="btn btn-white flex-1 text-xs" onClick={handleSignOut} type="button">
               Keluar
             </button>
           </div>
