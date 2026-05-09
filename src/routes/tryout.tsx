@@ -2,9 +2,17 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tansta
 import { useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
-import { getCategoryColor, getCategoryName, tryouts, useApp, type Tryout } from "../data";
+import { listPublishedTryouts } from "../lib/student-functions";
+
+type TryoutRow = Awaited<ReturnType<typeof listPublishedTryouts>>[number];
+type TryoutFilter = "all" | "free" | "premium" | "platinum" | "owned";
 
 export const Route = createFileRoute("/tryout")({
+  loader: async () => {
+    const tryouts = await listPublishedTryouts();
+
+    return { tryouts };
+  },
   head: () => ({
     meta: [
       { title: "Try-out UKAI — IlmoraX" },
@@ -17,12 +25,11 @@ export const Route = createFileRoute("/tryout")({
 });
 
 function TryoutComponent() {
+  const { tryouts } = Route.useLoaderData() as { tryouts: TryoutRow[] };
   const location = useLocation();
   const navigate = useNavigate();
-  const { hasPremiumMembership, canAccessTryout, ownsTryout } = useApp();
   const [showPremium, setShowPremium] = useState(false);
-  const [selectedTryout, setSelectedTryout] = useState<Tryout | null>(null);
-  const [filter, setFilter] = useState<"all" | "free" | "premium" | "platinum" | "owned">("all");
+  const [filter, setFilter] = useState<TryoutFilter>("all");
 
   if (location.pathname !== "/tryout") {
     return <Outlet />;
@@ -30,7 +37,7 @@ function TryoutComponent() {
 
   const filtered = tryouts.filter((t) => {
     if (filter === "all") return true;
-    if (filter === "owned") return ownsTryout(t.id);
+    if (filter === "owned") return false;
     return t.accessLevel === filter;
   });
 
@@ -75,15 +82,14 @@ function TryoutComponent() {
               <TryoutCard
                 key={tryout.id}
                 tryout={tryout}
-                isLocked={!canAccessTryout(tryout)}
-                isOwned={ownsTryout(tryout.id)}
+                isLocked={tryout.accessLevel !== "free"}
+                isOwned={false}
                 onLockedClick={() => {
                   if (tryout.accessLevel === "premium") {
                     navigate({ to: "/premium" });
                     return;
                   }
 
-                  setSelectedTryout(tryout);
                   setShowPremium(true);
                 }}
               />
@@ -101,8 +107,8 @@ function TryoutComponent() {
         onUpgrade={() => {
           setShowPremium(false);
         }}
-        hasPremiumMembership={hasPremiumMembership}
-        tryout={selectedTryout}
+        hasPremiumMembership={false}
+        tryout={null}
       />
     </>
   );
@@ -113,7 +119,7 @@ function FilterButton({
   isActive,
   onClick,
 }: {
-  filter: "all" | "free" | "premium" | "platinum" | "owned";
+  filter: TryoutFilter;
   isActive: boolean;
   onClick: () => void;
 }) {
@@ -145,14 +151,14 @@ function TryoutCard({
   isOwned,
   onLockedClick,
 }: {
-  tryout: Tryout;
+  tryout: TryoutRow;
   isLocked: boolean;
   isOwned: boolean;
   onLockedClick: () => void;
 }) {
-  const categoryColor = getCategoryColor(tryout.categoryId);
+  const categoryColor = tryout.categoryColor;
   const accent = isLocked ? "var(--color-amber)" : categoryColor;
-  const categoryName = getCategoryName(tryout.categoryId);
+  const categoryName = tryout.categoryName;
 
   return (
     <Link
@@ -191,7 +197,7 @@ function TryoutCard({
       <div className="mt-4 space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <MiniMetric label="Soal" value={String(tryout.questionCount)} />
-          <MiniMetric label="Menit" value={String(tryout.duration)} />
+          <MiniMetric label="Menit" value={String(tryout.durationMinutes)} />
         </div>
         <span
           className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1.5 rounded-full border-2 max-w-full"
@@ -209,7 +215,7 @@ function TryoutCard({
   );
 }
 
-function AccessPill({ accessLevel, isOwned }: { accessLevel: Tryout["accessLevel"]; isOwned: boolean }) {
+function AccessPill({ accessLevel, isOwned }: { accessLevel: TryoutRow["accessLevel"]; isOwned: boolean }) {
   const label = isOwned ? "Dimiliki" : accessLevel === "platinum" ? "Platinum" : "Premium";
   const className = accessLevel === "platinum" && !isOwned
     ? "absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-sky-500 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm"
@@ -234,7 +240,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState({ filter }: { filter: "all" | "free" | "premium" | "platinum" | "owned" }) {
+function EmptyState({ filter }: { filter: TryoutFilter }) {
   return (
     <div className="mt-5 bg-white rounded-[var(--radius-lg)] p-5 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
       <div className="mx-auto w-14 h-14 rounded-2xl bg-primary-tint text-primary border-2 border-primary-soft flex items-center justify-center">
@@ -248,7 +254,7 @@ function EmptyState({ filter }: { filter: "all" | "free" | "premium" | "platinum
   );
 }
 
-function getFilterLabel(filter: "all" | "free" | "premium" | "platinum" | "owned") {
+function getFilterLabel(filter: TryoutFilter) {
   if (filter === "free") return "Gratis";
   if (filter === "premium") return "Premium";
   if (filter === "platinum") return "Platinum";
@@ -261,12 +267,12 @@ function normalizeCssColor(color: string) {
   return color;
 }
 
-function TryoutIcon({ tryoutId }: { tryoutId: number }) {
-  if (tryoutId === 2) return <CapsuleIcon />;
-  if (tryoutId === 3) return <HeartPulseIcon />;
-  if (tryoutId === 4) return <MicrobeIcon />;
-  if (tryoutId === 5) return <HospitalIcon />;
-  if (tryoutId === 6) return <CalculatorIcon />;
+function TryoutIcon({ tryoutId }: { tryoutId: string }) {
+  if (tryoutId === "2") return <CapsuleIcon />;
+  if (tryoutId === "3") return <HeartPulseIcon />;
+  if (tryoutId === "4") return <MicrobeIcon />;
+  if (tryoutId === "5") return <HospitalIcon />;
+  if (tryoutId === "6") return <CalculatorIcon />;
   return <FlaskIcon />;
 }
 

@@ -1,9 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
-import { getCategoryColor, getLevelForXp, getNextLevel, getXpProgress, tryouts, useApp, type Tryout } from "../data";
+import { getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
+import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
+
+type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
+type DashboardTryout = Awaited<ReturnType<typeof listPublishedTryouts>>[number];
 
 export const Route = createFileRoute("/dashboard")({
+  loader: async () => {
+    const [summary, tryouts] = await Promise.all([
+      listProgressSummary(),
+      listPublishedTryouts(),
+    ]);
+
+    return { summary, tryouts };
+  },
   head: () => ({
     meta: [
       { title: "Beranda — IlmoraX" },
@@ -59,7 +71,11 @@ const dashboardPaletteStorageKey = "ilmorax-dashboard-palette";
 const defaultDashboardPaletteId = "clinic";
 
 function DashboardComponent() {
-  const { user, hasPremiumMembership, togglePremiumMembership, canAccessTryout } = useApp();
+  const { summary, tryouts } = Route.useLoaderData() as {
+    summary: ProgressSummary;
+    tryouts: DashboardTryout[];
+  };
+  const { user, hasPremiumMembership, togglePremiumMembership } = useApp();
   const [paletteId, setPaletteId] = useState<DashboardPalette["id"]>(defaultDashboardPaletteId);
   const [showToneLab, setShowToneLab] = useState(false);
   const navigate = useNavigate();
@@ -77,10 +93,12 @@ function DashboardComponent() {
   };
 
   const palette = dashboardPalettes.find((item) => item.id === paletteId) ?? dashboardPalettes[0];
-  const levelInfo = getLevelForXp(user.xp);
-  const nextLevel = getNextLevel(user.xp);
-  const xpProgress = getXpProgress(user.xp);
-  const accuracy = user.totalQuestions > 0 ? Math.round((user.totalCorrect / user.totalQuestions) * 100) : 0;
+  const levelInfo = getLevelForXp(summary.xp);
+  const nextLevel = getNextLevel(summary.xp);
+  const xpProgress = getXpProgress(summary.xp);
+  const accuracy = summary.totalQuestions > 0
+    ? Math.round((summary.totalCorrect / summary.totalQuestions) * 100)
+    : 0;
 
   return (
     <>
@@ -115,7 +133,7 @@ function DashboardComponent() {
               streak={user.streak}
               level={levelInfo.level}
               levelTitle={levelInfo.title}
-              xp={user.xp}
+              xp={summary.xp}
               nextXp={nextLevel?.xp}
               xpProgress={xpProgress}
             />
@@ -151,9 +169,9 @@ function DashboardComponent() {
           </div>
 
           <div className="mt-5 grid grid-cols-3 gap-3">
-            <StatCard icon={<DocumentIcon />} label="Soal dikerjakan" value={String(user.totalQuestions)} accent="#205072" />
+            <StatCard icon={<DocumentIcon />} label="Soal dikerjakan" value={String(summary.totalQuestions)} accent="#205072" />
             <StatCard icon={<TargetIcon />} label="Akurasi" value={`${accuracy}%`} accent="#f59e0b" />
-            <StatCard icon={<ChartIcon />} label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" />
+            <StatCard icon={<ChartIcon />} label="Try-out" value={String(summary.attempts.length)} accent="#0ea5e9" />
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.85fr)] lg:items-start">
@@ -161,8 +179,15 @@ function DashboardComponent() {
               <SectionHeader title="Try-out Tersedia" action="Lihat semua" to="/tryout" />
               <div className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-1">
                 {tryouts.slice(0, 4).map((tryout) => (
-                  <TryoutRow key={tryout.id} tryout={tryout} isLocked={!canAccessTryout(tryout)} />
+                  <TryoutRow key={tryout.id} tryout={tryout} isLocked={tryout.accessLevel !== "free"} />
                 ))}
+                {tryouts.length === 0 && (
+                  <div className="card shadow-sm">
+                    <div className="text-sm font-semibold text-stone-400">
+                      Belum ada Try-out terbit.
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -450,8 +475,8 @@ function SectionHeader({ title, action, to }: { title: string; action?: string; 
   );
 }
 
-function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) {
-  const categoryColor = getCategoryColor(tryout.categoryId);
+function TryoutRow({ tryout, isLocked }: { tryout: DashboardTryout; isLocked: boolean }) {
+  const categoryColor = tryout.categoryColor;
   const accent = isLocked ? "var(--color-amber)" : categoryColor;
   const color = isLocked ? "#f59e0b" : categoryColor;
 
@@ -478,7 +503,7 @@ function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) 
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
-            {isLocked ? getAccessLabel(tryout.accessLevel) : `${tryout.duration} menit`}
+            {isLocked ? getAccessLabel(tryout.accessLevel) : `${tryout.durationMinutes} menit`}
           </span>
         </div>
         <div className="text-sm text-stone-400 font-medium">{tryout.questionCount} soal</div>
@@ -488,7 +513,7 @@ function TryoutRow({ tryout, isLocked }: { tryout: Tryout; isLocked: boolean }) 
   );
 }
 
-function getAccessLabel(accessLevel: Tryout["accessLevel"]) {
+function getAccessLabel(accessLevel: DashboardTryout["accessLevel"]) {
   if (accessLevel === "platinum") return "Platinum";
   if (accessLevel === "premium") return "Premium";
   return "Gratis";
@@ -660,12 +685,12 @@ function IconTile({
   );
 }
 
-function TryoutIcon({ tryoutId }: { tryoutId: number }) {
-  if (tryoutId === 2) return <CapsuleIcon />;
-  if (tryoutId === 3) return <HeartPulseIcon />;
-  if (tryoutId === 4) return <MicrobeIcon />;
-  if (tryoutId === 5) return <HospitalIcon />;
-  if (tryoutId === 6) return <CalculatorIcon />;
+function TryoutIcon({ tryoutId }: { tryoutId: string }) {
+  if (tryoutId === "2") return <CapsuleIcon />;
+  if (tryoutId === "3") return <HeartPulseIcon />;
+  if (tryoutId === "4") return <MicrobeIcon />;
+  if (tryoutId === "5") return <HospitalIcon />;
+  if (tryoutId === "6") return <CalculatorIcon />;
   return <FlaskIcon />;
 }
 

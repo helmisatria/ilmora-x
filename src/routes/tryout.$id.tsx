@@ -6,9 +6,24 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../components/ui/dialog";
-import { useApp, questionBank, tryouts, getCategoryColor, getCategoryName, type Attempt, type Tryout } from "../data";
+import {
+  getTryoutPreparation,
+  reportAttemptQuestion,
+  saveAttempt,
+  startOrResumeAttempt,
+  submitAttempt,
+} from "../lib/student-functions";
+
+type TryoutPreparation = Awaited<ReturnType<typeof getTryoutPreparation>>;
+type TakeAttempt = Awaited<ReturnType<typeof startOrResumeAttempt>>;
+type TakeQuestion = TakeAttempt["questions"][number];
 
 export const Route = createFileRoute("/tryout/$id")({
+  loader: async ({ params }) => {
+    const tryout = await getTryoutPreparation({ data: { tryoutId: params.id } });
+
+    return { tryout };
+  },
   head: ({ params }) => ({
     meta: [
       { title: "Try-out UKAI — IlmoraX" },
@@ -24,41 +39,33 @@ export const Route = createFileRoute("/tryout/$id")({
 type Phase = "preparation" | "countdown" | "active";
 
 function TryoutTakeComponent() {
-  const { id } = Route.useParams();
+  const { tryout } = Route.useLoaderData() as { tryout: TryoutPreparation };
   const navigate = useNavigate();
-  const { user, attempts, addAttempt, canAccessTryout } = useApp();
-  const testId = parseInt(id, 10);
   const [isReady, setIsReady] = useState(false);
   const [phase, setPhase] = useState<Phase>("preparation");
   const [confirmStart, setConfirmStart] = useState(false);
   const [countdownValue, setCountdownValue] = useState<number | "GO">(3);
+  const [attemptData, setAttemptData] = useState<TakeAttempt | null>(null);
+  const [questions, setQuestions] = useState<TakeQuestion[]>([]);
 
   const [qIndex, setQIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [flagged, setFlagged] = useState<number[]>([]);
   const [answers, setAnswers] = useState<(number | undefined)[]>([]);
 
-  const tryout = tryouts.find((t) => t.id === testId) || tryouts[0];
-  const questions = questionBank[testId] || questionBank[1];
-  const total = questions.length;
+  const total = phase === "preparation" ? tryout.questionCount : questions.length;
   const pct = Math.round(((qIndex + 1) / total) * 100);
 
-  const [timeLeft, setTimeLeft] = useState(tryout.duration * 60);
+  const [timeLeft, setTimeLeft] = useState(tryout.durationMinutes * 60);
   const [showReport, setShowReport] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const [lastSaved, setLastSaved] = useState<string>("");
-  const [submitting, setSubmitting] = useState<{ attemptId: number } | null>(null);
+  const [submitting, setSubmitting] = useState<{ attemptId: string } | null>(null);
 
   useEffect(() => {
     setIsReady(true);
-    setAnswers(new Array(questions.length).fill(undefined));
-  }, [testId]);
-
-  useEffect(() => {
-    if (canAccessTryout(tryout)) return;
-    navigate({ to: "/tryout" });
-  }, [canAccessTryout, navigate, tryout]);
+  }, []);
 
   useEffect(() => {
     if (phase !== "active") return;
@@ -70,13 +77,33 @@ function TryoutTakeComponent() {
 
   useEffect(() => {
     if (phase !== "active") return;
-    if (timeLeft > 0 && timeLeft % 30 === 0 && timeLeft !== tryout.duration * 60) {
+    if (!attemptData) return;
+    if (timeLeft > 0 && timeLeft % 30 === 0 && timeLeft !== tryout.durationMinutes * 60) {
       const now = new Date();
       setLastSaved(
         `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
       );
+      saveAttempt({ data: makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex) }).catch(() => {});
     }
-  }, [timeLeft, phase]);
+  }, [answers, attemptData, flagged, phase, qIndex, questions, timeLeft, tryout.durationMinutes]);
+
+  useEffect(() => {
+    if (phase !== "active") return;
+    if (!attemptData) return;
+    if (submitting) return;
+    if (timeLeft > 0) return;
+
+    submitAttempt({
+      data: {
+        ...makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex),
+        autoSubmitReason: "deadline_reached",
+      },
+    })
+      .then((result) => {
+        setSubmitting({ attemptId: result.attemptId });
+      })
+      .catch(() => {});
+  }, [answers, attemptData, flagged, phase, qIndex, questions, submitting, timeLeft]);
 
   useEffect(() => {
     if (!submitting) return;
@@ -137,6 +164,37 @@ function TryoutTakeComponent() {
     );
   }
 
+  const handleStart = async () => {
+    const nextAttemptData = await startOrResumeAttempt({ data: { tryoutId: tryout.id } });
+    const nextAnswers = new Array(nextAttemptData.questions.length).fill(undefined);
+
+    for (const answer of nextAttemptData.answers) {
+      const answerIndex = nextAttemptData.questions.findIndex((question) => question.snapshotId === answer.snapshotId);
+
+      if (answerIndex >= 0 && answer.selectedIndex !== null) {
+        nextAnswers[answerIndex] = answer.selectedIndex;
+      }
+    }
+
+    const markedIndexes = nextAttemptData.markedSnapshotIds
+      .map((snapshotId) => nextAttemptData.questions.findIndex((question) => question.snapshotId === snapshotId))
+      .filter((index) => index >= 0);
+    const remainingSeconds = Math.max(
+      0,
+      Math.floor((new Date(nextAttemptData.attempt.deadlineAt).getTime() - Date.now()) / 1000),
+    );
+
+    setAttemptData(nextAttemptData);
+    setQuestions(nextAttemptData.questions);
+    setAnswers(nextAnswers);
+    setFlagged(markedIndexes);
+    setQIndex(nextAttemptData.attempt.lastQuestionIndex);
+    setSelected(nextAnswers[nextAttemptData.attempt.lastQuestionIndex] ?? null);
+    setTimeLeft(remainingSeconds);
+    setConfirmStart(false);
+    setPhase("countdown");
+  };
+
   if (phase === "preparation") {
     return (
       <PreparationScreen
@@ -146,10 +204,7 @@ function TryoutTakeComponent() {
         onStart={() => setConfirmStart(true)}
         confirmOpen={confirmStart}
         onConfirmCancel={() => setConfirmStart(false)}
-        onConfirmStart={() => {
-          setConfirmStart(false);
-          setPhase("countdown");
-        }}
+        onConfirmStart={handleStart}
       />
     );
   }
@@ -163,6 +218,10 @@ function TryoutTakeComponent() {
   }
 
   const q = questions[qIndex];
+  if (!q || !attemptData) {
+    return <CalculatingOverlay />;
+  }
+
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const timeDisplay = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
@@ -187,40 +246,14 @@ function TryoutTakeComponent() {
   };
 
   const handleSubmit = () => {
-    let correct = 0;
-    const attemptAnswers: Attempt["answers"] = [];
-    questions.forEach((question, i) => {
-      const sel = answers[i];
-      const ok = sel === question.correct;
-      if (ok) correct++;
-      if (sel !== undefined) {
-        attemptAnswers.push({ questionId: question.id, selected: sel, correct: ok });
-      }
-    });
-    const score = Math.round((correct / questions.length) * 100);
-    const xpEarn = 50 + correct * 20;
-    const newId = Math.max(0, ...attempts.map((a) => a.id)) + 1;
-    const now = new Date();
-    const attemptNumber = attempts.filter((a) => a.tryoutId === testId && a.userId === user.id).length + 1;
-    const attempt: Attempt = {
-      id: newId,
-      userId: user.id,
-      tryoutId: testId,
-      attemptNumber,
-      status: "submitted",
-      startedAt: new Date(now.getTime() - (tryout.duration * 60 - timeLeft) * 1000).toISOString(),
-      deadlineAt: new Date(now.getTime() + timeLeft * 1000).toISOString(),
-      score,
-      correct,
-      total: questions.length,
-      xpEarned: attemptNumber === 1 ? xpEarn : Math.round(xpEarn * 0.25),
-      completedAt: now.toISOString(),
-      answers: attemptAnswers,
-      markedQuestionIds: flagged.map((fi) => questions[fi].id),
-    };
-    addAttempt(attempt);
-    setShowSubmitConfirm(false);
-    setSubmitting({ attemptId: newId });
+    submitAttempt({ data: makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex) })
+      .then((result) => {
+        setShowSubmitConfirm(false);
+        setSubmitting({ attemptId: result.attemptId });
+      })
+      .catch(() => {
+        setShowSubmitConfirm(false);
+      });
   };
 
   return (
@@ -251,7 +284,7 @@ function TryoutTakeComponent() {
         <div className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 mb-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
           <div className="flex justify-between items-start gap-3 mb-4">
             <span className="bg-primary text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full tracking-wide uppercase shrink-0">
-              {getCategoryLabel(q.categoryId)}
+              {q.categoryName.toUpperCase()}
             </span>
             <div className="flex gap-2 shrink-0">
               <button
@@ -274,7 +307,7 @@ function TryoutTakeComponent() {
               </button>
             </div>
           </div>
-          <h2 className="m-0 max-w-[34ch] text-lg font-bold leading-relaxed sm:text-xl">{q.question}</h2>
+          <h2 className="m-0 max-w-[34ch] text-lg font-bold leading-relaxed sm:text-xl">{q.questionText}</h2>
         </div>
 
         <div className="flex flex-col gap-2.5 sm:gap-3">
@@ -394,7 +427,13 @@ function TryoutTakeComponent() {
                   className="w-full text-left px-4 py-3 rounded-[var(--radius-md)] border-2 border-stone-200 font-semibold text-sm hover:border-primary hover:bg-primary-tint transition-all"
                   onClick={() => {
                     setShowReport(false);
-                    alert("Laporan kami terima. Terima kasih!");
+                    reportAttemptQuestion({
+                      data: {
+                        attemptId: attemptData.attempt.id,
+                        snapshotId: q.snapshotId,
+                        reason: toReportReason(reason),
+                      },
+                    }).catch(() => {});
                   }}
                 >
                   {reason}
@@ -418,8 +457,45 @@ function getCategoryLabel(catId: string): string {
   return labels[catId] || catId.toUpperCase();
 }
 
+function makeAttemptProgressPayload(
+  attemptId: string,
+  questions: TakeQuestion[],
+  answers: (number | undefined)[],
+  flagged: number[],
+  lastQuestionIndex: number,
+) {
+  return {
+    attemptId,
+    lastQuestionIndex,
+    answers: questions.map((question, index) => ({
+      snapshotId: question.snapshotId,
+      selectedOption: toOptionLetter(answers[index]),
+    })),
+    markedSnapshotIds: flagged
+      .map((index) => questions[index]?.snapshotId)
+      .filter((snapshotId): snapshotId is string => Boolean(snapshotId)),
+  };
+}
+
+function toOptionLetter(index: number | undefined) {
+  if (index === undefined) return null;
+
+  const optionLetters = ["A", "B", "C", "D", "E"] as const;
+
+  return optionLetters[index] ?? null;
+}
+
+function toReportReason(reason: string) {
+  if (reason === "Answer key salah") return "answer_key_wrong";
+  if (reason === "Pembahasan keliru") return "explanation_wrong";
+  if (reason === "Soal tidak jelas") return "question_unclear";
+  if (reason === "Typo") return "typo";
+
+  return "other";
+}
+
 interface PreparationScreenProps {
-  tryout: Tryout;
+  tryout: TryoutPreparation;
   totalQuestions: number;
   onBack: () => void;
   onStart: () => void;
@@ -437,10 +513,10 @@ function PreparationScreen({
   onConfirmCancel,
   onConfirmStart,
 }: PreparationScreenProps) {
-  const avgSecondsPerQuestion = Math.round((tryout.duration * 60) / totalQuestions);
+  const avgSecondsPerQuestion = Math.round((tryout.durationMinutes * 60) / totalQuestions);
   const xpReward = 50 + totalQuestions * 20;
-  const categoryName = getCategoryName(tryout.categoryId);
-  const color = getCategoryColor(tryout.categoryId);
+  const categoryName = tryout.categoryName;
+  const color = tryout.categoryColor;
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] antialiased page-enter">
@@ -498,7 +574,7 @@ function PreparationScreen({
       <div className="max-w-[480px] mx-auto px-5 -mt-4 pb-36 relative">
         <div className="grid grid-cols-2 gap-3">
           <StatCard icon={<DocumentIcon />} label="Jumlah Soal" value={`${totalQuestions}`} unit="soal" accent="#205072" />
-          <StatCard icon={<ClockIcon />} label="Durasi" value={`${tryout.duration}`} unit="menit" accent="#0ea5e9" />
+          <StatCard icon={<ClockIcon />} label="Durasi" value={`${tryout.durationMinutes}`} unit="menit" accent="#0ea5e9" />
           <StatCard
             icon={<BoltIcon />}
             label="XP Reward"
@@ -584,12 +660,12 @@ function PreparationScreen({
             Siap memulai?
           </DialogTitle>
           <DialogDescription className="mb-4 text-center text-stone-500">
-            Timer akan berjalan selama {tryout.duration} menit dan tidak dapat dijeda.
+            Timer akan berjalan selama {tryout.durationMinutes} menit dan tidak dapat dijeda.
             Pastikan kamu sudah siap.
           </DialogDescription>
           <div className="grid grid-cols-3 gap-2 mb-5 text-center">
             <MiniStat label="Soal" value={`${totalQuestions}`} />
-            <MiniStat label="Menit" value={`${tryout.duration}`} />
+            <MiniStat label="Menit" value={`${tryout.durationMinutes}`} />
             <MiniStat label="XP" value={`+${xpReward}`} />
           </div>
           <div className="flex gap-3">
@@ -668,12 +744,12 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TryoutModuleIcon({ tryoutId }: { tryoutId: number }) {
-  if (tryoutId === 2) return <CapsuleIcon />;
-  if (tryoutId === 3) return <HeartPulseIcon />;
-  if (tryoutId === 4) return <MicrobeIcon />;
-  if (tryoutId === 5) return <HospitalIcon />;
-  if (tryoutId === 6) return <CalculatorIcon />;
+function TryoutModuleIcon({ tryoutId }: { tryoutId: string }) {
+  if (tryoutId === "2") return <CapsuleIcon />;
+  if (tryoutId === "3") return <HeartPulseIcon />;
+  if (tryoutId === "4") return <MicrobeIcon />;
+  if (tryoutId === "5") return <HospitalIcon />;
+  if (tryoutId === "6") return <CalculatorIcon />;
   return <FlaskIcon />;
 }
 

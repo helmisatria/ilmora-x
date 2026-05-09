@@ -1,13 +1,32 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useApp, tryouts, questionBank, type WrongAnswer } from "../data";
+import { useApp } from "../data";
 import { runConfetti } from "../utils/confetti";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { BottomNav, TopBar } from "../components/Navigation";
+import { getAttemptResult } from "../lib/student-functions";
 
 const FREE_WRONG_PREVIEW = 3;
 
+type WrongAnswerView = {
+  id: string;
+  subject: string;
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+  explanationPreview?: string;
+  videoUrl?: string;
+  accessLevel: "free" | "premium";
+  user: string;
+};
+
 export const Route = createFileRoute("/results/$attemptId")({
+  loader: async ({ params }) => {
+    const result = await getAttemptResult({ data: { attemptId: params.attemptId } });
+
+    return { result };
+  },
   head: () => ({
     meta: [
       { title: "Hasil Tryout — IlmoraX" },
@@ -22,24 +41,22 @@ export const Route = createFileRoute("/results/$attemptId")({
 
 function ResultsComponent() {
   const { attemptId } = Route.useParams();
+  const { result } = Route.useLoaderData() as { result: Awaited<ReturnType<typeof getAttemptResult>> };
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, hasPremiumMembership, canAccessTryout, attempts } = useApp();
+  const { user, hasPremiumMembership } = useApp();
   const isChildRoute = location.pathname !== `/results/${attemptId}`;
 
-  const attempt = attempts.find((a) => a.id === parseInt(attemptId, 10)) || attempts[0];
-
-  const tryout = tryouts.find((t) => t.id === attempt.tryoutId);
-  const questions = questionBank[attempt.tryoutId] || [];
-  const hasFullTryoutAccess = Boolean(tryout && canAccessTryout(tryout) && tryout.accessLevel !== "free");
+  const { attempt, tryout, questions } = result;
+  const hasFullTryoutAccess = tryout.accessLevel !== "free";
 
   const score = attempt.score;
-  const correct = attempt.correct;
-  const total = attempt.total;
+  const correct = attempt.correctCount;
+  const total = attempt.totalQuestions;
   const xpEarn = attempt.xpEarned;
   const isFirstAttempt = attempt.attemptNumber === 1;
-  const duration = attempt.completedAt
-    ? Math.round((new Date(attempt.completedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000)
+  const duration = attempt.submittedAt
+    ? Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000)
     : 0;
 
   const dash = 339;
@@ -48,7 +65,7 @@ function ResultsComponent() {
   const accent = passed ? "#205072" : "#f59e0b";
   const accentDark = passed ? "#153d5c" : "#b45309";
 
-  const answered = attempt.answers.length;
+  const answered = questions.filter((question) => question.selectedIndex !== null).length;
   const wrongCount = Math.max(answered - correct, 0);
   const unansweredCount = Math.max(total - answered, 0);
   const grade = getGradeLabel(score);
@@ -56,24 +73,20 @@ function ResultsComponent() {
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [displayScore, setDisplayScore] = useState(0);
 
-  const wrongs: WrongAnswer[] = questions
-    .filter((q) => {
-      const ans = attempt.answers.find((a) => a.questionId === q.id);
-      return !ans || !ans.correct;
-    })
+  const wrongs: WrongAnswerView[] = questions
+    .filter((question) => question.isCorrect !== true)
     .map((q) => {
-      const ans = attempt.answers.find((a) => a.questionId === q.id);
       return {
-        id: q.id,
-        subject: getCategoryLabel(q.categoryId),
-        question: q.question,
+        id: q.snapshotId,
+        subject: q.categoryName.toUpperCase(),
+        question: q.questionText,
         options: q.options,
-        correct: q.correct,
+        correct: q.correctIndex,
         explanation: q.explanation,
         explanationPreview: q.explanation.slice(0, 120) + "...",
-        videoUrl: q.videoUrl,
+        videoUrl: q.videoUrl ?? undefined,
         accessLevel: q.accessLevel,
-        user: ans !== undefined ? q.options[ans.selected] : "Tidak dijawab",
+        user: q.selectedIndex !== null ? q.options[q.selectedIndex] : "Tidak dijawab",
       };
     });
   const hasFullReviewAccess = hasPremiumMembership || hasFullTryoutAccess;
@@ -261,7 +274,7 @@ function ResultsComponent() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <Link
               to="/tryout/$id"
-              params={{ id: String(attempt.tryoutId) }}
+              params={{ id: attempt.tryoutId }}
               className="btn btn-white"
             >
               <RefreshIcon />
@@ -326,7 +339,7 @@ function ResultsComponent() {
         onClose={() => setShowPremiumDialog(false)}
         onUpgrade={() => setShowPremiumDialog(false)}
         hasPremiumMembership={hasPremiumMembership}
-        tryout={tryout}
+        tryout={null}
       />
     </>
   );
@@ -425,7 +438,7 @@ function SectionHeader({
 }: {
   title: string;
   action?: string;
-  attemptId: number;
+  attemptId: string;
   filter?: "all" | "wrong" | "correct" | "unanswered";
 }) {
   return (
@@ -453,9 +466,9 @@ function WrongCard({
   locked,
   attemptId,
 }: {
-  wrong: WrongAnswer;
+  wrong: WrongAnswerView;
   locked: boolean;
-  attemptId: number;
+  attemptId: string;
 }) {
   return (
     <Link

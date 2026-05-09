@@ -1,23 +1,29 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
-import { useApp, questionBank, tryouts, mockMateri } from "../data";
+import { useApp } from "../data";
 import { PremiumDialog } from "../components/PremiumDialog";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { getAttemptResult } from "../lib/student-functions";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const FREE_WRONG_PREVIEW = 3;
 
 const searchSchema = z.object({
-  q: z.number().optional(),
+  q: z.string().optional(),
   filter: z.enum(["all", "wrong", "correct", "unanswered"]).optional(),
 });
 
 type ReviewFilter = "all" | "wrong" | "correct" | "unanswered";
 
 export const Route = createFileRoute("/results/$attemptId/review")({
+  loader: async ({ params }) => {
+    const result = await getAttemptResult({ data: { attemptId: params.attemptId } });
+
+    return { result };
+  },
   head: ({ params }) => ({
     meta: [
       { title: "Pembahasan Tryout — IlmoraX" },
@@ -33,13 +39,12 @@ export const Route = createFileRoute("/results/$attemptId/review")({
 
 function ReviewComponent() {
   const { attemptId } = Route.useParams();
+  const { result } = Route.useLoaderData() as { result: Awaited<ReturnType<typeof getAttemptResult>> };
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { attempts, hasPremiumMembership, canAccessTryout, canAccessQuestion } = useApp();
-  const attempt = attempts.find((a) => a.id === parseInt(attemptId, 10)) || attempts[0];
-  const tryout = tryouts.find((t) => t.id === attempt.tryoutId);
-  const questions = questionBank[attempt.tryoutId] || [];
-  const hasFullTryoutAccess = Boolean(tryout && canAccessTryout(tryout) && tryout.accessLevel !== "free");
+  const { hasPremiumMembership } = useApp();
+  const { attempt, tryout, questions } = result;
+  const hasFullTryoutAccess = tryout.accessLevel !== "free";
 
   const [filter, setFilter] = useState<ReviewFilter>(search.filter ?? "all");
   const [showPremium, setShowPremium] = useState(false);
@@ -57,31 +62,29 @@ function ReviewComponent() {
   const questionsRef = useRef<HTMLDivElement>(null);
 
   const lockedIds = useMemo(() => {
-    if (hasPremiumMembership || hasFullTryoutAccess) return new Set<number>();
+    if (hasPremiumMembership || hasFullTryoutAccess) return new Set<string>();
 
-    const locked = new Set<number>();
+    const locked = new Set<string>();
     let wrongIdx = 0;
     for (const q of questions) {
-      if (tryout && !canAccessQuestion(q, tryout)) {
-        locked.add(q.id);
+      if (q.accessLevel === "premium" && !hasPremiumMembership && !hasFullTryoutAccess) {
+        locked.add(q.snapshotId);
         continue;
       }
 
-      const ans = attempt.answers.find((a) => a.questionId === q.id);
-      const isWrongOrEmpty = !ans || !ans.correct;
+      const isWrongOrEmpty = q.isCorrect !== true;
       if (isWrongOrEmpty) {
-        if (wrongIdx >= FREE_WRONG_PREVIEW) locked.add(q.id);
+        if (wrongIdx >= FREE_WRONG_PREVIEW) locked.add(q.snapshotId);
         wrongIdx++;
       }
     }
     return locked;
-  }, [questions, attempt.answers, tryout, canAccessQuestion, hasPremiumMembership, hasFullTryoutAccess]);
+  }, [questions, hasPremiumMembership, hasFullTryoutAccess]);
 
   const filteredQuestions = questions.filter((q) => {
-    const ans = attempt.answers.find((a) => a.questionId === q.id);
-    if (filter === "wrong") return ans && !ans.correct;
-    if (filter === "correct") return ans && ans.correct;
-    if (filter === "unanswered") return !ans;
+    if (filter === "wrong") return q.selectedIndex !== null && q.isCorrect === false;
+    if (filter === "correct") return q.isCorrect === true;
+    if (filter === "unanswered") return q.selectedIndex === null;
     return true;
   });
 
@@ -149,17 +152,17 @@ function ReviewComponent() {
 
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold text-stone-900 truncate">Pembahasan Lengkap</h1>
-            <p className="text-sm text-stone-500">{tryout?.title} · Attempt #{attempt.attemptNumber}</p>
+            <p className="text-sm text-stone-500">{tryout.title} · Attempt #{attempt.attemptNumber}</p>
           </div>
 
           <div className="hidden sm:flex items-center gap-6 text-sm">
             <div className="text-center">
-              <div className="text-lg font-black text-primary">{attempt.correct}</div>
+              <div className="text-lg font-black text-primary">{attempt.correctCount}</div>
               <div className="text-xs font-medium text-stone-400 uppercase">Benar</div>
             </div>
             <div className="w-px h-8 bg-stone-200" />
             <div className="text-center">
-              <div className="text-lg font-black text-red-500">{attempt.total - attempt.correct}</div>
+              <div className="text-lg font-black text-red-500">{attempt.totalQuestions - attempt.correctCount}</div>
               <div className="text-xs font-medium text-stone-400 uppercase">Salah</div>
             </div>
             <div className="w-px h-8 bg-stone-200" />
@@ -175,8 +178,8 @@ function ReviewComponent() {
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {([
               { k: "all", label: `Semua (${questions.length})` },
-              { k: "wrong", label: `Salah (${attempt.total - attempt.correct})` },
-              { k: "correct", label: `Benar (${attempt.correct})` },
+              { k: "wrong", label: `Salah (${attempt.totalQuestions - attempt.correctCount})` },
+              { k: "correct", label: `Benar (${attempt.correctCount})` },
               { k: "unanswered", label: "Kosong" },
             ] as const).map((f) => (
               <button
@@ -200,20 +203,20 @@ function ReviewComponent() {
         <div className="max-w-6xl mx-auto">
           <div ref={questionsRef} className="flex flex-col gap-4">
             {filteredQuestions.map((q, idx) => {
-              const ans = attempt.answers.find((a) => a.questionId === q.id);
-              const userSel = ans?.selected;
-              const isCorrect = ans?.correct ?? false;
-              const premiumLocked = lockedIds.has(q.id);
-              const relatedMateri = mockMateri.find((m) => m.subCategoryId === q.subCategoryId);
+              const userSel = q.selectedIndex;
+              const isCorrect = q.isCorrect === true;
+              const hasAnswer = q.selectedIndex !== null;
+              const premiumLocked = lockedIds.has(q.snapshotId);
+              const relatedMateri = q.relatedMateri;
 
               return (
                 <div
-                  key={q.id}
-                  data-question-id={q.id}
+                  key={q.snapshotId}
+                  data-question-id={q.snapshotId}
                   className="question-card group relative overflow-hidden rounded-[24px] border-2 bg-white transition-all duration-500 hover:shadow-xl"
                   style={{
-                    borderColor: isCorrect ? "#86efac" : ans ? "#fca5a5" : "#e5e7eb",
-                    borderBottomColor: isCorrect ? "#22c55e" : ans ? "#ef4444" : "#d1d5db",
+                    borderColor: isCorrect ? "#86efac" : hasAnswer ? "#fca5a5" : "#e5e7eb",
+                    borderBottomColor: isCorrect ? "#22c55e" : hasAnswer ? "#ef4444" : "#d1d5db",
                   }}
                 >
                   <div className="p-6">
@@ -224,7 +227,7 @@ function ReviewComponent() {
                           className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
                             isCorrect
                               ? "bg-green-100 border-2 border-green-200 text-green-700"
-                              : ans
+                              : hasAnswer
                               ? "bg-red-100 border-2 border-red-200 text-red-700"
                               : "bg-stone-100 border-2 border-stone-200 text-stone-500"
                           }`}
@@ -248,25 +251,25 @@ function ReviewComponent() {
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
                           isCorrect
                             ? "bg-green-100 text-green-700"
-                            : ans
+                            : hasAnswer
                             ? "bg-red-100 text-red-700"
                             : "bg-stone-100 text-stone-500"
                         }`}
                       >
-                        {isCorrect ? "Benar" : ans ? "Salah" : "Kosong"}
+                          {isCorrect ? "Benar" : hasAnswer ? "Salah" : "Kosong"}
                       </span>
                     </div>
 
                     {/* Question */}
                     <p className="text-lg font-semibold text-stone-800 leading-relaxed mb-5 max-w-4xl">
-                      {q.question}
+                      {q.questionText}
                     </p>
 
                     {/* Options */}
                     <div className="grid gap-2 mb-6">
                       {q.options.map((opt, i) => {
                         const isUser = userSel === i;
-                        const isRight = q.correct === i;
+                        const isRight = q.correctIndex === i;
                         const hideRight = premiumLocked && isRight && !isCorrect;
                         let cls = "bg-stone-50 border-stone-200 text-stone-600";
                         let icon = null;
@@ -419,7 +422,7 @@ function ReviewComponent() {
         onClose={() => setShowPremium(false)}
         onUpgrade={() => setShowPremium(false)}
         hasPremiumMembership={hasPremiumMembership}
-        tryout={tryout}
+        tryout={null}
       />
     </main>
   );

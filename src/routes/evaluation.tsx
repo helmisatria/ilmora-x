@@ -1,8 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { useApp } from "../data";
+import { listProgressSummary } from "../lib/student-functions";
+
+type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
+type EvaluationCategory = ProgressSummary["categories"][number];
+type EvaluationAttempt = ProgressSummary["attempts"][number];
 
 export const Route = createFileRoute("/evaluation")({
+  loader: async () => {
+    const summary = await listProgressSummary();
+
+    return { summary };
+  },
   head: () => ({
     meta: [
       { title: "Evaluation Dashboard — IlmoraX" },
@@ -14,49 +24,14 @@ export const Route = createFileRoute("/evaluation")({
   component: EvaluationComponent,
 });
 
-const categoryBreakdown = [
-  {
-    name: "Klinis",
-    subcategories: [
-      { name: "Kardiovaskular - Hipertensi", total: 40, correct: 30 },
-      { name: "Kardiovaskular - Gagal Jantung", total: 25, correct: 18 },
-      { name: "Respiratori - Asma", total: 20, correct: 14 },
-    ],
-  },
-  {
-    name: "Farmakologi",
-    subcategories: [
-      { name: "Antibiotik", total: 30, correct: 21 },
-      { name: "NSAID", total: 15, correct: 10 },
-    ],
-  },
-  {
-    name: "Farmasi Klinik",
-    subcategories: [
-      { name: "Perhitungan Dosis", total: 20, correct: 12 },
-      { name: "Interaksi Obat", total: 15, correct: 11 },
-    ],
-  },
-];
-
-const attempts = [
-  { title: "UKAI Tryout 1", score: 80, date: "15 Apr 2026", xp: 130, attempt: 1 },
-  { title: "Farmakologi Dasar", score: 50, date: "16 Apr 2026", xp: 70, attempt: 1 },
-  { title: "Kardiovaskular", score: 75, date: "13 Apr 2026", xp: 150, attempt: 1 },
-];
-
 function EvaluationComponent() {
+  const { summary } = Route.useLoaderData() as { summary: ProgressSummary };
   const { hasPremiumMembership, togglePremiumMembership } = useApp();
-  const totalQuestions = categoryBreakdown.reduce(
-    (sum, category) => sum + category.subcategories.reduce((subSum, subcategory) => subSum + subcategory.total, 0),
-    0,
-  );
-  const totalCorrect = categoryBreakdown.reduce(
-    (sum, category) => sum + category.subcategories.reduce((subSum, subcategory) => subSum + subcategory.correct, 0),
-    0,
-  );
+  const totalQuestions = summary.totalQuestions;
+  const totalCorrect = summary.totalCorrect;
   const totalWrong = totalQuestions - totalCorrect;
   const pctCorrect = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+  const recommendation = getRecommendation(summary);
 
   return (
     <main
@@ -106,18 +81,26 @@ function EvaluationComponent() {
       </div>
 
       <div className="relative -mt-4 px-5 pb-28">
-        <InsightPanel pctCorrect={pctCorrect} isPremium={hasPremiumMembership} />
+        <InsightPanel
+          pctCorrect={pctCorrect}
+          recommendation={recommendation}
+          isPremium={hasPremiumMembership}
+        />
 
         <div className="mt-6">
           <SectionHeader title="Breakdown Kategori" />
           <div className="grid gap-4">
-            {categoryBreakdown.map((category) => (
+            {summary.categories.map((category) => (
               <CategoryCard
                 key={category.name}
                 category={category}
                 isPremium={hasPremiumMembership}
               />
             ))}
+
+            {summary.categories.length === 0 && (
+              <EmptyPanel message="Belum ada data kategori. Selesaikan Try-out pertama untuk membuka analisis." />
+            )}
           </div>
         </div>
 
@@ -127,9 +110,12 @@ function EvaluationComponent() {
             <LockedAttempts />
           ) : (
             <div className="grid gap-3">
-              {attempts.map((attempt) => (
-                <AttemptRow key={`${attempt.title}-${attempt.date}`} attempt={attempt} />
+              {summary.attempts.map((attempt) => (
+                <AttemptRow key={attempt.id} attempt={attempt} />
               ))}
+              {summary.attempts.length === 0 && (
+                <EmptyPanel message="Belum ada Attempt tersubmit." />
+              )}
             </div>
           )}
         </div>
@@ -142,9 +128,11 @@ function EvaluationComponent() {
 
 function InsightPanel({
   pctCorrect,
+  recommendation,
   isPremium,
 }: {
   pctCorrect: number;
+  recommendation: string;
   isPremium: boolean;
 }) {
   return (
@@ -164,10 +152,10 @@ function InsightPanel({
             Rekomendasi
           </div>
           <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-stone-800">
-            Fokus ke Farmasi Klinik
+            Rekomendasi belajar
           </h2>
           <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-stone-500">
-            Akurasi keseluruhanmu {pctCorrect}%. Prioritaskan dosis dan interaksi obat untuk menaikkan baseline.
+            Akurasi keseluruhanmu {pctCorrect}%. {recommendation}
           </p>
         </div>
       </div>
@@ -185,11 +173,11 @@ function CategoryCard({
   category,
   isPremium,
 }: {
-  category: (typeof categoryBreakdown)[number];
+  category: EvaluationCategory;
   isPremium: boolean;
 }) {
-  const categoryTotal = category.subcategories.reduce((sum, subcategory) => sum + subcategory.total, 0);
-  const categoryCorrect = category.subcategories.reduce((sum, subcategory) => sum + subcategory.correct, 0);
+  const categoryTotal = category.total;
+  const categoryCorrect = category.correct;
   const categoryPct = categoryTotal > 0 ? Math.round((categoryCorrect / categoryTotal) * 100) : 0;
 
   return (
@@ -211,7 +199,7 @@ function CategoryCard({
 
       <div className={`relative ${!isPremium ? "select-none" : ""}`}>
         <div className="space-y-3 border-t border-stone-100 px-5 py-4">
-          {category.subcategories.map((subcategory) => (
+          {category.subCategories.map((subcategory) => (
             <SubcategoryRow
               key={subcategory.name}
               subcategory={subcategory}
@@ -270,7 +258,7 @@ function LockedAttempts() {
   );
 }
 
-function AttemptRow({ attempt }: { attempt: (typeof attempts)[number] }) {
+function AttemptRow({ attempt }: { attempt: EvaluationAttempt }) {
   const accent = attempt.score >= 70 ? "#22c55e" : "#fb7185";
 
   return (
@@ -286,15 +274,52 @@ function AttemptRow({ attempt }: { attempt: (typeof attempts)[number] }) {
         {attempt.score}%
       </div>
       <div className="min-w-0 flex-1">
-        <b className="block truncate text-[15px] font-bold text-stone-800">{attempt.title}</b>
+        <b className="block truncate text-[15px] font-bold text-stone-800">{attempt.tryoutTitle}</b>
         <div className="mt-0.5 flex gap-3 text-xs font-medium text-stone-400">
-          <span>Attempt #{attempt.attempt}</span>
-          <span>{attempt.date}</span>
+          <span>Attempt #{attempt.attemptNumber}</span>
+          {attempt.submittedAt && <span>{formatDate(attempt.submittedAt)}</span>}
         </div>
       </div>
-      <div className="shrink-0 text-right text-sm font-bold text-amber">+{attempt.xp} XP</div>
+      <div className="shrink-0 text-right text-sm font-bold text-amber">+{attempt.xpEarned} XP</div>
     </div>
   );
+}
+
+function EmptyPanel({ message }: { message: string }) {
+  return (
+    <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 text-center shadow-sm">
+      <p className="m-0 text-sm font-semibold leading-relaxed text-stone-400">{message}</p>
+    </div>
+  );
+}
+
+function getRecommendation(summary: ProgressSummary) {
+  if (summary.totalQuestions === 0) {
+    return "Mulai dari Try-out gratis untuk membangun baseline performa.";
+  }
+
+  const weakestSubCategory = summary.categories
+    .flatMap((category) => category.subCategories.map((subCategory) => ({
+      ...subCategory,
+      categoryName: category.name,
+      accuracy: subCategory.total > 0 ? subCategory.correct / subCategory.total : 1,
+    })))
+    .filter((subCategory) => subCategory.total > 0)
+    .sort((a, b) => a.accuracy - b.accuracy)[0];
+
+  if (weakestSubCategory) {
+    return `Prioritaskan ${weakestSubCategory.name} di ${weakestSubCategory.categoryName}.`;
+  }
+
+  return "Lanjutkan retake untuk memperjelas area prioritas.";
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function SummaryCard({
