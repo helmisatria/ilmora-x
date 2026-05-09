@@ -23,6 +23,10 @@ _Avoid_: Topic, tag, sub-sub-category
 A single item a student answers inside a **Try-out**. Carries the explanation ("pembahasan"), an access level, and one `(Category, Sub-category)` pair.
 _Avoid_: Soal (Bahasa only — ok in UI), item
 
+**Question Review**:
+The per-Question review content shown after an Attempt, consisting of the correct answer, explanation ("pembahasan"), and optional video pembahasan. It belongs to the Question, not to standalone Materi.
+_Avoid_: Materi (unless referring to a standalone study-material unit)
+
 **Engagement surface**:
 The complete set of gamification concepts in scope: **EXP**, **Level** (1–50), **Badge**, **Streak** (daily Try-out consecutive days), **Leaderboard**. Hearts (lives) and Gems (currency) are **out of scope** and must not appear in the prototype top bar.
 
@@ -62,6 +66,19 @@ A 6-digit numeric code unique **among currently-open Polls only**. Reuseable aft
 - **Only one active Attempt session per Student.** Opening the Attempt on a second device invalidates the first; the losing client shows a kick-out modal.
 - **On submit: flush local queue first, then submit.** If offline at submit time, queue and retry on reconnect. If the wall-clock deadline elapses while offline, the server auto-submits with the last-synced state.
 - **"Auto-saved at HH:MM" UI shows last server-confirmed save**, not last local save. Avoids false reassurance.
+
+## Rules (Try-out content management)
+
+- **Try-out edit is the primary import/export workflow.** Admins assemble a Try-out by downloading/uploading a Try-out workbook that contains ordered Questions and per-Question Review fields.
+- **Question bank is secondary.** The Questions admin page is for searching, editing, publishing, unpublishing, and moderation across all Questions; it is not the main place to import Try-out content.
+- **Try-out workbook imports update assignments.** A successful import updates the Questions and their order/assignment within that Try-out in one validated transaction.
+- **Try-out workbook uses `question_id` for updates.** Rows with `question_id` update existing Questions; rows without `question_id` create new Questions. A duplicate `question_id` in one workbook rejects the whole import.
+- **Missing rows unassign, not delete.** If an existing assigned Question is absent from the uploaded Try-out workbook, it is removed from that Try-out only. The Question remains in the Question bank.
+- **Questions are reusable across Try-outs.** One Question may be assigned to multiple Try-outs through Try-out Question assignment.
+- **Try-out workbook edits protect shared Questions.** If a workbook changes a Question that is assigned to another Try-out, the default behavior is to create a new Question copy for the current Try-out instead of mutating the shared Question.
+- **Try-out workbook has separate sheets.** The workbook contains a `tryout` sheet with one metadata row and a `questions` sheet with ordered Question rows.
+- **Try-out workbook can update publication status.** Workbook import may set Try-out and Question statuses, but a published Try-out must have at least one assigned published Question or the whole import is rejected.
+- **Standalone Materi is outside the Try-out workbook in M1.** The Try-out workbook manages Try-out metadata, ordered Questions, and per-Question Review fields only. Materi remains managed through its own CMS workflow.
 
 ## Language (Identity)
 

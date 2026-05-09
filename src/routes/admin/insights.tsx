@@ -11,11 +11,13 @@ function AdminInsightsPage() {
   const counts = Route.useLoaderData();
 
   return (
-    <main className="min-h-screen bg-stone-50 px-5 py-8 text-stone-900">
-      <div className="mx-auto max-w-5xl">
-        <a href="/admin" className="text-sm font-semibold text-[#205072]">Admin</a>
-        <h1 className="mt-3 text-3xl font-bold">Insights</h1>
-        <p className="mt-2 text-sm text-stone-500">Basic Milestone 1 metrics from real tables.</p>
+    <main className="admin-shell page-enter">
+      <div className="admin-lane-narrow">
+        <header className="admin-header">
+          <a href="/admin" className="admin-back-link">Admin</a>
+          <h1 className="admin-title">Insights</h1>
+          <p className="admin-description">Basic Milestone 1 metrics from real tables.</p>
+        </header>
         <div className="mt-6 grid gap-3 md:grid-cols-3">
           <Metric label="Try-outs" value={counts.tryouts} />
           <Metric label="Questions" value={counts.questions} />
@@ -31,9 +33,9 @@ function AdminInsightsPage() {
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-stone-200 bg-white p-5">
-      <p className="text-sm font-semibold uppercase tracking-wide text-stone-500">{label}</p>
-      <p className="mt-2 text-4xl font-bold">{value}</p>
+    <div className="admin-panel p-5">
+      <p className="admin-kicker">{label}</p>
+      <p className="mt-2 text-4xl font-bold tracking-tight text-stone-800">{value}</p>
     </div>
   );
 }

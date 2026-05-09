@@ -793,16 +793,30 @@ Admin foundation UI should be functional and simple. Do not overdesign the CMS i
 
 ---
 
-## 11. Excel Question Upload
+## 11. Try-out Workbook Import/Export
 
 Implement upload for `.xlsx` only.
 
-Expected columns:
+The primary Excel workflow lives on the Try-out edit surface, not on the standalone Question bank. Admin can download a Try-out workbook, edit it, and upload it back to update the Try-out and its ordered Questions.
+
+Expected `tryout` sheet columns:
 
 ```txt
-tryout_slug
-category_slug
-sub_category_slug
+title
+description
+category_id
+duration_minutes
+access_level
+status
+```
+
+Expected `questions` sheet columns:
+
+```txt
+question_id
+sort_order
+category_id
+sub_category_id
 question_text
 option_a
 option_b
@@ -814,21 +828,26 @@ explanation
 video_url
 access_level
 status
-sort_order
 ```
 
 Rules:
 
+- `question_id` updates an existing Question.
+- empty `question_id` creates a new Question.
+- duplicate `question_id` or duplicate `sort_order` rejects the workbook.
+- a missing previously assigned Question is unassigned from the Try-out, not deleted from the Question bank.
+- if a workbook edits a Question assigned to another Try-out, create a copy for this Try-out instead of mutating the shared Question.
 - `option_e` may be empty unless `correct_option` is `E`.
 - `access_level` defaults to `free`.
 - `status` defaults to `draft`.
 - Unknown category/sub-category should fail the row with a clear error.
-- Unknown tryout should fail the row unless importer explicitly supports "questions only."
 - Import should validate all rows before writing.
 - If any row fails, write nothing and return row-level errors.
-- If all rows pass, create/update Questions and Try-out assignments in one transaction.
+- If all rows pass, update Try-out metadata, create/update Questions, and update Try-out assignments in one transaction.
+- A published Try-out must have at least one assigned published Question.
+- Standalone Materi is outside the Try-out workbook in M1. Per-Question Review fields are `explanation` and `video_url`.
 
-Add a downloadable sample template if time permits.
+Provide a downloadable sample template from the Try-out admin page. Keep `docs/ilmorax-tryout-sample.xlsx` as the canonical sample workbook checked into the repo for reference.
 
 ---
 
@@ -1295,4 +1314,3 @@ Leave these for later milestones:
 - Weekly leaderboard reset: Milestone 3.
 - Live Poll backend: Milestone 3.
 - Advanced analytics, cohort retention, and export: out of M1 scope.
-

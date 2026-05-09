@@ -90,33 +90,33 @@ function AdminUsersPage() {
   };
 
   return (
-    <main className="min-h-screen bg-stone-50 px-5 py-8 text-stone-900">
-      <div className="mx-auto w-full max-w-6xl">
+    <main className="admin-shell page-enter">
+      <div className="admin-lane">
         <Header title="Users" description="Manage Student access and Admin whitelist membership." />
 
         {errorMessage && (
-          <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          <p className="admin-alert">
             {errorMessage}
           </p>
         )}
 
-        <section className="mt-6 rounded-lg border border-stone-200 bg-white">
-          <div className="border-b border-stone-200 p-5">
-            <h2 className="text-lg font-bold">Admin whitelist</h2>
+        <section className="admin-panel mt-6">
+          <div className="admin-panel-header">
+            <h2 className="admin-panel-title">Admin whitelist</h2>
           </div>
 
-          <div className="grid gap-3 border-b border-stone-200 p-5 md:grid-cols-[minmax(0,1fr)_180px_120px]">
+          <div className="grid gap-4 border-b border-stone-100 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_180px_120px]">
             <input
               value={adminEmail}
               onChange={(event) => setAdminEmail(event.target.value)}
-              className="rounded-md border border-stone-300 px-3 py-2 text-sm"
+              className="admin-control"
               placeholder="admin@example.com"
               type="email"
             />
             <select
               value={adminRole}
               onChange={(event) => setAdminRole(event.target.value as "admin" | "super_admin")}
-              className="rounded-md border border-stone-300 px-3 py-2 text-sm"
+              className="admin-control"
             >
               <option value="admin">Admin</option>
               <option value="super_admin">Super-admin</option>
@@ -124,68 +124,90 @@ function AdminUsersPage() {
             <button
               onClick={handleAddAdmin}
               disabled={busyAction === "add-admin"}
-              className="rounded-md bg-[#205072] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              className="admin-button-primary"
               type="button"
             >
               Add
             </button>
           </div>
 
-          <div className="divide-y divide-stone-100">
+          <div>
             {admins.map((admin) => (
-              <div key={`${admin.email}:${admin.createdAt}`} className="grid gap-3 p-5 md:grid-cols-[minmax(0,1fr)_120px_100px_120px] md:items-center">
-                <div>
-                  <p className="font-semibold">{admin.email}</p>
-                  <p className="mt-1 text-xs text-stone-500">Added {formatDate(admin.createdAt)}</p>
+              <div key={`${admin.email}:${admin.createdAt}`} className="admin-list-row">
+                <div className="admin-list-content">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h3 className="text-[15px] font-bold text-stone-800 tracking-tight">{admin.email}</h3>
+                    <RoleBadge role={admin.role} />
+                  </div>
+                  <p className="mt-1.5 text-xs font-semibold text-stone-400">Added {formatDate(admin.createdAt)}</p>
                 </div>
-                <p className="text-sm font-semibold">{admin.role === "super_admin" ? "Super-admin" : "Admin"}</p>
-                <StatusPill status={admin.active ? "active" : "removed"} />
-                <button
-                  onClick={() => handleRemoveAdmin(admin.email)}
-                  disabled={!admin.active || busyAction === `admin:${admin.email}`}
-                  className="rounded-md border border-stone-300 px-3 py-2 text-sm font-bold text-stone-700 disabled:opacity-40"
-                  type="button"
-                >
-                  Remove
-                </button>
+
+                <div className="admin-list-actions">
+                  <StatusPill status={admin.active ? "active" : "removed"} />
+                  <div className="admin-list-actions-bar">
+                    <button
+                      onClick={() => handleRemoveAdmin(admin.email)}
+                      disabled={!admin.active || busyAction === `admin:${admin.email}`}
+                      className="admin-button-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
+                      type="button"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
+
+            {admins.length === 0 && (
+              <div className="p-8 text-center">
+                <p className="text-sm font-semibold text-stone-400">No admins found yet.</p>
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="mt-6 rounded-lg border border-stone-200 bg-white">
-          <div className="border-b border-stone-200 p-5">
-            <h2 className="text-lg font-bold">Students</h2>
+        <section className="admin-panel mt-6">
+          <div className="admin-panel-header">
+            <h2 className="admin-panel-title">Students</h2>
           </div>
 
-          <div className="divide-y divide-stone-100">
+          <div>
             {students.map((student) => {
               const nextStatus = student.status === "suspended" ? "active" : "suspended";
               const buttonLabel = student.status === "suspended" ? "Unsuspend" : "Suspend";
 
               return (
-                <div key={student.userId} className="grid gap-3 p-5 md:grid-cols-[minmax(0,1fr)_160px_120px_120px] md:items-center">
-                  <div>
-                    <p className="font-semibold">{student.displayName || student.name}</p>
+                <div key={student.userId} className="admin-list-row">
+                  <div className="admin-list-content">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h3 className="text-[15px] font-bold text-stone-800 tracking-tight">{student.displayName || student.name}</h3>
+                      <StatusPill status={student.status} />
+                    </div>
                     <p className="mt-1 text-sm text-stone-500">{student.email}</p>
-                    <p className="mt-1 text-xs text-stone-400">{student.institution || "No institution yet"}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="admin-meta-tag first:before:hidden">{student.institution || "No institution"}</span>
+                      <span className="admin-meta-tag">Joined {formatDate(student.joinedAt)}</span>
+                    </div>
                   </div>
-                  <p className="text-sm text-stone-500">Joined {formatDate(student.joinedAt)}</p>
-                  <StatusPill status={student.status} />
-                  <button
-                    onClick={() => handleSetStudentStatus(student.userId, nextStatus)}
-                    disabled={busyAction === `student:${student.userId}`}
-                    className="rounded-md border border-stone-300 px-3 py-2 text-sm font-bold text-stone-700 disabled:opacity-40"
-                    type="button"
-                  >
-                    {buttonLabel}
-                  </button>
+
+                  <div className="admin-list-actions">
+                    <button
+                      onClick={() => handleSetStudentStatus(student.userId, nextStatus)}
+                      disabled={busyAction === `student:${student.userId}`}
+                      className={`admin-button-ghost ${student.status === "suspended" ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"}`}
+                      type="button"
+                    >
+                      {buttonLabel}
+                    </button>
+                  </div>
                 </div>
               );
             })}
 
             {students.length === 0 && (
-              <p className="p-5 text-sm text-stone-500">No Students found yet.</p>
+              <div className="p-8 text-center">
+                <p className="text-sm font-semibold text-stone-400">No Students found yet.</p>
+              </div>
             )}
           </div>
         </section>
@@ -196,24 +218,45 @@ function AdminUsersPage() {
 
 function Header({ title, description }: { title: string; description: string }) {
   return (
-    <header className="border-b border-stone-200 pb-6">
-      <a href="/admin" className="text-sm font-semibold text-[#205072]">Admin</a>
-      <h1 className="mt-3 text-3xl font-bold tracking-tight">{title}</h1>
-      <p className="mt-2 text-sm leading-6 text-stone-500">{description}</p>
+    <header className="admin-header">
+      <a href="/admin" className="admin-back-link">Admin</a>
+      <h1 className="admin-title">{title}</h1>
+      <p className="admin-description">{description}</p>
     </header>
   );
 }
 
 function StatusPill({ status }: { status: "active" | "suspended" | "removed" }) {
-  const classes = {
-    active: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    suspended: "border-red-200 bg-red-50 text-red-700",
-    removed: "border-stone-200 bg-stone-100 text-stone-500",
+  const config = {
+    active: {
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      label: "Active",
+    },
+    suspended: {
+      className: "border-red-200 bg-red-50 text-red-700",
+      label: "Suspended",
+    },
+    removed: {
+      className: "border-stone-200 bg-stone-100 text-stone-500",
+      label: "Removed",
+    },
   };
 
+  const { className, label } = config[status];
+
   return (
-    <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-bold ${classes[status]}`}>
-      {status}
+    <span className={`admin-status-pill ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+function RoleBadge({ role }: { role: "admin" | "super_admin" }) {
+  const isSuper = role === "super_admin";
+
+  return (
+    <span className={`admin-status-pill ${isSuper ? "border-primary-soft bg-primary-tint text-primary" : "border-stone-200 bg-stone-100 text-stone-600"}`}>
+      {isSuper ? "Super-admin" : "Admin"}
     </span>
   );
 }

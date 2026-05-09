@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { and, eq, isNull } from "drizzle-orm";
-import { db } from "./client";
+import { closeDb, db } from "./client";
 import {
   adminMembers,
   categories as categoriesTable,
@@ -111,6 +111,8 @@ async function seedTryoutsAndQuestions() {
 
     const questions = questionBank[tryout.id] ?? [];
 
+    await db.delete(tryoutQuestions).where(eq(tryoutQuestions.tryoutId, String(tryout.id)));
+
     for (const [index, question] of questions.entries()) {
       const options = question.options;
 
@@ -135,8 +137,18 @@ async function seedTryoutsAndQuestions() {
         .onConflictDoUpdate({
           target: questionsTable.id,
           set: {
+            categoryId: question.categoryId,
+            subCategoryId: question.subCategoryId,
             questionText: question.question,
+            optionA: options[0] ?? "",
+            optionB: options[1] ?? "",
+            optionC: options[2] ?? "",
+            optionD: options[3] ?? "",
+            optionE: options[4] || null,
+            correctOption: optionLetters[question.correct] ?? "A",
             explanation: question.explanation,
+            videoUrl: question.videoUrl ?? null,
+            accessLevel: question.accessLevel,
             status: question.published ? "published" : "draft",
             updatedAt: new Date(),
           },
@@ -207,7 +219,11 @@ async function main() {
   console.log("Seed completed.");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closeDb();
+  });
