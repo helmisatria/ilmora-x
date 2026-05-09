@@ -1,17 +1,17 @@
-import { createFileRoute, Link, Outlet, useLocation, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import {
-  createTryoutAdmin,
-  createTryoutFromWorkbookAdmin,
   getTryoutWorkbookAdmin,
+  importTryoutWorkbookAdmin,
   listCategoriesAdmin,
-  listTryoutsAdmin,
+  publishTryoutAdmin,
+  unpublishTryoutAdmin,
+  updateTryoutAdmin,
 } from "../../lib/admin-functions";
 
+type TryoutWorkbook = Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>;
 type CategoryRow = Awaited<ReturnType<typeof listCategoriesAdmin>>[number];
-type TryoutRow = Awaited<ReturnType<typeof listTryoutsAdmin>>[number];
 type AccessLevel = "free" | "premium" | "platinum";
-type QuestionAccessLevel = "free" | "premium";
 type ContentStatus = "draft" | "published" | "unpublished";
 type CorrectOption = "A" | "B" | "C" | "D" | "E";
 
@@ -21,6 +21,33 @@ type TryoutForm = {
   categoryId: string;
   durationMinutes: string;
   accessLevel: AccessLevel;
+};
+
+type TryoutWorkbookTryout = {
+  title: string;
+  description: string;
+  categoryId: string;
+  durationMinutes: number;
+  accessLevel: AccessLevel;
+  status: ContentStatus;
+};
+
+type TryoutWorkbookQuestion = {
+  questionId?: string;
+  sortOrder: number;
+  categoryId: string;
+  subCategoryId: string;
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  optionE?: string;
+  correctOption: CorrectOption;
+  explanation: string;
+  videoUrl?: string;
+  accessLevel: "free" | "premium";
+  status: ContentStatus;
 };
 
 type TryoutSheetRow = {
@@ -77,61 +104,44 @@ const questionSheetHeaders = [
   "status",
 ] as const;
 
-const emptyForm: TryoutForm = {
-  title: "",
-  description: "",
-  categoryId: "",
-  durationMinutes: "30",
-  accessLevel: "free",
-};
-
-export const Route = createFileRoute("/admin/tryouts")({
-  loader: async () => {
-    const [categories, tryouts] = await Promise.all([
+export const Route = createFileRoute("/admin/tryouts/$id")({
+  loader: async ({ params }) => {
+    const [workbook, categories] = await Promise.all([
+      getTryoutWorkbookAdmin({ data: { tryoutId: params.id } }),
       listCategoriesAdmin(),
-      listTryoutsAdmin(),
     ]);
 
-    return { categories, tryouts };
+    return { workbook, categories };
   },
-  head: () => ({
+  head: ({ params }) => ({
     meta: [
-      { title: "Try-outs — IlmoraX Admin" },
+      { title: `Try-out Detail — IlmoraX Admin` },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  component: AdminTryoutsPage,
+  component: AdminTryoutDetailPage,
 });
 
-function AdminTryoutsPage() {
-  const location = useLocation();
-
-  if (location.pathname !== "/admin/tryouts") {
-    return <Outlet />;
-  }
-
-  const { categories, tryouts } = Route.useLoaderData() as {
+function AdminTryoutDetailPage() {
+  const { workbook, categories } = Route.useLoaderData() as {
+    workbook: TryoutWorkbook;
     categories: CategoryRow[];
-    tryouts: TryoutRow[];
   };
   const router = useRouter();
-  const [form, setForm] = useState(() => ({
-    ...emptyForm,
-    categoryId: categories[0]?.id ?? "",
+  const tryoutId = workbook.tryout.id;
+
+  const [form, setForm] = useState<TryoutForm>(() => ({
+    title: workbook.tryout.title,
+    description: workbook.tryout.description,
+    categoryId: workbook.tryout.categoryId,
+    durationMinutes: String(workbook.tryout.durationMinutes),
+    accessLevel: workbook.tryout.accessLevel,
   }));
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const refresh = async () => {
     await router.invalidate();
-  };
-
-  const resetForm = () => {
-    setForm({
-      ...emptyForm,
-      categoryId: categories[0]?.id ?? "",
-    });
-    setErrorMessage("");
   };
 
   const saveTryout = async () => {
@@ -150,98 +160,66 @@ function AdminTryoutsPage() {
     setBusyAction("save");
     setErrorMessage("");
 
-    const payload = {
-      title: form.title,
-      description: form.description,
-      categoryId: form.categoryId,
-      durationMinutes,
-      accessLevel: form.accessLevel,
-    };
-
     try {
-      await createTryoutAdmin({ data: payload });
-      resetForm();
-      await refresh();
-    } catch {
-      setErrorMessage("Try-out was not created. Check for duplicate titles or invalid fields.");
-    } finally {
-      setBusyAction("");
-    }
-  };
-
-  const downloadSampleWorkbook = async () => {
-    setBusyAction("sample");
-    setErrorMessage("");
-
-    try {
-      const XLSX = await import("xlsx");
-      const workbook = XLSX.utils.book_new();
-
-      XLSX.utils.book_append_sheet(
-        workbook,
-        makeSheet(XLSX, tryoutSheetHeaders, [makeSampleTryoutRow()]),
-        "tryout",
-      );
-      XLSX.utils.book_append_sheet(
-        workbook,
-        makeSheet(XLSX, questionSheetHeaders, makeSampleQuestionRows()),
-        "questions",
-      );
-
-      saveWorkbook(XLSX, workbook, `ilmorax-tryout-sample-${formatTimestamp(new Date())}.xlsx`);
-    } catch {
-      setErrorMessage("Sample workbook was not downloaded.");
-    } finally {
-      setBusyAction("");
-    }
-  };
-
-  const importNewWorkbook = async (file: File | undefined) => {
-    if (!file) return;
-
-    setBusyAction("import-new");
-    setErrorMessage("");
-
-    try {
-      const workbookData = await readTryoutWorkbook(file);
-      await createTryoutFromWorkbookAdmin({
+      await updateTryoutAdmin({
         data: {
-          tryout: workbookData.tryout,
-          questions: workbookData.questions,
+          title: form.title,
+          description: form.description,
+          categoryId: form.categoryId,
+          durationMinutes,
+          accessLevel: form.accessLevel,
+          tryoutId,
         },
       });
-      resetForm();
       await refresh();
     } catch {
-      setErrorMessage("New Try-out workbook was not imported. Check both sheets and duplicate titles.");
+      setErrorMessage("Try-out was not saved. Check for duplicate titles or invalid fields.");
     } finally {
       setBusyAction("");
     }
   };
 
-  const downloadWorkbook = async (tryoutId: string) => {
-    setBusyAction(`download:${tryoutId}`);
+  const setPublication = async (nextStatus: "published" | "unpublished") => {
+    setBusyAction("publish");
     setErrorMessage("");
 
     try {
-      const workbookData = await getTryoutWorkbookAdmin({ data: { tryoutId } });
+      if (nextStatus === "published") {
+        await publishTryoutAdmin({ data: { tryoutId } });
+      } else {
+        await unpublishTryoutAdmin({ data: { tryoutId } });
+      }
+      await refresh();
+    } catch {
+      setErrorMessage("Publication status was not updated.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const downloadWorkbook = async () => {
+    setBusyAction("download");
+    setErrorMessage("");
+
+    try {
       const XLSX = await import("xlsx");
-      const workbook = XLSX.utils.book_new();
-      const tryoutRows = [toTryoutSheetRow(workbookData.tryout)];
-      const questionRows = workbookData.questions.map(toQuestionSheetRow);
+      const wb = XLSX.utils.book_new();
+      const tryoutRows = [toTryoutSheetRow(workbook.tryout)];
+      const questionRows = workbook.questions.map(toQuestionSheetRow);
 
       XLSX.utils.book_append_sheet(
-        workbook,
+        wb,
         makeSheet(XLSX, tryoutSheetHeaders, tryoutRows),
         "tryout",
       );
       XLSX.utils.book_append_sheet(
-        workbook,
+        wb,
         makeSheet(XLSX, questionSheetHeaders, questionRows),
         "questions",
       );
 
-      saveWorkbook(XLSX, workbook, `${workbookData.tryout.slug || "tryout"}-workbook-${formatTimestamp(new Date())}.xlsx`);
+      const slug = workbook.tryout.slug || "tryout";
+      saveWorkbook(XLSX, wb, `${slug}-workbook-${formatTimestamp(new Date())}.xlsx`);
     } catch {
       setErrorMessage("Try-out workbook was not downloaded.");
     } finally {
@@ -249,15 +227,52 @@ function AdminTryoutsPage() {
     }
   };
 
+  const importWorkbook = async (file: File | undefined) => {
+    if (!file) return;
+
+    setBusyAction("import");
+    setErrorMessage("");
+
+    try {
+      const workbookData = await readTryoutWorkbook(file);
+      await importTryoutWorkbookAdmin({
+        data: {
+          tryoutId,
+          tryout: workbookData.tryout,
+          questions: workbookData.questions,
+        },
+      });
+      await refresh();
+    } catch {
+      setErrorMessage("Try-out workbook was not imported. Check both sheets and required fields.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const hasChanges =
+    form.title !== workbook.tryout.title ||
+    form.description !== workbook.tryout.description ||
+    form.categoryId !== workbook.tryout.categoryId ||
+    Number(form.durationMinutes) !== workbook.tryout.durationMinutes ||
+    form.accessLevel !== workbook.tryout.accessLevel;
+
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
         <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <h1 className="admin-title">Try-outs</h1>
-          <p className="admin-description">
-            Create, edit, publish, and unpublish Try-outs from real database content.
-          </p>
+          <a href="/admin/tryouts" className="admin-back-link">Try-outs</a>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="admin-title">{workbook.tryout.title}</h1>
+            <StatusPill status={workbook.tryout.status} />
+          </div>
+          <p className="admin-description">{workbook.tryout.description}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="admin-meta-tag first:before:hidden">{categories.find((c) => c.id === workbook.tryout.categoryId)?.name ?? workbook.tryout.categoryId}</span>
+            <span className="admin-meta-tag">{workbook.tryout.durationMinutes} min</span>
+            <span className="admin-meta-tag capitalize">{workbook.tryout.accessLevel}</span>
+            <span className="admin-meta-tag">{workbook.questions.length} questions</span>
+          </div>
         </header>
 
         {errorMessage && (
@@ -268,7 +283,7 @@ function AdminTryoutsPage() {
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Create Try-out</h2>
+            <h2 className="admin-panel-title">Edit Try-out</h2>
           </div>
 
           <div className="grid gap-5 p-5 sm:p-6">
@@ -330,98 +345,97 @@ function AdminTryoutsPage() {
             <div className="flex flex-wrap gap-3 pt-1">
               <button
                 onClick={saveTryout}
-                disabled={busyAction === "save" || categories.length === 0}
+                disabled={busyAction === "save" || !hasChanges}
                 className="admin-button-primary"
                 type="button"
               >
-                Create Try-out
+                {busyAction === "save" ? "Saving..." : "Save changes"}
               </button>
+              {workbook.tryout.status === "published" ? (
+                <button
+                  onClick={() => setPublication("unpublished")}
+                  disabled={busyAction === "publish"}
+                  className="admin-button-ghost text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                  type="button"
+                >
+                  <EyeOffIcon className="w-3.5 h-3.5" />
+                  Unpublish
+                </button>
+              ) : (
+                <button
+                  onClick={() => setPublication("published")}
+                  disabled={busyAction === "publish"}
+                  className="admin-button-success"
+                  type="button"
+                >
+                  <EyeIcon className="w-3.5 h-3.5" />
+                  Publish
+                </button>
+              )}
             </div>
           </div>
         </section>
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Create from Excel</h2>
+            <h2 className="admin-panel-title">Excel Import / Export</h2>
           </div>
 
-          <div className="grid gap-5 p-5 sm:p-6 sm:grid-cols-[1fr_auto]">
-            <div>
-              <p className="text-sm font-semibold text-stone-600 leading-relaxed">
-                Download the sample workbook, fill in the tryout and questions sheets, then upload to create a new Try-out.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-start">
-              <button
-                onClick={downloadSampleWorkbook}
-                disabled={busyAction === "sample"}
-                className="admin-button-secondary whitespace-nowrap"
-                type="button"
-              >
-                <DownloadIcon className="w-4 h-4" />
-                Download sample
-              </button>
-              <FileUpload
-                accept=".xlsx"
-                busy={busyAction === "import-new"}
-                placeholder="Upload workbook"
-                onFileSelect={(file) => importNewWorkbook(file)}
-              />
-            </div>
+          <div className="flex flex-wrap gap-3 p-5 sm:p-6">
+            <button
+              onClick={downloadWorkbook}
+              disabled={busyAction === "download"}
+              className="admin-button-secondary"
+              type="button"
+            >
+              <DownloadIcon className="w-4 h-4" />
+              Download workbook
+            </button>
+            <FileUpload
+              accept=".xlsx"
+              busy={busyAction === "import"}
+              placeholder="Upload workbook"
+              onFileSelect={(file) => importWorkbook(file)}
+            />
           </div>
         </section>
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Current Try-outs</h2>
+            <h2 className="admin-panel-title">Questions ({workbook.questions.length})</h2>
           </div>
 
           <div>
-            {tryouts.map((tryout) => (
-              <div key={tryout.id} className="admin-list-row">
+            {workbook.questions.length === 0 && (
+              <div className="p-8 text-center">
+                <p className="text-sm font-semibold text-stone-400">No questions assigned yet. Import a workbook to add questions.</p>
+              </div>
+            )}
+
+            {workbook.questions.map((question, index) => (
+              <div key={question.questionId ?? `q-${index}`} className="admin-list-row">
                 <div className="admin-list-content">
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <h3 className="text-[15px] font-bold text-stone-800 tracking-tight">{tryout.title}</h3>
-                    <StatusPill status={tryout.status} />
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-500">
+                      {question.sortOrder}
+                    </span>
+                    <h3 className="text-[15px] font-bold text-stone-800 tracking-tight leading-snug">
+                      {question.questionText}
+                    </h3>
                   </div>
-                  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-stone-500">{tryout.description}</p>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="admin-meta-tag first:before:hidden">{tryout.categoryName}</span>
-                    <span className="admin-meta-tag">{tryout.durationMinutes} min</span>
-                    <span className="admin-meta-tag capitalize">{tryout.accessLevel}</span>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="admin-meta-tag first:before:hidden">{question.categoryId}</span>
+                    <span className="admin-meta-tag">{question.subCategoryId}</span>
+                    <span className="admin-meta-tag capitalize">{question.accessLevel}</span>
+                    <span className="admin-meta-tag">Answer: {question.correctOption}</span>
+                    <StatusPill status={question.status} />
                   </div>
-                </div>
-
-                <div className="admin-list-actions">
-                  <p className="text-xs font-semibold text-stone-400 shrink-0">Updated {formatDate(tryout.updatedAt)}</p>
-                  <div className="admin-list-actions-bar">
-                    <Link
-                      to="/admin/tryouts/$id"
-                      params={{ id: tryout.id }}
-                      className="admin-button-ghost"
-                    >
-                      <PencilIcon className="w-3.5 h-3.5" />
-                      Details
-                    </Link>
-                    <button
-                      onClick={() => downloadWorkbook(tryout.id)}
-                      disabled={busyAction === `download:${tryout.id}`}
-                      className="admin-button-ghost"
-                      type="button"
-                    >
-                      <DownloadIcon className="w-3.5 h-3.5" />
-                      Excel
-                    </button>
-                  </div>
+                  {question.explanation && (
+                    <p className="mt-1.5 text-sm text-stone-400 line-clamp-2">{question.explanation}</p>
+                  )}
                 </div>
               </div>
             ))}
-
-            {tryouts.length === 0 && (
-              <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-stone-400">No Try-outs found yet.</p>
-              </div>
-            )}
           </div>
         </section>
       </div>
@@ -438,7 +452,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function StatusPill({ status }: { status: TryoutRow["status"] }) {
+function StatusPill({ status }: { status: ContentStatus }) {
   const config = {
     draft: {
       className: "border-stone-200 bg-stone-100 text-stone-600",
@@ -466,13 +480,11 @@ function StatusPill({ status }: { status: TryoutRow["status"] }) {
 function FileUpload({
   accept,
   busy,
-  compact,
   placeholder,
   onFileSelect,
 }: {
   accept: string;
   busy: boolean;
-  compact?: boolean;
   placeholder: string;
   onFileSelect: (file: File) => void;
 }) {
@@ -491,28 +503,6 @@ function FileUpload({
   const handleClick = () => {
     inputRef.current?.click();
   };
-
-  if (compact) {
-    return (
-      <button
-        onClick={handleClick}
-        disabled={busy}
-        className="admin-button-ghost"
-        type="button"
-      >
-        <UploadIcon className="w-3.5 h-3.5" />
-        {fileName || placeholder}
-        <input
-          ref={inputRef}
-          onChange={handleChange}
-          disabled={busy}
-          className="sr-only"
-          type="file"
-          accept={accept}
-        />
-      </button>
-    );
-  }
 
   return (
     <button
@@ -553,16 +543,25 @@ function DownloadIcon({ className }: { className?: string }) {
   );
 }
 
-function PencilIcon({ className }: { className?: string }) {
+function EyeIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M4 20h4L18.5 9.5a2.8 2.8 0 1 0-4-4L4 16v4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m14.5 5.5 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function toTryoutSheetRow(tryout: Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>["tryout"]) {
+function EyeOffIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M9.9 4.2A10.1 10.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.5 3.7m-4.8 3.3A10 10 0 0 1 1 12s4-8 11-8a10 10 0 0 1 4.2.9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1 1 23 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function toTryoutSheetRow(tryout: TryoutWorkbook["tryout"]) {
   return {
     title: tryout.title,
     description: tryout.description,
@@ -573,7 +572,7 @@ function toTryoutSheetRow(tryout: Awaited<ReturnType<typeof getTryoutWorkbookAdm
   };
 }
 
-function toQuestionSheetRow(question: Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>["questions"][number]) {
+function toQuestionSheetRow(question: TryoutWorkbook["questions"][number]) {
   return {
     question_id: question.questionId,
     sort_order: question.sortOrder,
@@ -591,56 +590,6 @@ function toQuestionSheetRow(question: Awaited<ReturnType<typeof getTryoutWorkboo
     access_level: question.accessLevel,
     status: question.status,
   };
-}
-
-function makeSampleTryoutRow() {
-  return {
-    title: "UKAI Try-out Sample",
-    description: "Sample Try-out description. Replace this with the real Student-facing description.",
-    category_id: "farmakologi",
-    duration_minutes: 30,
-    access_level: "free",
-    status: "draft",
-  };
-}
-
-function makeSampleQuestionRows() {
-  return [
-    {
-      question_id: "",
-      sort_order: 1,
-      category_id: "farmakologi",
-      sub_category_id: "farmakologi-antibiotik",
-      question_text: "Mekanisme kerja penisilin adalah:",
-      option_a: "Menghambat sintesis protein",
-      option_b: "Menghambat sintesis dinding sel",
-      option_c: "Menghambat replikasi DNA",
-      option_d: "Menghambat sintesis folat",
-      option_e: "",
-      correct_option: "B",
-      explanation: "Penisilin menghambat sintesis dinding sel bakteri dengan mengikat protein pengikat penisilin.",
-      video_url: "",
-      access_level: "free",
-      status: "draft",
-    },
-    {
-      question_id: "",
-      sort_order: 2,
-      category_id: "farmakologi",
-      sub_category_id: "farmakologi-nsaid",
-      question_text: "NSAID yang paling selektif terhadap COX-2:",
-      option_a: "Ibuprofen",
-      option_b: "Celecoxib",
-      option_c: "Aspirin",
-      option_d: "Diklofenak",
-      option_e: "",
-      correct_option: "B",
-      explanation: "Celecoxib adalah NSAID selektif COX-2 yang menurunkan risiko gangguan gastrointestinal.",
-      video_url: "",
-      access_level: "free",
-      status: "draft",
-    },
-  ];
 }
 
 function makeSheet(
@@ -730,64 +679,44 @@ function textValue(value: unknown) {
 
 function optionalTextValue(value: unknown) {
   const text = textValue(value);
-
   if (!text) return undefined;
-
   return text;
 }
 
 function numberValue(value: unknown) {
   const number = Number(value);
-
   if (!Number.isFinite(number)) return 0;
-
   return number;
 }
 
 function normalizeTryoutAccessLevel(value: unknown): AccessLevel {
   const accessLevel = textValue(value).toLowerCase();
-
   if (accessLevel === "premium" || accessLevel === "platinum") {
     return accessLevel;
   }
-
   return "free";
 }
 
-function normalizeQuestionAccessLevel(value: unknown): QuestionAccessLevel {
+function normalizeQuestionAccessLevel(value: unknown): "free" | "premium" {
   const accessLevel = textValue(value).toLowerCase();
-
   if (accessLevel === "premium") return "premium";
-
   return "free";
 }
 
 function normalizeContentStatus(value: unknown): ContentStatus {
   const status = textValue(value).toLowerCase();
-
   if (status === "published" || status === "unpublished") {
     return status;
   }
-
   return "draft";
 }
 
 function normalizeCorrectOption(value: unknown): CorrectOption {
   const option = textValue(value).toUpperCase();
-
   if (option === "B" || option === "C" || option === "D" || option === "E") {
     return option;
   }
-
   return "A";
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
 }
 
 function formatTimestamp(date: Date) {

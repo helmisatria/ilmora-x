@@ -28,6 +28,7 @@ import { Route as PollJoinRouteImport } from './routes/poll.join'
 import { Route as PollCodeRouteImport } from './routes/poll.$code'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCompleteProfileRouteImport } from './routes/auth/complete-profile'
+import { Route as ApiHealthzRouteImport } from './routes/api/healthz'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminTryoutsRouteImport } from './routes/admin/tryouts'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
@@ -36,6 +37,7 @@ import { Route as AdminMateriRouteImport } from './routes/admin/materi'
 import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
 import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AdminTryoutsIdRouteImport } from './routes/admin/tryouts.$id'
 
 const TryoutRoute = TryoutRouteImport.update({
   id: '/tryout',
@@ -132,6 +134,11 @@ const AuthCompleteProfileRoute = AuthCompleteProfileRouteImport.update({
   path: '/auth/complete-profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthzRoute = ApiHealthzRouteImport.update({
+  id: '/api/healthz',
+  path: '/api/healthz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -172,6 +179,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTryoutsIdRoute = AdminTryoutsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminTryoutsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -190,8 +202,9 @@ export interface FileRoutesByFullPath {
   '/admin/materi': typeof AdminMateriRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
-  '/admin/tryouts': typeof AdminTryoutsRoute
+  '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/api/healthz': typeof ApiHealthzRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/poll/$code': typeof PollCodeRoute
@@ -199,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
+  '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
@@ -219,8 +233,9 @@ export interface FileRoutesByTo {
   '/admin/materi': typeof AdminMateriRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
-  '/admin/tryouts': typeof AdminTryoutsRoute
+  '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/api/healthz': typeof ApiHealthzRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/poll/$code': typeof PollCodeRoute
@@ -228,6 +243,7 @@ export interface FileRoutesByTo {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
+  '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
@@ -249,8 +265,9 @@ export interface FileRoutesById {
   '/admin/materi': typeof AdminMateriRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
-  '/admin/tryouts': typeof AdminTryoutsRoute
+  '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/api/healthz': typeof ApiHealthzRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/poll/$code': typeof PollCodeRoute
@@ -258,6 +275,7 @@ export interface FileRoutesById {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
+  '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
 }
@@ -282,6 +300,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/tryouts'
     | '/admin/users'
+    | '/api/healthz'
     | '/auth/complete-profile'
     | '/auth/login'
     | '/poll/$code'
@@ -289,6 +308,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/results/$attemptId'
     | '/tryout/$id'
+    | '/admin/tryouts/$id'
     | '/api/auth/$'
     | '/results/$attemptId/review'
   fileRoutesByTo: FileRoutesByTo
@@ -311,6 +331,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/tryouts'
     | '/admin/users'
+    | '/api/healthz'
     | '/auth/complete-profile'
     | '/auth/login'
     | '/poll/$code'
@@ -318,6 +339,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/results/$attemptId'
     | '/tryout/$id'
+    | '/admin/tryouts/$id'
     | '/api/auth/$'
     | '/results/$attemptId/review'
   id:
@@ -340,6 +362,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/tryouts'
     | '/admin/users'
+    | '/api/healthz'
     | '/auth/complete-profile'
     | '/auth/login'
     | '/poll/$code'
@@ -347,6 +370,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/results/$attemptId'
     | '/tryout/$id'
+    | '/admin/tryouts/$id'
     | '/api/auth/$'
     | '/results/$attemptId/review'
   fileRoutesById: FileRoutesById
@@ -364,6 +388,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRouteWithChildren
   ProgressRoute: typeof ProgressRoute
   TryoutRoute: typeof TryoutRouteWithChildren
+  ApiHealthzRoute: typeof ApiHealthzRoute
   AuthCompleteProfileRoute: typeof AuthCompleteProfileRoute
   AuthLoginRoute: typeof AuthLoginRoute
   PollCodeRoute: typeof PollCodeRoute
@@ -507,6 +532,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCompleteProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/healthz': {
+      id: '/api/healthz'
+      path: '/api/healthz'
+      fullPath: '/api/healthz'
+      preLoaderRoute: typeof ApiHealthzRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -563,15 +595,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/tryouts/$id': {
+      id: '/admin/tryouts/$id'
+      path: '/$id'
+      fullPath: '/admin/tryouts/$id'
+      preLoaderRoute: typeof AdminTryoutsIdRouteImport
+      parentRoute: typeof AdminTryoutsRoute
+    }
   }
 }
+
+interface AdminTryoutsRouteChildren {
+  AdminTryoutsIdRoute: typeof AdminTryoutsIdRoute
+}
+
+const AdminTryoutsRouteChildren: AdminTryoutsRouteChildren = {
+  AdminTryoutsIdRoute: AdminTryoutsIdRoute,
+}
+
+const AdminTryoutsRouteWithChildren = AdminTryoutsRoute._addFileChildren(
+  AdminTryoutsRouteChildren,
+)
 
 interface AdminRouteChildren {
   AdminInsightsRoute: typeof AdminInsightsRoute
   AdminMateriRoute: typeof AdminMateriRoute
   AdminQuestionsRoute: typeof AdminQuestionsRoute
   AdminReportsRoute: typeof AdminReportsRoute
-  AdminTryoutsRoute: typeof AdminTryoutsRoute
+  AdminTryoutsRoute: typeof AdminTryoutsRouteWithChildren
   AdminUsersRoute: typeof AdminUsersRoute
 }
 
@@ -580,7 +631,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMateriRoute: AdminMateriRoute,
   AdminQuestionsRoute: AdminQuestionsRoute,
   AdminReportsRoute: AdminReportsRoute,
-  AdminTryoutsRoute: AdminTryoutsRoute,
+  AdminTryoutsRoute: AdminTryoutsRouteWithChildren,
   AdminUsersRoute: AdminUsersRoute,
 }
 
@@ -632,6 +683,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRouteWithChildren,
   ProgressRoute: ProgressRoute,
   TryoutRoute: TryoutRouteWithChildren,
+  ApiHealthzRoute: ApiHealthzRoute,
   AuthCompleteProfileRoute: AuthCompleteProfileRoute,
   AuthLoginRoute: AuthLoginRoute,
   PollCodeRoute: PollCodeRoute,
