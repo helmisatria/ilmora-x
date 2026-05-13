@@ -1,4 +1,4 @@
-export type ProductType = "premium_membership" | "platinum_tryout" | "material";
+export type ProductType = "premium_membership" | "lifetime_tryout" | "material";
 export type ContentType = "tryout" | "material";
 
 export interface Product {
@@ -23,6 +23,8 @@ export interface Entitlement {
   contentType?: ContentType;
   contentId?: number;
 }
+
+export const defaultLifetimeTryoutPrice = 19000;
 
 export const products: Product[] = [
   {
@@ -53,10 +55,20 @@ export const products: Product[] = [
     active: true,
   },
   {
+    id: 100,
+    name: "Try-out Kardiovaskular",
+    type: "lifetime_tryout",
+    price: defaultLifetimeTryoutPrice,
+    description: "Akses lifetime untuk Try-out Kardiovaskular",
+    active: true,
+    contentType: "tryout",
+    contentId: 3,
+  },
+  {
     id: 101,
-    name: "Platinum Try-out Farmasi Klinik Lanjut",
-    type: "platinum_tryout",
-    price: 19000,
+    name: "Try-out Farmasi Klinik Lanjut",
+    type: "lifetime_tryout",
+    price: defaultLifetimeTryoutPrice,
     description: "Akses lifetime untuk Try-out Farmasi Klinik Lanjut",
     active: true,
     contentType: "tryout",
@@ -64,9 +76,9 @@ export const products: Product[] = [
   },
   {
     id: 102,
-    name: "Platinum Try-out Perhitungan Dosis",
-    type: "platinum_tryout",
-    price: 19000,
+    name: "Try-out Perhitungan Dosis",
+    type: "lifetime_tryout",
+    price: defaultLifetimeTryoutPrice,
     description: "Akses lifetime untuk Try-out Perhitungan Dosis",
     active: true,
     contentType: "tryout",
@@ -75,7 +87,7 @@ export const products: Product[] = [
 ];
 
 export const membershipProducts = products.filter((product) => product.type === "premium_membership");
-export const platinumTryoutProducts = products.filter((product) => product.type === "platinum_tryout");
+export const lifetimeTryoutProducts = products.filter((product) => product.type === "lifetime_tryout");
 
 
 export function getProductById(productId: number | undefined) {
@@ -83,6 +95,6 @@ export function getProductById(productId: number | undefined) {
   return products.find((product) => product.id === productId) ?? products[0];
 }
 
-export function getPlatinumProductForTryout(tryoutId: number) {
-  return platinumTryoutProducts.find((product) => product.contentType === "tryout" && product.contentId === tryoutId);
+export function getLifetimeProductForTryout(tryoutId: number | string) {
+  return lifetimeTryoutProducts.find((product) => product.contentType === "tryout" && String(product.contentId) === String(tryoutId));
 }

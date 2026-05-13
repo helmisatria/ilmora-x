@@ -11,7 +11,7 @@ import {
 
 type TryoutWorkbook = Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>;
 type CategoryRow = Awaited<ReturnType<typeof listCategoriesAdmin>>[number];
-type AccessLevel = "free" | "premium" | "platinum";
+type AccessLevel = "free" | "premium";
 type ContentStatus = "draft" | "published" | "unpublished";
 type CorrectOption = "A" | "B" | "C" | "D" | "E";
 
@@ -135,7 +135,7 @@ function AdminTryoutDetailPage() {
     description: workbook.tryout.description,
     categoryId: workbook.tryout.categoryId,
     durationMinutes: String(workbook.tryout.durationMinutes),
-    accessLevel: workbook.tryout.accessLevel,
+    accessLevel: normalizeTryoutAccessLevel(workbook.tryout.accessLevel),
   }));
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -337,7 +337,6 @@ function AdminTryoutDetailPage() {
                 >
                   <option value="free">Free</option>
                   <option value="premium">Premium</option>
-                  <option value="platinum">Platinum</option>
                 </select>
               </Field>
             </div>
@@ -691,9 +690,7 @@ function numberValue(value: unknown) {
 
 function normalizeTryoutAccessLevel(value: unknown): AccessLevel {
   const accessLevel = textValue(value).toLowerCase();
-  if (accessLevel === "premium" || accessLevel === "platinum") {
-    return accessLevel;
-  }
+  if (accessLevel === "premium" || accessLevel === "platinum") return "premium";
   return "free";
 }
 

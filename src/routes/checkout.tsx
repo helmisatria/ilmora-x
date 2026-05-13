@@ -389,7 +389,7 @@ function SectionHeader({ title }: { title: string }) {
 
 function getAccessLabel(product: Product) {
   if (product.type === "premium_membership") return `${product.durationDays ?? 30} hari`;
-  if (product.type === "platinum_tryout") return "Akses lifetime";
+  if (product.type === "lifetime_tryout") return "Akses lifetime";
   return "Akses materi";
 }
 

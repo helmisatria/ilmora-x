@@ -1,4 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { PremiumDialog } from "../components/PremiumDialog";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
 import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
@@ -70,6 +72,8 @@ function DashboardComponent() {
   };
   const { user, hasPremiumMembership } = useApp();
   const navigate = useNavigate();
+  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
+  const [selectedTryout, setSelectedTryout] = useState<DashboardTryout | null>(null);
 
   const palette = dashboardPalettes.find((item) => item.id === defaultDashboardPaletteId) ?? dashboardPalettes[0];
   const levelInfo = getLevelForXp(summary.xp);
@@ -160,7 +164,15 @@ function DashboardComponent() {
               <SectionHeader title="Try-out Tersedia" action="Lihat semua" to="/tryout" />
               <div className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-1">
                 {tryouts.slice(0, 4).map((tryout) => (
-                  <TryoutRow key={tryout.id} tryout={tryout} isLocked={tryout.accessLevel !== "free"} />
+                  <TryoutRow
+                    key={tryout.id}
+                    tryout={tryout}
+                    isLocked={tryout.accessLevel !== "free" && !hasPremiumMembership}
+                    onLockedClick={() => {
+                      setSelectedTryout(tryout);
+                      setShowPremiumDialog(true);
+                    }}
+                  />
                 ))}
                 {tryouts.length === 0 && (
                   <div className="card shadow-sm">
@@ -211,6 +223,13 @@ function DashboardComponent() {
         <BottomNav active="learn" />
       </div>
       </div>
+      <PremiumDialog
+        isOpen={showPremiumDialog}
+        onClose={() => setShowPremiumDialog(false)}
+        onUpgrade={() => setShowPremiumDialog(false)}
+        hasPremiumMembership={hasPremiumMembership}
+        tryout={selectedTryout}
+      />
     </>
   );
 }
@@ -357,7 +376,15 @@ function SectionHeader({ title, action, to }: { title: string; action?: string; 
   );
 }
 
-function TryoutRow({ tryout, isLocked }: { tryout: DashboardTryout; isLocked: boolean }) {
+function TryoutRow({
+  tryout,
+  isLocked,
+  onLockedClick,
+}: {
+  tryout: DashboardTryout;
+  isLocked: boolean;
+  onLockedClick: () => void;
+}) {
   const categoryColor = tryout.categoryColor;
   const accent = isLocked ? "var(--color-amber)" : categoryColor;
   const color = isLocked ? "#f59e0b" : categoryColor;
@@ -367,6 +394,12 @@ function TryoutRow({ tryout, isLocked }: { tryout: DashboardTryout; isLocked: bo
       to={isLocked ? "/premium" : "/tryout/$id"}
       params={isLocked ? undefined : { id: String(tryout.id) }}
       className="card shadow-sm no-underline min-w-0"
+      onClick={(event) => {
+        if (!isLocked) return;
+
+        event.preventDefault();
+        onLockedClick();
+      }}
     >
       <IconTile
         icon={isLocked ? <LockIcon /> : <TryoutIcon tryoutId={tryout.id} />}
@@ -396,8 +429,8 @@ function TryoutRow({ tryout, isLocked }: { tryout: DashboardTryout; isLocked: bo
 }
 
 function getAccessLabel(accessLevel: DashboardTryout["accessLevel"]) {
-  if (accessLevel === "platinum") return "Platinum";
   if (accessLevel === "premium") return "Premium";
+  if (accessLevel === "platinum") return "Premium";
   return "Gratis";
 }
 

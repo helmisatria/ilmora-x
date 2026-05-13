@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { getPlatinumProductForTryout, membershipProducts, type Tryout } from "../data";
+import { getLifetimeProductForTryout, membershipProducts } from "../data";
 import {
   Dialog,
   DialogContent,
@@ -12,15 +12,20 @@ interface PremiumDialogProps {
   onClose: () => void;
   onUpgrade: () => void;
   hasPremiumMembership?: boolean;
-  tryout?: Tryout | null;
+  tryout?: PremiumDialogTryout | null;
+}
+
+interface PremiumDialogTryout {
+  id: number | string;
+  title: string;
 }
 
 export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership = false, tryout = null }: PremiumDialogProps) {
   const navigate = useNavigate();
   const monthlyProduct = membershipProducts[0];
-  const tryoutProduct = tryout ? getPlatinumProductForTryout(tryout.id) : null;
+  const tryoutProduct = tryout ? getLifetimeProductForTryout(tryout.id) : null;
   const showTryoutPurchase = Boolean(tryoutProduct && !hasPremiumMembership);
-  const showMembershipPrice = !tryout;
+  const showMembershipPrice = !hasPremiumMembership;
   const hasStickyMobilePrice = showMembershipPrice || showTryoutPurchase;
 
   const handleSubscribe = () => {
@@ -59,11 +64,11 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership
                 {tryout ? "Try-out terkunci" : "Premium access"}
               </div>
               <DialogTitle className="max-w-[14ch] text-[25px] font-black leading-[1] tracking-tight text-amber-50 md:max-w-[11ch] md:text-[42px] md:leading-[0.95]">
-                {tryout ? "Buka akses try-out" : "Upgrade ke Premium"}
+                {tryout ? "Try-out Premium" : "Upgrade ke Premium"}
               </DialogTitle>
               <DialogDescription className="mt-1.5 max-w-[32ch] text-[11px] font-semibold leading-snug text-amber-100/72 sm:text-[12px] md:mt-4 md:max-w-[28ch] md:text-[15px] md:leading-relaxed">
                 {tryout
-                  ? "Pilih akses penuh lewat Premium atau beli try-out ini saja."
+                  ? `Pilih Paket Premium atau beli ${tryout.title} saja.`
                   : "Buka analisis performa, pembahasan prioritas, dan latihan yang lebih terarah."}
               </DialogDescription>
             </div>
@@ -84,7 +89,7 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership
                   title="Premium"
                   price={`Rp${(monthlyProduct?.price ?? 49000).toLocaleString("id-ID")}`}
                   suffix="/bulan"
-                  description="Satu kali pembayaran. Tidak ada auto-renew."
+                  description="Rekomendasi. Buka semua try-out premium dan fitur belajar."
                   tone="premium"
                 />
               )}
@@ -93,7 +98,7 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership
                   title="Try-out ini"
                   price={`Rp${tryoutProduct.price.toLocaleString("id-ID")}`}
                   description={`Akses lifetime untuk ${tryout?.title}`}
-                  tone="platinum"
+                  tone="tryout"
                 />
               )}
             </div>
@@ -114,7 +119,7 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership
                   <StickyPrice
                     label="Try-out ini"
                     price={`Rp${tryoutProduct.price.toLocaleString("id-ID")}`}
-                    tone="platinum"
+                    tone="tryout"
                   />
                 )}
               </div>
@@ -148,7 +153,7 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership
                 type="button"
               >
                 <CrownIcon />
-                Berlangganan
+                Paket Premium
               </button>
             </div>
           </div>
@@ -167,7 +172,7 @@ function StickyPrice({
   label: string;
   price: string;
   suffix?: string;
-  tone: "premium" | "platinum";
+  tone: "premium" | "tryout";
 }) {
   const borderClass = tone === "premium" ? "border-amber-100" : "border-sky-100";
 
@@ -193,7 +198,7 @@ function PriceOption({
   price: string;
   suffix?: string;
   description: string;
-  tone: "premium" | "platinum";
+  tone: "premium" | "tryout";
 }) {
   const borderClass = tone === "premium" ? "border-amber-100 border-b-amber-200" : "border-sky-100 border-b-sky-200";
 

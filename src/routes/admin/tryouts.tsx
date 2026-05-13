@@ -10,7 +10,7 @@ import {
 
 type CategoryRow = Awaited<ReturnType<typeof listCategoriesAdmin>>[number];
 type TryoutRow = Awaited<ReturnType<typeof listTryoutsAdmin>>[number];
-type AccessLevel = "free" | "premium" | "platinum";
+type AccessLevel = "free" | "premium";
 type QuestionAccessLevel = "free" | "premium";
 type ContentStatus = "draft" | "published" | "unpublished";
 type CorrectOption = "A" | "B" | "C" | "D" | "E";
@@ -322,7 +322,6 @@ function AdminTryoutsPage() {
                 >
                   <option value="free">Free</option>
                   <option value="premium">Premium</option>
-                  <option value="platinum">Platinum</option>
                 </select>
               </Field>
             </div>
@@ -747,9 +746,7 @@ function numberValue(value: unknown) {
 function normalizeTryoutAccessLevel(value: unknown): AccessLevel {
   const accessLevel = textValue(value).toLowerCase();
 
-  if (accessLevel === "premium" || accessLevel === "platinum") {
-    return accessLevel;
-  }
+  if (accessLevel === "premium" || accessLevel === "platinum") return "premium";
 
   return "free";
 }

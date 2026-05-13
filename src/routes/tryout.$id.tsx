@@ -887,7 +887,7 @@ function PreparationScreen({
               <CrownIcon />
             </span>
             <div>
-              <div className="font-semibold mb-0.5">Modul {tryout.accessLevel === "platinum" ? "Platinum" : "Premium"}</div>
+              <div className="font-semibold mb-0.5">Modul Premium</div>
               Modul ini membuka soal pilihan dan pembahasan lengkap untuk akses yang sesuai.
             </div>
           </div>

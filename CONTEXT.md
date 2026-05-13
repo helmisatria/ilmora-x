@@ -39,7 +39,7 @@ _Avoid_: Promo, voucher, discount code
 - **Coupon redemption is per-Student.** Unique constraint `(coupon_id, student_id)` on the redemption ledger. A Student cannot redeem the same Coupon twice even if the global `max_total_uses` hasn't been reached.
 - **Referral discounts are out of scope for now.** Students may still have referral codes in profile for future use, but checkout does not validate or advertise referral discounts.
 - **Checkout accepts at most one Coupon.** Single input field labeled "Kode Kupon". Stacking is explicitly disallowed.
-- **Coupon scope is product-aware.** Admin chooses whether a Coupon applies to Premium Membership, Platinum Try-out, Materi, or all paid products.
+- **Coupon scope is product-aware.** Admin chooses whether a Coupon applies to Premium Membership, Lifetime Try-out Purchase, Materi, or all paid products.
 
 ## Language (Live Poll)
 
@@ -103,32 +103,47 @@ An Admin with the power to add/remove other Admins via the CMS. Seeded via env v
 ## Language (Premium access)
 
 **Product**:
-A sellable item in checkout. Product types include **Premium Membership** packages, **Platinum Try-out** lifetime purchases, and later Materi purchases. Checkout has one payment flow for all Product types.
+A sellable item in checkout. Product types include **Premium Membership** packages, **Lifetime Try-out Purchase** products, and later Materi purchases. Checkout has one payment flow for all Product types.
 
 **Premium Membership**:
-A time-boxed Product that grants global full-feature access while active. It unlocks premium try-outs, Platinum try-outs while active, premium explanations/videos, full evaluation dashboard, premium Materi, and future premium features. It is a one-time payment package, not auto-renew.
+A time-boxed Product that grants global full-feature access while active. It unlocks paid Try-outs while active, premium explanations/videos, full evaluation dashboard, premium Materi, and future premium features. It is a one-time payment package, not auto-renew.
+_Avoid_: Subscription, recurring plan
 
-**Platinum Try-out**:
-A Try-out that can be purchased individually for lifetime access to that Try-out. It is also included while Premium Membership is active. Buying a Platinum Try-out grants the full per-tryout experience only: taking, retaking, full explanations, video explanations, result review, and related Materi links inside that Try-out.
+**Lifetime Try-out Purchase**:
+A one-time Product that grants lifetime access to one specific paid Try-out.
+_Avoid_: Platinum Try-out, Platinum tier
 
 **Entitlement**:
-A record that grants a **Student** access to a Product or content target. A Premium Membership Entitlement has `starts_at` and `ends_at`. A Platinum Try-out Entitlement has no expiry and targets a specific Try-out. Entitlements can come from purchase or admin grant.
+A record that grants a **Student** access to a Product or content target. A Premium Membership Entitlement has `starts_at` and `ends_at`. A Lifetime Try-out Purchase Entitlement has no expiry and targets a specific Try-out. Entitlements can come from purchase or admin grant.
 
 ## Rules (Premium access)
 
 - **Premium Membership is time-boxed, not recurring.** Students buy a Product as a one-time charge; Entitlement expires; renewal requires another purchase. No auto-renew in M2.
 - **Effective Premium Membership = any non-expired membership Entitlement** for this Student. It is one global access check across all premium surfaces.
-- **Platinum ownership = any non-expired or lifetime content Entitlement** for the specific Try-out. It survives Premium Membership expiry.
-- **Try-out access levels are explicit:** `free`, `premium`, or `platinum`. Do not model this as `isPremium`.
+- **Lifetime Try-out ownership = any non-expired or lifetime content Entitlement** for the specific Try-out. It survives Premium Membership expiry.
+- **Try-out access levels are explicit:** `free` or `paid`. Do not model this as `isPremium`, and do not use `platinum` as a content tier.
+- **"Premium" may be used as the student-facing badge for paid Try-outs.** In domain language, the Try-out is paid; in UI copy, "Premium" signals a higher-value locked module but must still offer both unlock paths.
+- **Admin Try-out access selection is Free or Premium.** The Premium admin label maps to a paid Try-out; Platinum is not an admin-selectable Try-out access level.
 - **Question access levels are explicit:** `free` or `premium`. If a Student can access a Try-out, that access unlocks premium questions inside that Try-out.
 - **Review locks follow effective access.** Active Premium members and Students with access to the specific paid Try-out do not see premium locks in review summary or detail review for that Attempt.
 - **Overlapping purchases extend the expiry** — buying while an Entitlement is still active adds the new duration to the existing `ends_at`. Never blocks re-purchase.
 - **Single premium tier in M2** — no "Premium Plus." Multi-tier is post-M2.
 - **Hard expiry cut**, with proactive email warnings at T-7d and T-1d before `ends_at`. No grace period.
-- **Admin-granted Premium Membership must specify a duration.** Admin-granted Platinum Try-out access is a separate action and is lifetime by default.
+- **Admin-granted Premium Membership must specify a duration.** Admin-granted Lifetime Try-out Purchase access is a separate action and is lifetime by default.
 - **Lifetime access means no expiry while the content remains available.** Admin may retire/unpublish a purchased Try-out. If a replacement Try-out is explicitly linked, owners get access to the replacement.
-- **Catalog cards have one primary action.** Locked Platinum cards open a context-aware upgrade dialog. The dialog can offer Premium Membership or buying that one Try-out only, then routes to the same checkout.
-- **Active Premium members do not see the Platinum lifetime purchase option for now.** Platinum Try-outs appear accessible/included while membership is active.
+- **Catalog cards have one primary action.** Locked paid cards open a context-aware upgrade dialog. The dialog offers Premium Membership or buying that one Try-out only, then routes to the same checkout.
+- **Active Premium members open paid Try-outs directly.** Paid Try-outs appear accessible/included while membership is active, and the lifetime purchase option is not shown for now.
+- **Locked paid Try-out clicks do not route directly to Premium.** The Student must first choose between Premium Membership and Lifetime Try-out Purchase because the click only expresses interest in the Try-out, not a preferred purchase mode.
+- **Paid Try-out unlock dialog title is "Try-out Premium".** The dialog presents Premium Membership as the recommended option and Lifetime Try-out Purchase as a clearly visible secondary option.
+- **Owned Lifetime Try-out Purchases open directly.** The owned paid Try-out uses the "Dimiliki" state, skips the unlock dialog, and grants the full per-tryout experience without unlocking global Premium Membership features.
+- **Every paid Try-out must have a Lifetime Try-out Purchase Product.** Prices are configured per Try-out, even when most use the same default price; a paid Try-out without a lifetime Product is invalid catalog setup.
+- **Paid Try-out Products are system-maintained.** When an admin marks a Try-out as Premium, the admin form may optionally set the Lifetime Try-out Purchase price; if no price is provided, the system uses the default price and ensures the Product exists. When a Try-out returns to Free, the Product becomes inactive/hidden rather than deleted.
+- **Default Lifetime Try-out Purchase price is configurable.** The current default is Rp19.000, but it must be treated as configurable product policy, not hard-coded domain truth.
+- **Lifetime Try-out Purchase prices are shown in the unlock dialog, not on catalog cards.** Catalog cards stay content-first and show title, category, question count, duration, and Premium/Dimiliki state.
+- **Try-out catalog filters are Semua, Gratis, Premium, and Dimiliki.** Premium means paid Try-outs, Dimiliki means lifetime-purchased Try-outs, and Platinum is not a user-facing filter.
+- **Checkout returns to the selected Try-out when started from a locked Try-out.** After successful Premium Membership or Lifetime Try-out Purchase checkout, the Student lands on the selected Try-out pre-start page.
+- **Paid Try-outs are unlocked before attempt.** Free Students cannot start a paid Try-out and then pay only for review; unlocking grants the complete per-tryout experience from start through review.
+- **Locked paid catalog cards open the unlock dialog directly.** Only free, active Premium, or owned lifetime Try-outs open the pre-start page from the catalog.
 
 ## Product principles
 
@@ -170,7 +185,7 @@ The frozen copy of a **Question**'s content captured when an **Attempt** begins.
 ## Rules
 
 - **Timer continues wall-clock during disconnect.** When a student disconnects mid-Attempt, the server-side deadline keeps counting. This prevents "disconnect to think" exploits and matches real exam behavior.
-- **EXP grant scales on retake and extra practice.** First Attempt of a Try-out grants full EXP. Subsequent Attempts inside the normal daily quota grant a reduced amount (currently 25% of base). Active Premium access or purchased Platinum access may allow extra same-day practice for the accessible Try-out, but Attempts beyond the normal daily quota grant 0 EXP.
+- **EXP grant scales on retake and extra practice.** First Attempt of a Try-out grants full EXP. Subsequent Attempts inside the normal daily quota grant a reduced amount (currently 25% of base). Active Premium access or Lifetime Try-out Purchase ownership may allow extra same-day practice for the accessible Try-out, but Attempts beyond the normal daily quota grant 0 EXP.
 - **Badge counts of "Complete N CBT" use unique Try-outs completed**, not total Attempts. Prevents farming BADGE-022/023/024 by retaking a short Try-out.
 - **Permanent EXP bonus: only the highest tier applies.** A student at level 46 with BADGE-004..011 all earned gets a single +40% multiplier (from BADGE-011), not additive stacking. Applies to EXP earned after the badge is awarded only; never retroactive.
 - **Leaderboard is weekly and EXP-earned-that-week only.** Week = Monday 00:00 → Sunday 23:59 WIB (UTC+7). Reset occurs Monday 00:00 WIB via scheduled job. Week keys stored as `YYYY-Www`.
