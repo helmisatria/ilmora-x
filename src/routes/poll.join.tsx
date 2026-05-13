@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { mockPolls, useApp } from "../data";
+import { useApp } from "../data";
 
 export const Route = createFileRoute("/poll/join")({
   head: () => ({
@@ -22,8 +22,7 @@ function PollJoinComponent() {
   const [error, setError] = useState<string | null>(null);
 
   const digits = code.replace(/\D/g, "").slice(0, 6);
-  const poll = mockPolls.find((item) => item.code === digits);
-  const needsName = poll?.accessMode === "open_guest";
+  const needsName = false;
 
   const handleJoin = () => {
     if (digits.length !== 6) {
@@ -31,22 +30,7 @@ function PollJoinComponent() {
       return;
     }
 
-    if (!poll) {
-      setError("Kode poll tidak ditemukan. Coba 123456 atau 789012 untuk demo.");
-      return;
-    }
-
-    if (poll.status === "closed" && !poll.resultsRevealed) {
-      setError("Poll ini sudah ditutup dan hasilnya belum dibuka.");
-      return;
-    }
-
-    if (needsName && !displayName.trim()) {
-      setError("Masukkan nama dulu ya.");
-      return;
-    }
-
-    navigate({ to: "/poll/$code", params: { code: digits } });
+    setError("Live Poll belum terhubung ke backend. Buat tabel poll sebelum fitur ini dibuka.");
   };
 
   return (
@@ -115,12 +99,10 @@ function PollJoinComponent() {
               </>
             )}
 
-            {poll?.accessMode === "login_required" && (
-              <div className="mt-4 flex items-start gap-3 rounded-[var(--radius-md)] border-2 border-primary-soft bg-primary-tint p-3 text-xs font-bold text-primary-darker">
-                <LockIcon />
-                <span>Poll ini memakai akunmu: {user.name}</span>
-              </div>
-            )}
+            <div className="mt-4 flex items-start gap-3 rounded-[var(--radius-md)] border-2 border-primary-soft bg-primary-tint p-3 text-xs font-bold text-primary-darker">
+              <LockIcon />
+              <span>Poll akan memakai akunmu: {user.name}</span>
+            </div>
 
             {error && (
               <div className="mt-4 rounded-[var(--radius-md)] border-2 border-red-200 bg-red-50 p-3 text-xs font-bold text-coral-dark">
@@ -132,17 +114,6 @@ function PollJoinComponent() {
               Gabung Poll
             </button>
 
-            <div className="mt-6 border-t border-stone-100 pt-4">
-              <p className="mb-2 text-center text-xs font-medium text-stone-400">Coba demo</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-xs font-extrabold text-stone-600" onClick={() => setCode("123456")} type="button">
-                  123456 aktif
-                </button>
-                <button className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-xs font-extrabold text-stone-600" onClick={() => setCode("789012")} type="button">
-                  789012 hasil
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

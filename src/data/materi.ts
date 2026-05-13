@@ -9,7 +9,7 @@ export interface Materi {
   pdfUrl?: string;
 }
 
-export const mockMateri: Materi[] = [
+export const seedMateri: Materi[] = [
   {
     id: 1,
     title: "Farmakologi Dasar",

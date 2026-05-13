@@ -26,7 +26,7 @@ export const Route = createFileRoute("/evaluation")({
 
 function EvaluationComponent() {
   const { summary } = Route.useLoaderData() as { summary: ProgressSummary };
-  const { hasPremiumMembership, togglePremiumMembership } = useApp();
+  const { hasPremiumMembership } = useApp();
   const totalQuestions = summary.totalQuestions;
   const totalCorrect = summary.totalCorrect;
   const totalWrong = totalQuestions - totalCorrect;
@@ -48,7 +48,7 @@ function EvaluationComponent() {
             "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #f59e0b20, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
-        <TopBar />
+        <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
         <div className="px-5 pt-7">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -62,13 +62,9 @@ function EvaluationComponent() {
                 Lihat akurasi, kategori kuat, dan area yang perlu jadi prioritas latihan berikutnya.
               </p>
             </div>
-            <button
-              className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-500 transition-all duration-150 hover:border-primary hover:text-primary active:translate-y-[1px]"
-              onClick={togglePremiumMembership}
-              type="button"
-            >
+            <span className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-500">
               {hasPremiumMembership ? "Premium ON" : "Free"}
-            </button>
+            </span>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 grid-flow-dense">

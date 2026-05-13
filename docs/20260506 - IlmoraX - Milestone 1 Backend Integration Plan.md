@@ -110,7 +110,7 @@ Key Better Auth requirements from current docs:
 - Configure `tanstackStartCookies()` as the last Better Auth plugin.
 - Configure Google using `socialProviders.google.clientId` and `clientSecret`.
 - Set `BETTER_AUTH_URL` so Google callback URLs are correct.
-- Google local redirect URI should be `http://localhost:3000/api/auth/callback/google`.
+- Google local redirect URI should be `http://localhost:8090/api/auth/callback/google`.
 - Use Better Auth CLI/schema generation for auth-owned tables, then apply migrations with Drizzle.
 
 ---
@@ -146,11 +146,11 @@ Add `.env.example` with:
 ```bash
 DATABASE_URL="postgres://postgres:postgres@localhost:5432/ilmorax"
 BETTER_AUTH_SECRET="replace-with-generated-secret"
-BETTER_AUTH_URL="http://localhost:3000"
+BETTER_AUTH_URL="http://localhost:8090"
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 ADMIN_EMAILS="owner@example.com"
-APP_URL="http://localhost:3000"
+APP_URL="http://localhost:8090"
 UPLOAD_DIR="./storage/uploads"
 ```
 

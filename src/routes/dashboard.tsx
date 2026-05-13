@@ -1,5 +1,4 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
 import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
@@ -35,7 +34,6 @@ const dashboardPalettes = [
       "linear-gradient(180deg, #f4f8f7 0%, #f8faf8 38%, #f5f2ec 100%)",
     header:
       "radial-gradient(900px 340px at 10% -18%, rgba(32,80,114,0.15), transparent 62%), radial-gradient(720px 340px at 94% -12%, #d6c6a81f, transparent 68%), linear-gradient(180deg, #f4f8f7 0%, #fafaf9 100%)",
-    swatches: ["#f4f8f7", "#d6c6a8", "#205072"],
   },
   {
     id: "paper",
@@ -44,7 +42,6 @@ const dashboardPalettes = [
       "linear-gradient(180deg, #f8f5ef 0%, #fbfaf7 45%, #f1f7f5 100%)",
     header:
       "radial-gradient(900px 340px at 10% -18%, rgba(32,80,114,0.13), transparent 62%), radial-gradient(720px 340px at 94% -12%, #c59f5d24, transparent 68%), linear-gradient(180deg, #f8f5ef 0%, #fbfaf7 100%)",
-    swatches: ["#f8f5ef", "#c59f5d", "#205072"],
   },
   {
     id: "clinic",
@@ -53,7 +50,6 @@ const dashboardPalettes = [
       "linear-gradient(180deg, #eef8f6 0%, #f6fbfa 44%, #f7f3ea 100%)",
     header:
       "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
-    swatches: ["#eef8f6", "#0ea5e9", "#205072"],
   },
   {
     id: "stone",
@@ -62,12 +58,9 @@ const dashboardPalettes = [
       "linear-gradient(180deg, #f2f0eb 0%, #fafaf9 42%, #eef6f3 100%)",
     header:
       "radial-gradient(900px 340px at 10% -18%, #78716c20, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.13), transparent 68%), linear-gradient(180deg, #f2f0eb 0%, #fafaf9 100%)",
-    swatches: ["#f2f0eb", "#78716c", "#205072"],
   },
 ] as const;
 
-type DashboardPalette = (typeof dashboardPalettes)[number];
-const dashboardPaletteStorageKey = "ilmorax-dashboard-palette";
 const defaultDashboardPaletteId = "clinic";
 
 function DashboardComponent() {
@@ -75,24 +68,10 @@ function DashboardComponent() {
     summary: ProgressSummary;
     tryouts: DashboardTryout[];
   };
-  const { user, hasPremiumMembership, togglePremiumMembership } = useApp();
-  const [paletteId, setPaletteId] = useState<DashboardPalette["id"]>(defaultDashboardPaletteId);
-  const [showToneLab, setShowToneLab] = useState(false);
+  const { user, hasPremiumMembership } = useApp();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setPaletteId(getStoredDashboardPalette());
-  }, []);
-
-  const updatePalette = (nextPaletteId: DashboardPalette["id"]) => {
-    setPaletteId(nextPaletteId);
-
-    if (typeof window === "undefined") return;
-
-    window.localStorage.setItem(dashboardPaletteStorageKey, nextPaletteId);
-  };
-
-  const palette = dashboardPalettes.find((item) => item.id === paletteId) ?? dashboardPalettes[0];
+  const palette = dashboardPalettes.find((item) => item.id === defaultDashboardPaletteId) ?? dashboardPalettes[0];
   const levelInfo = getLevelForXp(summary.xp);
   const nextLevel = getNextLevel(summary.xp);
   const xpProgress = getXpProgress(summary.xp);
@@ -115,7 +94,9 @@ function DashboardComponent() {
             background: palette.header,
           }}
         >
-          <TopBar />
+          <TopBar
+            progress={{ xp: summary.xp, streak: summary.streak }}
+          />
 
           <div className="page-lane pt-5 sm:pt-7 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
@@ -130,7 +111,7 @@ function DashboardComponent() {
             </p>
 
             <ProgressPanel
-              streak={user.streak}
+              streak={summary.streak}
               level={levelInfo.level}
               levelTitle={levelInfo.title}
               xp={summary.xp}
@@ -225,111 +206,12 @@ function DashboardComponent() {
             </div>
           </div>
 
-          <div className="mt-6">
-            <DashboardToneDevtool
-              palettes={dashboardPalettes}
-              selectedId={paletteId}
-              onSelect={updatePalette}
-              isVisible={showToneLab}
-              onToggleVisibility={() => setShowToneLab((isVisible) => !isVisible)}
-            />
-          </div>
-
-          <div className="mt-4 mb-20 text-center">
-            <button
-              onClick={togglePremiumMembership}
-              className="text-xs text-stone-300 hover:text-stone-500 transition-colors font-medium"
-              type="button"
-            >
-              Premium mode {hasPremiumMembership ? "ON" : "OFF"}
-            </button>
-          </div>
         </div>
 
         <BottomNav active="learn" />
       </div>
       </div>
     </>
-  );
-}
-
-function getStoredDashboardPalette(): DashboardPalette["id"] {
-  if (typeof window === "undefined") return defaultDashboardPaletteId;
-
-  const storedPaletteId = window.localStorage.getItem(dashboardPaletteStorageKey);
-  const storedPalette = dashboardPalettes.find((palette) => palette.id === storedPaletteId);
-
-  if (!storedPalette) return defaultDashboardPaletteId;
-
-  return storedPalette.id;
-}
-
-function DashboardToneDevtool({
-  palettes,
-  selectedId,
-  onSelect,
-  isVisible,
-  onToggleVisibility,
-}: {
-  palettes: readonly DashboardPalette[];
-  selectedId: DashboardPalette["id"];
-  onSelect: (id: DashboardPalette["id"]) => void;
-  isVisible: boolean;
-  onToggleVisibility: () => void;
-}) {
-  const selected = palettes.find((palette) => palette.id === selectedId) ?? palettes[0];
-
-  return (
-    <div className="mb-4 rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white/82 p-3 shadow-sm backdrop-blur-xl">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
-            Tone Lab
-          </div>
-          <div className="text-[12px] font-semibold text-stone-600">
-            Background options
-          </div>
-        </div>
-        <button
-          className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-600 transition-all duration-150 hover:border-primary hover:text-primary active:translate-y-[1px]"
-          onClick={onToggleVisibility}
-          type="button"
-        >
-          {isVisible ? "Hide" : selected.name}
-        </button>
-      </div>
-      {isVisible && (
-        <div className="grid grid-cols-2 gap-2">
-          {palettes.map((palette) => {
-            const isSelected = selectedId === palette.id;
-
-            return (
-              <button
-                key={palette.id}
-                className={`flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border-2 px-2 py-1.5 text-left transition-all duration-150 ${
-                  isSelected
-                    ? "border-primary bg-primary-tint text-stone-900"
-                    : "border-stone-100 bg-white text-stone-500 hover:border-stone-200"
-                }`}
-                onClick={() => onSelect(palette.id)}
-                type="button"
-              >
-                <span className="text-[11px] font-bold">{palette.name}</span>
-                <span className="flex -space-x-1">
-                  {palette.swatches.map((swatch) => (
-                    <span
-                      key={swatch}
-                      className="h-3.5 w-3.5 rounded-full border border-white"
-                      style={{ background: swatch }}
-                    />
-                  ))}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }
 

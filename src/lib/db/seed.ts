@@ -11,7 +11,7 @@ import {
   tryouts as tryoutsTable,
 } from "./schema";
 import { categories } from "../../data/categories";
-import { mockMateri } from "../../data/materi";
+import { seedMateri as seedMateriItems } from "../../data/materi";
 import { questionBank, tryouts } from "../../data/questions";
 
 const optionLetters = ["A", "B", "C", "D", "E"] as const;
@@ -167,7 +167,7 @@ async function seedTryoutsAndQuestions() {
 }
 
 async function seedMateri() {
-  for (const item of mockMateri) {
+  for (const item of seedMateriItems) {
     await db
       .insert(materiTable)
       .values({

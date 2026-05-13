@@ -112,6 +112,8 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
+  const { viewer } = Route.useRouteContext();
+
   return (
     <html lang="id">
       <head>
@@ -123,7 +125,7 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body className="antialiased">
-        <AppProvider>
+        <AppProvider viewer={viewer}>
           <div id="app" className="view">
             <Outlet />
           </div>

@@ -1,16 +1,22 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 import gsap from "gsap";
 import { TopBar } from "../components/Navigation";
-import { applyCoupon, getProductById, mockCoupons, useApp } from "../data";
+import { getProductById } from "../data";
 import type { Product } from "../data";
+import { listProgressSummary } from "../lib/student-functions";
 
 const searchSchema = z.object({
   productId: z.number().optional(),
 });
 
 export const Route = createFileRoute("/checkout")({
+  loader: async () => {
+    const summary = await listProgressSummary();
+
+    return { summary };
+  },
   head: () => ({
     meta: [
       { title: "Checkout Premium — IlmoraX" },
@@ -44,10 +50,8 @@ const paymentMethods: Array<{
 ];
 
 function CheckoutComponent() {
+  const { summary } = Route.useLoaderData() as { summary: Awaited<ReturnType<typeof listProgressSummary>> };
   const { productId } = Route.useSearch();
-  const navigate = useNavigate();
-  const { user, setUser, addEntitlement } = useApp();
-
   const product = getProductById(productId);
   const [code, setCode] = useState("");
   const [discount, setDiscount] = useState<DiscountState>({ type: "none" });
@@ -105,31 +109,7 @@ function CheckoutComponent() {
       return;
     }
 
-    const coupon = mockCoupons.find((item) => item.code.toUpperCase() === trimmedCode);
-
-    if (!coupon) {
-      setDiscount({ type: "invalid", reason: "Kupon tidak ditemukan" });
-      return;
-    }
-
-    if (coupon.status !== "active") {
-      setDiscount({ type: "invalid", reason: "Kupon ini sudah tidak aktif" });
-      return;
-    }
-
-    if (coupon.appliesTo !== "all" && coupon.appliesTo !== product.type) {
-      setDiscount({ type: "invalid", reason: "Kupon ini tidak berlaku untuk produk ini" });
-      return;
-    }
-
-    const discountedTotal = applyCoupon(subtotal, coupon);
-    const amount = subtotal - discountedTotal;
-    const label =
-      coupon.discountType === "percentage"
-        ? `Diskon ${coupon.discountValue}%`
-        : `Diskon Rp${coupon.discountValue.toLocaleString("id-ID")}`;
-
-    setDiscount({ type: "coupon", code: coupon.code, amount, label });
+    setDiscount({ type: "invalid", reason: "Kupon belum terhubung ke backend." });
   };
 
   const clearDiscount = () => {
@@ -139,32 +119,10 @@ function CheckoutComponent() {
 
   const handlePay = () => {
     setProcessing(true);
-
     window.setTimeout(() => {
-      if (product.type === "premium_membership") {
-        const now = new Date();
-        const durationDays = product.durationDays ?? 30;
-        const currentEnds = user.entitlementEndsAt ? new Date(user.entitlementEndsAt) : now;
-        const startFrom = currentEnds > now ? currentEnds : now;
-        const newEnds = new Date(startFrom.getTime() + durationDays * 24 * 60 * 60 * 1000);
-
-        setUser((previousUser) => ({ ...previousUser, entitlementEndsAt: newEnds.toISOString() }));
-        navigate({ to: "/dashboard" });
-        return;
-      }
-
-      addEntitlement({
-        id: Date.now(),
-        userId: user.id,
-        source: "purchase",
-        startsAt: new Date().toISOString(),
-        endsAt: null,
-        productId: product.id,
-        contentType: product.contentType,
-        contentId: product.contentId,
-      });
-      navigate({ to: product.contentType === "tryout" && product.contentId ? "/tryout/$id" : "/dashboard", params: product.contentId ? { id: String(product.contentId) } : undefined });
-    }, 1500);
+      setProcessing(false);
+      setDiscount({ type: "invalid", reason: "Pembayaran belum terhubung ke backend." });
+    }, 500);
   };
 
   return (
@@ -182,7 +140,7 @@ function CheckoutComponent() {
             "radial-gradient(900px 340px at 10% -18%, #f59e0b35, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
         }}
       >
-        <TopBar />
+        <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
 
         <div className="premium-lane pt-7 lg:pt-9">
           <div ref={heroRef} className="max-w-[560px]" style={{ opacity: 0 }}>
@@ -234,7 +192,7 @@ function CheckoutComponent() {
               <DiscountMessage discount={discount} onClear={clearDiscount} />
 
               <p className="mt-3 text-[11px] font-medium leading-relaxed text-stone-400">
-                Satu kupon per transaksi. Coba WELCOME10, PREMIUM50, atau TRYOUT5K.
+                Kupon akan aktif setelah backend kupon tersedia.
               </p>
             </div>
 
@@ -282,7 +240,7 @@ function CheckoutComponent() {
             </div>
             <div style={{ opacity: 0 }}>
               <p className="mx-auto mt-3 max-w-[34ch] text-center text-[11px] font-medium leading-relaxed text-stone-400">
-                Satu kali bayar, tanpa auto-renew.
+                Pembayaran belum aktif sampai gateway dan entitlement backend tersedia.
               </p>
             </div>
           </aside>

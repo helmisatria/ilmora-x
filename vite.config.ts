@@ -9,7 +9,8 @@ const zodPath = fileURLToPath(new URL('./node_modules/zod/index.js', import.meta
 
 export default defineConfig({
   server: {
-    port: 3000,
+    port: 8090,
+    strictPort: true,
   },
   resolve: {
     tsconfigPaths: true,

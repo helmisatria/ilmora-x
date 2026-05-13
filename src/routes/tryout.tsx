@@ -2,16 +2,20 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tansta
 import { useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
-import { listPublishedTryouts } from "../lib/student-functions";
+import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
 
 type TryoutRow = Awaited<ReturnType<typeof listPublishedTryouts>>[number];
+type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
 type TryoutFilter = "all" | "free" | "premium" | "platinum" | "owned";
 
 export const Route = createFileRoute("/tryout")({
   loader: async () => {
-    const tryouts = await listPublishedTryouts();
+    const [summary, tryouts] = await Promise.all([
+      listProgressSummary(),
+      listPublishedTryouts(),
+    ]);
 
-    return { tryouts };
+    return { summary, tryouts };
   },
   head: () => ({
     meta: [
@@ -25,7 +29,7 @@ export const Route = createFileRoute("/tryout")({
 });
 
 function TryoutComponent() {
-  const { tryouts } = Route.useLoaderData() as { tryouts: TryoutRow[] };
+  const { summary, tryouts } = Route.useLoaderData() as { summary: ProgressSummary; tryouts: TryoutRow[] };
   const location = useLocation();
   const navigate = useNavigate();
   const [showPremium, setShowPremium] = useState(false);
@@ -51,7 +55,7 @@ function TryoutComponent() {
       >
       <div className="app-shell page-enter" style={{ background: "transparent" }}>
         <div className="relative overflow-hidden pb-8">
-          <TopBar />
+          <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
           <div className="page-lane pt-7 pb-5 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Modul Tryout

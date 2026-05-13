@@ -46,8 +46,8 @@ function ReviewComponent() {
   const { attempt, tryout, questions } = result;
   const hasFullTryoutAccess = tryout.accessLevel !== "free";
 
-  const [filter, setFilter] = useState<ReviewFilter>(search.filter ?? "all");
   const [showPremium, setShowPremium] = useState(false);
+  const filter: ReviewFilter = search.filter ?? "all";
 
   const openPremiumAccess = () => {
     if (tryout?.accessLevel === "platinum") {
@@ -87,6 +87,17 @@ function ReviewComponent() {
     if (filter === "unanswered") return q.selectedIndex === null;
     return true;
   });
+  const correctCount = questions.filter((q) => q.isCorrect === true).length;
+  const wrongCount = questions.filter((q) => q.selectedIndex !== null && q.isCorrect === false).length;
+  const unansweredCount = questions.filter((q) => q.selectedIndex === null).length;
+
+  const changeFilter = (nextFilter: ReviewFilter) => {
+    navigate({
+      to: "/results/$attemptId/review",
+      params: { attemptId },
+      search: nextFilter === "all" ? {} : { filter: nextFilter },
+    });
+  };
 
   useEffect(() => {
     if (!search.q) return;
@@ -157,12 +168,12 @@ function ReviewComponent() {
 
           <div className="hidden sm:flex items-center gap-6 text-sm">
             <div className="text-center">
-              <div className="text-lg font-black text-primary">{attempt.correctCount}</div>
+              <div className="text-lg font-black text-primary">{correctCount}</div>
               <div className="text-xs font-medium text-stone-400 uppercase">Benar</div>
             </div>
             <div className="w-px h-8 bg-stone-200" />
             <div className="text-center">
-              <div className="text-lg font-black text-red-500">{attempt.totalQuestions - attempt.correctCount}</div>
+              <div className="text-lg font-black text-red-500">{wrongCount}</div>
               <div className="text-xs font-medium text-stone-400 uppercase">Salah</div>
             </div>
             <div className="w-px h-8 bg-stone-200" />
@@ -178,13 +189,13 @@ function ReviewComponent() {
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {([
               { k: "all", label: `Semua (${questions.length})` },
-              { k: "wrong", label: `Salah (${attempt.totalQuestions - attempt.correctCount})` },
-              { k: "correct", label: `Benar (${attempt.correctCount})` },
-              { k: "unanswered", label: "Kosong" },
+              { k: "wrong", label: `Salah (${wrongCount})` },
+              { k: "correct", label: `Benar (${correctCount})` },
+              { k: "unanswered", label: `Kosong (${unansweredCount})` },
             ] as const).map((f) => (
               <button
                 key={f.k}
-                onClick={() => setFilter(f.k)}
+                onClick={() => changeFilter(f.k)}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap border-2 transition-all ${
                   filter === f.k
                     ? "bg-primary text-white border-primary-dark"

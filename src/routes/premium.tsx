@@ -4,8 +4,14 @@ import gsap from "gsap";
 import { TopBar } from "../components/Navigation";
 import { membershipProducts } from "../data";
 import type { Product } from "../data/entitlements";
+import { listProgressSummary } from "../lib/student-functions";
 
 export const Route = createFileRoute("/premium")({
+  loader: async () => {
+    const summary = await listProgressSummary();
+
+    return { summary };
+  },
   head: () => ({
     meta: [
       { title: "Upgrade Premium — IlmoraX" },
@@ -28,6 +34,7 @@ const features = [
 ] as const;
 
 function PremiumComponent() {
+  const { summary } = Route.useLoaderData() as { summary: Awaited<ReturnType<typeof listProgressSummary>> };
   const [selectedProductId, setSelectedProductId] = useState(membershipProducts.find((product) => product.active)?.id ?? 1);
   const selectedProduct = membershipProducts.find((product) => product.id === selectedProductId) ?? membershipProducts[0];
   const activeProducts = membershipProducts.filter((product) => product.active);
@@ -93,7 +100,7 @@ function PremiumComponent() {
             "radial-gradient(900px 340px at 10% -18%, #f59e0b38, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
         }}
       >
-        <TopBar />
+        <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
 
         <div className="premium-lane pt-7 lg:pt-9">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:items-end">

@@ -1,10 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
-import { badges, useApp } from "../data";
+import { badges, getLevelForXp } from "../data";
 import type { Badge } from "../data/badges";
+import { listProgressSummary } from "../lib/student-functions";
+
+type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
+type BadgeProgressView = {
+  badgeId: number;
+  progress: number;
+  total: number;
+  unlocked: boolean;
+};
 
 export const Route = createFileRoute("/badges")({
+  loader: async () => {
+    const summary = await listProgressSummary();
+
+    return { summary };
+  },
   head: () => ({
     meta: [
       { title: "Koleksi Lencana — IlmoraX" },
@@ -31,9 +45,10 @@ const categories: Array<{
 ];
 
 function BadgesComponent() {
-  const { badgeProgress } = useApp();
+  const { summary } = Route.useLoaderData() as { summary: ProgressSummary };
   const [activeCategory, setActiveCategory] = useState<BadgeCategory>("General");
 
+  const badgeProgress = getBadgeProgress(summary);
   const filteredBadges = badges.filter((badge) => badge.category === activeCategory);
   const progressMap = new Map(badgeProgress.map((progress) => [progress.badgeId, progress]));
   const unlockedCount = badgeProgress.filter((progress) => progress.unlocked).length;
@@ -55,7 +70,7 @@ function BadgesComponent() {
             "radial-gradient(920px 320px at 10% -18%, #fb71852e, transparent 62%), radial-gradient(760px 340px at 92% -16%, rgba(32,80,114,0.13), transparent 68%), linear-gradient(180deg, #fff1f3 0%, #fbfaf7 100%)",
         }}
       >
-        <TopBar />
+        <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
         <div className="page-lane pt-7 lg:pt-10">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
             Koleksi Lencana
@@ -145,6 +160,54 @@ function BadgesComponent() {
     </div>
     </div>
   );
+}
+
+function getBadgeProgress(summary: ProgressSummary): BadgeProgressView[] {
+  const level = getLevelForXp(summary.xp).level;
+  const accuracy = summary.totalQuestions > 0
+    ? Math.round((summary.totalCorrect / summary.totalQuestions) * 100)
+    : 0;
+
+  return badges.map((badge) => {
+    const target = getBadgeTarget(badge);
+    const progress = getBadgeProgressValue(badge, { accuracy, level, summary });
+
+    return {
+      badgeId: badge.id,
+      progress: Math.min(progress, target),
+      total: target,
+      unlocked: progress >= target,
+    };
+  });
+}
+
+function getBadgeTarget(badge: Badge) {
+  const levelMatch = badge.task.match(/Reach Level (\d+)/i);
+  const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
+  const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
+
+  if (levelMatch) return Number(levelMatch[1]);
+  if (streakMatch) return Number(streakMatch[1]);
+  if (tryoutMatch) return Number(tryoutMatch[1]);
+  if (badge.id === 1) return 1;
+  if (badge.name === "100% Club") return 100;
+
+  return 1;
+}
+
+function getBadgeProgressValue(
+  badge: Badge,
+  data: { accuracy: number; level: number; summary: ProgressSummary },
+) {
+  if (badge.category === "Level") return data.level;
+  if (badge.category === "Streak") {
+    if (badge.task.includes("unique tryouts")) return data.summary.attempts.length;
+    return data.summary.streak;
+  }
+  if (badge.id === 1) return data.summary.attempts.length > 0 ? 1 : 0;
+  if (badge.name === "100% Club") return data.accuracy;
+
+  return 0;
 }
 
 function SummaryCard({ label, value, accent }: { label: string; value: string; accent: string }) {

@@ -204,30 +204,3 @@ export const questionBank: Record<number, Question[]> = {
   ],
 };
 
-export const mockAttempts: Attempt[] = [
-  {
-    id: 1, userId: 1, tryoutId: 1, attemptNumber: 1,
-    status: "submitted", startedAt: "2026-04-15T10:00:00+07:00", deadlineAt: "2026-04-15T10:30:00+07:00",
-    score: 80, correct: 4, total: 5, xpEarned: 130,
-    completedAt: "2026-04-15T10:25:00+07:00",
-    answers: [
-      { questionId: 1, selected: 1, correct: true },
-      { questionId: 2, selected: 0, correct: false },
-      { questionId: 3, selected: 1, correct: true },
-      { questionId: 4, selected: 1, correct: true },
-      { questionId: 5, selected: 2, correct: true },
-    ],
-    markedQuestionIds: [2],
-  },
-  {
-    id: 2, userId: 1, tryoutId: 2, attemptNumber: 1,
-    status: "submitted", startedAt: "2026-04-16T14:00:00+07:00", deadlineAt: "2026-04-16T14:40:00+07:00",
-    score: 50, correct: 1, total: 2, xpEarned: 70,
-    completedAt: "2026-04-16T14:35:00+07:00",
-    answers: [
-      { questionId: 11, selected: 1, correct: true },
-      { questionId: 12, selected: 0, correct: false },
-    ],
-    markedQuestionIds: [],
-  },
-];

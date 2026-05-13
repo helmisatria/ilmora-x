@@ -1,10 +1,10 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useApp } from "../data";
+import { getLevelForXp, useApp } from "../data";
 import { runConfetti } from "../utils/confetti";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { BottomNav, TopBar } from "../components/Navigation";
-import { getAttemptResult } from "../lib/student-functions";
+import { getAttemptResult, listProgressSummary } from "../lib/student-functions";
 
 const FREE_WRONG_PREVIEW = 3;
 
@@ -23,9 +23,12 @@ type WrongAnswerView = {
 
 export const Route = createFileRoute("/results/$attemptId")({
   loader: async ({ params }) => {
-    const result = await getAttemptResult({ data: { attemptId: params.attemptId } });
+    const [result, summary] = await Promise.all([
+      getAttemptResult({ data: { attemptId: params.attemptId } }),
+      listProgressSummary(),
+    ]);
 
-    return { result };
+    return { result, summary };
   },
   head: () => ({
     meta: [
@@ -41,19 +44,22 @@ export const Route = createFileRoute("/results/$attemptId")({
 
 function ResultsComponent() {
   const { attemptId } = Route.useParams();
-  const { result } = Route.useLoaderData() as { result: Awaited<ReturnType<typeof getAttemptResult>> };
+  const { result, summary } = Route.useLoaderData() as {
+    result: Awaited<ReturnType<typeof getAttemptResult>>;
+    summary: Awaited<ReturnType<typeof listProgressSummary>>;
+  };
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, hasPremiumMembership } = useApp();
+  const { hasPremiumMembership } = useApp();
   const isChildRoute = location.pathname !== `/results/${attemptId}`;
 
   const { attempt, tryout, questions } = result;
   const hasFullTryoutAccess = tryout.accessLevel !== "free";
 
   const score = attempt.score;
-  const correct = attempt.correctCount;
   const total = attempt.totalQuestions;
   const xpEarn = attempt.xpEarned;
+  const levelInfo = getLevelForXp(summary.xp);
   const isFirstAttempt = attempt.attemptNumber === 1;
   const duration = attempt.submittedAt
     ? Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000)
@@ -65,8 +71,9 @@ function ResultsComponent() {
   const accent = passed ? "#205072" : "#f59e0b";
   const accentDark = passed ? "#153d5c" : "#b45309";
 
-  const answered = questions.filter((question) => question.selectedIndex !== null).length;
-  const wrongCount = Math.max(answered - correct, 0);
+  const correct = questions.filter((question) => question.isCorrect === true).length;
+  const wrongCount = questions.filter((question) => question.selectedIndex !== null && question.isCorrect === false).length;
+  const answered = correct + wrongCount;
   const unansweredCount = Math.max(total - answered, 0);
   const grade = getGradeLabel(score);
 
@@ -74,7 +81,7 @@ function ResultsComponent() {
   const [displayScore, setDisplayScore] = useState(0);
 
   const wrongs: WrongAnswerView[] = questions
-    .filter((question) => question.isCorrect !== true)
+    .filter((question) => question.selectedIndex !== null && question.isCorrect === false)
     .map((q) => {
       return {
         id: q.snapshotId,
@@ -136,7 +143,7 @@ function ResultsComponent() {
         <canvas id="confetti" className="pointer-events-none fixed inset-0 z-[5]" />
 
         <div className="relative overflow-hidden pb-8" style={{ background: headerBg }}>
-          <TopBar />
+          <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
           <div className="page-lane pt-7 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Hasil Tryout
@@ -245,7 +252,7 @@ function ResultsComponent() {
                       Level
                     </div>
                     <div className="mt-1 text-[18px] font-bold leading-none tracking-tight text-stone-800">
-                      Lv.{user.level}
+                      Lv.{levelInfo.level}
                     </div>
                   </div>
                 </div>
@@ -268,7 +275,7 @@ function ResultsComponent() {
           <div className="mt-5 grid grid-flow-dense grid-cols-3 gap-3">
             <StatCard icon={<TargetIcon />} label="Benar" value={`${correct}/${total}`} accent="#205072" />
             <StatCard icon={<ClockIcon />} label="Durasi" value={duration > 0 ? `${duration} min` : "-"} accent="#0ea5e9" />
-            <StatCard icon={<FlameIcon />} label="Streak" value={`${user.streak} hari`} accent="#f59e0b" />
+            <StatCard icon={<FlameIcon />} label="Streak" value={`${summary.streak} hari`} accent="#f59e0b" />
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">

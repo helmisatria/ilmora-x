@@ -33,7 +33,7 @@ function ProgressComponent() {
 
   return (
     <div className="app-shell">
-      <TopBar />
+      <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
       <div className="px-4 pt-5 pb-24">
         <h2 className="text-2xl font-black m-0 mb-1">Progres Belajar</h2>
         <p className="m-0 text-stone-400 font-semibold text-sm">Lihat perkembanganmu</p>
