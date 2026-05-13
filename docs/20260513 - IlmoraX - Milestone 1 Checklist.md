@@ -64,8 +64,8 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 - [x] Make checkout honest about payment not being part of M1.
 - [x] Make coupons honest about not being part of M1.
 - [x] Make live poll backend honest about not being part of M1.
-- [ ] Re-scan the app for remaining runtime `mock` references.
-- [ ] Re-scan the app for remaining fake `setTimeout` flows.
+- [x] Re-scan the app for remaining runtime `mock` references.
+- [x] Re-scan the app for remaining fake `setTimeout` flows.
 - [ ] Re-scan the app for pages that still mutate only browser memory.
 - [ ] Confirm every visible Student metric is loaded from server-backed data.
 
@@ -256,15 +256,15 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 
 ## 17. Insights
 
-- [ ] Show Admin insight for total Students.
-- [ ] Show Admin insight for active Students.
-- [ ] Show Admin insight for completed attempts.
-- [ ] Show Admin insight for average score.
-- [ ] Show Admin insight for difficult questions.
-- [ ] Show Admin insight for reported questions.
-- [ ] Show Admin insight for Try-out participation.
-- [ ] Keep M1 insights basic and query-backed.
-- [ ] Avoid adding M2/M3 analytics scope unless it blocks Admin usefulness.
+- [x] Show Admin insight for total Students.
+- [x] Show Admin insight for active Students.
+- [x] Show Admin insight for completed attempts.
+- [x] Show Admin insight for average score.
+- [x] Show Admin insight for difficult questions.
+- [x] Show Admin insight for reported questions.
+- [x] Show Admin insight for Try-out participation.
+- [x] Keep M1 insights basic and query-backed.
+- [x] Avoid adding M2/M3 analytics scope unless it blocks Admin usefulness.
 
 ## 18. Security And Validation
 

@@ -56,7 +56,6 @@ function CheckoutComponent() {
   const [code, setCode] = useState("");
   const [discount, setDiscount] = useState<DiscountState>({ type: "none" });
   const [method, setMethod] = useState<PaymentMethod>("xendit");
-  const [processing, setProcessing] = useState(false);
 
   const subtotal = product.price;
   const discountAmount = discount.type === "coupon" ? discount.amount : 0;
@@ -118,11 +117,7 @@ function CheckoutComponent() {
   };
 
   const handlePay = () => {
-    setProcessing(true);
-    window.setTimeout(() => {
-      setProcessing(false);
-      setDiscount({ type: "invalid", reason: "Pembayaran belum terhubung ke backend." });
-    }, 500);
+    setDiscount({ type: "invalid", reason: "Pembayaran belum terhubung ke backend." });
   };
 
   return (
@@ -228,13 +223,12 @@ function CheckoutComponent() {
                   borderBottomColor: "#b45309",
                 }}
                 onClick={handlePay}
-                disabled={processing}
                 type="button"
               >
-                <span>{processing ? "Memproses" : "Bayar sekarang"}</span>
+                <span>Bayar sekarang</span>
                 <span className="flex items-center gap-2">
                   Rp{total.toLocaleString("id-ID")}
-                  {!processing && <ArrowRightIcon />}
+                  <ArrowRightIcon />
                 </span>
               </button>
             </div>
