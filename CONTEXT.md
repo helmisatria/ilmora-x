@@ -30,6 +30,9 @@ _Avoid_: Materi (unless referring to a standalone study-material unit)
 **Engagement surface**:
 The complete set of gamification concepts in scope: **EXP**, **Level** (1–50), **Badge**, **Streak** (daily Try-out consecutive days), **Leaderboard**. Hearts (lives) and Gems (currency) are **out of scope** and must not appear in the prototype top bar.
 
+**Badge**:
+A one-time Student achievement with an unlock requirement and optional EXP reward.
+
 **Coupon**:
 An admin-created discount code redeemable at checkout during a validity window (`start_time`, `end_time`). Each **Student** may redeem a given Coupon at most once. Admin may additionally set a `max_total_uses` cap (≥1) on the Coupon itself — setting it to `1` produces a first-come-first-served single-claim code; leaving it unset allows unlimited redemptions across students within the validity window. A Coupon has an explicit product scope so it cannot accidentally apply to the wrong paid product type.
 _Avoid_: Promo, voucher, discount code
@@ -188,10 +191,39 @@ The frozen copy of a **Question**'s content captured when an **Attempt** begins.
 - **EXP grant scales on retake and extra practice.** First Attempt of a Try-out grants full EXP. Subsequent Attempts inside the normal daily quota grant a reduced amount (currently 25% of base). Active Premium access or Lifetime Try-out Purchase ownership may allow extra same-day practice for the accessible Try-out, but Attempts beyond the normal daily quota grant 0 EXP.
 - **Badge counts of "Complete N CBT" use unique Try-outs completed**, not total Attempts. Prevents farming BADGE-022/023/024 by retaking a short Try-out.
 - **Permanent EXP bonus: only the highest tier applies.** A student at level 46 with BADGE-004..011 all earned gets a single +40% multiplier (from BADGE-011), not additive stacking. Applies to EXP earned after the badge is awarded only; never retroactive.
-- **Leaderboard is weekly and EXP-earned-that-week only.** Week = Monday 00:00 → Sunday 23:59 WIB (UTC+7). Reset occurs Monday 00:00 WIB via scheduled job. Week keys stored as `YYYY-Www`.
+- **Leaderboard is weekly and EXP-earned-that-week only.** Week = Monday 00:00 → Sunday 23:59 WIB (UTC+7). The week closes at Monday 00:00 WIB; finalization may run shortly after the boundary (for example Monday 00:05 WIB). The canonical week key is the Jakarta Monday start date (`YYYY-MM-DD`).
+- **Live current-week leaderboard resets at the week boundary.** At Monday 00:00 WIB the live leaderboard window moves to the new week even if previous-week finalization is still pending.
+- **Previous-week history may be pending after the boundary.** If a closed week has not been finalized yet, history/admin surfaces show a finalizing state instead of recomputing or displaying provisional Badge outcomes.
 - **Top-N leaderboard badges (BADGE-013..016) are awarded from finalized weekly rank only.** A temporary in-week rank never earns the badge. The scheduled job runs after the Monday 00:00 WIB boundary, computes the previous completed week, and awards each badge at most once per Student.
-- **Weekly leaderboard requires a minimum participant threshold** (admin-configurable, default 10 active students) to award Top-N badges. Below threshold, leaderboard still displays as a ranking but no badges are granted.
+- **Top-N leaderboard badges cascade by final rank.** Rank 1 earns Top 1, Top 3, Top 5, and Top 10 if missing; rank 4 earns Top 5 and Top 10 if missing. Each newly earned Badge grants its configured one-time reward EXP.
+- **Top-N leaderboard badges do not grant permanent EXP bonuses.** They grant one-time reward EXP only unless the Badge catalog explicitly changes later.
+- **Repeat Top-N finishes only grant missing Badges.** A Student who already owns a broader Top-N Badge does not receive that Badge or its reward EXP again when later earning a narrower rank.
+- **Weekly leaderboard rank uses deterministic tiebreakers.** Sort by weekly EXP descending, then by the accepted submission time of the Student's last EXP-earning Attempt for that week, then by stable Student id. Equal EXP never expands a Top-N badge cutoff beyond N Students.
+- **Weekly leaderboard requires a minimum participant threshold** (admin-configurable, default 10 ranked Students) to award Top-N badges. A ranked Student has ≥1 EXP earned that week. Below threshold, leaderboard still displays as a ranking but no badges are granted.
 - **Only students with ≥1 EXP earned that week are ranked.** Zero-activity students are excluded from the leaderboard view and rank counts.
+- **Zero-EXP Attempts do not affect weekly leaderboard competition.** They do not count toward participant threshold, weekly EXP, or tiebreaker timing.
+- **Leaderboard page defaults to the live current week.** Previous finalized weeks are available as history so Students and Admins can inspect past ranks and Badge outcomes.
+- **Active-week leaderboard copy must not promise Top-N Badge awards.** It may show current rank and explain the finalized-week requirement, but "earned" language is reserved for finalized awards.
+- **Badge reward EXP does not affect the finalized leaderboard that produced it.** Weekly leaderboard rank is based on bonus-adjusted Try-out Attempt EXP for that week; badge reward EXP affects lifetime EXP/Level after award but never reorders the completed week.
+- **Attempt EXP and Badge reward EXP are distinct EXP sources.** Lifetime EXP/Level includes both sources, but weekly leaderboard competition includes only Attempt EXP.
+- **Weekly leaderboard finalization is idempotent.** Re-running finalization for the same week may fill missing Top-N badge awards, but must never duplicate a Student's Badge or badge reward EXP.
+- **A finalized weekly snapshot is the source of truth for that week.** If no snapshot exists, repair may create one from eligible Attempts; once the snapshot exists, reruns use it to fill missing awards and must not recalculate ranks.
+- **Late accepted Attempts do not reopen finalized leaderboard weeks.** Once a week is finalized for Top-N badge awards, later accepted submissions cannot change that week's badge outcome.
+- **Finalized weekly leaderboards are snapshotted.** The system keeps the full ranked Student set, finalized rank, counted EXP, participant threshold result, and badge award outcome for auditability. UI display limits do not limit the snapshot.
+- **Below-threshold weeks are still snapshotted.** If the participant threshold is not met, the finalized week records ranks and the no-award outcome.
+- **Zero-activity weeks finalize as empty snapshots.** A week with no ranked Students is still recorded as finalized so it is not mistaken for a failed or missing job.
+- **All Badges open a detail modal.** Locked Badges use the modal to preview their name, icon, requirement, current progress, and EXP reward so Badge goals are transparent rather than secret. Unlocked Badges use the same modal to explain what the Student earned and why.
+- **Top-N Badge details show current standing, not unlock progress.** During an active week they may show the Student's live rank and the finalized-week requirement, but the Badge remains locked until weekly finalization awards it.
+- **Badge detail modal CTAs are contextual.** A Badge detail modal may link Students to the relevant surface only when the path is obvious and non-misleading, such as Try-out practice for progress, streak, score, and level Badges, or Leaderboard for weekly rank Badges.
+- **Badge evaluation has separate cadences by rule type.** Continuous eligibility badges may be evaluated daily; Top-N leaderboard badges are evaluated only by weekly leaderboard finalization after the week closes.
+- **Asynchronous badge awards get a one-time return-session celebration.** If a Badge is awarded while the Student is offline, the next student session shows the earned Badge once; after dismissal it remains only in the Badge collection/profile.
+- **Admin weekly leaderboard reruns are repair-only.** Admins may rerun finalization for a past week to fill missing awards, but reruns use the finalized snapshot rules, do not reopen late submissions, and must not duplicate rewards.
+- **Weekly participant threshold is frozen at finalization.** The threshold value used for a finalized week is stored with the snapshot; later admin setting changes apply only to future unfinalized weeks.
+- **Suspended Students are excluded from leaderboard finalization.** A Student suspended before finalization is not ranked for that finalized week, does not count toward the participant threshold, and cannot receive Top-N badge awards.
+- **Deleted Students are excluded from leaderboard finalization.** A Student deleted before finalization is not ranked for that finalized week and cannot receive new Badge awards.
+- **Admin accounts are excluded from student leaderboard finalization.** Admin testing activity must not consume student rank slots, count toward participant thresholds, or earn student engagement rewards.
+- **Admin impersonation activity is excluded from student competition.** Attempts submitted during Admin impersonation must not contribute to leaderboard EXP, participant thresholds, or Badge awards.
+- **Live and finalized leaderboards use the same competition eligibility rules.** Suspended Students, deleted Students, Admin accounts, and Admin impersonation activity are excluded from both live rank display and weekly finalization.
 
 ## Relationships
 

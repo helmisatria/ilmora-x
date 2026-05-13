@@ -72,11 +72,48 @@ function getCookie(headers: Headers, name: string) {
 }
 
 function encodeBase64Url(value: string) {
-  return Buffer.from(value).toString("base64url");
+  const buffer = getRuntimeBuffer();
+
+  if (buffer) {
+    return buffer.from(value).toString("base64url");
+  }
+
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
 }
 
 function decodeBase64Url(value: string) {
-  return Buffer.from(value, "base64url").toString("utf8");
+  const buffer = getRuntimeBuffer();
+
+  if (buffer) {
+    return buffer.from(value, "base64url").toString("utf8");
+  }
+
+  const paddedValue = value.padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const base64 = paddedValue.replaceAll("-", "+").replaceAll("_", "/");
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+
+  return new TextDecoder().decode(bytes);
+}
+
+function getRuntimeBuffer() {
+  return (globalThis as typeof globalThis & {
+    Buffer?: {
+      from: (value: string, encoding?: BufferEncoding) => {
+        toString: (encoding?: BufferEncoding) => string;
+      };
+    };
+  }).Buffer;
 }
 
 async function signValue(value: string) {

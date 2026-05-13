@@ -1,21 +1,45 @@
-import "dotenv/config";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import * as schema from "./schema";
 
-const databaseUrl = process.env.DATABASE_URL;
+const isServer = import.meta.env.SSR || typeof window === "undefined";
 
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required.");
+if (isServer) {
+  await import("dotenv/config");
 }
 
-const queryClient = postgres(databaseUrl, {
-  max: 10,
-});
+async function createDb() {
+  const [{ drizzle }, { default: postgres }] = await Promise.all([
+    import("drizzle-orm/postgres-js"),
+    import("postgres"),
+  ]);
+  const databaseUrl = process.env.DATABASE_URL;
 
-export const db = drizzle(queryClient, { schema });
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required.");
+  }
+
+  const queryClient = postgres(databaseUrl, {
+    max: 10,
+  });
+
+  return {
+    db: drizzle(queryClient, { schema }),
+    close: () => queryClient.end(),
+  };
+}
+
+function createBrowserDbProxy() {
+  return new Proxy({}, {
+    get() {
+      throw new Error("Database access is only available on the server.");
+    },
+  }) as Awaited<ReturnType<typeof createDb>>["db"];
+}
+
+const client = isServer ? await createDb() : null;
+
+export const db = client?.db ?? createBrowserDbProxy();
 export type Database = typeof db;
 
 export async function closeDb() {
-  await queryClient.end();
+  await client?.close();
 }

@@ -49,7 +49,7 @@ function EvaluationComponent() {
         }}
       >
         <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
-        <div className="px-5 pt-7">
+        <div className="page-lane pt-7">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
@@ -76,7 +76,7 @@ function EvaluationComponent() {
         </div>
       </div>
 
-      <div className="relative -mt-4 px-5 pb-28">
+      <div className="page-lane relative -mt-4 pb-28">
         <InsightPanel
           pctCorrect={pctCorrect}
           recommendation={recommendation}

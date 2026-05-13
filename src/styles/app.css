@@ -187,7 +187,7 @@
   }
 
   .app-shell {
-    @apply w-full max-w-[1180px] mx-auto bg-[var(--color-bg)] min-h-screen relative pb-28 overflow-x-hidden;
+    @apply w-full max-w-[1520px] mx-auto bg-[var(--color-bg)] min-h-screen relative pb-28 overflow-x-hidden;
   }
 
   .premium-shell {
@@ -199,11 +199,11 @@
   }
 
   .page-lane {
-    @apply mx-auto w-full max-w-[1040px] px-5 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-[980px] px-5 sm:px-6 lg:px-8;
   }
 
   .page-lane-wide {
-    @apply mx-auto w-full max-w-[1120px] px-5 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-[1080px] px-5 sm:px-6 lg:px-8;
   }
 
   .admin-shell {
