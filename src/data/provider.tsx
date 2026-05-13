@@ -6,6 +6,10 @@ import { hasPremiumMembership, type User } from "./users";
 export interface AppState {
   user: User;
   hasPremiumMembership: boolean;
+  impersonation: {
+    adminEmail: string;
+    targetUserId: string;
+  } | null;
   updateUserAvatar: (avatar: string, photoUrl: string | null) => void;
 }
 
@@ -80,6 +84,12 @@ export function AppProvider({ children, viewer = null }: { children: ReactNode; 
       value={{
         user,
         hasPremiumMembership: hasPremiumMembership(user),
+        impersonation: viewer?.impersonation
+          ? {
+              adminEmail: viewer.impersonation.adminEmail,
+              targetUserId: viewer.impersonation.targetUserId,
+            }
+          : null,
         updateUserAvatar,
       }}
     >

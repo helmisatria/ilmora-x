@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { AvatarDisplay } from "../components/AvatarDisplay";
@@ -63,6 +63,7 @@ function getProfileAvatarState({
 function ProfileComponent() {
   const { summary, viewer } = Route.useLoaderData();
   const { user, hasPremiumMembership, updateUserAvatar } = useApp();
+  const location = useLocation();
   const navigate = useNavigate();
   const router = useRouter();
   const profileName = viewer?.profile?.displayName ?? viewer?.name ?? user.name;
@@ -101,6 +102,10 @@ function ProfileComponent() {
     setSelectedAvatar(nextAvatarState.avatar);
     setSelectedPhotoUrl(nextAvatarState.photoUrl);
   }, [avatarStatus, user.avatar, user.googlePhotoUrl, viewer]);
+
+  if (location.pathname !== "/profile") {
+    return <Outlet />;
+  }
 
   const handleSignOut = async () => {
     await signOut();

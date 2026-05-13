@@ -268,7 +268,7 @@ export const questionReports = pgTable("question_reports", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   check("question_reports_reason_check", sql`${table.reason} in ('answer_key_wrong', 'explanation_wrong', 'question_unclear', 'typo', 'other')`),
-  check("question_reports_status_check", sql`${table.status} in ('open', 'dismissed', 'resolved')`),
+  check("question_reports_status_check", sql`${table.status} in ('open', 'reviewed', 'dismissed', 'resolved')`),
 ]);
 
 export const materi = pgTable("materi", {
@@ -301,7 +301,7 @@ export const activityEvents = pgTable("activity_events", {
   metadata: jsonb("metadata").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-  check("activity_events_type_check", sql`${table.eventType} in ('login', 'profile_completed', 'tryout_started', 'tryout_submitted', 'question_reported', 'materi_viewed')`),
+  check("activity_events_type_check", sql`${table.eventType} in ('login', 'profile_completed', 'tryout_started', 'tryout_submitted', 'question_reported', 'materi_viewed', 'admin_impersonation_started', 'admin_impersonation_stopped')`),
 ]);
 
 export const categoryRelations = relations(categories, ({ many }) => ({

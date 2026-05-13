@@ -206,17 +206,17 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 
 ## 14. Admin Reports
 
-- [ ] List question reports for Admins.
-- [ ] Filter reports by status.
-- [ ] Filter reports by try-out.
-- [ ] Filter reports by question.
-- [ ] Show report detail.
-- [ ] Show the reported question context.
-- [ ] Allow Admins to mark reports as reviewed.
-- [ ] Allow Admins to mark reports as resolved.
-- [ ] Allow Admins to reject invalid reports.
-- [ ] Store report status changes.
-- [ ] Store report reviewer metadata.
+- [x] List question reports for Admins.
+- [x] Filter reports by status.
+- [x] Filter reports by try-out.
+- [x] Filter reports by question.
+- [x] Show report detail.
+- [x] Show the reported question context.
+- [x] Allow Admins to mark reports as reviewed.
+- [x] Allow Admins to mark reports as resolved.
+- [x] Allow Admins to reject invalid reports.
+- [x] Store report status changes.
+- [x] Store report reviewer metadata.
 
 ## 15. Progress And Evaluation
 

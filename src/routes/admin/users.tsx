@@ -6,6 +6,7 @@ import {
   listStudentsAdmin,
   removeAdminAdmin,
   setStudentStatusAdmin,
+  startStudentImpersonationAdmin,
 } from "../../lib/admin-functions";
 
 type AdminRow = Awaited<ReturnType<typeof listAdminsAdmin>>[number];
@@ -85,6 +86,20 @@ function AdminUsersPage() {
     } catch {
       setErrorMessage("Admin was not removed. Only Super-admins can manage admins.");
     } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleImpersonateStudent = async (studentUserId: string) => {
+    setBusyAction(`impersonate:${studentUserId}`);
+    setErrorMessage("");
+
+    try {
+      const result = await startStudentImpersonationAdmin({ data: { studentUserId } });
+
+      window.location.assign(result.redirectTo);
+    } catch {
+      setErrorMessage("Impersonation was not started.");
       setBusyAction("");
     }
   };
@@ -191,6 +206,14 @@ function AdminUsersPage() {
                   </div>
 
                   <div className="admin-list-actions">
+                    <button
+                      onClick={() => handleImpersonateStudent(student.userId)}
+                      disabled={student.status === "suspended" || busyAction === `impersonate:${student.userId}`}
+                      className="admin-button-ghost text-primary hover:text-primary-dark hover:bg-primary-tint"
+                      type="button"
+                    >
+                      Impersonate
+                    </button>
                     <button
                       onClick={() => handleSetStudentStatus(student.userId, nextStatus)}
                       disabled={busyAction === `student:${student.userId}`}

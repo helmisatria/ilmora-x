@@ -15,6 +15,20 @@
       "when": 1778620000000,
       "tag": "0001_student_profile_avatar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778626800000,
+      "tag": "0002_question_report_reviewed_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778662800000,
+      "tag": "0003_admin_impersonation_events",
+      "breakpoints": true
     }
   ]
 }

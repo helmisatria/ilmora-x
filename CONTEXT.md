@@ -189,7 +189,7 @@ The frozen copy of a **Question**'s content captured when an **Attempt** begins.
 - **Badge counts of "Complete N CBT" use unique Try-outs completed**, not total Attempts. Prevents farming BADGE-022/023/024 by retaking a short Try-out.
 - **Permanent EXP bonus: only the highest tier applies.** A student at level 46 with BADGE-004..011 all earned gets a single +40% multiplier (from BADGE-011), not additive stacking. Applies to EXP earned after the badge is awarded only; never retroactive.
 - **Leaderboard is weekly and EXP-earned-that-week only.** Week = Monday 00:00 → Sunday 23:59 WIB (UTC+7). Reset occurs Monday 00:00 WIB via scheduled job. Week keys stored as `YYYY-Www`.
-- **Top-N leaderboard badges (BADGE-013..016) are one-time per student**, never re-awarded. Matches the "Level Badge" category convention.
+- **Top-N leaderboard badges (BADGE-013..016) are awarded from finalized weekly rank only.** A temporary in-week rank never earns the badge. The scheduled job runs after the Monday 00:00 WIB boundary, computes the previous completed week, and awards each badge at most once per Student.
 - **Weekly leaderboard requires a minimum participant threshold** (admin-configurable, default 10 active students) to award Top-N badges. Below threshold, leaderboard still displays as a ranking but no badges are granted.
 - **Only students with ≥1 EXP earned that week are ranked.** Zero-activity students are excluded from the leaderboard view and rank counts.
 

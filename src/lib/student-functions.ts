@@ -68,6 +68,15 @@ async function getStudentViewer() {
   return assertActiveStudent(viewer);
 }
 
+function getImpersonationMetadata(viewer: Awaited<ReturnType<typeof getStudentViewer>>) {
+  if (!viewer.impersonation) return {};
+
+  return {
+    impersonatedByAdminUserId: viewer.impersonation.adminUserId,
+    impersonatedByAdminEmail: viewer.impersonation.adminEmail,
+  };
+}
+
 function toOptionIndex(option: string | null) {
   if (!option) return null;
 
@@ -640,7 +649,11 @@ export const startOrResumeAttempt = createServerFn({ method: "POST" })
       await tx.insert(activityEvents).values({
         studentUserId: viewer.userId,
         eventType: "tryout_started",
-        metadata: { tryoutId: data.tryoutId, attemptId: createdAttempt.id },
+        metadata: {
+          tryoutId: data.tryoutId,
+          attemptId: createdAttempt.id,
+          ...getImpersonationMetadata(viewer),
+        },
       });
 
       return createdAttempt.id;
@@ -722,6 +735,7 @@ export const submitAttempt = createServerFn({ method: "POST" })
           answeredCount,
           totalQuestions: attempt.totalQuestions,
           score,
+          ...getImpersonationMetadata(viewer),
         },
       });
     });
@@ -776,6 +790,7 @@ export const reportAttemptQuestion = createServerFn({ method: "POST" })
           attemptId: data.attemptId,
           snapshotId: snapshot.id,
           reason: data.reason,
+          ...getImpersonationMetadata(viewer),
         },
       });
     });
