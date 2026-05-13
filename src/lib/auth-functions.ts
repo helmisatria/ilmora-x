@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { avatarOptions, defaultAvatar } from "./avatar";
 import { parseInput } from "./http/validation";
 
 export type Viewer = {
@@ -12,6 +13,7 @@ export type Viewer = {
     displayName: string;
     institution: string | null;
     phone: string | null;
+    avatar: string | null;
     photoUrl: string | null;
     completed: boolean;
     status: "active" | "suspended";
@@ -26,6 +28,10 @@ const completeProfileSchema = z.object({
   institution: z.string().trim().min(1).max(160),
   phone: z.string().trim().max(40).optional(),
   photoUrl: z.string().trim().url().optional().or(z.literal("")),
+});
+
+const updateProfileAvatarSchema = z.object({
+  avatar: z.enum(avatarOptions),
 });
 
 export async function getSessionFromHeaders(headers: Headers) {
@@ -67,6 +73,7 @@ export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Vie
           displayName: profile.displayName,
           institution: profile.institution,
           phone: profile.phone,
+          avatar: profile.avatar,
           photoUrl: profile.photoUrl,
           completed: isProfileComplete(profile),
           status: profile.status as "active" | "suspended",
@@ -158,17 +165,18 @@ export const completeProfile = createServerFn({ method: "POST" })
           },
         });
 
+        const existingProfile = await getStudentProfile(session.user.id);
+        const nextAvatar = existingProfile?.avatar ?? (data.photoUrl || session.user.image ? "google" : defaultAvatar);
         const profile = {
           userId: session.user.id,
           displayName: data.displayName,
           institution: data.institution,
           phone: data.phone || null,
+          avatar: nextAvatar,
           photoUrl: data.photoUrl || session.user.image || null,
           profileCompletedAt: now,
           updatedAt: now,
         };
-
-        const existingProfile = await getStudentProfile(session.user.id);
 
         if (!existingProfile) {
           await db.insert(studentProfiles).values({
@@ -196,6 +204,57 @@ export const completeProfile = createServerFn({ method: "POST" })
 
         return {
           redirectTo: "/dashboard",
+        };
+      },
+    );
+  });
+
+export const updateProfileAvatar = createServerFn({ method: "POST" })
+  .inputValidator((input) => parseInput(updateProfileAvatarSchema, input))
+  .handler(async ({ data }) => {
+    const { observeServerOperation } = await import("./observability");
+
+    return observeServerOperation(
+      {
+        operation: "auth.update_profile_avatar",
+        kind: "server_function",
+        method: "POST",
+      },
+      async () => {
+        const { eq } = await import("drizzle-orm");
+        const { db } = await import("./db/client");
+        const { studentProfiles } = await import("./db/schema");
+        const request = getRequest();
+        const session = await ensureSessionFromHeaders(request.headers);
+        const [profile] = await db
+          .select({ photoUrl: studentProfiles.photoUrl })
+          .from(studentProfiles)
+          .where(eq(studentProfiles.userId, session.user.id))
+          .limit(1);
+
+        const photoUrl = profile?.photoUrl ?? session.user.image ?? null;
+
+        await db
+          .insert(studentProfiles)
+          .values({
+            userId: session.user.id,
+            displayName: session.user.name ?? session.user.email,
+            avatar: data.avatar,
+            photoUrl,
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: studentProfiles.userId,
+            set: {
+              avatar: data.avatar,
+              photoUrl,
+              updatedAt: new Date(),
+            },
+          });
+
+        return {
+          avatar: data.avatar,
+          photoUrl: data.avatar === "google" ? photoUrl : null,
         };
       },
     );

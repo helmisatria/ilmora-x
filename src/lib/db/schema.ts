@@ -96,6 +96,7 @@ export const studentProfiles = pgTable("student_profiles", {
   displayName: text("display_name").notNull(),
   institution: text("institution"),
   phone: text("phone"),
+  avatar: text("avatar"),
   photoUrl: text("photo_url"),
   profileCompletedAt: timestamp("profile_completed_at", { withTimezone: true }),
   status: text("status").notNull().default("active"),

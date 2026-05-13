@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { resolveAvatarDisplay } from "./avatar";
 import { getCurrentViewerFromHeaders } from "./auth-functions";
 import { db } from "./db/client";
 import {
@@ -15,14 +16,17 @@ import {
   questionReports,
   questions,
   subCategories,
+  studentProfiles,
   tryoutQuestions,
   tryouts,
+  user,
 } from "./db/schema";
 import { assertActiveStudent, assertAttemptOwner } from "./domain/access";
 import { conflict, notFound } from "./http/errors";
 import { parseInput } from "./http/validation";
 
 const optionLetters = ["A", "B", "C", "D", "E"] as const;
+const DEFAULT_DAILY_TRYOUT_ATTEMPT_LIMIT = 3;
 
 const tryoutIdSchema = z.object({
   tryoutId: z.string().trim().min(1),
@@ -30,6 +34,10 @@ const tryoutIdSchema = z.object({
 
 const attemptIdSchema = z.object({
   attemptId: z.string().trim().min(1),
+});
+
+const studentUserIdSchema = z.object({
+  studentUserId: z.string().trim().min(1),
 });
 
 const saveAttemptSchema = z.object({
@@ -92,6 +100,83 @@ function calculateXp(correctCount: number, attemptNumber: number) {
   if (attemptNumber === 1) return baseXp;
 
   return Math.round(baseXp * 0.25);
+}
+
+function getJakartaDateKey(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function calculateCurrentStreak(submittedDates: Array<Date | null>) {
+  const submittedDayKeys = new Set(
+    submittedDates
+      .filter((date): date is Date => date !== null)
+      .map(getJakartaDateKey),
+  );
+
+  if (submittedDayKeys.size === 0) return 0;
+
+  const cursor = new Date();
+  const todayKey = getJakartaDateKey(cursor);
+
+  if (!submittedDayKeys.has(todayKey)) {
+    cursor.setDate(cursor.getDate() - 1);
+
+    const yesterdayKey = getJakartaDateKey(cursor);
+
+    if (!submittedDayKeys.has(yesterdayKey)) return 0;
+  }
+
+  let streak = 0;
+
+  for (;;) {
+    const dayKey = getJakartaDateKey(cursor);
+
+    if (!submittedDayKeys.has(dayKey)) return streak;
+
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+}
+
+function getStartOfJakartaWeekSql() {
+  return sql`date_trunc('week', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
+}
+
+function getStartOfJakartaDaySql() {
+  return sql`date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
+}
+
+function getDailyTryoutAttemptLimit() {
+  const configuredLimit = Number(process.env.DAILY_TRYOUT_ATTEMPT_LIMIT);
+
+  if (!Number.isInteger(configuredLimit)) return DEFAULT_DAILY_TRYOUT_ATTEMPT_LIMIT;
+  if (configuredLimit < 1) return DEFAULT_DAILY_TRYOUT_ATTEMPT_LIMIT;
+
+  return configuredLimit;
+}
+
+async function countTodayTryoutAttempts(studentUserId: string, tryoutId: string) {
+  const dayStart = getStartOfJakartaDaySql();
+  const dayEnd = sql`${dayStart} + interval '1 day'`;
+
+  const [row] = await db
+    .select({
+      count: sql<number>`count(${attempts.id})`,
+    })
+    .from(attempts)
+    .where(and(
+      eq(attempts.studentUserId, studentUserId),
+      eq(attempts.tryoutId, tryoutId),
+      sql`${attempts.startedAt} >= ${dayStart}`,
+      sql`${attempts.startedAt} < ${dayEnd}`,
+    ));
+
+  return Number(row?.count ?? 0);
 }
 
 async function getAttemptForStudent(attemptId: string) {
@@ -233,9 +318,119 @@ export const listPublishedTryouts = createServerFn({ method: "GET" }).handler(as
   }));
 });
 
+export const listLeaderboard = createServerFn({ method: "GET" }).handler(async () => {
+  const viewer = await getStudentViewer();
+  const weekStart = getStartOfJakartaWeekSql();
+
+  const rows = await db
+    .select({
+      userId: user.id,
+      name: user.name,
+      image: user.image,
+      avatar: studentProfiles.avatar,
+      displayName: studentProfiles.displayName,
+      photoUrl: studentProfiles.photoUrl,
+      xp: sql<number>`coalesce(sum(${attempts.xpEarned}), 0)`,
+    })
+    .from(attempts)
+    .innerJoin(user, eq(user.id, attempts.studentUserId))
+    .leftJoin(studentProfiles, eq(studentProfiles.userId, user.id))
+    .where(and(
+      sql`${attempts.status} in ('submitted', 'auto_submitted')`,
+      sql`${attempts.submittedAt} >= ${weekStart}`,
+    ))
+    .groupBy(user.id, studentProfiles.id)
+    .orderBy(desc(sql`coalesce(sum(${attempts.xpEarned}), 0)`))
+    .limit(50);
+
+  return rows.map((row, index) => {
+    const xp = Number(row.xp ?? 0);
+    const avatar = resolveAvatarDisplay({
+      avatar: row.avatar,
+      photoUrl: row.photoUrl,
+      googlePhotoUrl: row.image,
+      fallbackName: row.displayName || row.name,
+    });
+
+    return {
+      rank: index + 1,
+      userId: row.userId,
+      name: row.displayName || row.name,
+      avatar: avatar.avatar,
+      photoUrl: avatar.photoUrl,
+      xp,
+      me: row.userId === viewer.userId,
+    };
+  });
+});
+
+export const getPublicStudentProfile = createServerFn({ method: "GET" })
+  .inputValidator((input) => parseInput(studentUserIdSchema, input))
+  .handler(async ({ data }) => {
+    await getStudentViewer();
+
+    const [profile] = await db
+      .select({
+        userId: user.id,
+        name: user.name,
+        image: user.image,
+        joinedAt: user.createdAt,
+        avatar: studentProfiles.avatar,
+        displayName: studentProfiles.displayName,
+        institution: studentProfiles.institution,
+        photoUrl: studentProfiles.photoUrl,
+      })
+      .from(user)
+      .leftJoin(studentProfiles, eq(studentProfiles.userId, user.id))
+      .where(eq(user.id, data.studentUserId))
+      .limit(1);
+
+    if (!profile) {
+      throw notFound("Student profile was not found.");
+    }
+
+    const submittedAttempts = await db
+      .select({
+        submittedAt: attempts.submittedAt,
+        totalQuestions: attempts.totalQuestions,
+        correctCount: attempts.correctCount,
+        xpEarned: attempts.xpEarned,
+      })
+      .from(attempts)
+      .where(and(
+        eq(attempts.studentUserId, data.studentUserId),
+        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
+      ));
+
+    const xp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
+
+    const avatar = resolveAvatarDisplay({
+      avatar: profile.avatar,
+      photoUrl: profile.photoUrl,
+      googlePhotoUrl: profile.image,
+      fallbackName: profile.displayName || profile.name,
+    });
+
+    return {
+      userId: profile.userId,
+      name: profile.displayName || profile.name,
+      institution: profile.institution ?? "Belum diisi",
+      avatar: avatar.avatar,
+      photoUrl: avatar.photoUrl,
+      joinedAt: profile.joinedAt.toISOString(),
+      xp,
+      streak: calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt)),
+      totalQuestions: submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0),
+      totalCorrect: submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0),
+      totalTryouts: submittedAttempts.length,
+    };
+  });
+
 export const getTryoutPreparation = createServerFn({ method: "GET" })
   .inputValidator((input) => parseInput(tryoutIdSchema, input))
   .handler(async ({ data }) => {
+    const viewer = await getStudentViewer();
+
     const [tryout] = await db
       .select({
         id: tryouts.id,
@@ -259,11 +454,26 @@ export const getTryoutPreparation = createServerFn({ method: "GET" })
       throw notFound("Try-out was not found.");
     }
 
+    const dailyAttemptLimit = getDailyTryoutAttemptLimit();
+    const attemptsToday = await countTodayTryoutAttempts(viewer.userId, data.tryoutId);
+    const [activeAttempt] = await db
+      .select({ id: attempts.id })
+      .from(attempts)
+      .where(and(
+        eq(attempts.studentUserId, viewer.userId),
+        eq(attempts.tryoutId, data.tryoutId),
+        eq(attempts.status, "in_progress"),
+      ))
+      .limit(1);
+
     return {
       ...tryout,
       accessLevel: tryout.accessLevel as "free" | "premium" | "platinum",
       categoryColor: tryout.categoryColor ?? "#205072",
       questionCount: Number(tryout.questionCount ?? 0),
+      activeAttemptId: activeAttempt?.id ?? null,
+      attemptsToday,
+      dailyAttemptLimit,
     };
   });
 
@@ -297,6 +507,13 @@ export const startOrResumeAttempt = createServerFn({ method: "POST" })
 
     if (!tryout) {
       throw notFound("Try-out was not found.");
+    }
+
+    const dailyAttemptLimit = getDailyTryoutAttemptLimit();
+    const attemptsToday = await countTodayTryoutAttempts(viewer.userId, data.tryoutId);
+
+    if (attemptsToday >= dailyAttemptLimit) {
+      throw conflict(`Batas pengerjaan harian tercapai. Try-out yang sama hanya bisa dikerjakan ${dailyAttemptLimit} kali per hari.`);
     }
 
     const questionRows = await db
@@ -630,9 +847,11 @@ export const listProgressSummary = createServerFn({ method: "GET" }).handler(asy
   const totalQuestions = submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0);
   const totalCorrect = submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0);
   const xp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
+  const streak = calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt));
 
   return {
     xp,
+    streak,
     totalQuestions,
     totalCorrect,
     attempts: submittedAttempts.map((attempt) => ({
@@ -665,7 +884,7 @@ export const listProgressSummary = createServerFn({ method: "GET" }).handler(asy
 
 async function getTakeAttemptData(attemptId: string) {
   const attempt = await getAttemptForStudent(attemptId);
-  const questions = await getAttemptSnapshotRows(attemptId);
+  const questions = await getTakeAttemptQuestionRows(attemptId);
   const answerRows = await db
     .select({
       snapshotId: attemptAnswers.snapshotId,
@@ -699,6 +918,44 @@ async function getTakeAttemptData(attemptId: string) {
   };
 }
 
+async function getTakeAttemptQuestionRows(attemptId: string) {
+  const rows = await db
+    .select({
+      snapshotId: attemptQuestionSnapshots.id,
+      questionId: attemptQuestionSnapshots.questionId,
+      sortOrder: attemptQuestionSnapshots.sortOrder,
+      categoryId: attemptQuestionSnapshots.categoryId,
+      categoryName: categories.name,
+      subCategoryId: attemptQuestionSnapshots.subCategoryId,
+      subCategoryName: subCategories.name,
+      questionText: attemptQuestionSnapshots.questionText,
+      optionA: attemptQuestionSnapshots.optionA,
+      optionB: attemptQuestionSnapshots.optionB,
+      optionC: attemptQuestionSnapshots.optionC,
+      optionD: attemptQuestionSnapshots.optionD,
+      optionE: attemptQuestionSnapshots.optionE,
+      accessLevel: attemptQuestionSnapshots.accessLevel,
+    })
+    .from(attemptQuestionSnapshots)
+    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
+    .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
+    .where(eq(attemptQuestionSnapshots.attemptId, attemptId))
+    .orderBy(attemptQuestionSnapshots.sortOrder);
+
+  return rows.map((row) => ({
+    snapshotId: row.snapshotId,
+    questionId: row.questionId,
+    sortOrder: row.sortOrder,
+    categoryId: row.categoryId,
+    categoryName: row.categoryName,
+    subCategoryId: row.subCategoryId,
+    subCategoryName: row.subCategoryName,
+    questionText: row.questionText,
+    options: toOptions(row),
+    accessLevel: row.accessLevel as "free" | "premium",
+  }));
+}
+
 async function getAttemptSnapshotRows(attemptId: string) {
   const rows = await db
     .select({
@@ -721,8 +978,24 @@ async function getAttemptSnapshotRows(attemptId: string) {
       accessLevel: attemptQuestionSnapshots.accessLevel,
       selectedOption: attemptAnswers.selectedOption,
       isCorrect: attemptAnswers.isCorrect,
-      relatedMateriId: materi.id,
-      relatedMateriTitle: materi.title,
+      relatedMateriId: sql<string | null>`(
+        select ${materi.id}
+        from ${materi}
+        where ${materi.subCategoryId} = ${attemptQuestionSnapshots.subCategoryId}
+          and ${materi.status} = 'published'
+          and ${materi.pdfFileKey} is null
+        order by ${materi.createdAt} desc
+        limit 1
+      )`,
+      relatedMateriTitle: sql<string | null>`(
+        select ${materi.title}
+        from ${materi}
+        where ${materi.subCategoryId} = ${attemptQuestionSnapshots.subCategoryId}
+          and ${materi.status} = 'published'
+          and ${materi.pdfFileKey} is null
+        order by ${materi.createdAt} desc
+        limit 1
+      )`,
     })
     .from(attemptQuestionSnapshots)
     .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
@@ -732,14 +1005,6 @@ async function getAttemptSnapshotRows(attemptId: string) {
       and(
         eq(attemptAnswers.attemptId, attemptQuestionSnapshots.attemptId),
         eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
-      ),
-    )
-    .leftJoin(
-      materi,
-      and(
-        eq(materi.subCategoryId, attemptQuestionSnapshots.subCategoryId),
-        eq(materi.status, "published"),
-        isNull(materi.pdfFileKey),
       ),
     )
     .where(eq(attemptQuestionSnapshots.attemptId, attemptId))

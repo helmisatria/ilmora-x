@@ -1,9 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { AvatarDisplay } from "../components/AvatarDisplay";
-import { mockUsers, useApp, type LeaderboardEntry } from "../data";
+import { getLevelForXp } from "../data";
+import { getGradeForLevel } from "../data/users";
+import { listLeaderboard, listProgressSummary } from "../lib/student-functions";
+
+type LeaderboardEntry = {
+  r: number;
+  userId: string;
+  n: string;
+  xp: number;
+  a: string;
+  photoUrl?: string | null;
+  ch: "up" | "down";
+  me: boolean;
+  level: number;
+  grade: string;
+};
 
 export const Route = createFileRoute("/leaderboard")({
+  preloadStaleTime: 0,
+  loader: async () => {
+    const [entries, summary] = await Promise.all([
+      listLeaderboard(),
+      listProgressSummary(),
+    ]);
+
+    return { entries, summary };
+  },
   head: () => ({
     meta: [
       { title: "Leaderboard Mingguan — IlmoraX" },
@@ -26,16 +50,35 @@ export const Route = createFileRoute("/leaderboard")({
 const accent = "#f59e0b";
 
 function LeaderboardComponent() {
-  const { leaderboardUsers } = useApp();
+  const { entries, summary } = Route.useLoaderData() as {
+    entries: Awaited<ReturnType<typeof listLeaderboard>>;
+    summary: Awaited<ReturnType<typeof listProgressSummary>>;
+  };
+  const leaderboardUsers = entries.map((entry): LeaderboardEntry => {
+    const level = getLevelForXp(entry.xp).level;
+
+    return {
+      r: entry.rank,
+      userId: entry.userId,
+      n: entry.name,
+      xp: entry.xp,
+      a: entry.avatar,
+      photoUrl: entry.photoUrl,
+      ch: "up",
+      me: entry.me,
+      level,
+      grade: getGradeForLevel(level),
+    };
+  });
   const podium = [
     leaderboardUsers[1],
     leaderboardUsers[0],
     leaderboardUsers[2],
   ].filter(Boolean);
-  const currentUser = leaderboardUsers.find((user) => user.me);
+  const viewerEntry = leaderboardUsers.find((user) => user.me);
   const leader = leaderboardUsers[0];
   const leaderGap =
-    currentUser && leader ? Math.max(leader.xp - currentUser.xp, 0) : 0;
+    viewerEntry && leader ? Math.max(leader.xp - viewerEntry.xp, 0) : 0;
 
   return (
     <div
@@ -52,7 +95,7 @@ function LeaderboardComponent() {
               "radial-gradient(900px 320px at 14% -18%, #f59e0b33, transparent 62%), radial-gradient(760px 340px at 94% -14%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
           }}
         >
-          <TopBar />
+          <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
           <div className="page-lane pt-7 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Peringkat Mingguan
@@ -68,7 +111,7 @@ function LeaderboardComponent() {
             <div className="mt-5 grid max-w-[560px] grid-flow-dense grid-cols-2 gap-3">
               <SummaryCard
                 label="Peringkatmu"
-                value={currentUser ? `#${currentUser.r}` : "-"}
+                value={viewerEntry ? `#${viewerEntry.r}` : "-"}
                 accent="#205072"
               />
               <SummaryCard
@@ -362,8 +405,7 @@ function getProfileTo(user: LeaderboardEntry) {
 function getProfileParams(user: LeaderboardEntry) {
   if (user.me) return undefined;
 
-  const userRecord = mockUsers.find((mockUser) => mockUser.name === user.n);
-  return { userId: String(userRecord?.id ?? 2) };
+  return { userId: user.userId };
 }
 
 function TrophyIcon() {

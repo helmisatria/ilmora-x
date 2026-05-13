@@ -191,6 +191,7 @@ CREATE TABLE "student_profiles" (
 	"display_name" text NOT NULL,
 	"institution" text,
 	"phone" text,
+	"avatar" text,
 	"photo_url" text,
 	"profile_completed_at" timestamp with time zone,
 	"status" text DEFAULT 'active' NOT NULL,

@@ -1,10 +1,13 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { AvatarDisplay } from "../components/AvatarDisplay";
 import { badges, getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
-import { getLevelGrade } from "../data/users";
+import { getGradeForLevel } from "../data/users";
+import { avatarOptions as sharedAvatarOptions, defaultAvatar, isSelectableAvatar, resolveAvatarDisplay } from "../lib/avatar";
 import { signOut } from "../lib/auth-client";
-import { getCurrentViewer } from "../lib/auth-functions";
+import { getCurrentViewer, updateProfileAvatar } from "../lib/auth-functions";
+import { listProgressSummary } from "../lib/student-functions";
 
 export const Route = createFileRoute("/profile")({
   loader: async () => {
@@ -18,7 +21,9 @@ export const Route = createFileRoute("/profile")({
       throw redirect({ to: "/auth/complete-profile" });
     }
 
-    return { viewer };
+    const summary = await listProgressSummary();
+
+    return { summary, viewer };
   },
   head: () => ({
     meta: [
@@ -32,43 +37,102 @@ export const Route = createFileRoute("/profile")({
 });
 
 const profileAccent = "#205072";
-const avatarOptions = [
-  "🦉",
-  "🧑‍⚕️",
-  "👩‍⚕️",
-  "👨‍⚕️",
-  "🧑‍🔬",
-  "👩‍🔬",
-  "👨‍🔬",
-  "🧑‍🎓",
-  "👩‍🎓",
-  "👨‍🎓",
-  "💊",
-] as const;
+const avatarOptions = sharedAvatarOptions.filter((avatar) => avatar !== "google");
+
+function getProfileAvatarState({
+  userAvatar,
+  userPhotoUrl,
+  viewer,
+}: {
+  userAvatar: string;
+  userPhotoUrl: string | null;
+  viewer: Awaited<ReturnType<typeof getCurrentViewer>>;
+}) {
+  const preferredAvatar = isSelectableAvatar(userAvatar)
+    ? userAvatar
+    : viewer?.profile?.avatar;
+
+  return resolveAvatarDisplay({
+    avatar: preferredAvatar,
+    photoUrl: viewer?.profile?.photoUrl ?? userPhotoUrl,
+    googlePhotoUrl: viewer?.image,
+    fallbackName: defaultAvatar,
+  });
+}
 
 function ProfileComponent() {
-  const { viewer } = Route.useLoaderData();
-  const { user, setUser, badgeProgress, hasPremiumMembership, togglePremiumMembership } = useApp();
+  const { summary, viewer } = Route.useLoaderData();
+  const { user, hasPremiumMembership, updateUserAvatar } = useApp();
   const navigate = useNavigate();
+  const router = useRouter();
   const profileName = viewer?.profile?.displayName ?? viewer?.name ?? user.name;
   const profileEmail = viewer?.email ?? user.email;
   const profileInstitution = viewer?.profile?.institution ?? user.institution;
-  const profilePhotoUrl = viewer?.profile?.photoUrl ?? viewer?.image ?? user.googlePhotoUrl;
-  const levelInfo = getLevelForXp(user.xp);
-  const nextLevel = getNextLevel(user.xp);
-  const xpProgress = getXpProgress(user.xp);
-  const grade = getLevelGrade(user);
-  const unlockedBadges = badgeProgress.filter((progress) => progress.unlocked);
-  const unlockedBadgeIds = new Set(unlockedBadges.map((progress) => progress.badgeId));
+  const initialAvatarState = getProfileAvatarState({
+    userAvatar: user.avatar,
+    userPhotoUrl: user.googlePhotoUrl,
+    viewer,
+  });
+  const [selectedAvatar, setSelectedAvatar] = useState(initialAvatarState.avatar);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(initialAvatarState.photoUrl);
+  const [avatarStatus, setAvatarStatus] = useState<"idle" | "saving" | "error">("idle");
+  const profilePhotoUrl = selectedPhotoUrl;
+  const displayAvatar = selectedAvatar ?? defaultAvatar;
+  const levelInfo = getLevelForXp(summary.xp);
+  const nextLevel = getNextLevel(summary.xp);
+  const xpProgress = getXpProgress(summary.xp);
+  const grade = getGradeForLevel(levelInfo.level);
+  const unlockedBadgeIds = getUnlockedBadgeIds(summary);
   const unlockedBadgeList = badges.filter((badge) => unlockedBadgeIds.has(badge.id));
   const highestLevelBadge = unlockedBadgeList
     .filter((badge) => badge.category === "Level" && badge.id >= 4 && badge.id <= 11)
     .sort((a, b) => b.id - a.id)[0];
   const activeBonus = highestLevelBadge ? getBonusByBadge(highestLevelBadge.id) : 0;
 
+  useEffect(() => {
+    if (avatarStatus === "saving") return;
+
+    const nextAvatarState = getProfileAvatarState({
+      userAvatar: user.avatar,
+      userPhotoUrl: user.googlePhotoUrl,
+      viewer,
+    });
+
+    setSelectedAvatar(nextAvatarState.avatar);
+    setSelectedPhotoUrl(nextAvatarState.photoUrl);
+  }, [avatarStatus, user.avatar, user.googlePhotoUrl, viewer]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate({ to: "/auth/login" });
+  };
+
+  const handleAvatarSelect = async (avatar: string) => {
+    if (avatar === selectedAvatar) return;
+
+    const previousAvatar = selectedAvatar;
+    const previousPhotoUrl = selectedPhotoUrl;
+
+    setAvatarStatus("saving");
+    setSelectedAvatar(avatar);
+    const optimisticPhotoUrl = avatar === "google" ? viewer?.profile?.photoUrl ?? viewer?.image ?? null : null;
+    setSelectedPhotoUrl(optimisticPhotoUrl);
+    updateUserAvatar(avatar, optimisticPhotoUrl);
+
+    try {
+      const result = await updateProfileAvatar({ data: { avatar } });
+
+      setSelectedAvatar(result.avatar ?? defaultAvatar);
+      setSelectedPhotoUrl(result.photoUrl);
+      updateUserAvatar(result.avatar ?? defaultAvatar, result.photoUrl);
+      setAvatarStatus("idle");
+      await router.invalidate();
+    } catch {
+      setSelectedAvatar(previousAvatar);
+      setSelectedPhotoUrl(previousPhotoUrl);
+      updateUserAvatar(previousAvatar ?? defaultAvatar, previousPhotoUrl);
+      setAvatarStatus("error");
+    }
   };
 
   return (
@@ -86,7 +150,10 @@ function ProfileComponent() {
             "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
-        <TopBar />
+        <TopBar
+          progress={{ xp: summary.xp, streak: summary.streak }}
+          profile={{ name: profileName, avatar: displayAvatar, photoUrl: profilePhotoUrl }}
+        />
 
         <div className="page-lane pt-7 lg:pt-10">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
@@ -100,14 +167,14 @@ function ProfileComponent() {
           </p>
 
           <ProfileHero
-            avatar={user.avatar}
+            avatar={displayAvatar}
             photoUrl={profilePhotoUrl}
             name={profileName}
             institution={profileInstitution}
             isPremium={hasPremiumMembership}
             level={levelInfo.level}
             grade={grade}
-            xp={user.xp}
+            xp={summary.xp}
             nextXp={nextLevel?.xp}
             xpProgress={xpProgress}
           />
@@ -117,11 +184,10 @@ function ProfileComponent() {
       <div className="page-lane relative -mt-4 grid gap-6 pb-28 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.15fr)] lg:items-start">
         <div className="grid gap-5">
           <AvatarPicker
-            selectedAvatar={user.avatar}
-            googlePhotoUrl={profilePhotoUrl}
-            onSelect={(avatar) => {
-              setUser((currentUser) => ({ ...currentUser, avatar }));
-            }}
+            selectedAvatar={displayAvatar}
+            googlePhotoUrl={viewer?.profile?.photoUrl ?? viewer?.image ?? null}
+            onSelect={handleAvatarSelect}
+            status={avatarStatus}
           />
 
           {activeBonus > 0 && highestLevelBadge && (
@@ -129,9 +195,9 @@ function ProfileComponent() {
           )}
 
           <div className="grid grid-flow-dense grid-cols-3 gap-3">
-            <StatCard label="Soal" value={String(user.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
-            <StatCard label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
-            <StatCard label="Streak" value={`${user.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
+            <StatCard label="Soal" value={String(summary.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
+            <StatCard label="Try-out" value={String(summary.attempts.length)} accent="#0ea5e9" icon={<ChartIcon />} />
+            <StatCard label="Streak" value={`${summary.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
 
           {!hasPremiumMembership && <PremiumProfileCallout />}
@@ -178,9 +244,6 @@ function ProfileComponent() {
           </div>
 
           <div className="flex gap-3">
-            <button className="btn btn-white flex-1 text-xs" onClick={togglePremiumMembership} type="button">
-              {hasPremiumMembership ? "Demo Premium ON" : "Demo Premium OFF"}
-            </button>
             <button className="btn btn-white flex-1 text-xs" onClick={handleSignOut} type="button">
               Keluar
             </button>
@@ -190,6 +253,31 @@ function ProfileComponent() {
 
       <BottomNav active="learn" />
     </main>
+  );
+}
+
+function getUnlockedBadgeIds(summary: Awaited<ReturnType<typeof listProgressSummary>>) {
+  const level = getLevelForXp(summary.xp).level;
+  const accuracy = summary.totalQuestions > 0
+    ? Math.round((summary.totalCorrect / summary.totalQuestions) * 100)
+    : 0;
+
+  return new Set(
+    badges
+      .filter((badge) => {
+        const levelMatch = badge.task.match(/Reach Level (\d+)/i);
+        const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
+        const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
+
+        if (levelMatch) return level >= Number(levelMatch[1]);
+        if (streakMatch) return summary.streak >= Number(streakMatch[1]);
+        if (tryoutMatch) return summary.attempts.length >= Number(tryoutMatch[1]);
+        if (badge.id === 1) return summary.attempts.length > 0;
+        if (badge.name === "100% Club") return accuracy >= 100;
+
+        return false;
+      })
+      .map((badge) => badge.id),
   );
 }
 
@@ -290,17 +378,24 @@ function AvatarPicker({
   selectedAvatar,
   googlePhotoUrl,
   onSelect,
+  status,
 }: {
   selectedAvatar: string;
   googlePhotoUrl: string | null;
   onSelect: (avatar: string) => void;
+  status: "idle" | "saving" | "error";
 }) {
   const googleKey = "google";
   const hasGooglePhoto = !!googlePhotoUrl;
 
   return (
     <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm">
-      <SectionHeader title="Foto Profil" />
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <SectionHeader title="Foto Profil" />
+        {status === "saving" && (
+          <span className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Menyimpan</span>
+        )}
+      </div>
       <div className="grid grid-cols-6 gap-2.5">
         {hasGooglePhoto && (
           <button
@@ -312,6 +407,7 @@ function AvatarPicker({
               background: selectedAvatar === googleKey ? "#dcecf7" : "#ffffff",
             }}
             onClick={() => onSelect(googleKey)}
+            disabled={status === "saving"}
             type="button"
             aria-label="Pilih foto profil Google"
           >
@@ -336,6 +432,7 @@ function AvatarPicker({
                 color: isSelected ? "#0b2135" : "#57534e",
               }}
               onClick={() => onSelect(avatar)}
+              disabled={status === "saving"}
               type="button"
               aria-label={`Pilih avatar ${avatar}`}
             >
@@ -344,6 +441,11 @@ function AvatarPicker({
           );
         })}
       </div>
+      {status === "error" && (
+        <div className="mt-3 rounded-[var(--radius-md)] border-2 border-rose-100 bg-rose-50 p-3 text-xs font-bold text-coral-dark">
+          Avatar belum tersimpan. Coba pilih lagi.
+        </div>
+      )}
     </div>
   );
 }

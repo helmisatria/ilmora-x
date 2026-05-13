@@ -1,149 +1,86 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import { currentUser, mockUsers, getGradeForLevel, type User } from "./users";
-import { mockAttempts, type Attempt, type Question, type Tryout } from "./questions";
-import { mockBadgeProgress } from "./badges";
-import { mockEntitlements, type Entitlement } from "./entitlements";
-
-export interface LeaderboardEntry {
-  r: number;
-  n: string;
-  xp: number;
-  a: string;
-  photoUrl?: string;
-  ch: "up" | "down";
-  me: boolean;
-  level: number;
-  grade: string;
-}
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { resolveAvatarDisplay } from "../lib/avatar";
+import type { Viewer } from "../lib/auth-functions";
+import type { User } from "./users";
 
 export interface AppState {
   user: User;
   hasPremiumMembership: boolean;
-  ownedTryoutIds: number[];
-  togglePremiumMembership: () => void;
-  setUser: React.Dispatch<React.SetStateAction<User>>;
-  badgeProgress: typeof mockBadgeProgress;
-  leaderboardUsers: LeaderboardEntry[];
-  attempts: Attempt[];
-  entitlements: Entitlement[];
-  addAttempt: (attempt: Attempt) => void;
-  addEntitlement: (entitlement: Entitlement) => void;
-  canAccessTryout: (tryout: Tryout) => boolean;
-  canAccessQuestion: (question: Question, tryout: Tryout) => boolean;
-  ownsTryout: (tryoutId: number) => boolean;
-  updateAttempt: (id: number, partial: Partial<Attempt>) => void;
+  updateUserAvatar: (avatar: string, photoUrl: string | null) => void;
 }
 
-function checkPremiumMembership(user: User): boolean {
-  if (!user.entitlementEndsAt) return false;
-  return new Date(user.entitlementEndsAt) > new Date();
-}
-
-function getOwnedTryoutIds(userId: number, entitlements: Entitlement[]) {
-  return entitlements
-    .filter((entitlement) => entitlement.userId === userId)
-    .filter((entitlement) => entitlement.contentType === "tryout")
-    .filter((entitlement) => !entitlement.endsAt || new Date(entitlement.endsAt) > new Date())
-    .map((entitlement) => entitlement.contentId)
-    .filter((contentId): contentId is number => typeof contentId === "number");
-}
-
-const leaderboardData: LeaderboardEntry[] = mockUsers
-  .filter((u) => !u.isAdmin)
-  .sort((a, b) => b.weeklyXp - a.weeklyXp)
-  .map((u, i) => ({
-    r: i + 1,
-    n: u.name,
-    xp: u.weeklyXp,
-    a: u.avatar,
-    photoUrl: u.googlePhotoUrl || undefined,
-    ch: (i === 0 ? "up" : i === 1 ? "up" : i % 2 === 0 ? "up" : "down") as "up" | "down",
-    me: u.id === currentUser.id,
-    level: u.level,
-    grade: getGradeForLevel(u.level),
-  }));
+const fallbackUser: User = {
+  id: 0,
+  name: "Pengguna IlmoraX",
+  email: "",
+  institution: "Belum diisi",
+  avatar: "IX",
+  googlePhotoUrl: null,
+  isAdmin: false,
+  adminTier: null,
+  entitlementStartsAt: null,
+  entitlementEndsAt: null,
+  level: 1,
+  xp: 0,
+  weeklyXp: 0,
+  streak: 0,
+  referralCode: "-",
+  joinDate: new Date().toISOString(),
+  completedProfile: false,
+  totalQuestions: 0,
+  totalCorrect: 0,
+  totalTryouts: 0,
+};
 
 const AppContext = createContext<AppState | null>(null);
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User>(currentUser);
-  const [premiumOverride, setPremiumOverride] = useState<boolean | null>(null);
-  const [attemptState, setAttemptState] = useState<Attempt[]>(mockAttempts);
-  const [entitlementState, setEntitlementState] = useState<Entitlement[]>(mockEntitlements);
+function getUserFromViewer(viewer: Viewer | null): User {
+  if (!viewer) return fallbackUser;
 
-  const hasPremiumMembership = premiumOverride !== null ? premiumOverride : checkPremiumMembership(user);
-  const ownedTryoutIds = getOwnedTryoutIds(user.id, entitlementState);
+  const profile = viewer.profile;
+  const name = profile?.displayName || viewer.name || fallbackUser.name;
+  const institution = profile?.institution || (viewer.admin ? "IlmoraX HQ" : fallbackUser.institution);
+  const avatar = resolveAvatarDisplay({
+    avatar: profile?.avatar,
+    photoUrl: profile?.photoUrl,
+    googlePhotoUrl: viewer.image,
+    fallbackName: name,
+  });
 
-  const togglePremiumMembership = useCallback(() => {
-    const nextPremium = premiumOverride !== null ? !premiumOverride : !checkPremiumMembership(user);
-    setPremiumOverride(nextPremium);
-    if (nextPremium) {
-      const today = new Date();
-      const end = new Date();
-      end.setDate(today.getDate() + 30);
-      setUser((u) => ({
-        ...u,
-        entitlementStartsAt: today.toISOString().split('T')[0],
-        entitlementEndsAt: end.toISOString().split('T')[0],
-      }));
-    } else {
-      setUser((u) => ({
-        ...u,
-        entitlementStartsAt: null,
-        entitlementEndsAt: null,
-      }));
-    }
-  }, [premiumOverride, user, setUser]);
+  return {
+    ...fallbackUser,
+    name,
+    email: viewer.email,
+    institution,
+    avatar: avatar.avatar,
+    googlePhotoUrl: avatar.photoUrl,
+    isAdmin: Boolean(viewer.admin),
+    adminTier: viewer.admin?.role ?? null,
+    completedProfile: Boolean(viewer.admin || profile?.completed),
+  };
+}
 
-  const addAttempt = useCallback((attempt: Attempt) => {
-    setAttemptState((prev) => [...prev, attempt]);
-  }, []);
+export function AppProvider({ children, viewer = null }: { children: ReactNode; viewer?: Viewer | null }) {
+  const [user, setUser] = useState(() => getUserFromViewer(viewer));
 
-  const updateAttempt = useCallback((id: number, partial: Partial<Attempt>) => {
-    setAttemptState((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, ...partial } : a))
-    );
-  }, []);
+  useEffect(() => {
+    setUser(getUserFromViewer(viewer));
+  }, [viewer]);
 
-  const addEntitlement = useCallback((entitlement: Entitlement) => {
-    setEntitlementState((prev) => [...prev, entitlement]);
-  }, []);
-
-  const ownsTryout = useCallback((tryoutId: number) => {
-    return getOwnedTryoutIds(user.id, entitlementState).includes(tryoutId);
-  }, [entitlementState, user.id]);
-
-  const canAccessTryout = useCallback((tryout: Tryout) => {
-    if (tryout.accessLevel === "free") return true;
-    if (hasPremiumMembership) return true;
-    if (tryout.accessLevel === "platinum") return ownsTryout(tryout.id);
-    return false;
-  }, [hasPremiumMembership, ownsTryout]);
-
-  const canAccessQuestion = useCallback((question: Question, tryout: Tryout) => {
-    if (canAccessTryout(tryout)) return true;
-    if (question.accessLevel === "free") return true;
-    return hasPremiumMembership;
-  }, [canAccessTryout, hasPremiumMembership]);
+  const updateUserAvatar = (avatar: string, photoUrl: string | null) => {
+    setUser((currentUser) => ({
+      ...currentUser,
+      avatar,
+      googlePhotoUrl: photoUrl,
+    }));
+  };
 
   return (
     <AppContext.Provider
       value={{
         user,
-        setUser,
-        hasPremiumMembership,
-        ownedTryoutIds,
-        togglePremiumMembership,
-        badgeProgress: mockBadgeProgress,
-        leaderboardUsers: leaderboardData,
-        attempts: attemptState,
-        entitlements: entitlementState,
-        addAttempt,
-        addEntitlement,
-        canAccessTryout,
-        canAccessQuestion,
-        ownsTryout,
-        updateAttempt,
+        hasPremiumMembership: false,
+        updateUserAvatar,
       }}
     >
       {children}
@@ -153,6 +90,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 export function useApp() {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error("useApp must be used within AppProvider");
+
+  if (!ctx) {
+    throw new Error("useApp must be used within AppProvider");
+  }
+
   return ctx;
 }
