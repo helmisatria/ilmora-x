@@ -1,6 +1,6 @@
 import * as schema from "./schema";
 
-const isServer = import.meta.env.SSR || typeof window === "undefined";
+const isServer = import.meta.env?.SSR === true || typeof window === "undefined";
 
 if (isServer) {
   await import("dotenv/config");

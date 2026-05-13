@@ -190,12 +190,13 @@ function getBadgeProgress(summary: ProgressSummary): BadgeProgressView[] {
   return badges.map((badge) => {
     const target = getBadgeTarget(badge);
     const progress = getBadgeProgressValue(badge, { accuracy, level, summary });
+    const isAwarded = summary.awardedBadgeIds.includes(badge.id);
 
     return {
       badgeId: badge.id,
-      progress: Math.min(progress, target),
+      progress: isAwarded ? target : Math.min(progress, target),
       total: target,
-      unlocked: progress >= target,
+      unlocked: isAwarded || progress >= target,
     };
   });
 }
@@ -220,6 +221,7 @@ function getBadgeProgressValue(
   badge: Badge,
   data: { accuracy: number; level: number; summary: ProgressSummary },
 ) {
+  if (badge.task.toLowerCase().includes("leaderboard")) return 0;
   if (badge.category === "Level") return data.level;
   if (badge.category === "Streak") {
     if (badge.task.includes("unique tryouts")) return data.summary.attempts.length;

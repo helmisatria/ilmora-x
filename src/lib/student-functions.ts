@@ -1,12 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolveAvatarDisplay } from "./avatar";
 import { getCurrentViewerFromHeaders } from "./auth-functions";
 import { db } from "./db/client";
 import {
   activityEvents,
+  adminMembers,
   attemptAnswers,
   attemptMarkedQuestions,
   attemptQuestionSnapshots,
@@ -16,12 +17,15 @@ import {
   questionReports,
   questions,
   subCategories,
+  studentBadges,
+  studentExpLedger,
   studentProfiles,
   tryoutQuestions,
   tryouts,
   user,
 } from "./db/schema";
 import { assertActiveStudent, assertAttemptOwner } from "./domain/access";
+import { getJakartaWeekStartDateKey, getJakartaWeekWindow } from "./domain/leaderboard";
 import { conflict, notFound } from "./http/errors";
 import { parseInput } from "./http/validation";
 
@@ -195,8 +199,8 @@ async function countTodayTryoutAttempts(studentUserId: string, tryoutId: string)
     .where(and(
       eq(attempts.studentUserId, studentUserId),
       eq(attempts.tryoutId, tryoutId),
-      sql`${attempts.startedAt} >= ${dayStart}`,
-      sql`${attempts.startedAt} < ${dayEnd}`,
+      gte(attempts.startedAt, dayStart),
+      lt(attempts.startedAt, dayEnd),
     ));
 
   return Number(row?.count ?? 0);
@@ -226,9 +230,9 @@ async function isExtraPracticeAttempt(attempt: typeof attempts.$inferSelect, dai
     .where(and(
       eq(attempts.studentUserId, attempt.studentUserId),
       eq(attempts.tryoutId, attempt.tryoutId),
-      sql`${attempts.startedAt} >= ${dayStart}`,
-      sql`${attempts.startedAt} < ${dayEnd}`,
-      sql`${attempts.startedAt} <= ${attempt.startedAt}`,
+      gte(attempts.startedAt, dayStart),
+      lt(attempts.startedAt, dayEnd),
+      lte(attempts.startedAt, attempt.startedAt),
     ));
 
   return Number(row?.count ?? 0) > dailyAttemptLimit;
@@ -375,7 +379,10 @@ export const listPublishedTryouts = createServerFn({ method: "GET" }).handler(as
 
 export const listLeaderboard = createServerFn({ method: "GET" }).handler(async () => {
   const viewer = await getStudentViewer();
-  const weekStart = getStartOfJakartaWeekSql();
+  const viewerExcludedReason = viewer.admin ? "admin_account" : null;
+  const weekStartDate = getJakartaWeekStartDateKey();
+  const weekWindow = getJakartaWeekWindow(weekStartDate);
+  const rewardsFinaliseAt = new Date(weekWindow.endsAt.getTime() + 5 * 60 * 1000);
 
   const rows = await db
     .select({
@@ -389,16 +396,38 @@ export const listLeaderboard = createServerFn({ method: "GET" }).handler(async (
     })
     .from(attempts)
     .innerJoin(user, eq(user.id, attempts.studentUserId))
-    .leftJoin(studentProfiles, eq(studentProfiles.userId, user.id))
+    .innerJoin(studentProfiles, eq(studentProfiles.userId, user.id))
     .where(and(
       sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-      sql`${attempts.submittedAt} >= ${weekStart}`,
+      gte(attempts.submittedAt, weekWindow.startsAt),
+      lt(attempts.submittedAt, weekWindow.endsAt),
+      sql`${attempts.xpEarned} > 0`,
+      eq(attempts.isImpersonatedSubmission, false),
+      eq(studentProfiles.status, "active"),
+      sql`not exists (
+        select 1
+        from ${adminMembers}
+        where ${adminMembers.email} = ${user.email}
+          and ${adminMembers.removedAt} is null
+      )`,
     ))
-    .groupBy(user.id, studentProfiles.id)
-    .orderBy(desc(sql`coalesce(sum(${attempts.xpEarned}), 0)`))
+    .groupBy(
+      user.id,
+      user.name,
+      user.image,
+      studentProfiles.id,
+      studentProfiles.avatar,
+      studentProfiles.displayName,
+      studentProfiles.photoUrl,
+    )
+    .orderBy(
+      desc(sql`coalesce(sum(${attempts.xpEarned}), 0)`),
+      asc(sql`max(${attempts.submittedAt})`),
+      asc(user.id),
+    )
     .limit(50);
 
-  return rows.map((row, index) => {
+  const entries = rows.map((row, index) => {
     const xp = Number(row.xp ?? 0);
     const avatar = resolveAvatarDisplay({
       avatar: row.avatar,
@@ -417,6 +446,17 @@ export const listLeaderboard = createServerFn({ method: "GET" }).handler(async (
       me: row.userId === viewer.userId,
     };
   });
+
+  return {
+    entries,
+    week: {
+      weekStartDate,
+      startsAt: weekWindow.startsAt.toISOString(),
+      endsAt: weekWindow.endsAt.toISOString(),
+      rewardsFinaliseAt: rewardsFinaliseAt.toISOString(),
+    },
+    viewerExcludedReason,
+  };
 });
 
 export const getPublicStudentProfile = createServerFn({ method: "GET" })
@@ -457,7 +497,22 @@ export const getPublicStudentProfile = createServerFn({ method: "GET" })
         sql`${attempts.status} in ('submitted', 'auto_submitted')`,
       ));
 
-    const xp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
+    const [badgeRewardRow] = await db
+      .select({
+        xp: sql<number>`coalesce(sum(${studentExpLedger.xpAmount}), 0)`,
+      })
+      .from(studentExpLedger)
+      .where(and(
+        eq(studentExpLedger.studentUserId, data.studentUserId),
+        eq(studentExpLedger.sourceType, "badge_reward"),
+      ));
+    const badgeRows = await db
+      .select({ badgeCode: studentBadges.badgeCode })
+      .from(studentBadges)
+      .where(eq(studentBadges.studentUserId, data.studentUserId));
+
+    const attemptXp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
+    const xp = attemptXp + Number(badgeRewardRow?.xp ?? 0);
 
     const avatar = resolveAvatarDisplay({
       avatar: profile.avatar,
@@ -474,6 +529,9 @@ export const getPublicStudentProfile = createServerFn({ method: "GET" })
       photoUrl: avatar.photoUrl,
       joinedAt: profile.joinedAt.toISOString(),
       xp,
+      awardedBadgeIds: badgeRows
+        .map((badge) => badgeCodeToId(badge.badgeCode))
+        .filter((badgeId): badgeId is number => badgeId !== null),
       streak: calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt)),
       totalQuestions: submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0),
       totalCorrect: submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0),
@@ -701,11 +759,14 @@ export const submitAttempt = createServerFn({ method: "POST" })
     const extraPracticeAttempt = hasExtendedPractice
       ? await isExtraPracticeAttempt(attempt, dailyAttemptLimit)
       : false;
-    const xpEarned = calculateAttemptXp({
-      correctCount,
-      attemptNumber: attempt.attemptNumber,
-      isExtraPractice: extraPracticeAttempt,
-    });
+    const isImpersonatedSubmission = Boolean(viewer.impersonation);
+    const xpEarned = isImpersonatedSubmission
+      ? 0
+      : calculateAttemptXp({
+          correctCount,
+          attemptNumber: attempt.attemptNumber,
+          isExtraPractice: extraPracticeAttempt,
+        });
     const now = new Date();
     const timedOut = now > attempt.deadlineAt;
     const status = timedOut || data.autoSubmitReason ? "auto_submitted" : "submitted";
@@ -720,6 +781,8 @@ export const submitAttempt = createServerFn({ method: "POST" })
           correctCount,
           wrongCount,
           xpEarned,
+          submittedByAdminUserId: viewer.impersonation?.adminUserId ?? null,
+          isImpersonatedSubmission,
           autoSubmitReason: data.autoSubmitReason ?? (timedOut ? "deadline_reached" : null),
           updatedAt: now,
         })
@@ -924,16 +987,37 @@ export const listProgressSummary = createServerFn({ method: "GET" }).handler(asy
     ))
     .groupBy(categories.id, subCategories.id);
 
+  const [badgeRewardRow] = await db
+    .select({
+      xp: sql<number>`coalesce(sum(${studentExpLedger.xpAmount}), 0)`,
+    })
+    .from(studentExpLedger)
+    .where(and(
+      eq(studentExpLedger.studentUserId, viewer.userId),
+      eq(studentExpLedger.sourceType, "badge_reward"),
+    ));
+  const badgeRows = await db
+    .select({ badgeCode: studentBadges.badgeCode })
+    .from(studentBadges)
+    .where(eq(studentBadges.studentUserId, viewer.userId));
+
   const totalQuestions = submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0);
   const totalCorrect = submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0);
-  const xp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
+  const attemptXp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
+  const badgeRewardXp = Number(badgeRewardRow?.xp ?? 0);
+  const xp = attemptXp + badgeRewardXp;
   const streak = calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt));
 
   return {
     xp,
+    attemptXp,
+    badgeRewardXp,
     streak,
     totalQuestions,
     totalCorrect,
+    awardedBadgeIds: badgeRows
+      .map((badge) => badgeCodeToId(badge.badgeCode))
+      .filter((badgeId): badgeId is number => badgeId !== null),
     attempts: submittedAttempts.map((attempt) => ({
       id: attempt.id,
       tryoutTitle: attempt.tryoutTitle,
@@ -961,6 +1045,14 @@ export const listProgressSummary = createServerFn({ method: "GET" }).handler(asy
     })),
   };
 });
+
+function badgeCodeToId(badgeCode: string) {
+  const match = badgeCode.match(/^BADGE-(\d+)$/);
+
+  if (!match) return null;
+
+  return Number(match[1]);
+}
 
 async function getTakeAttemptData(attemptId: string) {
   const attempt = await getAttemptForStudent(attemptId);

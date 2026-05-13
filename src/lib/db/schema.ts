@@ -202,6 +202,8 @@ export const attempts = pgTable("attempts", {
   wrongCount: integer("wrong_count"),
   totalQuestions: integer("total_questions").notNull(),
   xpEarned: integer("xp_earned").notNull().default(0),
+  submittedByAdminUserId: text("submitted_by_admin_user_id").references(() => user.id, { onDelete: "set null" }),
+  isImpersonatedSubmission: boolean("is_impersonated_submission").notNull().default(false),
   activeSessionId: text("active_session_id"),
   autoSubmitReason: text("auto_submit_reason"),
   ...timestamps,
@@ -285,6 +287,71 @@ export const materi = pgTable("materi", {
 }, (table) => [
   check("materi_access_level_check", sql`${table.accessLevel} in ('free', 'premium')`),
   check("materi_status_check", sql`${table.status} in ('draft', 'published', 'unpublished')`),
+]);
+
+export const studentBadges = pgTable("student_badges", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentUserId: text("student_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  badgeCode: text("badge_code").notNull(),
+  awardSource: text("award_source").notNull(),
+  sourceWeekKey: text("source_week_key"),
+  rewardXp: integer("reward_xp").notNull().default(0),
+  seenAt: timestamp("seen_at", { withTimezone: true }),
+  metadata: jsonb("metadata").notNull().default({}),
+  awardedAt: timestamp("awarded_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  unique("student_badges_student_badge_unique").on(table.studentUserId, table.badgeCode),
+  index("student_badges_student_seen_idx").on(table.studentUserId, table.seenAt),
+  check("student_badges_award_source_check", sql`${table.awardSource} in ('weekly_leaderboard', 'daily_evaluation', 'manual')`),
+]);
+
+export const studentExpLedger = pgTable("student_exp_ledger", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentUserId: text("student_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(),
+  sourceId: text("source_id").notNull(),
+  xpAmount: integer("xp_amount").notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  metadata: jsonb("metadata").notNull().default({}),
+}, (table) => [
+  unique("student_exp_ledger_source_unique").on(table.sourceType, table.sourceId),
+  index("student_exp_ledger_student_idx").on(table.studentUserId),
+  check("student_exp_ledger_source_type_check", sql`${table.sourceType} in ('badge_reward')`),
+  check("student_exp_ledger_xp_amount_check", sql`${table.xpAmount} >= 0`),
+]);
+
+export const weeklyLeaderboardSnapshots = pgTable("weekly_leaderboard_snapshots", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  weekStartDate: text("week_start_date").notNull().unique(),
+  finalizedAt: timestamp("finalized_at", { withTimezone: true }).notNull().defaultNow(),
+  participantThreshold: integer("participant_threshold").notNull(),
+  rankedStudentCount: integer("ranked_student_count").notNull(),
+  thresholdMet: boolean("threshold_met").notNull(),
+  status: text("status").notNull().default("finalized"),
+  metadata: jsonb("metadata").notNull().default({}),
+  ...timestamps,
+}, (table) => [
+  check("weekly_leaderboard_snapshots_status_check", sql`${table.status} in ('finalized')`),
+  check("weekly_leaderboard_snapshots_threshold_check", sql`${table.participantThreshold} >= 1`),
+  check("weekly_leaderboard_snapshots_ranked_count_check", sql`${table.rankedStudentCount} >= 0`),
+]);
+
+export const weeklyLeaderboardEntries = pgTable("weekly_leaderboard_entries", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  snapshotId: text("snapshot_id").notNull().references(() => weeklyLeaderboardSnapshots.id, { onDelete: "cascade" }),
+  weekStartDate: text("week_start_date").notNull(),
+  studentUserId: text("student_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  rank: integer("rank").notNull(),
+  xp: integer("xp").notNull(),
+  lastXpAttemptSubmittedAt: timestamp("last_xp_attempt_submitted_at", { withTimezone: true }).notNull(),
+  badgesAwarded: jsonb("badges_awarded").notNull().default([]),
+  ...timestamps,
+}, (table) => [
+  unique("weekly_leaderboard_entries_snapshot_student_unique").on(table.snapshotId, table.studentUserId),
+  unique("weekly_leaderboard_entries_snapshot_rank_unique").on(table.snapshotId, table.rank),
+  index("weekly_leaderboard_entries_week_idx").on(table.weekStartDate),
+  check("weekly_leaderboard_entries_rank_check", sql`${table.rank} >= 1`),
+  check("weekly_leaderboard_entries_xp_check", sql`${table.xp} >= 1`),
 ]);
 
 export const materiViews = pgTable("materi_views", {

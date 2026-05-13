@@ -150,6 +150,8 @@ function isBadgeUnlocked(
   profile: Awaited<ReturnType<typeof getPublicStudentProfile>>,
   level: number,
 ) {
+  if (profile.awardedBadgeIds.includes(badge.id)) return true;
+
   const accuracy = profile.totalQuestions > 0
     ? Math.round((profile.totalCorrect / profile.totalQuestions) * 100)
     : 0;

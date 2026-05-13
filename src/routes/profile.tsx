@@ -270,6 +270,8 @@ function getUnlockedBadgeIds(summary: Awaited<ReturnType<typeof listProgressSumm
   return new Set(
     badges
       .filter((badge) => {
+        if (summary.awardedBadgeIds.includes(badge.id)) return true;
+
         const levelMatch = badge.task.match(/Reach Level (\d+)/i);
         const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
         const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);

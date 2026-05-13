@@ -33,6 +33,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminTryoutsRouteImport } from './routes/admin/tryouts'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminQuestionsRouteImport } from './routes/admin/questions'
+import { Route as AdminMonitoringRouteImport } from './routes/admin/monitoring'
 import { Route as AdminMateriRouteImport } from './routes/admin/materi'
 import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
 import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
@@ -159,6 +160,11 @@ const AdminQuestionsRoute = AdminQuestionsRouteImport.update({
   path: '/questions',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMonitoringRoute = AdminMonitoringRouteImport.update({
+  id: '/monitoring',
+  path: '/monitoring',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMateriRoute = AdminMateriRouteImport.update({
   id: '/materi',
   path: '/materi',
@@ -200,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
+  '/admin/monitoring': typeof AdminMonitoringRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
@@ -231,6 +238,7 @@ export interface FileRoutesByTo {
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
+  '/admin/monitoring': typeof AdminMonitoringRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
+  '/admin/monitoring': typeof AdminMonitoringRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
@@ -296,6 +305,7 @@ export interface FileRouteTypes {
     | '/tryout'
     | '/admin/insights'
     | '/admin/materi'
+    | '/admin/monitoring'
     | '/admin/questions'
     | '/admin/reports'
     | '/admin/tryouts'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/tryout'
     | '/admin/insights'
     | '/admin/materi'
+    | '/admin/monitoring'
     | '/admin/questions'
     | '/admin/reports'
     | '/admin/tryouts'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/tryout'
     | '/admin/insights'
     | '/admin/materi'
+    | '/admin/monitoring'
     | '/admin/questions'
     | '/admin/reports'
     | '/admin/tryouts'
@@ -567,6 +579,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminQuestionsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/monitoring': {
+      id: '/admin/monitoring'
+      path: '/monitoring'
+      fullPath: '/admin/monitoring'
+      preLoaderRoute: typeof AdminMonitoringRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/materi': {
       id: '/admin/materi'
       path: '/materi'
@@ -620,6 +639,7 @@ const AdminTryoutsRouteWithChildren = AdminTryoutsRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminInsightsRoute: typeof AdminInsightsRoute
   AdminMateriRoute: typeof AdminMateriRoute
+  AdminMonitoringRoute: typeof AdminMonitoringRoute
   AdminQuestionsRoute: typeof AdminQuestionsRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminTryoutsRoute: typeof AdminTryoutsRouteWithChildren
@@ -629,6 +649,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminInsightsRoute: AdminInsightsRoute,
   AdminMateriRoute: AdminMateriRoute,
+  AdminMonitoringRoute: AdminMonitoringRoute,
   AdminQuestionsRoute: AdminQuestionsRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminTryoutsRoute: AdminTryoutsRouteWithChildren,
