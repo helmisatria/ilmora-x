@@ -741,7 +741,14 @@ function PreparationScreen({
   const xpReward = 50 + totalQuestions * 20;
   const categoryName = tryout.categoryName;
   const color = tryout.categoryColor;
-  const hasReachedDailyLimit = !tryout.activeAttemptId && tryout.attemptsToday >= tryout.dailyAttemptLimit;
+  const hasReachedDailyLimit = Boolean(
+    !tryout.activeAttemptId &&
+    tryout.dailyAttemptLimit !== null &&
+    tryout.attemptsToday >= tryout.dailyAttemptLimit,
+  );
+  const attemptLimitText = tryout.hasExtendedPractice
+    ? `Normal ${tryout.normalDailyAttemptLimit} kali pertama per hari dapat XP. Setelah itu tetap bisa latihan tanpa XP.`
+    : `Maksimal ${tryout.dailyAttemptLimit} kali pengerjaan per hari untuk tryout yang sama.`;
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] antialiased page-enter">
@@ -837,7 +844,7 @@ function PreparationScreen({
               Pastikan semua soal terjawab. Soal kosong dihitung salah saat submit.
             </RuleItem>
             <RuleItem icon={<RefreshIcon />}>
-              Maksimal {tryout.dailyAttemptLimit} kali pengerjaan per hari untuk tryout yang sama.
+              {attemptLimitText}
             </RuleItem>
           </ul>
         </div>
@@ -854,7 +861,9 @@ function PreparationScreen({
           </span>
           <div>
             <div className="font-semibold mb-0.5">Kesempatan hari ini</div>
-            Kamu sudah mengerjakan {tryout.attemptsToday}/{tryout.dailyAttemptLimit} kali hari ini.
+            {tryout.hasExtendedPractice
+              ? `Kamu sudah mengerjakan ${tryout.attemptsToday} kali hari ini. XP hanya diberikan untuk ${tryout.normalDailyAttemptLimit} kesempatan normal.`
+              : `Kamu sudah mengerjakan ${tryout.attemptsToday}/${tryout.dailyAttemptLimit} kali hari ini.`}
             {hasReachedDailyLimit && " Silakan coba lagi besok."}
           </div>
         </div>

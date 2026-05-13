@@ -102,6 +102,20 @@ function calculateXp(correctCount: number, attemptNumber: number) {
   return Math.round(baseXp * 0.25);
 }
 
+function calculateAttemptXp({
+  correctCount,
+  attemptNumber,
+  isExtraPractice,
+}: {
+  correctCount: number;
+  attemptNumber: number;
+  isExtraPractice: boolean;
+}) {
+  if (isExtraPractice) return 0;
+
+  return calculateXp(correctCount, attemptNumber);
+}
+
 function getJakartaDateKey(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",
@@ -177,6 +191,38 @@ async function countTodayTryoutAttempts(studentUserId: string, tryoutId: string)
     ));
 
   return Number(row?.count ?? 0);
+}
+
+function hasExtendedPracticeAccess(accessLevel: string) {
+  if (accessLevel === "free") return false;
+
+  return true;
+}
+
+function getVisibleDailyAttemptLimit(hasExtendedPractice: boolean, dailyAttemptLimit: number) {
+  if (hasExtendedPractice) return null;
+
+  return dailyAttemptLimit;
+}
+
+async function isExtraPracticeAttempt(attempt: typeof attempts.$inferSelect, dailyAttemptLimit: number) {
+  const dayStart = sql`date_trunc('day', ${attempt.startedAt} at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
+  const dayEnd = sql`${dayStart} + interval '1 day'`;
+
+  const [row] = await db
+    .select({
+      count: sql<number>`count(${attempts.id})`,
+    })
+    .from(attempts)
+    .where(and(
+      eq(attempts.studentUserId, attempt.studentUserId),
+      eq(attempts.tryoutId, attempt.tryoutId),
+      sql`${attempts.startedAt} >= ${dayStart}`,
+      sql`${attempts.startedAt} < ${dayEnd}`,
+      sql`${attempts.startedAt} <= ${attempt.startedAt}`,
+    ));
+
+  return Number(row?.count ?? 0) > dailyAttemptLimit;
 }
 
 async function getAttemptForStudent(attemptId: string) {
@@ -456,6 +502,7 @@ export const getTryoutPreparation = createServerFn({ method: "GET" })
 
     const dailyAttemptLimit = getDailyTryoutAttemptLimit();
     const attemptsToday = await countTodayTryoutAttempts(viewer.userId, data.tryoutId);
+    const hasExtendedPractice = hasExtendedPracticeAccess(tryout.accessLevel);
     const [activeAttempt] = await db
       .select({ id: attempts.id })
       .from(attempts)
@@ -473,7 +520,9 @@ export const getTryoutPreparation = createServerFn({ method: "GET" })
       questionCount: Number(tryout.questionCount ?? 0),
       activeAttemptId: activeAttempt?.id ?? null,
       attemptsToday,
-      dailyAttemptLimit,
+      dailyAttemptLimit: getVisibleDailyAttemptLimit(hasExtendedPractice, dailyAttemptLimit),
+      normalDailyAttemptLimit: dailyAttemptLimit,
+      hasExtendedPractice,
     };
   });
 
@@ -500,6 +549,7 @@ export const startOrResumeAttempt = createServerFn({ method: "POST" })
       .select({
         id: tryouts.id,
         durationMinutes: tryouts.durationMinutes,
+        accessLevel: tryouts.accessLevel,
       })
       .from(tryouts)
       .where(and(eq(tryouts.id, data.tryoutId), eq(tryouts.status, "published")))
@@ -511,8 +561,9 @@ export const startOrResumeAttempt = createServerFn({ method: "POST" })
 
     const dailyAttemptLimit = getDailyTryoutAttemptLimit();
     const attemptsToday = await countTodayTryoutAttempts(viewer.userId, data.tryoutId);
+    const hasExtendedPractice = hasExtendedPracticeAccess(tryout.accessLevel);
 
-    if (attemptsToday >= dailyAttemptLimit) {
+    if (!hasExtendedPractice && attemptsToday >= dailyAttemptLimit) {
       throw conflict(`Batas pengerjaan harian tercapai. Try-out yang sama hanya bisa dikerjakan ${dailyAttemptLimit} kali per hari.`);
     }
 
@@ -627,7 +678,21 @@ export const submitAttempt = createServerFn({ method: "POST" })
     const answeredCount = answerRows.filter((answer) => answer.isCorrect !== null).length;
     const wrongCount = Math.max(attempt.totalQuestions - correctCount, 0);
     const score = Math.round((correctCount / attempt.totalQuestions) * 100);
-    const xpEarned = calculateXp(correctCount, attempt.attemptNumber);
+    const [tryout] = await db
+      .select({ accessLevel: tryouts.accessLevel })
+      .from(tryouts)
+      .where(eq(tryouts.id, attempt.tryoutId))
+      .limit(1);
+    const dailyAttemptLimit = getDailyTryoutAttemptLimit();
+    const hasExtendedPractice = hasExtendedPracticeAccess(tryout?.accessLevel ?? "free");
+    const extraPracticeAttempt = hasExtendedPractice
+      ? await isExtraPracticeAttempt(attempt, dailyAttemptLimit)
+      : false;
+    const xpEarned = calculateAttemptXp({
+      correctCount,
+      attemptNumber: attempt.attemptNumber,
+      isExtraPractice: extraPracticeAttempt,
+    });
     const now = new Date();
     const timedOut = now > attempt.deadlineAt;
     const status = timedOut || data.autoSubmitReason ? "auto_submitted" : "submitted";

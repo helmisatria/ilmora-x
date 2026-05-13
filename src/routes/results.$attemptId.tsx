@@ -60,7 +60,7 @@ function ResultsComponent() {
   const total = attempt.totalQuestions;
   const xpEarn = attempt.xpEarned;
   const levelInfo = getLevelForXp(summary.xp);
-  const isFirstAttempt = attempt.attemptNumber === 1;
+  const xpNote = getXpNote(attempt.attemptNumber, xpEarn);
   const duration = attempt.submittedAt
     ? Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000)
     : 0;
@@ -263,9 +263,9 @@ function ResultsComponent() {
                   <BreakdownDot color="#a8a29e" label="Kosong" value={unansweredCount} />
                 </div>
 
-                {!isFirstAttempt && (
+                {xpNote && (
                   <p className="m-0 max-w-[36ch] text-[12px] font-medium text-stone-400">
-                    Retake #{attempt.attemptNumber} · XP dikurangi 75%.
+                    {xpNote}
                   </p>
                 )}
               </div>
@@ -526,6 +526,13 @@ function getGradeLabel(score: number): string {
   if (score >= 70) return "B";
   if (score >= 60) return "C";
   return "D";
+}
+
+function getXpNote(attemptNumber: number, xpEarned: number) {
+  if (attemptNumber === 1) return null;
+  if (xpEarned === 0) return `Retake #${attemptNumber} · Latihan ekstra tanpa XP.`;
+
+  return `Retake #${attemptNumber} · XP dikurangi 75%.`;
 }
 
 function BreakdownDot({ color, label, value }: { color: string; label: string; value: number }) {

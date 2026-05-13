@@ -224,11 +224,17 @@ Dua layout utama:
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Celebration reveal | Animated score count-up; confetti if pass threshold hit. This is a boundary celebration — the ONLY in-flow celebration allowed (no mid-test confetti).        |
 | Score summary      | Skor, benar/salah, total, waktu pengerjaan                                                                                                                    |
-| XP earned          | EXP yang didapat dari attempt ini + badge earned notification. First Attempt of a Try-out grants full EXP; subsequent Attempts grant ~25% (retake reduction). |
+| XP earned          | EXP yang didapat dari attempt ini + badge earned notification. First Attempt of a Try-out grants full EXP; subsequent Attempts inside the normal daily quota grant ~25% (retake reduction). Premium / owned Platinum extra practice attempts beyond the normal daily quota grant 0 EXP. |
 | Answer list        | List semua soal dengan benar/salah indicator                                                                                                                  |
 | Pembahasan button  | Per soal → lihat explanation                                                                                                                                  |
 | Re-take button     | "Coba Lagi" → mulai Attempt baru (new Attempt row)                                                                                                            |
 | Back to list       | Kembali ke try-out list                                                                                                                                       |
+
+Review access rules:
+
+- Free users on free Try-outs can preview the first 3 wrong-answer discussions; remaining wrong-answer discussions stay locked.
+- Active Premium users and students with access to the specific paid Try-out do not see premium locks in the review session or detail review for that Attempt.
+- Extra premium / owned Platinum practice attempts still appear in result history, progress analytics, and evaluation data, but award 0 EXP after the normal daily quota.
 
 ### 4.7 Result Detail / Pembahasan (`/results/$attemptId/review`)
 
@@ -776,6 +782,7 @@ Untuk demo purposes, prototype harus bisa menunjukkan kedua state:
 | Badge                | Sama                                                                             | Sama                                             |
 | Leaderboard          | Sama                                                                             | Sama                                             |
 | Live Poll            | Sama                                                                             | Sama                                             |
+| Same-day retakes     | Normal daily quota only                                                         | Extra practice allowed after the normal quota, with 0 EXP |
 
 Implementasi: developer toggle may switch active Premium Membership for demo purposes. In production, global Premium Membership comes from a non-expired membership **Entitlement**. Platinum Try-out access comes from a content Entitlement for that Try-out.
 
@@ -785,6 +792,7 @@ Platinum Try-out rules:
 - Premium Students can access Platinum Try-outs while membership is active, but the lifetime purchase option is hidden for now.
 - If Premium expires, access falls back to Free plus owned Platinum Try-outs.
 - Purchased Platinum access unlocks the complete per-Try-out experience only, not global premium features.
+- Purchased Platinum access also unlocks extra same-day practice for that Try-out only. Attempts beyond the normal daily quota are saved for learning analytics but grant 0 EXP.
 
 ---
 

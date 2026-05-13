@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { resolveAvatarDisplay } from "../lib/avatar";
 import type { Viewer } from "../lib/auth-functions";
-import type { User } from "./users";
+import { hasPremiumMembership, type User } from "./users";
 
 export interface AppState {
   user: User;
@@ -79,7 +79,7 @@ export function AppProvider({ children, viewer = null }: { children: ReactNode; 
     <AppContext.Provider
       value={{
         user,
-        hasPremiumMembership: false,
+        hasPremiumMembership: hasPremiumMembership(user),
         updateUserAvatar,
       }}
     >

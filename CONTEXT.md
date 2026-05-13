@@ -121,6 +121,7 @@ A record that grants a **Student** access to a Product or content target. A Prem
 - **Platinum ownership = any non-expired or lifetime content Entitlement** for the specific Try-out. It survives Premium Membership expiry.
 - **Try-out access levels are explicit:** `free`, `premium`, or `platinum`. Do not model this as `isPremium`.
 - **Question access levels are explicit:** `free` or `premium`. If a Student can access a Try-out, that access unlocks premium questions inside that Try-out.
+- **Review locks follow effective access.** Active Premium members and Students with access to the specific paid Try-out do not see premium locks in review summary or detail review for that Attempt.
 - **Overlapping purchases extend the expiry** — buying while an Entitlement is still active adds the new duration to the existing `ends_at`. Never blocks re-purchase.
 - **Single premium tier in M2** — no "Premium Plus." Multi-tier is post-M2.
 - **Hard expiry cut**, with proactive email warnings at T-7d and T-1d before `ends_at`. No grace period.
@@ -169,7 +170,7 @@ The frozen copy of a **Question**'s content captured when an **Attempt** begins.
 ## Rules
 
 - **Timer continues wall-clock during disconnect.** When a student disconnects mid-Attempt, the server-side deadline keeps counting. This prevents "disconnect to think" exploits and matches real exam behavior.
-- **EXP grant scales on retake.** First Attempt of a Try-out grants full EXP. Subsequent Attempts of the same Try-out grant a reduced amount (e.g. 25% of base). Exact multiplier TBD.
+- **EXP grant scales on retake and extra practice.** First Attempt of a Try-out grants full EXP. Subsequent Attempts inside the normal daily quota grant a reduced amount (currently 25% of base). Active Premium access or purchased Platinum access may allow extra same-day practice for the accessible Try-out, but Attempts beyond the normal daily quota grant 0 EXP.
 - **Badge counts of "Complete N CBT" use unique Try-outs completed**, not total Attempts. Prevents farming BADGE-022/023/024 by retaking a short Try-out.
 - **Permanent EXP bonus: only the highest tier applies.** A student at level 46 with BADGE-004..011 all earned gets a single +40% multiplier (from BADGE-011), not additive stacking. Applies to EXP earned after the badge is awarded only; never retroactive.
 - **Leaderboard is weekly and EXP-earned-that-week only.** Week = Monday 00:00 → Sunday 23:59 WIB (UTC+7). Reset occurs Monday 00:00 WIB via scheduled job. Week keys stored as `YYYY-Www`.
