@@ -6,6 +6,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../components/ui/dialog";
+import { isPaidTryout } from "../lib/domain/premium-access";
 import {
   getTryoutPreparation,
   reportAttemptQuestion,
@@ -874,7 +875,7 @@ function PreparationScreen({
           </div>
         )}
 
-        {tryout.accessLevel !== "free" && (
+        {isPaidTryout(tryout.accessLevel) && (
           <div
             className="mt-4 rounded-[var(--radius-lg)] p-4 text-[13px] font-medium flex items-start gap-3 border-2"
             style={{

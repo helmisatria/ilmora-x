@@ -24,7 +24,7 @@ export interface WrongAnswer {
   user: string;
 }
 
-export type TryoutAccessLevel = "free" | "premium" | "platinum";
+export type TryoutAccessLevel = "free" | "premium";
 
 export interface Tryout {
   id: number;
@@ -61,8 +61,8 @@ export const tryouts: Tryout[] = [
   { id: 2, title: "Farmakologi Dasar", icon: "💊", color: "#58cc02", questionCount: 25, categoryId: "farmakologi", duration: 40, accessLevel: "free", description: "Soal farmakologi dasar dan khusus" },
   { id: 3, title: "Kardiovaskular", icon: "❤️", color: "#205072", questionCount: 20, categoryId: "klinis", duration: 30, accessLevel: "premium", description: "Soal khusus sistem kardiovaskular" },
   { id: 4, title: "Antibiotik & Antiinfeksi", icon: "🦠", color: "#58cc02", questionCount: 15, categoryId: "farmakologi", duration: 25, accessLevel: "free", description: "Soal antibiotik dan antiinfeksi" },
-  { id: 5, title: "Farmasi Klinik Lanjut", icon: "🏥", color: "#0ea5e9", questionCount: 30, categoryId: "farmasi-klinik", duration: 45, accessLevel: "platinum", productId: 101, description: "Soal farmasi klinik tingkat lanjut" },
-  { id: 6, title: "Perhitungan Dosis", icon: "🧮", color: "#0ea5e9", questionCount: 20, categoryId: "farmasi-klinik", duration: 35, accessLevel: "platinum", productId: 102, description: "Soal hitung dosis dan farmakokinetik" },
+  { id: 5, title: "Farmasi Klinik Lanjut", icon: "🏥", color: "#0ea5e9", questionCount: 30, categoryId: "farmasi-klinik", duration: 45, accessLevel: "premium", productId: 101, description: "Soal farmasi klinik tingkat lanjut" },
+  { id: 6, title: "Perhitungan Dosis", icon: "🧮", color: "#0ea5e9", questionCount: 20, categoryId: "farmasi-klinik", duration: 35, accessLevel: "premium", productId: 102, description: "Soal hitung dosis dan farmakokinetik" },
 ];
 
 export const questionBank: Record<number, Question[]> = {
@@ -203,4 +203,3 @@ export const questionBank: Record<number, Question[]> = {
     },
   ],
 };
-

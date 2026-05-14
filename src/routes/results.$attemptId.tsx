@@ -1,9 +1,10 @@
-import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getLevelForXp, useApp } from "../data";
 import { runConfetti } from "../utils/confetti";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { BottomNav, TopBar } from "../components/Navigation";
+import { hasFullTryoutReviewAccess } from "../lib/domain/premium-access";
 import { getAttemptResult, listProgressSummary } from "../lib/student-functions";
 
 const FREE_WRONG_PREVIEW = 3;
@@ -49,12 +50,14 @@ function ResultsComponent() {
     summary: Awaited<ReturnType<typeof listProgressSummary>>;
   };
   const location = useLocation();
-  const navigate = useNavigate();
   const { hasPremiumMembership } = useApp();
   const isChildRoute = location.pathname !== `/results/${attemptId}`;
 
   const { attempt, tryout, questions } = result;
-  const hasFullTryoutAccess = tryout.accessLevel !== "free";
+  const hasFullTryoutAccess = hasFullTryoutReviewAccess({
+    accessLevel: tryout.accessLevel,
+    hasPremiumMembership,
+  });
 
   const score = attempt.score;
   const total = attempt.totalQuestions;
@@ -100,12 +103,7 @@ function ResultsComponent() {
   const lockedCount = hasFullReviewAccess ? 0 : Math.max(0, wrongs.length - FREE_WRONG_PREVIEW);
 
   const openPremiumAccess = () => {
-    if (tryout?.accessLevel === "platinum") {
-      setShowPremiumDialog(true);
-      return;
-    }
-
-    navigate({ to: "/premium" });
+    setShowPremiumDialog(true);
   };
 
   useEffect(() => {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { useApp } from "../data";
+import { isPaidTryout, resolveTryoutAccess } from "../lib/domain/premium-access";
 import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
 
 type TryoutRow = Awaited<ReturnType<typeof listPublishedTryouts>>[number];
@@ -44,7 +45,7 @@ function TryoutComponent() {
   const filtered = tryouts.filter((t) => {
     if (filter === "all") return true;
     if (filter === "owned") return false;
-    if (filter === "premium") return t.accessLevel !== "free";
+    if (filter === "premium") return isPaidTryout(t.accessLevel);
     return t.accessLevel === filter;
   });
 
@@ -118,11 +119,11 @@ function TryoutComponent() {
 }
 
 function isTryoutLocked(tryout: TryoutRow, hasPremiumMembership: boolean, isOwned: boolean) {
-  if (tryout.accessLevel === "free") return false;
-  if (hasPremiumMembership) return false;
-  if (isOwned) return false;
-
-  return true;
+  return resolveTryoutAccess({
+    accessLevel: tryout.accessLevel,
+    hasPremiumMembership,
+    hasLifetimeTryoutPurchase: isOwned,
+  }).locked;
 }
 
 function FilterButton({
@@ -183,7 +184,7 @@ function TryoutCard({
         onLockedClick();
       }}
     >
-      {tryout.accessLevel !== "free" && <AccessPill accessLevel={tryout.accessLevel} isOwned={isOwned} />}
+      {isPaidTryout(tryout.accessLevel) && <AccessPill isOwned={isOwned} />}
 
       <div
         className="w-14 h-14 rounded-2xl flex items-center justify-center border-2"
@@ -226,7 +227,7 @@ function TryoutCard({
   );
 }
 
-function AccessPill({ accessLevel, isOwned }: { accessLevel: TryoutRow["accessLevel"]; isOwned: boolean }) {
+function AccessPill({ isOwned }: { isOwned: boolean }) {
   const label = isOwned ? "Dimiliki" : "Premium";
   const className = "absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-amber px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm";
 

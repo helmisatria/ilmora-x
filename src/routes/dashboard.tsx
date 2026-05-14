@@ -3,6 +3,7 @@ import { useState } from "react";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
+import { isPaidTryout, resolveTryoutAccess } from "../lib/domain/premium-access";
 import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
 
 type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
@@ -167,7 +168,10 @@ function DashboardComponent() {
                   <TryoutRow
                     key={tryout.id}
                     tryout={tryout}
-                    isLocked={tryout.accessLevel !== "free" && !hasPremiumMembership}
+                    isLocked={resolveTryoutAccess({
+                      accessLevel: tryout.accessLevel,
+                      hasPremiumMembership,
+                    }).locked}
                     onLockedClick={() => {
                       setSelectedTryout(tryout);
                       setShowPremiumDialog(true);
@@ -429,8 +433,8 @@ function TryoutRow({
 }
 
 function getAccessLabel(accessLevel: DashboardTryout["accessLevel"]) {
-  if (accessLevel === "premium") return "Premium";
-  if (accessLevel === "platinum") return "Premium";
+  if (isPaidTryout(accessLevel)) return "Premium";
+
   return "Gratis";
 }
 

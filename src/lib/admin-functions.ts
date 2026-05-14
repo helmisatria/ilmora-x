@@ -21,6 +21,7 @@ import {
   user,
 } from "./db/schema";
 import { requireAdmin, requireSuperAdmin } from "./domain/admin";
+import { normalizeTryoutAccessLevel } from "./domain/premium-access";
 import { createTryoutFromWorkbook, importTryoutWorkbook } from "./domain/tryout-workbook-import";
 import { conflict, notFound } from "./http/errors";
 import { parseInput } from "./http/validation";
@@ -638,7 +639,7 @@ export const listTryoutsAdmin = createServerFn({ method: "GET" }).middleware([ad
 
   return rows.map((row) => ({
     ...row,
-    accessLevel: row.accessLevel as "free" | "premium" | "platinum",
+    accessLevel: normalizeTryoutAccessLevel(row.accessLevel),
     status: row.status as "draft" | "published" | "unpublished",
     publishedAt: row.publishedAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
@@ -781,7 +782,7 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
     return {
       tryout: {
         ...tryout,
-        accessLevel: tryout.accessLevel as "free" | "premium" | "platinum",
+        accessLevel: normalizeTryoutAccessLevel(tryout.accessLevel),
         status: tryout.status as "draft" | "published" | "unpublished",
       },
       questions: rows.map((row) => ({

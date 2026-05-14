@@ -8,6 +8,7 @@ import {
   unpublishTryoutAdmin,
   updateTryoutAdmin,
 } from "../../lib/admin-functions";
+import { normalizeTryoutAccessLevel as normalizeDomainTryoutAccessLevel } from "../../lib/domain/premium-access";
 
 type TryoutWorkbook = Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>;
 type CategoryRow = Awaited<ReturnType<typeof listCategoriesAdmin>>[number];
@@ -690,8 +691,7 @@ function numberValue(value: unknown) {
 
 function normalizeTryoutAccessLevel(value: unknown): AccessLevel {
   const accessLevel = textValue(value).toLowerCase();
-  if (accessLevel === "premium" || accessLevel === "platinum") return "premium";
-  return "free";
+  return normalizeDomainTryoutAccessLevel(accessLevel);
 }
 
 function normalizeQuestionAccessLevel(value: unknown): "free" | "premium" {

@@ -1,3 +1,5 @@
+import { hasPremiumMembershipEndsAt } from "../lib/domain/premium-access";
+
 export interface User {
   id: number;
   name: string;
@@ -22,9 +24,7 @@ export interface User {
 }
 
 export function hasPremiumMembership(user: User): boolean {
-  if (!user.entitlementEndsAt) return false;
-
-  return new Date(user.entitlementEndsAt) > new Date();
+  return hasPremiumMembershipEndsAt(user.entitlementEndsAt);
 }
 
 export function getGradeForLevel(level: number): string {

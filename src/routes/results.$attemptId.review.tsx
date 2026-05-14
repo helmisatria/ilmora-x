@@ -5,6 +5,7 @@ import { useApp } from "../data";
 import { PremiumDialog } from "../components/PremiumDialog";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { hasFullTryoutReviewAccess, isPremiumQuestionLocked } from "../lib/domain/premium-access";
 import { getAttemptResult } from "../lib/student-functions";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -44,18 +45,16 @@ function ReviewComponent() {
   const navigate = useNavigate();
   const { hasPremiumMembership } = useApp();
   const { attempt, tryout, questions } = result;
-  const hasFullTryoutAccess = tryout.accessLevel !== "free";
+  const hasFullTryoutAccess = hasFullTryoutReviewAccess({
+    accessLevel: tryout.accessLevel,
+    hasPremiumMembership,
+  });
 
   const [showPremium, setShowPremium] = useState(false);
   const filter: ReviewFilter = search.filter ?? "all";
 
   const openPremiumAccess = () => {
-    if (tryout?.accessLevel === "platinum") {
-      setShowPremium(true);
-      return;
-    }
-
-    navigate({ to: "/premium" });
+    setShowPremium(true);
   };
 
   const headerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +66,11 @@ function ReviewComponent() {
     const locked = new Set<string>();
     let wrongIdx = 0;
     for (const q of questions) {
-      if (q.accessLevel === "premium" && !hasPremiumMembership && !hasFullTryoutAccess) {
+      if (isPremiumQuestionLocked({
+        questionAccessLevel: q.accessLevel,
+        tryoutAccessLevel: tryout.accessLevel,
+        hasPremiumMembership,
+      })) {
         locked.add(q.snapshotId);
         continue;
       }
@@ -79,7 +82,7 @@ function ReviewComponent() {
       }
     }
     return locked;
-  }, [questions, hasPremiumMembership, hasFullTryoutAccess]);
+  }, [questions, tryout.accessLevel, hasPremiumMembership, hasFullTryoutAccess]);
 
   const filteredQuestions = questions.filter((q) => {
     if (filter === "wrong") return q.selectedIndex !== null && q.isCorrect === false;

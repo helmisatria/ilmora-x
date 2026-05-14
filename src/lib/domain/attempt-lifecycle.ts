@@ -15,6 +15,7 @@ import {
 import { conflict, notFound } from "../http/errors";
 import { type Viewer } from "../auth-functions";
 import { awardDailyBadges } from "./engagement-surface";
+import { isPaidTryout } from "./premium-access";
 
 export const attemptOptionLetters = ["A", "B", "C", "D", "E"] as const;
 
@@ -547,9 +548,7 @@ async function countTodayTryoutAttempts(studentUserId: string, tryoutId: string)
 }
 
 function hasExtendedPracticeAccess(accessLevel: string) {
-  if (accessLevel === "free") return false;
-
-  return true;
+  return isPaidTryout(accessLevel);
 }
 
 function getVisibleDailyAttemptLimit(hasExtendedPractice: boolean, dailyAttemptLimit: number) {

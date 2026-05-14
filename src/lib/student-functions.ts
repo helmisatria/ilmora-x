@@ -36,6 +36,7 @@ import {
 } from "./domain/attempt-lifecycle";
 import { badgeCodeToId, calculateCurrentStreak } from "./domain/engagement-surface";
 import { getJakartaWeekStartDateKey, getJakartaWeekWindow } from "./domain/leaderboard";
+import { normalizeTryoutAccessLevel } from "./domain/premium-access";
 import { notFound } from "./http/errors";
 import { parseInput } from "./http/validation";
 
@@ -119,7 +120,7 @@ export const listPublishedTryouts = createServerFn({ method: "GET" }).handler(as
 
   return rows.map((row) => ({
     ...row,
-    accessLevel: row.accessLevel as "free" | "premium" | "platinum",
+    accessLevel: normalizeTryoutAccessLevel(row.accessLevel),
     categoryColor: row.categoryColor ?? "#205072",
     questionCount: Number(row.questionCount ?? 0),
   }));
@@ -332,7 +333,7 @@ export const getTryoutPreparation = createServerFn({ method: "GET" })
 
     return {
       ...tryout,
-      accessLevel: tryout.accessLevel as "free" | "premium" | "platinum",
+      accessLevel: normalizeTryoutAccessLevel(tryout.accessLevel),
       categoryColor: tryout.categoryColor ?? "#205072",
       questionCount: Number(tryout.questionCount ?? 0),
       activeAttemptId: activeAttempt?.id ?? null,
@@ -468,7 +469,7 @@ export const getAttemptResult = createServerFn({ method: "GET" })
       },
       tryout: {
         ...tryout,
-        accessLevel: tryout.accessLevel as "free" | "premium" | "platinum",
+        accessLevel: normalizeTryoutAccessLevel(tryout.accessLevel),
       },
       questions: snapshotRows,
     };
