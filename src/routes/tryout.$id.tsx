@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import { isPaidTryout } from "../lib/domain/premium-access";
+import { getSafeErrorMessage } from "../lib/user-errors";
 import {
   getTryoutPreparation,
   reportAttemptQuestion,
@@ -703,9 +704,7 @@ function SaveStatusLine({ status, lastSaved }: { status: SaveStatus; lastSaved: 
 }
 
 function getStartErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) return error.message;
-
-  return "Gagal memulai tryout. Silakan coba lagi.";
+  return getSafeErrorMessage(error, "Gagal memulai tryout. Silakan coba lagi.");
 }
 
 function toReportReason(reason: string) {

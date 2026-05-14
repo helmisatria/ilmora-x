@@ -9,10 +9,18 @@ import {
 } from "../db/schema";
 import { conflict, notFound } from "../http/errors";
 
-type TryoutAccessLevel = "free" | "premium" | "platinum";
+type TryoutAccessLevel = "free" | "premium";
 type QuestionAccessLevel = "free" | "premium";
 type ContentStatus = "draft" | "published" | "unpublished";
 type QuestionOption = "A" | "B" | "C" | "D" | "E";
+
+export type TryoutContentInput = {
+  title: string;
+  description: string;
+  categoryId: string;
+  durationMinutes: number;
+  accessLevel: TryoutAccessLevel;
+};
 
 export type TryoutWorkbookTryout = {
   title: string;
@@ -46,18 +54,80 @@ type TryoutWorkbookInput = {
   questions: TryoutWorkbookQuestion[];
 };
 
+export async function createTryoutContent(data: TryoutContentInput) {
+  await ensureCategoryExists(data.categoryId);
+
+  const slug = makeSlug(data.title);
+
+  try {
+    await db.insert(tryouts).values({
+      slug,
+      title: data.title,
+      description: data.description,
+      categoryId: data.categoryId,
+      durationMinutes: data.durationMinutes,
+      accessLevel: data.accessLevel,
+      status: "draft",
+    });
+  } catch {
+    throw conflict("A Try-out with this title already exists.");
+  }
+
+  return { ok: true };
+}
+
+export async function updateTryoutContent(data: TryoutContentInput & { tryoutId: string }) {
+  await ensureCategoryExists(data.categoryId);
+  await ensureTryoutExists(data.tryoutId);
+
+  await db
+    .update(tryouts)
+    .set({
+      title: data.title,
+      description: data.description,
+      categoryId: data.categoryId,
+      durationMinutes: data.durationMinutes,
+      accessLevel: data.accessLevel,
+      updatedAt: new Date(),
+    })
+    .where(eq(tryouts.id, data.tryoutId));
+
+  return { ok: true };
+}
+
+export async function publishTryoutContent(tryoutId: string) {
+  await ensureTryoutExists(tryoutId);
+  await ensureTryoutCanBePublished(tryoutId);
+
+  await db
+    .update(tryouts)
+    .set({
+      status: "published",
+      publishedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(tryouts.id, tryoutId));
+
+  return { ok: true };
+}
+
+export async function unpublishTryoutContent(tryoutId: string) {
+  await ensureTryoutExists(tryoutId);
+
+  await db
+    .update(tryouts)
+    .set({
+      status: "unpublished",
+      updatedAt: new Date(),
+    })
+    .where(eq(tryouts.id, tryoutId));
+
+  return { ok: true };
+}
+
 export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutId: string }) {
   await validateTryoutWorkbookInput(data);
-
-  const [existingTryout] = await db
-    .select({ id: tryouts.id })
-    .from(tryouts)
-    .where(eq(tryouts.id, data.tryoutId))
-    .limit(1);
-
-  if (!existingTryout) {
-    throw notFound("Try-out was not found.");
-  }
+  await ensureTryoutExists(data.tryoutId);
 
   const imported = await db.transaction(async (tx) => {
     const assignedQuestionIds: string[] = [];
@@ -285,6 +355,35 @@ async function validateTryoutWorkbookInput(data: TryoutWorkbookInput) {
     validateQuestionOptionE(question);
     await validateQuestionTaxonomy(question.categoryId, question.subCategoryId);
   }
+}
+
+async function ensureTryoutExists(tryoutId: string) {
+  const [tryout] = await db
+    .select({ id: tryouts.id })
+    .from(tryouts)
+    .where(eq(tryouts.id, tryoutId))
+    .limit(1);
+
+  if (tryout) return;
+
+  throw notFound("Try-out was not found.");
+}
+
+async function ensureTryoutCanBePublished(tryoutId: string) {
+  const [row] = await db
+    .select({
+      count: sql<number>`count(${questions.id})`,
+    })
+    .from(tryoutQuestions)
+    .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
+    .where(and(
+      eq(tryoutQuestions.tryoutId, tryoutId),
+      eq(questions.status, "published"),
+    ));
+
+  if (Number(row?.count ?? 0) > 0) return;
+
+  throw conflict("A published Try-out needs at least one published Question.");
 }
 
 async function ensureCategoryExists(categoryId: string) {

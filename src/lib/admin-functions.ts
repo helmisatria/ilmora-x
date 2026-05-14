@@ -22,7 +22,14 @@ import {
 } from "./db/schema";
 import { requireAdmin, requireSuperAdmin } from "./domain/admin";
 import { normalizeTryoutAccessLevel } from "./domain/premium-access";
-import { createTryoutFromWorkbook, importTryoutWorkbook } from "./domain/tryout-workbook-import";
+import {
+  createTryoutContent,
+  createTryoutFromWorkbook,
+  importTryoutWorkbook,
+  publishTryoutContent,
+  unpublishTryoutContent,
+  updateTryoutContent,
+} from "./domain/tryout-content-management";
 import { conflict, notFound } from "./http/errors";
 import { parseInput } from "./http/validation";
 
@@ -57,7 +64,7 @@ const updateReportStatusSchema = z.object({
   status: reportStatusSchema,
 });
 
-const tryoutAccessLevelSchema = z.enum(["free", "premium", "platinum"]);
+const tryoutAccessLevelSchema = z.enum(["free", "premium"]);
 
 const tryoutInputSchema = z.object({
   title: z.string().trim().min(1).max(160),
@@ -224,18 +231,6 @@ const superAdminMiddleware = createMiddleware({ type: "function" })
 
     return next();
   });
-
-function makeSlug(value: string) {
-  const slug = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  if (slug) return slug;
-
-  return `tryout-${Date.now()}`;
-}
 
 async function ensureCategoryExists(categoryId: string) {
   const [category] = await db
@@ -650,87 +645,28 @@ export const createTryoutAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(tryoutInputSchema, input))
   .handler(async ({ data }) => {
-    await ensureCategoryExists(data.categoryId);
-
-    const slug = makeSlug(data.title);
-
-    try {
-      await db.insert(tryouts).values({
-        slug,
-        title: data.title,
-        description: data.description,
-        categoryId: data.categoryId,
-        durationMinutes: data.durationMinutes,
-        accessLevel: data.accessLevel,
-        status: "draft",
-      });
-    } catch {
-      throw conflict("A Try-out with this title already exists.");
-    }
-
-    return { ok: true };
+    return createTryoutContent(data);
   });
 
 export const updateTryoutAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(updateTryoutSchema, input))
   .handler(async ({ data }) => {
-    await ensureCategoryExists(data.categoryId);
-
-    const [existingTryout] = await db
-      .select({ id: tryouts.id })
-      .from(tryouts)
-      .where(eq(tryouts.id, data.tryoutId))
-      .limit(1);
-
-    if (!existingTryout) {
-      throw notFound("Try-out was not found.");
-    }
-
-    await db
-      .update(tryouts)
-      .set({
-        title: data.title,
-        description: data.description,
-        categoryId: data.categoryId,
-        durationMinutes: data.durationMinutes,
-        accessLevel: data.accessLevel,
-        updatedAt: new Date(),
-      })
-      .where(eq(tryouts.id, data.tryoutId));
-
-    return { ok: true };
+    return updateTryoutContent(data);
   });
 
 export const publishTryoutAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(tryoutIdSchema, input))
   .handler(async ({ data }) => {
-    await db
-      .update(tryouts)
-      .set({
-        status: "published",
-        publishedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(tryouts.id, data.tryoutId));
-
-    return { ok: true };
+    return publishTryoutContent(data.tryoutId);
   });
 
 export const unpublishTryoutAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(tryoutIdSchema, input))
   .handler(async ({ data }) => {
-    await db
-      .update(tryouts)
-      .set({
-        status: "unpublished",
-        updatedAt: new Date(),
-      })
-      .where(eq(tryouts.id, data.tryoutId));
-
-    return { ok: true };
+    return unpublishTryoutContent(data.tryoutId);
   });
 
 export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })

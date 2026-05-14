@@ -36,6 +36,20 @@
       "when": 1778692437530,
       "tag": "0004_elite_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778730813217,
+      "tag": "0005_awesome_charles_xavier",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778736534244,
+      "tag": "0006_remove_platinum_tryout_access",
+      "breakpoints": true
     }
   ]
 }

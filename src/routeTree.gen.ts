@@ -33,6 +33,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminTryoutsRouteImport } from './routes/admin/tryouts'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminQuestionsRouteImport } from './routes/admin/questions'
+import { Route as AdminPollsRouteImport } from './routes/admin/polls'
 import { Route as AdminMonitoringRouteImport } from './routes/admin/monitoring'
 import { Route as AdminMateriRouteImport } from './routes/admin/materi'
 import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
@@ -160,6 +161,11 @@ const AdminQuestionsRoute = AdminQuestionsRouteImport.update({
   path: '/questions',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPollsRoute = AdminPollsRouteImport.update({
+  id: '/polls',
+  path: '/polls',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMonitoringRoute = AdminMonitoringRouteImport.update({
   id: '/monitoring',
   path: '/monitoring',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
+  '/admin/polls': typeof AdminPollsRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
+  '/admin/polls': typeof AdminPollsRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
+  '/admin/polls': typeof AdminPollsRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/admin/insights'
     | '/admin/materi'
     | '/admin/monitoring'
+    | '/admin/polls'
     | '/admin/questions'
     | '/admin/reports'
     | '/admin/tryouts'
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/admin/insights'
     | '/admin/materi'
     | '/admin/monitoring'
+    | '/admin/polls'
     | '/admin/questions'
     | '/admin/reports'
     | '/admin/tryouts'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/admin/insights'
     | '/admin/materi'
     | '/admin/monitoring'
+    | '/admin/polls'
     | '/admin/questions'
     | '/admin/reports'
     | '/admin/tryouts'
@@ -579,6 +591,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminQuestionsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/polls': {
+      id: '/admin/polls'
+      path: '/polls'
+      fullPath: '/admin/polls'
+      preLoaderRoute: typeof AdminPollsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/monitoring': {
       id: '/admin/monitoring'
       path: '/monitoring'
@@ -640,6 +659,7 @@ interface AdminRouteChildren {
   AdminInsightsRoute: typeof AdminInsightsRoute
   AdminMateriRoute: typeof AdminMateriRoute
   AdminMonitoringRoute: typeof AdminMonitoringRoute
+  AdminPollsRoute: typeof AdminPollsRoute
   AdminQuestionsRoute: typeof AdminQuestionsRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminTryoutsRoute: typeof AdminTryoutsRouteWithChildren
@@ -650,6 +670,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminInsightsRoute: AdminInsightsRoute,
   AdminMateriRoute: AdminMateriRoute,
   AdminMonitoringRoute: AdminMonitoringRoute,
+  AdminPollsRoute: AdminPollsRoute,
   AdminQuestionsRoute: AdminQuestionsRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminTryoutsRoute: AdminTryoutsRouteWithChildren,

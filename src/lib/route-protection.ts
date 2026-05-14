@@ -3,6 +3,7 @@ import type { Viewer } from "./auth-functions";
 const publicPathPrefixes = [
   "/api/",
   "/auth/",
+  "/poll",
 ];
 
 const protectedPathPrefixes = [
@@ -12,7 +13,6 @@ const protectedPathPrefixes = [
   "/dashboard",
   "/evaluation",
   "/leaderboard",
-  "/poll",
   "/premium",
   "/profile",
   "/progress",

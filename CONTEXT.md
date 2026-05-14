@@ -50,20 +50,44 @@ _Avoid_: Promo, voucher, discount code
 
 ## Language (Live Poll)
 
-**Poll**:
-An admin-created A/B/C/D/E vote with a short-lived join code, used in offline class to gauge student understanding. Lifecycle: `draft → open → closed`. Closed polls are read-only; no re-open. Separate from the Try-out engagement surface — participation grants no EXP.
-_Avoid_: Quiz, survey, vote
+**Poll Session**:
+An admin-created live classroom activity with a short-lived join code, used in offline class to gauge student understanding across one or more **Poll Rounds**. Lifecycle: `draft → open → closed`, with Admin allowed to reopen a closed Poll Session. Separate from the Try-out engagement surface — participation grants no EXP.
+_Avoid_: Quiz, survey, vote, Poll when referring to the whole classroom activity
+
+**Poll Round**:
+A single A/B/C/D/E question inside an open **Poll Session**. The app does not need to show the full question text because the teacher presents it live in class. Admins may create the next Poll Round on the fly while the Poll Session remains open.
+_Avoid_: Question, quiz item
 
 **Poll code**:
-A 6-digit numeric code unique **among currently-open Polls only**. Reuseable after the Poll closes.
+A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuseable after the Poll Session closes.
 
 ## Rules (Poll)
 
-- **Join is per-poll configurable** between "login required" and "open guest." Default: open guest (matches offline-class workflow). Guest join collects display name only.
-- **Timer is optional** — admin picks time-boxed (auto-close on 0) or manual close.
-- **Votes are locked on submit** — students cannot change their answer while the Poll is open.
-- **Students see no results until Poll closes.** Admin sees live vote counts during `open` state.
+- **Join is per-session configurable** between "login required" and "open guest." Default: open guest (matches offline-class workflow). Guest join collects display name only.
+- **Poll participant is session-local.** In open-guest sessions, signed-in Students join with their profile name and guests join with a display name, but both are represented as Poll participants for that Poll Session.
+- **Guest identity persists for the Poll Session.** Open-guest participants enter a display name once and keep the same participant identity across rounds on the same browser/device until the Poll Session closes.
+- **Guest display names are unique per Poll Session.** Duplicate display names are rejected inside the same Poll Session to keep participant status and rankings unambiguous.
+- **Late join is allowed while the Poll Session is open.** Late participants may answer the current Poll Round if it is still open; otherwise they wait for the next Poll Round. Their session score starts at zero.
+- **Poll Rounds close manually by default.** Admin may optionally add a timer per Poll Round; time-boxed rounds auto-close on 0.
+- **Student Poll Round UI shows answer buttons only.** Students see round status and A/B/C/D/E buttons, not full question text or option text. Admin may store a short internal round label for history.
+- **Poll Round label is optional.** The system auto-generates labels such as `Round 1`, `Round 2`, and Admin may override the label for easier history review.
+- **Poll Round answer key is set before opening.** Admin chooses the correct A/B/C/D/E letter before a Poll Round starts so scoring has a stable source of truth.
+- **Closed Poll Rounds can be corrected by Admin.** If Admin picked the wrong answer key, they may correct it only after the Poll Round closes; scores and session rankings are recalculated and the correction remains visible in history.
+- **Votes can change until the Poll Round closes.** A participant may change their selected answer while the Poll Round is open; the last submitted answer at close is scored and persisted.
+- **Answer reveal happens by closing the Poll Round.** Students see no results or correct answer until the Poll Round closes. Admin sees live vote counts during the open round.
+- **Only one Poll Round is active at a time.** If Admin clicks Next while a Poll Round is still open, the system closes/reveals the current round before opening the next one.
+- **Admin Poll Session dashboard prioritizes operation.** During an open Poll Session, Admin sees the join code, participant count, answered count, current round status, live answer distribution, participant status list, and a compact student-view preview.
+- **Closed-round feedback is personal plus ranked.** After a Poll Round closes, students see whether their own answer was correct, their points for that round, their current Poll Session rank, and a top-participant leaderboard.
+- **Students see participant status, not peer answers.** While a Poll Round is open, students may see which participants have submitted, but they must not see another participant's selected option.
+- **Poll scoring is local to the Poll Session.** A closed Poll Round may rank participants using correctness plus response speed, but these points exist only inside that Poll Session history and never become EXP or weekly Leaderboard points.
 - **Live count updates via HTTP polling at 3s interval** (not WebSockets) for M3. Revisit if scale demands.
+- **Poll Session history is persisted for admin review.** Admins can revisit session title/date/admin, participants, each round's correct answer, counts, percentages, each participant's selected answer per round, per-round score, final session score/rank, and answer-key corrections. Poll Session participation does not affect EXP, Level, Badge, Streak, Leaderboard, or the Student's normal learning experience.
+- **Closed Poll Session history is archived, not hard-deleted.** Normal Admin UI may hide archived sessions from default lists, but history remains recoverable/auditable.
+- **Closed Poll Sessions may reopen.** Reopening a Poll Session makes it open again so Admin can continue with new Poll Rounds; existing closed Poll Rounds remain closed. If the old Poll code is already used by another open Poll Session, the reopened session receives a fresh code.
+- **Student Poll history is out of scope.** Students receive live feedback during the Poll Session, but do not get a permanent Poll history page.
+- **Poll Session management lives in Admin CMS.** Admins create, run, archive, and review Poll Sessions from `/admin/polls`. Students join and participate through `/poll/join` and `/poll/$code`.
+- **All Admins may manage Poll Sessions.** Poll Session management is not restricted to Super-admins.
+- **Poll Session title is required for history.** Admin can accept an auto-filled class/date title to start quickly, but every Poll Session has a title for later review.
 
 ## Rules (Try-out autosave)
 

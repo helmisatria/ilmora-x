@@ -11,6 +11,7 @@ export default defineConfig({
   server: {
     port: 8090,
     strictPort: true,
+    allowedHosts: process.env.NODE_ENV === 'development' ? true : undefined
   },
   resolve: {
     tsconfigPaths: true,

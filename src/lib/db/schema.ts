@@ -148,7 +148,7 @@ export const tryouts = pgTable("tryouts", {
   publishedAt: timestamp("published_at", { withTimezone: true }),
   ...timestamps,
 }, (table) => [
-  check("tryouts_access_level_check", sql`${table.accessLevel} in ('free', 'premium', 'platinum')`),
+  check("tryouts_access_level_check", sql`${table.accessLevel} in ('free', 'premium')`),
   check("tryouts_status_check", sql`${table.status} in ('draft', 'published', 'unpublished')`),
   check("tryouts_duration_check", sql`${table.durationMinutes} between 1 and 300`),
 ]);
@@ -360,6 +360,80 @@ export const materiViews = pgTable("materi_views", {
   materiId: text("materi_id").notNull().references(() => materi.id, { onDelete: "cascade" }),
   viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const pollSessions = pgTable("poll_sessions", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  code: text("code").notNull(),
+  status: text("status").notNull().default("open"),
+  accessMode: text("access_mode").notNull().default("open_guest"),
+  createdByAdminUserId: text("created_by_admin_user_id").notNull().references(() => user.id),
+  openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  ...timestamps,
+}, (table) => [
+  index("poll_sessions_code_idx").on(table.code),
+  index("poll_sessions_status_idx").on(table.status),
+  check("poll_sessions_status_check", sql`${table.status} in ('draft', 'open', 'closed')`),
+  check("poll_sessions_access_mode_check", sql`${table.accessMode} in ('open_guest', 'login_required')`),
+  check("poll_sessions_code_check", sql`${table.code} ~ '^[0-9]{6}$'`),
+]);
+
+export const pollParticipants = pgTable("poll_participants", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id").notNull().references(() => pollSessions.id, { onDelete: "cascade" }),
+  studentUserId: text("student_user_id").references(() => user.id, { onDelete: "set null" }),
+  displayName: text("display_name").notNull(),
+  guestToken: text("guest_token").notNull(),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+}, (table) => [
+  unique("poll_participants_session_guest_token_unique").on(table.sessionId, table.guestToken),
+  unique("poll_participants_session_student_unique").on(table.sessionId, table.studentUserId),
+  index("poll_participants_session_idx").on(table.sessionId),
+]);
+
+export const pollRounds = pgTable("poll_rounds", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id").notNull().references(() => pollSessions.id, { onDelete: "cascade" }),
+  roundNumber: integer("round_number").notNull(),
+  label: text("label").notNull(),
+  correctOption: text("correct_option").notNull(),
+  status: text("status").notNull().default("open"),
+  timerSeconds: integer("timer_seconds"),
+  openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  correctedAt: timestamp("corrected_at", { withTimezone: true }),
+  correctedByAdminUserId: text("corrected_by_admin_user_id").references(() => user.id, { onDelete: "set null" }),
+  ...timestamps,
+}, (table) => [
+  unique("poll_rounds_session_number_unique").on(table.sessionId, table.roundNumber),
+  index("poll_rounds_session_status_idx").on(table.sessionId, table.status),
+  check("poll_rounds_correct_option_check", sql`${table.correctOption} in ('A', 'B', 'C', 'D', 'E')`),
+  check("poll_rounds_status_check", sql`${table.status} in ('open', 'closed')`),
+  check("poll_rounds_timer_seconds_check", sql`${table.timerSeconds} is null or ${table.timerSeconds} between 5 and 600`),
+]);
+
+export const pollAnswers = pgTable("poll_answers", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  roundId: text("round_id").notNull().references(() => pollRounds.id, { onDelete: "cascade" }),
+  participantId: text("participant_id").notNull().references(() => pollParticipants.id, { onDelete: "cascade" }),
+  selectedOption: text("selected_option").notNull(),
+  isCorrect: boolean("is_correct").notNull(),
+  points: integer("points").notNull().default(0),
+  responseMs: integer("response_ms").notNull().default(0),
+  answeredAt: timestamp("answered_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+}, (table) => [
+  unique("poll_answers_round_participant_unique").on(table.roundId, table.participantId),
+  index("poll_answers_round_idx").on(table.roundId),
+  index("poll_answers_participant_idx").on(table.participantId),
+  check("poll_answers_selected_option_check", sql`${table.selectedOption} in ('A', 'B', 'C', 'D', 'E')`),
+  check("poll_answers_points_check", sql`${table.points} >= 0`),
+  check("poll_answers_response_ms_check", sql`${table.responseMs} >= 0`),
+]);
 
 export const activityEvents = pgTable("activity_events", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -13,6 +13,7 @@ export const Route = createFileRoute("/admin")({
 const adminSections = [
   { label: "Users", to: "/admin/users", description: "Student accounts, status, and profile details.", icon: UsersIcon },
   { label: "Try-outs", to: "/admin/tryouts", description: "Assessment setup, publishing, and question assignment.", icon: BookIcon },
+  { label: "Polls", to: "/admin/polls", description: "Live classroom Poll Sessions, rounds, and history.", icon: SignalIcon },
   { label: "Reports", to: "/admin/reports", description: "Question reports from Students.", icon: FlagIcon },
   { label: "Insights", to: "/admin/insights", description: "Basic platform metrics for Milestone 1.", icon: ChartIcon },
   { label: "Monitoring", to: "/admin/monitoring", description: "pg-boss queue and schedule status for Super Admins.", icon: MonitorIcon },
@@ -111,6 +112,15 @@ function MonitorIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
       <path d="M8 20h8M12 16v4M7 10h2l1.5-3 3 6 1.5-3h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SignalIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M4 18.5a11.5 11.5 0 0 1 16 0M7.5 15a6.5 6.5 0 0 1 9 0M12 19h.1" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M12 5v3M18.5 7.5l-2 2M5.5 7.5l2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
