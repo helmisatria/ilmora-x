@@ -1,11 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, asc, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolveAvatarDisplay } from "./avatar";
 import { getCurrentViewerFromHeaders } from "./auth-functions";
-import { badges } from "../data/badges";
-import { getLevelForXp } from "../data/levels";
 import { db } from "./db/client";
 import {
   activityEvents,
@@ -17,7 +15,6 @@ import {
   categories,
   materi,
   questionReports,
-  questions,
   subCategories,
   studentBadges,
   studentExpLedger,
@@ -27,12 +24,20 @@ import {
   user,
 } from "./db/schema";
 import { assertActiveStudent, assertAttemptOwner } from "./domain/access";
+import {
+  attemptOptionLetters,
+  getAttemptForStudent,
+  getAttemptStartState,
+  saveAttemptForStudent,
+  startOrResumeAttemptForStudent,
+  submitAttemptForStudent,
+  toOptionIndex,
+  toOptions,
+} from "./domain/attempt-lifecycle";
+import { badgeCodeToId, calculateCurrentStreak } from "./domain/engagement-surface";
 import { getJakartaWeekStartDateKey, getJakartaWeekWindow } from "./domain/leaderboard";
-import { conflict, notFound } from "./http/errors";
+import { notFound } from "./http/errors";
 import { parseInput } from "./http/validation";
-
-const optionLetters = ["A", "B", "C", "D", "E"] as const;
-const DEFAULT_DAILY_TRYOUT_ATTEMPT_LIMIT = 3;
 
 const tryoutIdSchema = z.object({
   tryoutId: z.string().trim().min(1),
@@ -51,7 +56,7 @@ const saveAttemptSchema = z.object({
   lastQuestionIndex: z.number().int().min(0).max(1000),
   answers: z.array(z.object({
     snapshotId: z.string().trim().min(1),
-    selectedOption: z.enum(optionLetters).nullable(),
+    selectedOption: z.enum(attemptOptionLetters).nullable(),
   })).max(500),
   markedSnapshotIds: z.array(z.string().trim().min(1)).max(500),
 });
@@ -81,459 +86,6 @@ function getImpersonationMetadata(viewer: Awaited<ReturnType<typeof getStudentVi
     impersonatedByAdminUserId: viewer.impersonation.adminUserId,
     impersonatedByAdminEmail: viewer.impersonation.adminEmail,
   };
-}
-
-function toOptionIndex(option: string | null) {
-  if (!option) return null;
-
-  const index = optionLetters.findIndex((letter) => letter === option);
-
-  if (index < 0) return null;
-
-  return index;
-}
-
-function toOptions(row: {
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  optionE: string | null;
-}) {
-  const options = [row.optionA, row.optionB, row.optionC, row.optionD];
-
-  if (row.optionE) {
-    options.push(row.optionE);
-  }
-
-  return options;
-}
-
-function calculateXp(correctCount: number, attemptNumber: number) {
-  const baseXp = 50 + correctCount * 20;
-
-  if (attemptNumber === 1) return baseXp;
-
-  return Math.round(baseXp * 0.25);
-}
-
-function calculateAttemptXp({
-  correctCount,
-  attemptNumber,
-  isExtraPractice,
-}: {
-  correctCount: number;
-  attemptNumber: number;
-  isExtraPractice: boolean;
-}) {
-  if (isExtraPractice) return 0;
-
-  return calculateXp(correctCount, attemptNumber);
-}
-
-function getJakartaDateKey(date: Date) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Jakarta",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
-function calculateCurrentStreak(submittedDates: Array<Date | null>) {
-  const submittedDayKeys = new Set(
-    submittedDates
-      .filter((date): date is Date => date !== null)
-      .map(getJakartaDateKey),
-  );
-
-  if (submittedDayKeys.size === 0) return 0;
-
-  const cursor = new Date();
-  const todayKey = getJakartaDateKey(cursor);
-
-  if (!submittedDayKeys.has(todayKey)) {
-    cursor.setDate(cursor.getDate() - 1);
-
-    const yesterdayKey = getJakartaDateKey(cursor);
-
-    if (!submittedDayKeys.has(yesterdayKey)) return 0;
-  }
-
-  let streak = 0;
-
-  for (;;) {
-    const dayKey = getJakartaDateKey(cursor);
-
-    if (!submittedDayKeys.has(dayKey)) return streak;
-
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-}
-
-function badgeIdToCode(badgeId: number) {
-  return `BADGE-${String(badgeId).padStart(3, "0")}`;
-}
-
-function badgeCodeToId(badgeCode: string) {
-  const match = badgeCode.match(/^BADGE-(\d+)$/);
-
-  if (!match) return null;
-
-  return Number(match[1]);
-}
-
-function getStartOfJakartaWeekSql() {
-  return sql`date_trunc('week', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
-}
-
-function getStartOfJakartaDaySql() {
-  return sql`date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
-}
-
-function getDailyTryoutAttemptLimit() {
-  const configuredLimit = Number(process.env.DAILY_TRYOUT_ATTEMPT_LIMIT);
-
-  if (!Number.isInteger(configuredLimit)) return DEFAULT_DAILY_TRYOUT_ATTEMPT_LIMIT;
-  if (configuredLimit < 1) return DEFAULT_DAILY_TRYOUT_ATTEMPT_LIMIT;
-
-  return configuredLimit;
-}
-
-async function countTodayTryoutAttempts(studentUserId: string, tryoutId: string) {
-  const dayStart = getStartOfJakartaDaySql();
-  const dayEnd = sql`${dayStart} + interval '1 day'`;
-
-  const [row] = await db
-    .select({
-      count: sql<number>`count(${attempts.id})`,
-    })
-    .from(attempts)
-    .where(and(
-      eq(attempts.studentUserId, studentUserId),
-      eq(attempts.tryoutId, tryoutId),
-      gte(attempts.startedAt, dayStart),
-      lt(attempts.startedAt, dayEnd),
-    ));
-
-  return Number(row?.count ?? 0);
-}
-
-function hasExtendedPracticeAccess(accessLevel: string) {
-  if (accessLevel === "free") return false;
-
-  return true;
-}
-
-function getVisibleDailyAttemptLimit(hasExtendedPractice: boolean, dailyAttemptLimit: number) {
-  if (hasExtendedPractice) return null;
-
-  return dailyAttemptLimit;
-}
-
-async function isExtraPracticeAttempt(attempt: typeof attempts.$inferSelect, dailyAttemptLimit: number) {
-  const dayStart = sql`date_trunc('day', ${attempt.startedAt} at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
-  const dayEnd = sql`${dayStart} + interval '1 day'`;
-
-  const [row] = await db
-    .select({
-      count: sql<number>`count(${attempts.id})`,
-    })
-    .from(attempts)
-    .where(and(
-      eq(attempts.studentUserId, attempt.studentUserId),
-      eq(attempts.tryoutId, attempt.tryoutId),
-      gte(attempts.startedAt, dayStart),
-      lt(attempts.startedAt, dayEnd),
-      lte(attempts.startedAt, attempt.startedAt),
-    ));
-
-  return Number(row?.count ?? 0) > dailyAttemptLimit;
-}
-
-async function getAttemptForStudent(attemptId: string) {
-  const [attempt] = await db
-    .select()
-    .from(attempts)
-    .where(eq(attempts.id, attemptId))
-    .limit(1);
-
-  if (attempt) return attempt;
-
-  throw notFound("Attempt was not found.");
-}
-
-async function ensureAttemptCanBeEdited(attemptId: string, studentUserId: string) {
-  const attempt = await getAttemptForStudent(attemptId);
-
-  if (attempt.studentUserId !== studentUserId) {
-    throw notFound("Attempt was not found.");
-  }
-
-  if (attempt.status !== "in_progress") {
-    throw conflict("Attempt has already been submitted.");
-  }
-
-  return attempt;
-}
-
-async function saveAttemptProgress(
-  attemptId: string,
-  data: z.infer<typeof saveAttemptSchema>,
-) {
-  const snapshots = await db
-    .select({
-      id: attemptQuestionSnapshots.id,
-      correctOption: attemptQuestionSnapshots.correctOption,
-    })
-    .from(attemptQuestionSnapshots)
-    .where(eq(attemptQuestionSnapshots.attemptId, attemptId));
-  const snapshotIds = new Set(snapshots.map((snapshot) => snapshot.id));
-
-  for (const answer of data.answers) {
-    if (!snapshotIds.has(answer.snapshotId)) {
-      throw conflict("Answer references a Question outside this Attempt.");
-    }
-  }
-
-  for (const snapshotId of data.markedSnapshotIds) {
-    if (!snapshotIds.has(snapshotId)) {
-      throw conflict("Marked Question is outside this Attempt.");
-    }
-  }
-
-  await db.transaction(async (tx) => {
-    for (const answer of data.answers) {
-      const snapshot = snapshots.find((item) => item.id === answer.snapshotId);
-      const isCorrect = answer.selectedOption
-        ? snapshot?.correctOption === answer.selectedOption
-        : null;
-
-      await tx
-        .insert(attemptAnswers)
-        .values({
-          attemptId,
-          snapshotId: answer.snapshotId,
-          selectedOption: answer.selectedOption,
-          isCorrect,
-          answeredAt: answer.selectedOption ? new Date() : null,
-        })
-        .onConflictDoUpdate({
-          target: [attemptAnswers.attemptId, attemptAnswers.snapshotId],
-          set: {
-            selectedOption: answer.selectedOption,
-            isCorrect,
-            answeredAt: answer.selectedOption ? new Date() : null,
-            updatedAt: new Date(),
-          },
-        });
-    }
-
-    await tx
-      .delete(attemptMarkedQuestions)
-      .where(eq(attemptMarkedQuestions.attemptId, attemptId));
-
-    if (data.markedSnapshotIds.length > 0) {
-      await tx.insert(attemptMarkedQuestions).values(
-        data.markedSnapshotIds.map((snapshotId) => ({
-          attemptId,
-          snapshotId,
-        })),
-      );
-    }
-
-    await tx
-      .update(attempts)
-      .set({
-        lastQuestionIndex: data.lastQuestionIndex,
-        lastServerSavedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(attempts.id, attemptId));
-  });
-}
-
-async function awardBadgeReward({
-  studentUserId,
-  badgeId,
-  rewardXp,
-  metadata,
-}: {
-  studentUserId: string;
-  badgeId: number;
-  rewardXp: number;
-  metadata: Record<string, unknown>;
-}) {
-  return db.transaction(async (tx) => {
-    const badgeCode = badgeIdToCode(badgeId);
-    const [badge] = await tx
-      .insert(studentBadges)
-      .values({
-        studentUserId,
-        badgeCode,
-        awardSource: "daily_evaluation",
-        rewardXp,
-        metadata,
-      })
-      .onConflictDoNothing({
-        target: [studentBadges.studentUserId, studentBadges.badgeCode],
-      })
-      .returning({ id: studentBadges.id });
-
-    if (!badge) return null;
-    if (rewardXp <= 0) return { badgeId, rewardXp: 0 };
-
-    await tx
-      .insert(studentExpLedger)
-      .values({
-        studentUserId,
-        sourceType: "badge_reward",
-        sourceId: badge.id,
-        xpAmount: rewardXp,
-        metadata: {
-          badgeCode,
-          ...metadata,
-        },
-      })
-      .onConflictDoNothing({
-        target: [studentExpLedger.sourceType, studentExpLedger.sourceId],
-      });
-
-    return { badgeId, rewardXp };
-  });
-}
-
-async function awardDailyBadges(studentUserId: string) {
-  const submittedAttempts = await db
-    .select({
-      id: attempts.id,
-      tryoutId: attempts.tryoutId,
-      submittedAt: attempts.submittedAt,
-      deadlineAt: attempts.deadlineAt,
-      score: attempts.score,
-      correctCount: attempts.correctCount,
-      totalQuestions: attempts.totalQuestions,
-      xpEarned: attempts.xpEarned,
-      autoSubmitReason: attempts.autoSubmitReason,
-    })
-    .from(attempts)
-    .where(and(
-      eq(attempts.studentUserId, studentUserId),
-      sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-    ));
-
-  if (submittedAttempts.length === 0) return [];
-
-  const [badgeRewardRow] = await db
-    .select({
-      xp: sql<number>`coalesce(sum(${studentExpLedger.xpAmount}), 0)`,
-    })
-    .from(studentExpLedger)
-    .where(and(
-      eq(studentExpLedger.studentUserId, studentUserId),
-      eq(studentExpLedger.sourceType, "badge_reward"),
-    ));
-  const awardedBadgeRows = await db
-    .select({ badgeCode: studentBadges.badgeCode })
-    .from(studentBadges)
-    .where(eq(studentBadges.studentUserId, studentUserId));
-
-  const awardedBadgeIds = new Set(
-    awardedBadgeRows
-      .map((badge) => badgeCodeToId(badge.badgeCode))
-      .filter((badgeId): badgeId is number => badgeId !== null),
-  );
-  const totalQuestions = submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0);
-  const totalCorrect = submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0);
-  const attemptXp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
-  let totalXp = attemptXp + Number(badgeRewardRow?.xp ?? 0);
-  const awardedBadges: Array<{ badgeId: number; rewardXp: number }> = [];
-
-  for (;;) {
-    const eligibleBadge = getNextEligibleDailyBadge({
-      awardedBadgeIds,
-      submittedAttempts,
-      totalQuestions,
-      totalCorrect,
-      totalXp,
-    });
-
-    if (!eligibleBadge) return awardedBadges;
-
-    const awardedBadge = await awardBadgeReward({
-      studentUserId,
-      badgeId: eligibleBadge.id,
-      rewardXp: eligibleBadge.xpReward,
-      metadata: {
-        badgeName: eligibleBadge.name,
-        awardReason: eligibleBadge.task,
-      },
-    });
-
-    awardedBadgeIds.add(eligibleBadge.id);
-
-    if (!awardedBadge) continue;
-
-    totalXp += awardedBadge.rewardXp;
-    awardedBadges.push(awardedBadge);
-  }
-}
-
-function getNextEligibleDailyBadge({
-  awardedBadgeIds,
-  submittedAttempts,
-  totalQuestions,
-  totalCorrect,
-  totalXp,
-}: {
-  awardedBadgeIds: Set<number>;
-  submittedAttempts: Array<{
-    tryoutId: string;
-    submittedAt: Date | null;
-    deadlineAt: Date;
-    score: number | null;
-    totalQuestions: number;
-    autoSubmitReason: string | null;
-  }>;
-  totalQuestions: number;
-  totalCorrect: number;
-  totalXp: number;
-}) {
-  const level = getLevelForXp(totalXp).level;
-  const streak = calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt));
-  const uniqueTryoutCount = new Set(submittedAttempts.map((attempt) => attempt.tryoutId)).size;
-  const failedAttemptCount = submittedAttempts.filter((attempt) => (attempt.score ?? 0) < 70).length;
-  const accuracy = totalQuestions > 0
-    ? Math.round((totalCorrect / totalQuestions) * 100)
-    : 0;
-  const hasSpeedRunnerAttempt = submittedAttempts.some((attempt) => {
-    if ((attempt.score ?? 0) <= 80) return false;
-    if (!attempt.submittedAt) return false;
-    if (attempt.autoSubmitReason) return false;
-
-    return attempt.submittedAt <= attempt.deadlineAt;
-  });
-  const hasPerfectScoreAttempt = submittedAttempts.some((attempt) => (attempt.score ?? 0) >= 100);
-
-  return badges.find((badge) => {
-    if (awardedBadgeIds.has(badge.id)) return false;
-    if (badge.task.toLowerCase().includes("leaderboard")) return false;
-
-    const levelMatch = badge.task.match(/Reach Level (\d+)/i);
-    const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
-    const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
-
-    if (badge.id === 1) return submittedAttempts.length > 0;
-    if (levelMatch) return level >= Number(levelMatch[1]);
-    if (streakMatch) return streak >= Number(streakMatch[1]);
-    if (tryoutMatch) return uniqueTryoutCount >= Number(tryoutMatch[1]);
-    if (badge.name === "Speed Runner") return hasSpeedRunnerAttempt;
-    if (badge.name === "Fail Legend") return failedAttemptCount >= 5;
-    if (badge.name === "100% Club") return hasPerfectScoreAttempt || accuracy >= 100;
-
-    return false;
-  }) ?? null;
 }
 
 export const listPublishedTryouts = createServerFn({ method: "GET" }).handler(async () => {
@@ -763,9 +315,11 @@ export const getTryoutPreparation = createServerFn({ method: "GET" })
       throw notFound("Try-out was not found.");
     }
 
-    const dailyAttemptLimit = getDailyTryoutAttemptLimit();
-    const attemptsToday = await countTodayTryoutAttempts(viewer.userId, data.tryoutId);
-    const hasExtendedPractice = hasExtendedPracticeAccess(tryout.accessLevel);
+    const startState = await getAttemptStartState({
+      studentUserId: viewer.userId,
+      tryoutId: data.tryoutId,
+      accessLevel: tryout.accessLevel,
+    });
     const [activeAttempt] = await db
       .select({ id: attempts.id })
       .from(attempts)
@@ -782,10 +336,7 @@ export const getTryoutPreparation = createServerFn({ method: "GET" })
       categoryColor: tryout.categoryColor ?? "#205072",
       questionCount: Number(tryout.questionCount ?? 0),
       activeAttemptId: activeAttempt?.id ?? null,
-      attemptsToday,
-      dailyAttemptLimit: getVisibleDailyAttemptLimit(hasExtendedPractice, dailyAttemptLimit),
-      normalDailyAttemptLimit: dailyAttemptLimit,
-      hasExtendedPractice,
+      ...startState,
     };
   });
 
@@ -794,126 +345,10 @@ export const startOrResumeAttempt = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const viewer = await getStudentViewer();
 
-    const [existingAttempt] = await db
-      .select({ id: attempts.id })
-      .from(attempts)
-      .where(and(
-        eq(attempts.studentUserId, viewer.userId),
-        eq(attempts.tryoutId, data.tryoutId),
-        eq(attempts.status, "in_progress"),
-      ))
-      .limit(1);
-
-    if (existingAttempt) {
-      return getTakeAttemptData(existingAttempt.id);
-    }
-
-    const [tryout] = await db
-      .select({
-        id: tryouts.id,
-        durationMinutes: tryouts.durationMinutes,
-        accessLevel: tryouts.accessLevel,
-      })
-      .from(tryouts)
-      .where(and(eq(tryouts.id, data.tryoutId), eq(tryouts.status, "published")))
-      .limit(1);
-
-    if (!tryout) {
-      throw notFound("Try-out was not found.");
-    }
-
-    const dailyAttemptLimit = getDailyTryoutAttemptLimit();
-    const attemptsToday = await countTodayTryoutAttempts(viewer.userId, data.tryoutId);
-    const hasExtendedPractice = hasExtendedPracticeAccess(tryout.accessLevel);
-
-    if (!hasExtendedPractice && attemptsToday >= dailyAttemptLimit) {
-      throw conflict(`Batas pengerjaan harian tercapai. Try-out yang sama hanya bisa dikerjakan ${dailyAttemptLimit} kali per hari.`);
-    }
-
-    const questionRows = await db
-      .select({
-        questionId: questions.id,
-        sortOrder: tryoutQuestions.sortOrder,
-        categoryId: questions.categoryId,
-        subCategoryId: questions.subCategoryId,
-        questionText: questions.questionText,
-        optionA: questions.optionA,
-        optionB: questions.optionB,
-        optionC: questions.optionC,
-        optionD: questions.optionD,
-        optionE: questions.optionE,
-        correctOption: questions.correctOption,
-        explanation: questions.explanation,
-        videoUrl: questions.videoUrl,
-        accessLevel: questions.accessLevel,
-      })
-      .from(tryoutQuestions)
-      .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
-      .where(and(eq(tryoutQuestions.tryoutId, data.tryoutId), eq(questions.status, "published")))
-      .orderBy(tryoutQuestions.sortOrder);
-
-    if (questionRows.length === 0) {
-      throw conflict("This Try-out has no published Questions yet.");
-    }
-
-    const [lastAttempt] = await db
-      .select({ attemptNumber: attempts.attemptNumber })
-      .from(attempts)
-      .where(and(eq(attempts.studentUserId, viewer.userId), eq(attempts.tryoutId, data.tryoutId)))
-      .orderBy(desc(attempts.attemptNumber))
-      .limit(1);
-    const attemptNumber = (lastAttempt?.attemptNumber ?? 0) + 1;
-    const startedAt = new Date();
-    const deadlineAt = new Date(startedAt.getTime() + tryout.durationMinutes * 60 * 1000);
-
-    const createdAttemptId = await db.transaction(async (tx) => {
-      const [createdAttempt] = await tx
-        .insert(attempts)
-        .values({
-          studentUserId: viewer.userId,
-          tryoutId: data.tryoutId,
-          attemptNumber,
-          status: "in_progress",
-          startedAt,
-          deadlineAt,
-          totalQuestions: questionRows.length,
-        })
-        .returning({ id: attempts.id });
-
-      await tx.insert(attemptQuestionSnapshots).values(
-        questionRows.map((question) => ({
-          attemptId: createdAttempt.id,
-          questionId: question.questionId,
-          sortOrder: question.sortOrder,
-          categoryId: question.categoryId,
-          subCategoryId: question.subCategoryId,
-          questionText: question.questionText,
-          optionA: question.optionA,
-          optionB: question.optionB,
-          optionC: question.optionC,
-          optionD: question.optionD,
-          optionE: question.optionE,
-          correctOption: question.correctOption,
-          explanation: question.explanation,
-          videoUrl: question.videoUrl,
-          accessLevel: question.accessLevel,
-        })),
-      );
-
-      await tx.insert(activityEvents).values({
-        studentUserId: viewer.userId,
-        eventType: "tryout_started",
-        metadata: {
-          tryoutId: data.tryoutId,
-          attemptId: createdAttempt.id,
-          ...getImpersonationMetadata(viewer),
-        },
-      });
-
-      return createdAttempt.id;
+    return startOrResumeAttemptForStudent({
+      viewer,
+      tryoutId: data.tryoutId,
     });
-
-    return getTakeAttemptData(createdAttemptId);
   });
 
 export const saveAttempt = createServerFn({ method: "POST" })
@@ -921,96 +356,18 @@ export const saveAttempt = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const viewer = await getStudentViewer();
 
-    await ensureAttemptCanBeEdited(data.attemptId, viewer.userId);
-    await saveAttemptProgress(data.attemptId, data);
-
-    return { ok: true, savedAt: new Date().toISOString() };
+    return saveAttemptForStudent({
+      studentUserId: viewer.userId,
+      data,
+    });
   });
 
 export const submitAttempt = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(submitAttemptSchema, input))
   .handler(async ({ data }) => {
     const viewer = await getStudentViewer();
-    const attempt = await ensureAttemptCanBeEdited(data.attemptId, viewer.userId);
 
-    await saveAttemptProgress(data.attemptId, data);
-
-    const answerRows = await db
-      .select({
-        isCorrect: attemptAnswers.isCorrect,
-      })
-      .from(attemptAnswers)
-      .where(eq(attemptAnswers.attemptId, data.attemptId));
-    const correctCount = answerRows.filter((answer) => answer.isCorrect).length;
-    const answeredCount = answerRows.filter((answer) => answer.isCorrect !== null).length;
-    const wrongCount = Math.max(attempt.totalQuestions - correctCount, 0);
-    const score = Math.round((correctCount / attempt.totalQuestions) * 100);
-    const [tryout] = await db
-      .select({ accessLevel: tryouts.accessLevel })
-      .from(tryouts)
-      .where(eq(tryouts.id, attempt.tryoutId))
-      .limit(1);
-    const dailyAttemptLimit = getDailyTryoutAttemptLimit();
-    const hasExtendedPractice = hasExtendedPracticeAccess(tryout?.accessLevel ?? "free");
-    const extraPracticeAttempt = hasExtendedPractice
-      ? await isExtraPracticeAttempt(attempt, dailyAttemptLimit)
-      : false;
-    const isImpersonatedSubmission = Boolean(viewer.impersonation);
-    const xpEarned = isImpersonatedSubmission
-      ? 0
-      : calculateAttemptXp({
-          correctCount,
-          attemptNumber: attempt.attemptNumber,
-          isExtraPractice: extraPracticeAttempt,
-        });
-    const now = new Date();
-    const timedOut = now > attempt.deadlineAt;
-    const status = timedOut || data.autoSubmitReason ? "auto_submitted" : "submitted";
-
-    await db.transaction(async (tx) => {
-      await tx
-        .update(attempts)
-        .set({
-          status,
-          submittedAt: now,
-          score,
-          correctCount,
-          wrongCount,
-          xpEarned,
-          submittedByAdminUserId: viewer.impersonation?.adminUserId ?? null,
-          isImpersonatedSubmission,
-          autoSubmitReason: data.autoSubmitReason ?? (timedOut ? "deadline_reached" : null),
-          updatedAt: now,
-        })
-        .where(eq(attempts.id, data.attemptId));
-
-      await tx.insert(activityEvents).values({
-        studentUserId: viewer.userId,
-        eventType: "tryout_submitted",
-        metadata: {
-          tryoutId: attempt.tryoutId,
-          attemptId: data.attemptId,
-          correctCount,
-          answeredCount,
-          totalQuestions: attempt.totalQuestions,
-          score,
-          ...getImpersonationMetadata(viewer),
-        },
-      });
-    });
-
-    const awardedBadges = isImpersonatedSubmission
-      ? []
-      : await awardDailyBadges(viewer.userId);
-
-    return {
-      attemptId: data.attemptId,
-      score,
-      correctCount,
-      totalQuestions: attempt.totalQuestions,
-      xpEarned,
-      awardedBadges,
-    };
+    return submitAttemptForStudent({ viewer, data });
   });
 
 export const reportAttemptQuestion = createServerFn({ method: "POST" })
@@ -1246,80 +603,6 @@ export const listProgressSummary = createServerFn({ method: "GET" }).handler(asy
     })),
   };
 });
-
-async function getTakeAttemptData(attemptId: string) {
-  const attempt = await getAttemptForStudent(attemptId);
-  const questions = await getTakeAttemptQuestionRows(attemptId);
-  const answerRows = await db
-    .select({
-      snapshotId: attemptAnswers.snapshotId,
-      selectedOption: attemptAnswers.selectedOption,
-    })
-    .from(attemptAnswers)
-    .where(eq(attemptAnswers.attemptId, attemptId));
-  const markedRows = await db
-    .select({ snapshotId: attemptMarkedQuestions.snapshotId })
-    .from(attemptMarkedQuestions)
-    .where(eq(attemptMarkedQuestions.attemptId, attemptId));
-
-  return {
-    attempt: {
-      id: attempt.id,
-      tryoutId: attempt.tryoutId,
-      attemptNumber: attempt.attemptNumber,
-      status: attempt.status as "in_progress" | "submitted" | "auto_submitted",
-      startedAt: attempt.startedAt.toISOString(),
-      deadlineAt: attempt.deadlineAt.toISOString(),
-      lastQuestionIndex: attempt.lastQuestionIndex,
-      lastServerSavedAt: attempt.lastServerSavedAt?.toISOString() ?? null,
-    },
-    questions,
-    answers: answerRows.map((answer) => ({
-      snapshotId: answer.snapshotId,
-      selectedOption: answer.selectedOption as "A" | "B" | "C" | "D" | "E" | null,
-      selectedIndex: toOptionIndex(answer.selectedOption),
-    })),
-    markedSnapshotIds: markedRows.map((row) => row.snapshotId),
-  };
-}
-
-async function getTakeAttemptQuestionRows(attemptId: string) {
-  const rows = await db
-    .select({
-      snapshotId: attemptQuestionSnapshots.id,
-      questionId: attemptQuestionSnapshots.questionId,
-      sortOrder: attemptQuestionSnapshots.sortOrder,
-      categoryId: attemptQuestionSnapshots.categoryId,
-      categoryName: categories.name,
-      subCategoryId: attemptQuestionSnapshots.subCategoryId,
-      subCategoryName: subCategories.name,
-      questionText: attemptQuestionSnapshots.questionText,
-      optionA: attemptQuestionSnapshots.optionA,
-      optionB: attemptQuestionSnapshots.optionB,
-      optionC: attemptQuestionSnapshots.optionC,
-      optionD: attemptQuestionSnapshots.optionD,
-      optionE: attemptQuestionSnapshots.optionE,
-      accessLevel: attemptQuestionSnapshots.accessLevel,
-    })
-    .from(attemptQuestionSnapshots)
-    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-    .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
-    .where(eq(attemptQuestionSnapshots.attemptId, attemptId))
-    .orderBy(attemptQuestionSnapshots.sortOrder);
-
-  return rows.map((row) => ({
-    snapshotId: row.snapshotId,
-    questionId: row.questionId,
-    sortOrder: row.sortOrder,
-    categoryId: row.categoryId,
-    categoryName: row.categoryName,
-    subCategoryId: row.subCategoryId,
-    subCategoryName: row.subCategoryName,
-    questionText: row.questionText,
-    options: toOptions(row),
-    accessLevel: row.accessLevel as "free" | "premium",
-  }));
-}
 
 async function getAttemptSnapshotRows(attemptId: string) {
   const rows = await db

@@ -12,6 +12,10 @@ _Avoid_: CBT (internal/admin docs only), exercise (do not use)
 A single start-to-finish session of a **Try-out**, from first click of "Mulai" to submit or timer expiry. Autosave resumes the same Attempt after a disconnect or refresh. A retake creates a **new** Attempt.
 _Avoid_: Session, try, run
 
+**Attempt lifecycle**:
+The server-owned progression of an **Attempt** from start/resume through autosave and submit/auto-submit.
+_Avoid_: Session lifecycle
+
 **Category**:
 The top level of question classification (e.g. "Klinis", "Farmakologi"). Every **Question** belongs to exactly one Category.
 
@@ -69,6 +73,7 @@ A 6-digit numeric code unique **among currently-open Polls only**. Reuseable aft
 - **Only one active Attempt session per Student.** Opening the Attempt on a second device invalidates the first; the losing client shows a kick-out modal.
 - **On submit: flush local queue first, then submit.** If offline at submit time, queue and retry on reconnect. If the wall-clock deadline elapses while offline, the server auto-submits with the last-synced state.
 - **"Auto-saved at HH:MM" UI shows last server-confirmed save**, not last local save. Avoids false reassurance.
+- **Attempt lifecycle may trigger Badge evaluation after submit, but Badge rules belong to the Engagement surface.** Attempt submission records the Attempt result and may orchestrate downstream Badge evaluation; it does not own Badge eligibility rules.
 
 ## Rules (Try-out content management)
 
@@ -189,6 +194,7 @@ The frozen copy of a **Question**'s content captured when an **Attempt** begins.
 
 - **Timer continues wall-clock during disconnect.** When a student disconnects mid-Attempt, the server-side deadline keeps counting. This prevents "disconnect to think" exploits and matches real exam behavior.
 - **EXP grant scales on retake and extra practice.** First Attempt of a Try-out grants full EXP. Subsequent Attempts inside the normal daily quota grant a reduced amount (currently 25% of base). Active Premium access or Lifetime Try-out Purchase ownership may allow extra same-day practice for the accessible Try-out, but Attempts beyond the normal daily quota grant 0 EXP.
+- **Daily Try-out Attempt limits are part of the Attempt lifecycle.** Premium access or Lifetime Try-out Purchase ownership may grant extended practice access, but the Attempt lifecycle decides whether a new Attempt can start and whether that Attempt earns EXP.
 - **Badge counts of "Complete N CBT" use unique Try-outs completed**, not total Attempts. Prevents farming BADGE-022/023/024 by retaking a short Try-out.
 - **Permanent EXP bonus: only the highest tier applies.** A student at level 46 with BADGE-004..011 all earned gets a single +40% multiplier (from BADGE-011), not additive stacking. Applies to EXP earned after the badge is awarded only; never retroactive.
 - **Leaderboard is weekly and EXP-earned-that-week only.** Week = Monday 00:00 → Sunday 23:59 WIB (UTC+7). The week closes at Monday 00:00 WIB; finalization may run shortly after the boundary (for example Monday 00:05 WIB). The canonical week key is the Jakarta Monday start date (`YYYY-MM-DD`).
