@@ -65,7 +65,9 @@ async function runWithRetry() {
     const isLastAttempt = attempt === retryOptions.maxAttempts;
 
     try {
+      console.info(`Running migration attempt ${attempt}/${retryOptions.maxAttempts}...`);
       await runDrizzleMigration();
+      console.info("Migration completed successfully.");
       return;
     } catch (error) {
       if (isLastAttempt) {
