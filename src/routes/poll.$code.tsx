@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../data";
 import { getPollStudentState, joinPollSession, submitPollAnswer } from "../lib/poll-functions";
+import { subscribeToPollUpdates } from "../lib/poll-live";
 import { getSafeErrorMessage } from "../lib/user-errors";
 
 const pollOptions = ["A", "B", "C", "D", "E"] as const;
@@ -54,11 +55,13 @@ function PollActiveComponent() {
     };
 
     load();
-    const intervalId = window.setInterval(load, 3000);
+    const unsubscribe = subscribeToPollUpdates({ code, onUpdate: load });
+    const fallbackId = window.setInterval(load, 60_000);
 
     return () => {
       isMounted = false;
-      window.clearInterval(intervalId);
+      unsubscribe();
+      window.clearInterval(fallbackId);
     };
   }, [code, navigate, loadState]);
 

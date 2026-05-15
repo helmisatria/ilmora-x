@@ -271,6 +271,8 @@ async function closeExpiredOpenRoundBySession(sessionId: string, now = new Date(
     })
     .where(eq(pollRounds.id, round.id));
 
+  await publishPollSessionChanged(sessionId);
+
   return round;
 }
 
@@ -460,6 +462,28 @@ async function getSessionDetail(sessionId: string) {
   };
 }
 
+async function publishPollSessionChanged(sessionId: string) {
+  try {
+    const { publishPollEvent } = await import("./poll-events");
+    const [session] = await db
+      .select({ id: pollSessions.id, code: pollSessions.code })
+      .from(pollSessions)
+      .where(eq(pollSessions.id, sessionId))
+      .limit(1);
+
+    if (!session) return;
+
+    await publishPollEvent({
+      type: "poll-updated",
+      sessionId: session.id,
+      code: session.code,
+      occurredAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Poll live update was not published.", error);
+  }
+}
+
 export const listPollSessionsAdmin = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .handler(async () => {
@@ -519,7 +543,10 @@ export const createPollSessionAdmin = createServerFn({ method: "POST" })
       })
       .returning({ id: pollSessions.id });
 
-    return getSessionDetail(session.id);
+    const detail = await getSessionDetail(session.id);
+    await publishPollSessionChanged(session.id);
+
+    return detail;
   });
 
 export const createPollRoundAdmin = createServerFn({ method: "POST" })
@@ -555,7 +582,10 @@ export const createPollRoundAdmin = createServerFn({ method: "POST" })
       updatedAt: now,
     });
 
-    return getSessionDetail(session.id);
+    const detail = await getSessionDetail(session.id);
+    await publishPollSessionChanged(session.id);
+
+    return detail;
   });
 
 export const closePollRoundAdmin = createServerFn({ method: "POST" })
@@ -577,7 +607,10 @@ export const closePollRoundAdmin = createServerFn({ method: "POST" })
       })
       .where(eq(pollRounds.id, round.id));
 
-    return getSessionDetail(round.sessionId);
+    const detail = await getSessionDetail(round.sessionId);
+    await publishPollSessionChanged(round.sessionId);
+
+    return detail;
   });
 
 export const correctPollRoundAdmin = createServerFn({ method: "POST" })
@@ -601,7 +634,10 @@ export const correctPollRoundAdmin = createServerFn({ method: "POST" })
       .where(eq(pollRounds.id, round.id));
     await recalculateRoundAnswers(round.id, data.correctOption);
 
-    return getSessionDetail(round.sessionId);
+    const detail = await getSessionDetail(round.sessionId);
+    await publishPollSessionChanged(round.sessionId);
+
+    return detail;
   });
 
 export const closePollSessionAdmin = createServerFn({ method: "POST" })
@@ -621,7 +657,10 @@ export const closePollSessionAdmin = createServerFn({ method: "POST" })
       })
       .where(eq(pollSessions.id, session.id));
 
-    return getSessionDetail(session.id);
+    const detail = await getSessionDetail(session.id);
+    await publishPollSessionChanged(session.id);
+
+    return detail;
   });
 
 export const reopenPollSessionAdmin = createServerFn({ method: "POST" })
@@ -646,7 +685,10 @@ export const reopenPollSessionAdmin = createServerFn({ method: "POST" })
       })
       .where(eq(pollSessions.id, session.id));
 
-    return getSessionDetail(session.id);
+    const detail = await getSessionDetail(session.id);
+    await publishPollSessionChanged(session.id);
+
+    return detail;
   });
 
 export const archivePollSessionAdmin = createServerFn({ method: "POST" })
@@ -654,6 +696,10 @@ export const archivePollSessionAdmin = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(archivePollSessionSchema, input))
   .handler(async ({ data }) => {
     const session = await getSessionById(data.sessionId);
+
+    if (data.archived && session.status === "open") {
+      throw conflict("Close the Poll Session before archiving it.");
+    }
 
     await db
       .update(pollSessions)
@@ -663,7 +709,10 @@ export const archivePollSessionAdmin = createServerFn({ method: "POST" })
       })
       .where(eq(pollSessions.id, session.id));
 
-    return getSessionDetail(session.id);
+    const detail = await getSessionDetail(session.id);
+    await publishPollSessionChanged(session.id);
+
+    return detail;
   });
 
 export const joinPollSession = createServerFn({ method: "POST" })
@@ -701,6 +750,8 @@ export const joinPollSession = createServerFn({ method: "POST" })
           })
           .where(eq(pollParticipants.id, existingParticipant.id));
 
+        await publishPollSessionChanged(session.id);
+
         return {
           code: session.code,
           participantToken: existingParticipant.guestToken,
@@ -728,6 +779,8 @@ export const joinPollSession = createServerFn({ method: "POST" })
           })
           .where(eq(pollParticipants.id, existingParticipant.id));
 
+        await publishPollSessionChanged(session.id);
+
         return {
           code: session.code,
           participantToken: existingParticipant.guestToken,
@@ -748,6 +801,8 @@ export const joinPollSession = createServerFn({ method: "POST" })
         guestToken: token,
       })
       .returning({ id: pollParticipants.id });
+
+    await publishPollSessionChanged(session.id);
 
     return {
       code: session.code,
@@ -917,6 +972,8 @@ export const submitPollAnswer = createServerFn({ method: "POST" })
         .set(answerValues)
         .where(eq(pollAnswers.id, existingAnswer.id));
 
+      await publishPollSessionChanged(round.sessionId);
+
       return { ok: true };
     }
 
@@ -926,6 +983,8 @@ export const submitPollAnswer = createServerFn({ method: "POST" })
       ...answerValues,
       createdAt: now,
     });
+
+    await publishPollSessionChanged(round.sessionId);
 
     return { ok: true };
   });

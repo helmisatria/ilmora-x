@@ -12,6 +12,7 @@ import {
   listPollSessionsAdmin,
   reopenPollSessionAdmin,
 } from "../../lib/poll-functions";
+import { subscribeToPollUpdates } from "../../lib/poll-live";
 import { getSafeErrorMessage } from "../../lib/user-errors";
 
 const pollOptions = ["A", "B", "C", "D", "E"] as const;
@@ -54,20 +55,43 @@ function AdminPollsPage() {
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [copiedSessionId, setCopiedSessionId] = useState("");
-
-  useEffect(() => {
-    if (!detail || detail.session.status !== "open") return;
-
-    const intervalId = window.setInterval(() => {
-      router.invalidate();
-    }, 3000);
-
-    return () => window.clearInterval(intervalId);
-  }, [detail, router]);
-
   const activeRound = detail?.rounds.find((round) => round.status === "open") ?? null;
   const latestRound = detail?.rounds.at(-1) ?? null;
   const visibleRound = activeRound ?? latestRound ?? null;
+  const selectedSessionId = detail?.session.id ?? "";
+  const selectedSessionStatus = detail?.session.status ?? "";
+
+  useEffect(() => {
+    if (!selectedSessionId || selectedSessionStatus !== "open") return;
+
+    const unsubscribe = subscribeToPollUpdates({
+      sessionId: selectedSessionId,
+      onUpdate: () => {
+        router.invalidate();
+      },
+    });
+    const fallbackId = window.setInterval(() => {
+      router.invalidate();
+    }, 60_000);
+
+    return () => {
+      unsubscribe();
+      window.clearInterval(fallbackId);
+    };
+  }, [selectedSessionId, selectedSessionStatus, router]);
+
+  useEffect(() => {
+    if (!activeRound?.timerSeconds) return;
+
+    const openedAt = new Date(activeRound.openedAt).getTime();
+    const expiresAt = openedAt + activeRound.timerSeconds * 1000;
+    const delayMs = Math.max(expiresAt - Date.now(), 0);
+    const timeoutId = window.setTimeout(() => {
+      router.invalidate();
+    }, delayMs + 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeRound?.id, activeRound?.openedAt, activeRound?.timerSeconds, router]);
 
   const runAction = async (actionName: string, action: () => Promise<unknown>) => {
     setBusyAction(actionName);
@@ -280,9 +304,13 @@ function AdminPollsPage() {
               </div>
 
               <section className="admin-panel flex flex-col gap-3 p-5 sm:flex-row sm:justify-between">
-                <button className="admin-button-secondary" onClick={archiveSession} disabled={busyAction === "archive-session"} type="button">
-                  {detail.session.archivedAt ? "Unarchive" : "Archive"}
-                </button>
+                {detail.session.status !== "open" || detail.session.archivedAt ? (
+                  <button className="admin-button-secondary" onClick={archiveSession} disabled={busyAction === "archive-session"} type="button">
+                    {detail.session.archivedAt ? "Unarchive" : "Archive"}
+                  </button>
+                ) : (
+                  <span />
+                )}
                 {detail.session.status === "open" ? (
                   <button className="admin-button-primary" onClick={closeSession} disabled={busyAction === "close-session"} type="button">
                     Close Session
