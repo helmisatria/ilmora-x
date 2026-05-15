@@ -37,9 +37,11 @@ import { Route as AdminPollsRouteImport } from './routes/admin/polls'
 import { Route as AdminMonitoringRouteImport } from './routes/admin/monitoring'
 import { Route as AdminMateriRouteImport } from './routes/admin/materi'
 import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
+import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
 import { Route as ApiPollsEventsRouteImport } from './routes/api/polls/events'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AdminUsersStudentIdRouteImport } from './routes/admin/users.$studentId'
 import { Route as AdminTryoutsIdRouteImport } from './routes/admin/tryouts.$id'
 import { Route as AdminPollsPresentationRouteImport } from './routes/admin/polls_.presentation'
 
@@ -183,6 +185,11 @@ const AdminInsightsRoute = AdminInsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ResultsAttemptIdReviewRoute = ResultsAttemptIdReviewRouteImport.update({
   id: '/review',
   path: '/review',
@@ -197,6 +204,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersStudentIdRoute = AdminUsersStudentIdRouteImport.update({
+  id: '/$studentId',
+  path: '/$studentId',
+  getParentRoute: () => AdminUsersRoute,
 } as any)
 const AdminTryoutsIdRoute = AdminTryoutsIdRouteImport.update({
   id: '/$id',
@@ -222,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
@@ -229,7 +242,7 @@ export interface FileRoutesByFullPath {
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
-  '/admin/users': typeof AdminUsersRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
@@ -240,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/tryout/$id': typeof TryoutIdRoute
   '/admin/polls/presentation': typeof AdminPollsPresentationRoute
   '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
+  '/admin/users/$studentId': typeof AdminUsersStudentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polls/events': typeof ApiPollsEventsRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
@@ -257,6 +271,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
@@ -264,7 +279,7 @@ export interface FileRoutesByTo {
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
-  '/admin/users': typeof AdminUsersRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
@@ -275,6 +290,7 @@ export interface FileRoutesByTo {
   '/tryout/$id': typeof TryoutIdRoute
   '/admin/polls/presentation': typeof AdminPollsPresentationRoute
   '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
+  '/admin/users/$studentId': typeof AdminUsersStudentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polls/events': typeof ApiPollsEventsRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
@@ -293,6 +309,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
@@ -300,7 +317,7 @@ export interface FileRoutesById {
   '/admin/questions': typeof AdminQuestionsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/tryouts': typeof AdminTryoutsRouteWithChildren
-  '/admin/users': typeof AdminUsersRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
@@ -311,6 +328,7 @@ export interface FileRoutesById {
   '/tryout/$id': typeof TryoutIdRoute
   '/admin/polls_/presentation': typeof AdminPollsPresentationRoute
   '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
+  '/admin/users/$studentId': typeof AdminUsersStudentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polls/events': typeof ApiPollsEventsRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
@@ -330,6 +348,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/tryout'
+    | '/admin/categories'
     | '/admin/insights'
     | '/admin/materi'
     | '/admin/monitoring'
@@ -348,6 +367,7 @@ export interface FileRouteTypes {
     | '/tryout/$id'
     | '/admin/polls/presentation'
     | '/admin/tryouts/$id'
+    | '/admin/users/$studentId'
     | '/api/auth/$'
     | '/api/polls/events'
     | '/results/$attemptId/review'
@@ -365,6 +385,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/tryout'
+    | '/admin/categories'
     | '/admin/insights'
     | '/admin/materi'
     | '/admin/monitoring'
@@ -383,6 +404,7 @@ export interface FileRouteTypes {
     | '/tryout/$id'
     | '/admin/polls/presentation'
     | '/admin/tryouts/$id'
+    | '/admin/users/$studentId'
     | '/api/auth/$'
     | '/api/polls/events'
     | '/results/$attemptId/review'
@@ -400,6 +422,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/tryout'
+    | '/admin/categories'
     | '/admin/insights'
     | '/admin/materi'
     | '/admin/monitoring'
@@ -418,6 +441,7 @@ export interface FileRouteTypes {
     | '/tryout/$id'
     | '/admin/polls_/presentation'
     | '/admin/tryouts/$id'
+    | '/admin/users/$studentId'
     | '/api/auth/$'
     | '/api/polls/events'
     | '/results/$attemptId/review'
@@ -644,6 +668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInsightsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/categories': {
+      id: '/admin/categories'
+      path: '/categories'
+      fullPath: '/admin/categories'
+      preLoaderRoute: typeof AdminCategoriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/results/$attemptId/review': {
       id: '/results/$attemptId/review'
       path: '/review'
@@ -664,6 +695,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/users/$studentId': {
+      id: '/admin/users/$studentId'
+      path: '/$studentId'
+      fullPath: '/admin/users/$studentId'
+      preLoaderRoute: typeof AdminUsersStudentIdRouteImport
+      parentRoute: typeof AdminUsersRoute
     }
     '/admin/tryouts/$id': {
       id: '/admin/tryouts/$id'
@@ -694,7 +732,20 @@ const AdminTryoutsRouteWithChildren = AdminTryoutsRoute._addFileChildren(
   AdminTryoutsRouteChildren,
 )
 
+interface AdminUsersRouteChildren {
+  AdminUsersStudentIdRoute: typeof AdminUsersStudentIdRoute
+}
+
+const AdminUsersRouteChildren: AdminUsersRouteChildren = {
+  AdminUsersStudentIdRoute: AdminUsersStudentIdRoute,
+}
+
+const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
+  AdminUsersRouteChildren,
+)
+
 interface AdminRouteChildren {
+  AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminInsightsRoute: typeof AdminInsightsRoute
   AdminMateriRoute: typeof AdminMateriRoute
   AdminMonitoringRoute: typeof AdminMonitoringRoute
@@ -702,11 +753,12 @@ interface AdminRouteChildren {
   AdminQuestionsRoute: typeof AdminQuestionsRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminTryoutsRoute: typeof AdminTryoutsRouteWithChildren
-  AdminUsersRoute: typeof AdminUsersRoute
+  AdminUsersRoute: typeof AdminUsersRouteWithChildren
   AdminPollsPresentationRoute: typeof AdminPollsPresentationRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCategoriesRoute: AdminCategoriesRoute,
   AdminInsightsRoute: AdminInsightsRoute,
   AdminMateriRoute: AdminMateriRoute,
   AdminMonitoringRoute: AdminMonitoringRoute,
@@ -714,7 +766,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminQuestionsRoute: AdminQuestionsRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminTryoutsRoute: AdminTryoutsRouteWithChildren,
-  AdminUsersRoute: AdminUsersRoute,
+  AdminUsersRoute: AdminUsersRouteWithChildren,
   AdminPollsPresentationRoute: AdminPollsPresentationRoute,
 }
 

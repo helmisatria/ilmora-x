@@ -7,6 +7,7 @@ import { db } from "./db/client";
 import { user } from "./db/schema";
 import { parseInput } from "./http/validation";
 import { readImpersonationPayload } from "./impersonation-cookie";
+import { acquisitionIntentSchema } from "./product-analytics";
 
 export type Viewer = {
   userId: string;
@@ -39,6 +40,7 @@ const completeProfileSchema = z.object({
   institution: z.string().trim().min(1).max(160),
   phone: z.string().trim().max(40).optional(),
   photoUrl: z.string().trim().url().optional().or(z.literal("")),
+  analyticsIntent: acquisitionIntentSchema.optional(),
 });
 
 const updateProfileAvatarSchema = z.object({
@@ -236,6 +238,46 @@ export const completeProfile = createServerFn({ method: "POST" })
             activityEvent: { type: "profile_completed" },
           });
           logger.error(error);
+        });
+
+        const { captureProductAnalyticsEvent, identifyProductAnalyticsUser } = await import("./product-analytics-server");
+        const { productAnalyticsEvents } = await import("./product-analytics");
+
+        identifyProductAnalyticsUser({
+          distinctId: session.user.id,
+          properties: {
+            email: session.user.email,
+            name: data.displayName,
+            institution: data.institution,
+            role: "student",
+            profile_completed: true,
+            has_phone: Boolean(data.phone),
+          },
+        });
+
+        if (!existingProfile) {
+          captureProductAnalyticsEvent({
+            distinctId: session.user.id,
+            event: productAnalyticsEvents.accountCreated,
+            properties: {
+              intent: data.analyticsIntent,
+              email: session.user.email,
+              name: data.displayName,
+              institution: data.institution,
+            },
+          });
+        }
+
+        captureProductAnalyticsEvent({
+          distinctId: session.user.id,
+          event: productAnalyticsEvents.profileCompleted,
+          properties: {
+            intent: data.analyticsIntent,
+            email: session.user.email,
+            name: data.displayName,
+            institution: data.institution,
+            has_phone: Boolean(data.phone),
+          },
         });
 
         return {

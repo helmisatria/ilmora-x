@@ -2,6 +2,8 @@ import { createRootRoute, HeadContent, Outlet, Scripts, redirect } from "@tansta
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AppProvider } from "../data/provider";
 import { getCurrentViewer } from "../lib/auth-functions";
+import { getAcquisitionIntent } from "../lib/product-analytics";
+import { ProductAnalyticsIdentity, ProductAnalyticsProvider } from "../lib/product-analytics-client";
 import { getProtectedRedirect, needsProtectedViewer } from "../lib/route-protection";
 import { getSafeErrorMessage } from "../lib/user-errors";
 import "../styles/app.css";
@@ -32,6 +34,17 @@ export const Route = createRootRoute({
     const redirectTo = getProtectedRedirect(location.pathname, viewer);
 
     if (redirectTo) {
+      if (redirectTo === "/auth/login") {
+        const search = location.search as { intent?: unknown };
+        const searchIntent = getAcquisitionIntent(search.intent);
+        const intent = searchIntent ?? (location.pathname.startsWith("/tryout") ? "tryout_catalog_signup" : undefined);
+
+        throw redirect({
+          to: redirectTo,
+          search: intent ? { intent } : undefined,
+        });
+      }
+
       throw redirect({ to: redirectTo });
     }
 
@@ -139,11 +152,14 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body className="antialiased">
-        <AppProvider viewer={viewer}>
-          <div id="app" className="view">
-            <Outlet />
-          </div>
-        </AppProvider>
+        <ProductAnalyticsProvider>
+          <ProductAnalyticsIdentity viewer={viewer} />
+          <AppProvider viewer={viewer}>
+            <div id="app" className="view">
+              <Outlet />
+            </div>
+          </AppProvider>
+        </ProductAnalyticsProvider>
         <Scripts />
         <TanStackRouterDevtools position="bottom-right" />
       </body>

@@ -1,7 +1,9 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { signInWithGoogle } from "../../lib/auth-client";
 import { getPostLoginRedirect } from "../../lib/auth-functions";
+import { getLoginCallbackUrl, analyticsSearchSchema, productAnalyticsEvents } from "../../lib/product-analytics";
+import { useProductAnalytics } from "../../lib/product-analytics-client";
 
 export const Route = createFileRoute("/auth/login")({
   loader: async () => {
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/auth/login")({
     ],
   }),
   component: LoginComponent,
+  validateSearch: analyticsSearchSchema,
 });
 
 const trustPills = [
@@ -57,7 +60,8 @@ const trustPills = [
 ] as const;
 
 function LoginComponent() {
-  const navigate = useNavigate();
+  const { intent } = Route.useSearch();
+  const analytics = useProductAnalytics();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -65,7 +69,21 @@ function LoginComponent() {
     setLoading(true);
     setErrorMessage("");
 
-    const result = await signInWithGoogle("/auth/complete-profile");
+    if (intent === "tryout_catalog_signup") {
+      analytics.capture(productAnalyticsEvents.tryoutCatalogSignupStarted, {
+        intent,
+        source_path: "/auth/login",
+        provider: "google",
+      });
+    }
+
+    analytics.capture(productAnalyticsEvents.signupStarted, {
+      intent,
+      source_path: "/auth/login",
+      provider: "google",
+    });
+
+    const result = await signInWithGoogle(getLoginCallbackUrl(intent));
 
     if (result.ok && result.redirectTo) {
       window.location.href = result.redirectTo;

@@ -14,12 +14,15 @@ import {
   materi,
   questionReports,
   questions,
+  studentBadges,
+  studentExpLedger,
   studentProfiles,
   subCategories,
   tryoutQuestions,
   tryouts,
   user,
 } from "./db/schema";
+import { badgeCodeToId, calculateCurrentStreak } from "./domain/engagement-surface";
 import { requireAdmin, requireSuperAdmin } from "./domain/admin";
 import { normalizeTryoutAccessLevel } from "./domain/premium-access";
 import {
@@ -38,6 +41,10 @@ const studentStatusSchema = z.object({
   status: z.enum(["active", "suspended"]),
 });
 
+const studentUserIdSchema = z.object({
+  studentUserId: z.string().trim().min(1),
+});
+
 const impersonateStudentSchema = z.object({
   studentUserId: z.string().min(1),
 });
@@ -49,6 +56,31 @@ const addAdminSchema = z.object({
 
 const removeAdminSchema = z.object({
   email: z.string().trim().email().transform((email) => email.toLowerCase()),
+});
+
+const taxonomyNameSchema = z.string().trim().min(1).max(120);
+const taxonomySortOrderSchema = z.number().int().min(0).max(10000);
+
+const createCategorySchema = z.object({
+  name: taxonomyNameSchema,
+  color: z.string().trim().max(40).optional(),
+  sortOrder: taxonomySortOrderSchema,
+});
+
+const updateCategorySchema = createCategorySchema.extend({
+  categoryId: z.string().trim().min(1),
+});
+
+const createSubCategorySchema = z.object({
+  categoryId: z.string().trim().min(1),
+  name: taxonomyNameSchema,
+  sortOrder: taxonomySortOrderSchema,
+});
+
+const updateSubCategorySchema = z.object({
+  subCategoryId: z.string().trim().min(1),
+  name: taxonomyNameSchema,
+  sortOrder: taxonomySortOrderSchema,
 });
 
 const reportStatusSchema = z.enum(["open", "reviewed", "resolved", "dismissed"]);
@@ -112,13 +144,33 @@ const questionIdSchema = z.object({
 
 const contentStatusSchema = z.enum(["draft", "published", "unpublished"]);
 
-const tryoutWorkbookTryoutSchema = tryoutInputSchema.extend({
+const tryoutWorkbookTryoutSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().min(1).max(500),
+  categoryId: z.string().trim().optional().default(""),
+  categoryName: z.string().trim().optional(),
+  durationMinutes: z.number().int().min(1).max(300),
+  accessLevel: tryoutAccessLevelSchema,
   status: contentStatusSchema,
 });
 
-const tryoutWorkbookQuestionSchema = questionInputSchema.extend({
+const tryoutWorkbookQuestionSchema = z.object({
   questionId: z.string().trim().optional(),
   sortOrder: z.number().int().min(1).max(1000),
+  categoryId: z.string().trim().optional().default(""),
+  categoryName: z.string().trim().optional(),
+  subCategoryId: z.string().trim().optional().default(""),
+  subCategoryName: z.string().trim().optional(),
+  questionText: z.string().trim().min(1),
+  optionA: z.string().trim().min(1),
+  optionB: z.string().trim().min(1),
+  optionC: z.string().trim().min(1),
+  optionD: z.string().trim().min(1),
+  optionE: z.string().trim().optional(),
+  correctOption: questionOptionSchema,
+  explanation: z.string().trim().min(1),
+  videoUrl: z.string().trim().optional(),
+  accessLevel: questionAccessLevelSchema,
   status: contentStatusSchema,
 });
 
@@ -256,6 +308,47 @@ async function ensureSubCategoryBelongsToCategory(categoryId: string, subCategor
   throw notFound("Sub-category was not found for this category.");
 }
 
+async function ensureCategoryNameAvailable(name: string, currentCategoryId?: string) {
+  const [category] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(sql`lower(trim(${categories.name})) = lower(trim(${name}))`)
+    .limit(1);
+
+  if (!category) return;
+  if (category.id === currentCategoryId) return;
+
+  throw conflict("A Category with this name already exists.");
+}
+
+async function ensureSubCategoryNameAvailable(categoryId: string, name: string, currentSubCategoryId?: string) {
+  const [subCategory] = await db
+    .select({ id: subCategories.id })
+    .from(subCategories)
+    .where(and(
+      eq(subCategories.categoryId, categoryId),
+      sql`lower(trim(${subCategories.name})) = lower(trim(${name}))`,
+    ))
+    .limit(1);
+
+  if (!subCategory) return;
+  if (subCategory.id === currentSubCategoryId) return;
+
+  throw conflict("A Sub-category with this name already exists in this Category.");
+}
+
+function makeTaxonomySlug(value: string) {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  if (slug) return slug;
+
+  return `taxonomy-${Date.now()}`;
+}
+
 function normalizeOptionalText(value: string | undefined) {
   const trimmedValue = value?.trim() ?? "";
 
@@ -276,7 +369,7 @@ async function validateQuestionTaxonomy(categoryId: string, subCategoryId: strin
   await ensureSubCategoryBelongsToCategory(categoryId, subCategoryId);
 }
 
-export const listStudentsAdmin = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async () => {
+export const listStudentsAdmin = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async ({ context }) => {
   const rows = await db
     .select({
       userId: user.id,
@@ -295,6 +388,7 @@ export const listStudentsAdmin = createServerFn({ method: "GET" }).middleware([a
 
   return rows.map((row) => ({
     ...row,
+    isCurrentSessionUser: row.userId === context.viewer.sessionUserId,
     joinedAt: row.joinedAt.toISOString(),
     profileCompletedAt: row.profileCompletedAt?.toISOString() ?? null,
     status: (row.status ?? "active") as "active" | "suspended",
@@ -321,10 +415,195 @@ export const listAdminsAdmin = createServerFn({ method: "GET" }).middleware([adm
   }));
 });
 
+export const getStudentEvaluationAdmin = createServerFn({ method: "GET" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(studentUserIdSchema, input))
+  .handler(async ({ context, data }) => {
+    const [student] = await db
+      .select({
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        joinedAt: user.createdAt,
+        displayName: studentProfiles.displayName,
+        institution: studentProfiles.institution,
+        phone: studentProfiles.phone,
+        status: studentProfiles.status,
+        profileCompletedAt: studentProfiles.profileCompletedAt,
+      })
+      .from(user)
+      .leftJoin(studentProfiles, eq(studentProfiles.userId, user.id))
+      .where(eq(user.id, data.studentUserId))
+      .limit(1);
+
+    if (!student) {
+      throw notFound("Student was not found.");
+    }
+
+    const submittedAttempts = await db
+      .select({
+        id: attempts.id,
+        tryoutTitle: tryouts.title,
+        attemptNumber: attempts.attemptNumber,
+        status: attempts.status,
+        startedAt: attempts.startedAt,
+        submittedAt: attempts.submittedAt,
+        score: attempts.score,
+        correctCount: attempts.correctCount,
+        wrongCount: attempts.wrongCount,
+        totalQuestions: attempts.totalQuestions,
+        xpEarned: attempts.xpEarned,
+      })
+      .from(attempts)
+      .innerJoin(tryouts, eq(tryouts.id, attempts.tryoutId))
+      .where(and(
+        eq(attempts.studentUserId, data.studentUserId),
+        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
+      ))
+      .orderBy(desc(attempts.submittedAt));
+
+    const categoryRows = await db
+      .select({
+        categoryId: categories.id,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        total: sql<number>`count(${attemptQuestionSnapshots.id})`,
+        correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
+      })
+      .from(attemptQuestionSnapshots)
+      .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
+      .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
+      .leftJoin(
+        attemptAnswers,
+        and(
+          eq(attemptAnswers.attemptId, attempts.id),
+          eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
+        ),
+      )
+      .where(and(
+        eq(attempts.studentUserId, data.studentUserId),
+        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
+      ))
+      .groupBy(categories.id);
+
+    const subCategoryRows = await db
+      .select({
+        categoryId: categories.id,
+        subCategoryId: subCategories.id,
+        subCategoryName: subCategories.name,
+        total: sql<number>`count(${attemptQuestionSnapshots.id})`,
+        correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
+      })
+      .from(attemptQuestionSnapshots)
+      .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
+      .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
+      .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
+      .leftJoin(
+        attemptAnswers,
+        and(
+          eq(attemptAnswers.attemptId, attempts.id),
+          eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
+        ),
+      )
+      .where(and(
+        eq(attempts.studentUserId, data.studentUserId),
+        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
+      ))
+      .groupBy(categories.id, subCategories.id);
+
+    const [badgeRewardRow] = await db
+      .select({
+        xp: sql<number>`coalesce(sum(${studentExpLedger.xpAmount}), 0)`,
+      })
+      .from(studentExpLedger)
+      .where(and(
+        eq(studentExpLedger.studentUserId, data.studentUserId),
+        eq(studentExpLedger.sourceType, "badge_reward"),
+      ));
+
+    const badgeRows = await db
+      .select({ badgeCode: studentBadges.badgeCode })
+      .from(studentBadges)
+      .where(eq(studentBadges.studentUserId, data.studentUserId));
+
+    const totalQuestions = submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0);
+    const totalCorrect = submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0);
+    const attemptXp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
+    const badgeRewardXp = Number(badgeRewardRow?.xp ?? 0);
+    const xp = attemptXp + badgeRewardXp;
+
+    return {
+      student: {
+        userId: student.userId,
+        name: student.displayName || student.name,
+        email: student.email,
+        googleName: student.name,
+        image: student.image,
+        isCurrentSessionUser: student.userId === context.viewer.sessionUserId,
+        institution: student.institution ?? null,
+        phone: student.phone ?? null,
+        status: (student.status ?? "active") as "active" | "suspended",
+        joinedAt: student.joinedAt.toISOString(),
+        profileCompletedAt: student.profileCompletedAt?.toISOString() ?? null,
+        profileCompleted: Boolean(student.profileCompletedAt),
+      },
+      summary: {
+        xp,
+        attemptXp,
+        badgeRewardXp,
+        streak: calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt)),
+        totalAttempts: submittedAttempts.length,
+        totalQuestions,
+        totalCorrect,
+        totalWrong: Math.max(totalQuestions - totalCorrect, 0),
+        accuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
+        awardedBadgeIds: badgeRows
+          .map((badge) => badgeCodeToId(badge.badgeCode))
+          .filter((badgeId): badgeId is number => badgeId !== null),
+      },
+      attempts: submittedAttempts.map((attempt) => ({
+        id: attempt.id,
+        tryoutTitle: attempt.tryoutTitle,
+        attemptNumber: attempt.attemptNumber,
+        status: attempt.status as "submitted" | "auto_submitted",
+        startedAt: attempt.startedAt.toISOString(),
+        submittedAt: attempt.submittedAt?.toISOString() ?? null,
+        score: attempt.score ?? 0,
+        correctCount: attempt.correctCount ?? 0,
+        wrongCount: attempt.wrongCount ?? 0,
+        totalQuestions: attempt.totalQuestions,
+        xpEarned: attempt.xpEarned,
+      })),
+      categories: categoryRows.map((row) => ({
+        id: row.categoryId,
+        name: row.categoryName,
+        color: row.categoryColor ?? "#205072",
+        total: Number(row.total ?? 0),
+        correct: Number(row.correct ?? 0),
+        subCategories: subCategoryRows
+          .filter((subCategory) => subCategory.categoryId === row.categoryId)
+          .map((subCategory) => ({
+            id: subCategory.subCategoryId,
+            name: subCategory.subCategoryName,
+            total: Number(subCategory.total ?? 0),
+            correct: Number(subCategory.correct ?? 0),
+          })),
+      })),
+    };
+  });
+
 export const setStudentStatusAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(studentStatusSchema, input))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
+    const isSuspendingSelf = data.status === "suspended"
+      && data.studentUserId === context.viewer.sessionUserId;
+
+    if (isSuspendingSelf) {
+      throw conflict("Admins cannot suspend their own account.");
+    }
+
     const [existingProfile] = await db
       .select({ id: studentProfiles.id })
       .from(studentProfiles)
@@ -574,9 +853,12 @@ export const listCategoryOptionsAdmin = createServerFn({ method: "GET" }).middle
   const rows = await db
     .select({
       id: categories.id,
+      slug: categories.slug,
       name: categories.name,
+      color: categories.color,
       sortOrder: categories.sortOrder,
       subCategoryId: subCategories.id,
+      subCategorySlug: subCategories.slug,
       subCategoryName: subCategories.name,
       subCategorySortOrder: subCategories.sortOrder,
     })
@@ -586,22 +868,27 @@ export const listCategoryOptionsAdmin = createServerFn({ method: "GET" }).middle
 
   const categoryMap = new Map<string, {
     id: string;
+    slug: string;
     name: string;
+    color: string | null;
     sortOrder: number;
-    subCategories: { id: string; name: string; sortOrder: number }[];
+    subCategories: { id: string; slug: string; name: string; sortOrder: number }[];
   }>();
 
   for (const row of rows) {
     const category = categoryMap.get(row.id) ?? {
       id: row.id,
+      slug: row.slug,
       name: row.name,
+      color: row.color,
       sortOrder: row.sortOrder,
       subCategories: [],
     };
 
-    if (row.subCategoryId && row.subCategoryName) {
+    if (row.subCategoryId && row.subCategorySlug && row.subCategoryName) {
       category.subCategories.push({
         id: row.subCategoryId,
+        slug: row.subCategorySlug,
         name: row.subCategoryName,
         sortOrder: row.subCategorySortOrder ?? 0,
       });
@@ -612,6 +899,98 @@ export const listCategoryOptionsAdmin = createServerFn({ method: "GET" }).middle
 
   return Array.from(categoryMap.values());
 });
+
+export const createCategoryAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(createCategorySchema, input))
+  .handler(async ({ data }) => {
+    await ensureCategoryNameAvailable(data.name);
+
+    try {
+      await db.insert(categories).values({
+        slug: makeTaxonomySlug(data.name),
+        name: data.name,
+        color: normalizeOptionalText(data.color),
+        sortOrder: data.sortOrder,
+      });
+    } catch {
+      throw conflict("A Category with this slug already exists.");
+    }
+
+    return { ok: true };
+  });
+
+export const updateCategoryAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(updateCategorySchema, input))
+  .handler(async ({ data }) => {
+    await ensureCategoryExists(data.categoryId);
+    await ensureCategoryNameAvailable(data.name, data.categoryId);
+
+    await db
+      .update(categories)
+      .set({
+        name: data.name,
+        color: normalizeOptionalText(data.color),
+        sortOrder: data.sortOrder,
+        updatedAt: new Date(),
+      })
+      .where(eq(categories.id, data.categoryId));
+
+    return { ok: true };
+  });
+
+export const createSubCategoryAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(createSubCategorySchema, input))
+  .handler(async ({ data }) => {
+    await ensureCategoryExists(data.categoryId);
+    await ensureSubCategoryNameAvailable(data.categoryId, data.name);
+
+    try {
+      await db.insert(subCategories).values({
+        categoryId: data.categoryId,
+        slug: makeTaxonomySlug(data.name),
+        name: data.name,
+        sortOrder: data.sortOrder,
+      });
+    } catch {
+      throw conflict("A Sub-category with this slug already exists in this Category.");
+    }
+
+    return { ok: true };
+  });
+
+export const updateSubCategoryAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(updateSubCategorySchema, input))
+  .handler(async ({ data }) => {
+    const [subCategory] = await db
+      .select({
+        id: subCategories.id,
+        categoryId: subCategories.categoryId,
+      })
+      .from(subCategories)
+      .where(eq(subCategories.id, data.subCategoryId))
+      .limit(1);
+
+    if (!subCategory) {
+      throw notFound("Sub-category was not found.");
+    }
+
+    await ensureSubCategoryNameAvailable(subCategory.categoryId, data.name, data.subCategoryId);
+
+    await db
+      .update(subCategories)
+      .set({
+        name: data.name,
+        sortOrder: data.sortOrder,
+        updatedAt: new Date(),
+      })
+      .where(eq(subCategories.id, data.subCategoryId));
+
+    return { ok: true };
+  });
 
 export const listTryoutsAdmin = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async () => {
   const rows = await db

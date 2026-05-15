@@ -1,5 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useProductAnalytics } from "../lib/product-analytics-client";
+import { productAnalyticsEvents } from "../lib/product-analytics";
 import { getLevelForXp, useApp } from "../data";
 import { runConfetti } from "../utils/confetti";
 import { PremiumDialog } from "../components/PremiumDialog";
@@ -80,8 +82,26 @@ function ResultsComponent() {
   const unansweredCount = Math.max(total - answered, 0);
   const grade = getGradeLabel(score);
 
+  const posthog = useProductAnalytics();
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [displayScore, setDisplayScore] = useState(0);
+
+  useEffect(() => {
+    if (isChildRoute) {
+      return;
+    }
+
+    posthog.capture(productAnalyticsEvents.resultViewed, {
+      attempt_id: attempt.id,
+      tryout_id: attempt.tryoutId,
+      tryout_title: tryout.title,
+      score: attempt.score,
+      correct_count: correct,
+      wrong_count: wrongCount,
+      unanswered_count: unansweredCount,
+      total_questions: total,
+    });
+  }, [attempt.id, attempt.score, attempt.tryoutId, correct, isChildRoute, posthog, total, tryout.title, unansweredCount, wrongCount]);
 
   const wrongs: WrongAnswerView[] = questions
     .filter((question) => question.selectedIndex !== null && question.isCorrect === false)
@@ -104,6 +124,11 @@ function ResultsComponent() {
 
   const openPremiumAccess = () => {
     setShowPremiumDialog(true);
+    posthog.capture("premium_unlock_banner_clicked", {
+      attempt_id: attempt.id,
+      tryout_id: attempt.tryoutId,
+      locked_count: lockedCount,
+    });
   };
 
   useEffect(() => {
@@ -289,6 +314,12 @@ function ResultsComponent() {
               to="/results/$attemptId/review"
               params={{ attemptId: String(attempt.id) }}
               className="btn btn-primary"
+              onClick={() => posthog.capture(productAnalyticsEvents.tryoutReviewOpened, {
+                attempt_id: attempt.id,
+                tryout_id: attempt.tryoutId,
+                score: attempt.score,
+                passed,
+              })}
             >
               <BookIcon />
               Review Pembahasan

@@ -6,7 +6,9 @@ import { PremiumDialog } from "../components/PremiumDialog";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { hasFullTryoutReviewAccess, isPremiumQuestionLocked } from "../lib/domain/premium-access";
-import { getAttemptResult } from "../lib/student-functions";
+import { productAnalyticsEvents } from "../lib/product-analytics";
+import { useProductAnalytics } from "../lib/product-analytics-client";
+import { getAttemptResult, reportAttemptQuestion } from "../lib/student-functions";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -18,6 +20,15 @@ const searchSchema = z.object({
 });
 
 type ReviewFilter = "all" | "wrong" | "correct" | "unanswered";
+type ReportReason = "answer_key_wrong" | "explanation_wrong" | "question_unclear" | "typo" | "other";
+
+const reportReasons: Array<{ label: string; value: ReportReason }> = [
+  { label: "Answer key salah", value: "answer_key_wrong" },
+  { label: "Pembahasan keliru", value: "explanation_wrong" },
+  { label: "Soal tidak jelas", value: "question_unclear" },
+  { label: "Typo", value: "typo" },
+  { label: "Lainnya", value: "other" },
+];
 
 export const Route = createFileRoute("/results/$attemptId/review")({
   loader: async ({ params }) => {
@@ -44,6 +55,7 @@ function ReviewComponent() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const { hasPremiumMembership } = useApp();
+  const analytics = useProductAnalytics();
   const { attempt, tryout, questions } = result;
   const hasFullTryoutAccess = hasFullTryoutReviewAccess({
     accessLevel: tryout.accessLevel,
@@ -51,6 +63,10 @@ function ReviewComponent() {
   });
 
   const [showPremium, setShowPremium] = useState(false);
+  const [openReportSnapshotId, setOpenReportSnapshotId] = useState("");
+  const [busyReportSnapshotId, setBusyReportSnapshotId] = useState("");
+  const [reportedSnapshotId, setReportedSnapshotId] = useState("");
+  const [reportError, setReportError] = useState("");
   const filter: ReviewFilter = search.filter ?? "all";
 
   const openPremiumAccess = () => {
@@ -100,6 +116,33 @@ function ReviewComponent() {
       params: { attemptId },
       search: nextFilter === "all" ? {} : { filter: nextFilter },
     });
+  };
+
+  const submitQuestionReport = async (snapshotId: string, reason: ReportReason) => {
+    setBusyReportSnapshotId(snapshotId);
+    setReportError("");
+
+    try {
+      await reportAttemptQuestion({
+        data: {
+          attemptId: attempt.id,
+          snapshotId,
+          reason,
+        },
+      });
+      analytics.capture(productAnalyticsEvents.questionReported, {
+        attempt_id: attempt.id,
+        tryout_id: attempt.tryoutId,
+        snapshot_id: snapshotId,
+        reason,
+      });
+      setReportedSnapshotId(snapshotId);
+      setOpenReportSnapshotId("");
+    } catch {
+      setReportError("Laporan belum terkirim. Coba lagi sebentar lagi.");
+    } finally {
+      setBusyReportSnapshotId("");
+    }
   };
 
   useEffect(() => {
@@ -392,6 +435,16 @@ function ReviewComponent() {
                       <Link
                         to="/coming-soon"
                         search={{ feature: "materi" }}
+                        onClick={() => {
+                          analytics.capture(productAnalyticsEvents.materiBacklinkOpened, {
+                            attempt_id: attempt.id,
+                            tryout_id: attempt.tryoutId,
+                            snapshot_id: q.snapshotId,
+                            question_id: q.questionId,
+                            materi_id: relatedMateri.id,
+                            materi_title: relatedMateri.title,
+                          });
+                        }}
                         className="mt-4 flex items-center gap-4 p-4 rounded-xl bg-primary-tint border-2 border-brand-sky hover:bg-primary-soft transition-colors group"
                       >
                         <div className="w-10 h-10 rounded-xl bg-primary-soft border-2 border-brand-sky flex items-center justify-center text-primary">
@@ -404,6 +457,45 @@ function ReviewComponent() {
                         <ArrowRightIcon className="w-5 h-5 text-primary group-hover:translate-x-1 transition-transform" />
                       </Link>
                     )}
+
+                    <div className="mt-4 rounded-xl border-2 border-stone-100 bg-stone-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-bold text-stone-700">Laporkan soal</div>
+                          <p className="m-0 mt-1 text-xs font-semibold text-stone-400">
+                            Tandai soal ini untuk ditinjau Admin.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setOpenReportSnapshotId(openReportSnapshotId === q.snapshotId ? "" : q.snapshotId)}
+                          disabled={busyReportSnapshotId === q.snapshotId}
+                          className="rounded-lg border-2 border-stone-200 bg-white px-4 py-2 text-xs font-bold text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                        >
+                          {reportedSnapshotId === q.snapshotId ? "Terkirim" : "Laporkan"}
+                        </button>
+                      </div>
+
+                      {openReportSnapshotId === q.snapshotId && (
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                          {reportReasons.map((reason) => (
+                            <button
+                              key={reason.value}
+                              type="button"
+                              onClick={() => submitQuestionReport(q.snapshotId, reason.value)}
+                              disabled={busyReportSnapshotId === q.snapshotId}
+                              className="rounded-lg border-2 border-stone-200 bg-white px-3 py-2 text-left text-xs font-bold text-stone-600 transition-colors hover:border-primary-soft hover:bg-primary-tint hover:text-primary-dark"
+                            >
+                              {reason.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {reportError && openReportSnapshotId === q.snapshotId && (
+                        <p className="m-0 mt-3 text-xs font-semibold text-rose-600">{reportError}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

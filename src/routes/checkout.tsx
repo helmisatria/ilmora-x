@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useProductAnalytics } from "../lib/product-analytics-client";
 import { z } from "zod";
 import gsap from "gsap";
 import { TopBar } from "../components/Navigation";
@@ -52,6 +53,7 @@ const paymentMethods: Array<{
 function CheckoutComponent() {
   const { summary } = Route.useLoaderData() as { summary: Awaited<ReturnType<typeof listProgressSummary>> };
   const { productId } = Route.useSearch();
+  const posthog = useProductAnalytics();
   const product = getProductById(productId);
   const [code, setCode] = useState("");
   const [discount, setDiscount] = useState<DiscountState>({ type: "none" });
@@ -108,6 +110,12 @@ function CheckoutComponent() {
       return;
     }
 
+    posthog.capture("coupon_applied", {
+      coupon_code: trimmedCode,
+      product_id: product.id,
+      product_name: product.name,
+    });
+
     setDiscount({ type: "invalid", reason: "Kupon belum terhubung ke backend." });
   };
 
@@ -117,6 +125,14 @@ function CheckoutComponent() {
   };
 
   const handlePay = () => {
+    posthog.capture("checkout_pay_clicked", {
+      product_id: product.id,
+      product_name: product.name,
+      payment_method: method,
+      total,
+      has_coupon: discount.type === "coupon",
+    });
+
     setDiscount({ type: "invalid", reason: "Pembayaran belum terhubung ke backend." });
   };
 
@@ -199,7 +215,13 @@ function CheckoutComponent() {
                     <PaymentMethodButton
                       paymentMethod={paymentMethod}
                       isSelected={method === paymentMethod.key}
-                      onSelect={() => setMethod(paymentMethod.key)}
+                      onSelect={() => {
+                        setMethod(paymentMethod.key);
+                        posthog.capture("payment_method_selected", {
+                          payment_method: paymentMethod.key,
+                          product_id: product.id,
+                        });
+                      }}
                     />
                   </div>
                 ))}

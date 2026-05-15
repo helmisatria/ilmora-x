@@ -2,6 +2,8 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { institutions } from "../../data/institutions";
 import { completeProfile, getCurrentViewer, getPostLoginRedirectForViewer } from "../../lib/auth-functions";
+import { analyticsSearchSchema, productAnalyticsEvents } from "../../lib/product-analytics";
+import { useProductAnalytics } from "../../lib/product-analytics-client";
 
 export const Route = createFileRoute("/auth/complete-profile")({
   loader: async () => {
@@ -27,11 +29,14 @@ export const Route = createFileRoute("/auth/complete-profile")({
     ],
   }),
   component: CompleteProfileComponent,
+  validateSearch: analyticsSearchSchema,
 });
 
 function CompleteProfileComponent() {
   const { viewer } = Route.useLoaderData();
+  const { intent } = Route.useSearch();
   const navigate = useNavigate();
+  const analytics = useProductAnalytics();
   const [step, setStep] = useState(1);
   const [name, setName] = useState(viewer?.profile?.displayName ?? viewer?.name ?? "");
   const [institution, setInstitution] = useState(viewer?.profile?.institution ?? "");
@@ -55,6 +60,7 @@ function CompleteProfileComponent() {
           institution,
           phone,
           photoUrl,
+          analyticsIntent: intent,
         },
       });
 
@@ -98,7 +104,15 @@ function CompleteProfileComponent() {
               />
 
               <button
-                onClick={() => canProceed && setStep(2)}
+                onClick={() => {
+                  if (!canProceed) return;
+                  analytics.capture(productAnalyticsEvents.profileStepAdvanced, {
+                    intent,
+                    from_step: 1,
+                    to_step: 2,
+                  });
+                  setStep(2);
+                }}
                 disabled={!canProceed}
                 className="btn btn-primary w-full mt-6"
               >

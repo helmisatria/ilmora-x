@@ -1,20 +1,18 @@
 import { createFileRoute, Link, Outlet, useLocation, useRouter } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
   createTryoutAdmin,
   createTryoutFromWorkbookAdmin,
   getTryoutWorkbookAdmin,
-  listCategoriesAdmin,
+  listCategoryOptionsAdmin,
   listTryoutsAdmin,
 } from "../../lib/admin-functions";
-import { normalizeTryoutAccessLevel as normalizeDomainTryoutAccessLevel } from "../../lib/domain/premium-access";
+import * as tryoutWorkbook from "../../lib/tryout-workbook";
 
-type CategoryRow = Awaited<ReturnType<typeof listCategoriesAdmin>>[number];
+type CategoryRow = Awaited<ReturnType<typeof listCategoryOptionsAdmin>>[number];
 type TryoutRow = Awaited<ReturnType<typeof listTryoutsAdmin>>[number];
 type AccessLevel = "free" | "premium";
-type QuestionAccessLevel = "free" | "premium";
-type ContentStatus = "draft" | "published" | "unpublished";
-type CorrectOption = "A" | "B" | "C" | "D" | "E";
 
 type TryoutForm = {
   title: string;
@@ -23,60 +21,6 @@ type TryoutForm = {
   durationMinutes: string;
   accessLevel: AccessLevel;
 };
-
-type TryoutSheetRow = {
-  title?: string;
-  description?: string;
-  category_id?: string;
-  duration_minutes?: number | string;
-  access_level?: string;
-  status?: string;
-};
-
-type QuestionSheetRow = {
-  question_id?: string;
-  sort_order?: number | string;
-  category_id?: string;
-  sub_category_id?: string;
-  question_text?: string;
-  option_a?: string;
-  option_b?: string;
-  option_c?: string;
-  option_d?: string;
-  option_e?: string;
-  correct_option?: string;
-  explanation?: string;
-  video_url?: string;
-  access_level?: string;
-  status?: string;
-};
-
-const tryoutSheetHeaders = [
-  "title",
-  "description",
-  "category_id",
-  "duration_minutes",
-  "access_level",
-  "status",
-] as const;
-
-const questionSheetHeaders = [
-  "question_id",
-  "sort_order",
-  "category_id",
-  "sub_category_id",
-  "question_text",
-  "option_a",
-  "option_b",
-  "option_c",
-  "option_d",
-  "option_e",
-  "correct_option",
-  "explanation",
-  "video_url",
-  "access_level",
-  "status",
-] as const;
 
 const emptyForm: TryoutForm = {
   title: "",
@@ -89,7 +33,7 @@ const emptyForm: TryoutForm = {
 export const Route = createFileRoute("/admin/tryouts")({
   loader: async () => {
     const [categories, tryouts] = await Promise.all([
-      listCategoriesAdmin(),
+      listCategoryOptionsAdmin(),
       listTryoutsAdmin(),
     ]);
 
@@ -106,11 +50,6 @@ export const Route = createFileRoute("/admin/tryouts")({
 
 function AdminTryoutsPage() {
   const location = useLocation();
-
-  if (location.pathname !== "/admin/tryouts") {
-    return <Outlet />;
-  }
-
   const { categories, tryouts } = Route.useLoaderData() as {
     categories: CategoryRow[];
     tryouts: TryoutRow[];
@@ -122,6 +61,8 @@ function AdminTryoutsPage() {
   }));
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [workbookPreview, setWorkbookPreview] = useState<WorkbookPreview | null>(null);
+  const isIndexRoute = location.pathname.replace(/\/+$/, "") === "/admin/tryouts";
 
   const refresh = async () => {
     await router.invalidate();
@@ -180,16 +121,16 @@ function AdminTryoutsPage() {
 
       XLSX.utils.book_append_sheet(
         workbook,
-        makeSheet(XLSX, tryoutSheetHeaders, [makeSampleTryoutRow()]),
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.tryoutSheetHeaders, [tryoutWorkbook.makeSampleTryoutRow()]),
         "tryout",
       );
       XLSX.utils.book_append_sheet(
         workbook,
-        makeSheet(XLSX, questionSheetHeaders, makeSampleQuestionRows()),
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.questionSheetHeaders, tryoutWorkbook.makeSampleQuestionRows()),
         "questions",
       );
 
-      saveWorkbook(XLSX, workbook, `ilmorax-tryout-sample-${formatTimestamp(new Date())}.xlsx`);
+      tryoutWorkbook.saveWorkbook(XLSX, workbook, `ilmorax-tryout-sample-${tryoutWorkbook.formatTimestamp(new Date())}.xlsx`);
     } catch {
       setErrorMessage("Sample workbook was not downloaded.");
     } finally {
@@ -200,21 +141,43 @@ function AdminTryoutsPage() {
   const importNewWorkbook = async (file: File | undefined) => {
     if (!file) return;
 
+    setBusyAction("preview-new");
+    setErrorMessage("");
+
+    try {
+      const result = await tryoutWorkbook.readTryoutWorkbook(file, categories);
+
+      setWorkbookPreview({
+        fileName: file.name,
+        data: result.data,
+        issues: result.issues,
+        taxonomyActions: result.taxonomyActions,
+      });
+    } catch {
+      setErrorMessage("Workbook could not be read. Upload a valid .xlsx file.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const confirmNewWorkbookImport = async () => {
+    if (!workbookPreview?.data || workbookPreview.issues.length > 0) return;
+
     setBusyAction("import-new");
     setErrorMessage("");
 
     try {
-      const workbookData = await readTryoutWorkbook(file);
       await createTryoutFromWorkbookAdmin({
         data: {
-          tryout: workbookData.tryout,
-          questions: workbookData.questions,
+          tryout: workbookPreview.data.tryout,
+          questions: workbookPreview.data.questions,
         },
       });
+      setWorkbookPreview(null);
       resetForm();
       await refresh();
     } catch {
-      setErrorMessage("New Try-out workbook was not imported. Check both sheets and duplicate titles.");
+      setErrorMessage("New Try-out workbook was not imported. Check for duplicate titles or server-side validation errors.");
     } finally {
       setBusyAction("");
     }
@@ -228,27 +191,31 @@ function AdminTryoutsPage() {
       const workbookData = await getTryoutWorkbookAdmin({ data: { tryoutId } });
       const XLSX = await import("xlsx");
       const workbook = XLSX.utils.book_new();
-      const tryoutRows = [toTryoutSheetRow(workbookData.tryout)];
-      const questionRows = workbookData.questions.map(toQuestionSheetRow);
+      const tryoutRows = [tryoutWorkbook.toTryoutSheetRow(workbookData.tryout)];
+      const questionRows = workbookData.questions.map(tryoutWorkbook.toQuestionSheetRow);
 
       XLSX.utils.book_append_sheet(
         workbook,
-        makeSheet(XLSX, tryoutSheetHeaders, tryoutRows),
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.tryoutSheetHeaders, tryoutRows),
         "tryout",
       );
       XLSX.utils.book_append_sheet(
         workbook,
-        makeSheet(XLSX, questionSheetHeaders, questionRows),
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.questionSheetHeaders, questionRows),
         "questions",
       );
 
-      saveWorkbook(XLSX, workbook, `${workbookData.tryout.slug || "tryout"}-workbook-${formatTimestamp(new Date())}.xlsx`);
+      tryoutWorkbook.saveWorkbook(XLSX, workbook, `${workbookData.tryout.slug || "tryout"}-workbook-${tryoutWorkbook.formatTimestamp(new Date())}.xlsx`);
     } catch {
       setErrorMessage("Try-out workbook was not downloaded.");
     } finally {
       setBusyAction("");
     }
   };
+
+  if (!isIndexRoute) {
+    return <Outlet />;
+  }
 
   return (
     <main className="admin-shell page-enter">
@@ -339,6 +306,16 @@ function AdminTryoutsPage() {
             </div>
           </div>
         </section>
+
+        {workbookPreview && (
+          <WorkbookPreviewPanel
+            preview={workbookPreview}
+            busy={busyAction === "import-new"}
+            confirmLabel="Create Try-out"
+            onCancel={() => setWorkbookPreview(null)}
+            onConfirm={confirmNewWorkbookImport}
+          />
+        )}
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
@@ -463,87 +440,6 @@ function StatusPill({ status }: { status: TryoutRow["status"] }) {
   );
 }
 
-function FileUpload({
-  accept,
-  busy,
-  compact,
-  placeholder,
-  onFileSelect,
-}: {
-  accept: string;
-  busy: boolean;
-  compact?: boolean;
-  placeholder: string;
-  onFileSelect: (file: File) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState("");
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
-      onFileSelect(file);
-    }
-    event.currentTarget.value = "";
-  };
-
-  const handleClick = () => {
-    inputRef.current?.click();
-  };
-
-  if (compact) {
-    return (
-      <button
-        onClick={handleClick}
-        disabled={busy}
-        className="admin-button-ghost"
-        type="button"
-      >
-        <UploadIcon className="w-3.5 h-3.5" />
-        {fileName || placeholder}
-        <input
-          ref={inputRef}
-          onChange={handleChange}
-          disabled={busy}
-          className="sr-only"
-          type="file"
-          accept={accept}
-        />
-      </button>
-    );
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={busy}
-      className={`admin-file-upload ${fileName ? "admin-file-upload-active" : ""}`}
-      type="button"
-    >
-      <UploadIcon className="w-4 h-4 shrink-0" />
-      <span className="truncate">{fileName || placeholder}</span>
-      <input
-        ref={inputRef}
-        onChange={handleChange}
-        disabled={busy}
-        className="sr-only"
-        type="file"
-        accept={accept}
-      />
-    </button>
-  );
-}
-
-function UploadIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M12 15V3m0 0L7 8m5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 17.5V20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function DownloadIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
@@ -562,234 +458,10 @@ function PencilIcon({ className }: { className?: string }) {
   );
 }
 
-function toTryoutSheetRow(tryout: Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>["tryout"]) {
-  return {
-    title: tryout.title,
-    description: tryout.description,
-    category_id: tryout.categoryId,
-    duration_minutes: tryout.durationMinutes,
-    access_level: tryout.accessLevel,
-    status: tryout.status,
-  };
-}
-
-function toQuestionSheetRow(question: Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>["questions"][number]) {
-  return {
-    question_id: question.questionId,
-    sort_order: question.sortOrder,
-    category_id: question.categoryId,
-    sub_category_id: question.subCategoryId,
-    question_text: question.questionText,
-    option_a: question.optionA,
-    option_b: question.optionB,
-    option_c: question.optionC,
-    option_d: question.optionD,
-    option_e: question.optionE,
-    correct_option: question.correctOption,
-    explanation: question.explanation,
-    video_url: question.videoUrl,
-    access_level: question.accessLevel,
-    status: question.status,
-  };
-}
-
-function makeSampleTryoutRow() {
-  return {
-    title: "UKAI Try-out Sample",
-    description: "Sample Try-out description. Replace this with the real Student-facing description.",
-    category_id: "farmakologi",
-    duration_minutes: 30,
-    access_level: "free",
-    status: "draft",
-  };
-}
-
-function makeSampleQuestionRows() {
-  return [
-    {
-      question_id: "",
-      sort_order: 1,
-      category_id: "farmakologi",
-      sub_category_id: "farmakologi-antibiotik",
-      question_text: "Mekanisme kerja penisilin adalah:",
-      option_a: "Menghambat sintesis protein",
-      option_b: "Menghambat sintesis dinding sel",
-      option_c: "Menghambat replikasi DNA",
-      option_d: "Menghambat sintesis folat",
-      option_e: "",
-      correct_option: "B",
-      explanation: "Penisilin menghambat sintesis dinding sel bakteri dengan mengikat protein pengikat penisilin.",
-      video_url: "",
-      access_level: "free",
-      status: "draft",
-    },
-    {
-      question_id: "",
-      sort_order: 2,
-      category_id: "farmakologi",
-      sub_category_id: "farmakologi-nsaid",
-      question_text: "NSAID yang paling selektif terhadap COX-2:",
-      option_a: "Ibuprofen",
-      option_b: "Celecoxib",
-      option_c: "Aspirin",
-      option_d: "Diklofenak",
-      option_e: "",
-      correct_option: "B",
-      explanation: "Celecoxib adalah NSAID selektif COX-2 yang menurunkan risiko gangguan gastrointestinal.",
-      video_url: "",
-      access_level: "free",
-      status: "draft",
-    },
-  ];
-}
-
-function makeSheet(
-  XLSX: typeof import("xlsx"),
-  headers: readonly string[],
-  rows: Record<string, string | number | null | undefined>[],
-) {
-  const sheet = XLSX.utils.aoa_to_sheet([Array.from(headers)]);
-
-  if (rows.length === 0) {
-    return sheet;
-  }
-
-  XLSX.utils.sheet_add_json(sheet, rows, {
-    header: Array.from(headers),
-    skipHeader: true,
-    origin: "A2",
-  });
-
-  return sheet;
-}
-
-function saveWorkbook(XLSX: typeof import("xlsx"), workbook: import("xlsx").WorkBook, fileName: string) {
-  const workbookBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
-  const blob = new Blob([workbookBuffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-async function readTryoutWorkbook(file: File) {
-  const XLSX = await import("xlsx");
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer);
-  const tryoutSheet = workbook.Sheets.tryout;
-  const questionsSheet = workbook.Sheets.questions;
-
-  if (!tryoutSheet || !questionsSheet) {
-    throw new Error("Workbook must include tryout and questions sheets.");
-  }
-
-  const [tryoutRow] = XLSX.utils.sheet_to_json<TryoutSheetRow>(tryoutSheet, { defval: "" });
-  const questionRows = XLSX.utils.sheet_to_json<QuestionSheetRow>(questionsSheet, { defval: "" });
-
-  if (!tryoutRow) {
-    throw new Error("Try-out sheet must include one row.");
-  }
-
-  return {
-    tryout: {
-      title: textValue(tryoutRow.title),
-      description: textValue(tryoutRow.description),
-      categoryId: textValue(tryoutRow.category_id),
-      durationMinutes: numberValue(tryoutRow.duration_minutes),
-      accessLevel: normalizeTryoutAccessLevel(tryoutRow.access_level),
-      status: normalizeContentStatus(tryoutRow.status),
-    },
-    questions: questionRows.map((row, index) => ({
-      questionId: optionalTextValue(row.question_id),
-      sortOrder: numberValue(row.sort_order) || index + 1,
-      categoryId: textValue(row.category_id),
-      subCategoryId: textValue(row.sub_category_id),
-      questionText: textValue(row.question_text),
-      optionA: textValue(row.option_a),
-      optionB: textValue(row.option_b),
-      optionC: textValue(row.option_c),
-      optionD: textValue(row.option_d),
-      optionE: optionalTextValue(row.option_e),
-      correctOption: normalizeCorrectOption(row.correct_option),
-      explanation: textValue(row.explanation),
-      videoUrl: optionalTextValue(row.video_url),
-      accessLevel: normalizeQuestionAccessLevel(row.access_level),
-      status: normalizeContentStatus(row.status),
-    })),
-  };
-}
-
-function textValue(value: unknown) {
-  return String(value ?? "").trim();
-}
-
-function optionalTextValue(value: unknown) {
-  const text = textValue(value);
-
-  if (!text) return undefined;
-
-  return text;
-}
-
-function numberValue(value: unknown) {
-  const number = Number(value);
-
-  if (!Number.isFinite(number)) return 0;
-
-  return number;
-}
-
-function normalizeTryoutAccessLevel(value: unknown): AccessLevel {
-  const accessLevel = textValue(value).toLowerCase();
-
-  return normalizeDomainTryoutAccessLevel(accessLevel);
-}
-
-function normalizeQuestionAccessLevel(value: unknown): QuestionAccessLevel {
-  const accessLevel = textValue(value).toLowerCase();
-
-  if (accessLevel === "premium") return "premium";
-
-  return "free";
-}
-
-function normalizeContentStatus(value: unknown): ContentStatus {
-  const status = textValue(value).toLowerCase();
-
-  if (status === "published" || status === "unpublished") {
-    return status;
-  }
-
-  return "draft";
-}
-
-function normalizeCorrectOption(value: unknown): CorrectOption {
-  const option = textValue(value).toUpperCase();
-
-  if (option === "B" || option === "C" || option === "D" || option === "E") {
-    return option;
-  }
-
-  return "A";
-}
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   }).format(new Date(value));
-}
-
-function formatTimestamp(date: Date) {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}-${hours}-${minutes}`;
 }

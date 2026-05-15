@@ -23,6 +23,13 @@ The top level of question classification (e.g. "Klinis", "Farmakologi"). Every *
 The second and final level of question classification, scoped under a **Category** (e.g. "Kardiovaskular - Hipertensi" under "Klinis"). Every **Question** is tagged with exactly one `(Category, Sub-category)` pair. No deeper nesting.
 _Avoid_: Topic, tag, sub-sub-category
 
+## Rules (Taxonomy)
+
+- **Category/Sub-category management is additive and rename-only in M1.** Admins may create, rename, recolor, and reorder the two-level taxonomy. Delete, merge, and moving Sub-categories between Categories are deferred.
+- **Stable IDs stay visible.** Workbook imports validate against existing Category/Sub-category IDs, so the Admin taxonomy manager must show IDs and avoid changing them during rename.
+- **Workbook import may resolve taxonomy by name.** If `category_id` or `sub_category_id` is blank, the workbook may provide `category_name` or `sub_category_name`. Import reuses an existing row by case-insensitive trimmed name, or creates it during confirmed import when no match exists.
+- **Merge/delete needs a history policy.** Merging or deleting taxonomy nodes needs an explicit policy for historical Attempts, Student Evaluation, Materi backlinks, and workbook imports.
+
 **Question**:
 A single item a student answers inside a **Try-out**. Carries the explanation ("pembahasan"), an access level, and one `(Category, Sub-category)` pair.
 _Avoid_: Soal (Bahasa only — ok in UI), item
@@ -34,6 +41,10 @@ _Avoid_: Materi (unless referring to a standalone study-material unit)
 **Student Evaluation**:
 A per-Student learning-performance view computed from submitted and auto-submitted **Attempts**, covering totals, accuracy, Attempt history, and Category/Sub-category breakdowns.
 _Avoid_: Users Insights, platform analytics
+
+**Product Analytics**:
+Behavioral analytics used to understand product usage, funnels, and adoption across Students, Admins, and guests.
+_Avoid_: Users Insights, observability, audit log
 
 **Engagement surface**:
 The complete set of gamification concepts in scope: **EXP**, **Level** (1–50), **Badge**, **Streak** (daily Try-out consecutive days), **Leaderboard**. Hearts (lives) and Gems (currency) are **out of scope** and must not appear in the prototype top bar.
@@ -129,14 +140,31 @@ A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuse
 ## Rules (Student Evaluation)
 
 - **Admin Student Evaluation reuses the Student Evaluation model.** Admins may inspect the same per-Student learning-performance data a Student sees, scoped to a selected Student and presented inside Admin CMS with profile/status context.
+- **Admin Student Evaluation is reached from Admin Users.** `/admin/users` is the entry point for finding a Student, and `/admin/users/$studentId` is the Student detail page that includes profile, status, and Student Evaluation data.
 - **Admin Attempt Review is read-only inspection.** From Admin Student Evaluation, Admins may open submitted or auto-submitted Attempt result/review for the selected Student, but cannot edit answers, rescore Attempts, or submit in-progress Attempts from that surface.
 - **Admin Student Evaluation ignores Student premium gating.** Student-facing Evaluation may lock or blur premium-only details, but Admin-facing Student Evaluation always shows the full basic evaluation because it is an operational oversight surface, not a Student entitlement.
 - **Users Insights is platform-level analytics.** Cross-Student aggregates, cohorts, and platform-wide performance questions belong to Users Insights, not Admin Student Evaluation.
 
+## Rules (Product Analytics)
+
+- **PostHog is the Product Analytics destination.** It is allowed to receive identifiable Student profile fields and learning-content context when useful for behavior analysis, including email, display name, institution, submitted answers, question text, and free-text Question report notes.
+- **Product Analytics is not the source of truth.** IlmoraX domain records, audit-like activity, and server observability remain owned by the database and logging layers.
+- **Product Analytics uses client and server capture.** Client-side capture is for page views, navigation funnels, and UI interaction; server-side capture is for trusted domain events such as profile completion, Try-out start/submit, Materi views, Question reports, Poll participation, and checkout completion.
+- **Product Analytics event names use IlmoraX domain language.** Fact events use past-tense domain names such as `tryout_started` and `question_reported`; UI-intent events use precise names such as `premium_membership_selected`. Avoid generic names like `button_clicked`, `form_submitted`, `quiz_completed`, or `page_interacted` except for automatic page views.
+- **Product Analytics capture is environment-gated.** PostHog only captures when the relevant client or server PostHog environment variables are configured; local development without those variables must no-op cleanly.
+- **Acquisition funnel is the first Product Analytics funnel.** Track how many visitors view the home page, choose signup/register entry points, create an account, and reach the Try-out catalog from those entry points. Separately track how many visitors view the Try-out catalog and register from it.
+- **Acquisition distinguishes signup milestones.** `signup_started` means a visitor chose a Google sign-in/register entry point, `account_created` means OAuth produced a first authenticated account/session, and `profile_completed` is the acquisition conversion because a Student is not ready until mandatory profile completion.
+- **Acquisition attribution uses explicit intent.** Signup/register entry points pass an intent such as `home_signup`, `home_tryout`, or `tryout_catalog_signup` through login and profile completion so OAuth redirects do not erase the source of the conversion.
+- **Try-out learning funnel follows acquisition.** After acquisition is instrumented, track the core learning loop from Try-out discovery through Attempt start, submission, result viewing, Question reporting, and Materi backlink usage.
+- **Try-out learning analytics captures final answers only.** The first learning-funnel implementation tracks submitted final answers and save failures, not every in-Attempt answer change.
+- **Try-out submission analytics is Attempt-level.** `tryout_submitted` carries summary counts plus a compact final `answers` array; do not emit one Product Analytics event per answered Question in the first implementation.
+- **Try-out submission answers include analysis context only.** Each submitted answer may include Question ID/text, Category/Sub-category ID/name, selected option, correct option, and correctness. Question Review content such as explanation and video URL stays out of `tryout_submitted`.
+- **Attempt lifecycle Product Analytics events are server facts.** Canonical `tryout_started` and `tryout_submitted` events are captured server-side from the Attempt lifecycle, not from client clicks.
+
 ## Rules (Try-out content management)
 
-- **Try-out edit is the primary import/export workflow.** Admins assemble a Try-out by downloading/uploading a Try-out workbook that contains ordered Questions and per-Question Review fields.
-- **Question bank is secondary.** The Questions admin page is for searching, editing, publishing, unpublishing, and moderation across all Questions; it is not the main place to import Try-out content.
+- **Try-out edit is the primary M1 Question management workflow.** Admins assemble and revise Try-out Questions by downloading/uploading a Try-out workbook that contains ordered Questions and per-Question Review fields.
+- **Standalone Question admin is not part of the M1 demo path.** Questions may exist as reusable database records, but M1 treats the Try-out workbook as the admin-facing source of truth for creating, editing, ordering, and publishing Question content.
 - **Try-out workbook imports update assignments.** A successful import updates the Questions and their order/assignment within that Try-out in one validated transaction.
 - **Try-out workbook uses `question_id` for updates.** Rows with `question_id` update existing Questions; rows without `question_id` create new Questions. A duplicate `question_id` in one workbook rejects the whole import.
 - **Missing rows unassign, not delete.** If an existing assigned Question is absent from the uploaded Try-out workbook, it is removed from that Try-out only. The Question remains in the Question bank.
@@ -144,7 +172,7 @@ A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuse
 - **Try-out workbook edits protect shared Questions.** If a workbook changes a Question that is assigned to another Try-out, the default behavior is to create a new Question copy for the current Try-out instead of mutating the shared Question.
 - **Try-out workbook has separate sheets.** The workbook contains a `tryout` sheet with one metadata row and a `questions` sheet with ordered Question rows.
 - **Try-out workbook can update publication status.** Workbook import may set Try-out and Question statuses, but a published Try-out must have at least one assigned published Question or the whole import is rejected.
-- **Standalone Materi is outside the Try-out workbook in M1.** The Try-out workbook manages Try-out metadata, ordered Questions, and per-Question Review fields only. Materi remains managed through its own CMS workflow.
+- **Standalone Materi is outside M1 admin scope.** The Try-out workbook manages Try-out metadata, ordered Questions, and per-Question Review fields only. Materi CMS work is deferred and must not block the M1 demo.
 
 ## Language (Identity)
 
@@ -227,6 +255,7 @@ _Avoid_: Article, lesson, module
 
 ## Rules (Materi)
 
+- **Materi CMS is deferred out of M1.** M1 may keep seeded/published Materi records for review-page backlinks, but Admin create/edit/upload/publish/archive workflows are not part of the M1 acceptance path.
 - **Shared taxonomy with Questions.** One Category tree serves both — no parallel taxonomy for Materi.
 - **Video: unlisted YouTube embeds only.** No self-hosted video in M1/M2. Attachments limited to a single PDF (≤20 MB) stored in object storage.
 - **No Materi versioning.** Live edits publish immediately; students always see latest. Past Attempts are unrelated to Materi since Materi isn't scored.

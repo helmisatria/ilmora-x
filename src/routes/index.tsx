@@ -3,6 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { type AcquisitionIntent, productAnalyticsEvents } from "../lib/product-analytics";
+import { useProductAnalytics } from "../lib/product-analytics-client";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -374,8 +376,69 @@ const useSafeLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 const defaultActiveNavHref = heroNavItems[0].href;
 
+type LandingLinkPath = "/tryout" | "/premium" | "/auth/login";
+type LandingLinkEntryPoint =
+  | "footer_cta"
+  | "hero_primary"
+  | "hero_secondary"
+  | "landing_nav_login"
+  | "landing_nav_signup"
+  | "light_link"
+  | "pricing_button"
+  | "primary_link"
+  | "secondary_link";
+
+function getLandingLinkIntent(to: LandingLinkPath): AcquisitionIntent | undefined {
+  if (to === "/tryout") {
+    return "home_tryout";
+  }
+
+  if (to === "/auth/login") {
+    return "home_signup";
+  }
+
+  return undefined;
+}
+
+function getLandingLinkEvent(intent: AcquisitionIntent | undefined) {
+  if (intent === "home_tryout") {
+    return productAnalyticsEvents.homeTryoutSelected;
+  }
+
+  if (intent === "home_signup") {
+    return productAnalyticsEvents.homeSignupSelected;
+  }
+
+  return null;
+}
+
+function useLandingLinkAnalytics(to: LandingLinkPath, entryPoint: LandingLinkEntryPoint) {
+  const analytics = useProductAnalytics();
+  const intent = getLandingLinkIntent(to);
+  const event = getLandingLinkEvent(intent);
+
+  function trackLandingLinkClick() {
+    if (!event) return;
+
+    analytics.capture(event, {
+      intent,
+      source_path: "/",
+      entry_point: entryPoint,
+    });
+  }
+
+  return { intent, trackLandingLinkClick };
+}
+
 function LandingPage() {
   const pageRef = useRef<HTMLElement>(null);
+  const analytics = useProductAnalytics();
+
+  useEffect(() => {
+    analytics.capture(productAnalyticsEvents.homePageViewed, {
+      source_path: "/",
+    });
+  }, [analytics]);
 
   useSafeLayoutEffect(() => {
     if (!pageRef.current) {
@@ -464,6 +527,9 @@ function FixedGrain() {
 }
 
 function LandingNav() {
+  const loginAnalytics = useLandingLinkAnalytics("/auth/login", "landing_nav_login");
+  const tryoutAnalytics = useLandingLinkAnalytics("/tryout", "landing_nav_signup");
+
   return (
     <header className="fixed inset-x-0 top-0 z-30 px-4 pt-5">
       <nav className="landing-reveal mx-auto flex w-full max-w-[1240px] items-center justify-between rounded-full border border-[rgba(214,234,228,0.95)] bg-[rgba(255,255,255,0.92)] px-3 py-3 shadow-[0_16px_42px_rgba(144,181,170,0.18)] backdrop-blur-2xl sm:px-4">
@@ -479,12 +545,16 @@ function LandingNav() {
         <div className="flex shrink-0 items-center gap-2">
           <Link
             to="/auth/login"
+            search={{ intent: loginAnalytics.intent }}
+            onClick={loginAnalytics.trackLandingLinkClick}
             className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#dce9e4] bg-white px-3.5 py-2 text-[13px] font-semibold text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
           >
             Masuk
           </Link>
           <Link
             to="/tryout"
+            search={{ intent: tryoutAnalytics.intent }}
+            onClick={tryoutAnalytics.trackLandingLinkClick}
             className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[var(--brand-primary)] px-3.5 py-2 text-[13px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
           >
             Daftar Gratis
@@ -1824,9 +1894,15 @@ function PricingPrimaryButton({
     theme === "gold"
       ? "inline-flex w-full items-center justify-center gap-3 rounded-[1.2rem] bg-[#f4b844] px-6 py-5 text-[18px] font-black text-[#2d220f] no-underline shadow-[0_12px_22px_rgba(244,184,68,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
       : "inline-flex w-full items-center justify-center gap-3 rounded-[1.2rem] bg-[var(--brand-primary)] px-6 py-5 text-[18px] font-black text-white no-underline shadow-[0_12px_22px_rgba(24,183,161,0.22)] transition-transform duration-200 hover:-translate-y-0.5";
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "pricing_button");
 
   return (
-    <Link to={to} className={className}>
+    <Link
+      to={to}
+      search={intent ? { intent } : undefined}
+      onClick={trackLandingLinkClick}
+      className={className}
+    >
       {children}
     </Link>
   );
@@ -1989,9 +2065,15 @@ function FooterActionButton({
     variant === "primary"
       ? "inline-flex min-w-[280px] items-center justify-center gap-3 rounded-[1.35rem] bg-[var(--brand-primary)] px-8 py-5 text-[18px] font-black text-white no-underline shadow-[0_12px_24px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
       : "inline-flex min-w-[280px] items-center justify-center gap-3 rounded-[1.35rem] border border-[#c9ece6] bg-white px-8 py-5 text-[18px] font-black text-stone-800 no-underline shadow-[0_12px_24px_rgba(111,160,173,0.12)] transition-transform duration-200 hover:-translate-y-0.5";
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "footer_cta");
 
   return (
-    <Link to={to} className={className}>
+    <Link
+      to={to}
+      search={intent ? { intent } : undefined}
+      onClick={trackLandingLinkClick}
+      className={className}
+    >
       {children}
     </Link>
   );
@@ -2058,9 +2140,13 @@ function PrimaryLink({
   to: "/tryout" | "/premium" | "/auth/login";
   children: ReactNode;
 }) {
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "primary_link");
+
   return (
     <Link
       to={to}
+      search={intent ? { intent } : undefined}
+      onClick={trackLandingLinkClick}
       className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-[15px] font-black text-[#071a52] no-underline shadow-[0_18px_34px_rgba(255,255,255,0.18)] transition-transform duration-200 hover:-translate-y-0.5"
     >
       {children}
@@ -2076,9 +2162,13 @@ function HeroPrimaryLink({
   to: "/tryout" | "/premium" | "/auth/login";
   children: ReactNode;
 }) {
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "hero_primary");
+
   return (
     <Link
       to={to}
+      search={intent ? { intent } : undefined}
+      onClick={trackLandingLinkClick}
       className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] bg-[var(--brand-primary)] px-8 py-5 text-[17px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
     >
       <BookFrameIcon />
@@ -2094,9 +2184,13 @@ function HeroSecondaryLink({
   to: "/tryout" | "/auth/login";
   children: ReactNode;
 }) {
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "hero_secondary");
+
   return (
     <Link
       to={to}
+      search={intent ? { intent } : undefined}
+      onClick={trackLandingLinkClick}
       className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] border border-[#e3ece8] bg-white px-8 py-5 text-[17px] font-semibold text-stone-900 no-underline shadow-[0_12px_24px_rgba(39,68,58,0.08)] transition-transform duration-200 hover:-translate-y-0.5"
     >
       <LoginArrowIcon />
@@ -2112,9 +2206,13 @@ function SecondaryLink({
   to: "/tryout" | "/auth/login";
   children: ReactNode;
 }) {
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "secondary_link");
+
   return (
     <Link
       to={to}
+      search={intent ? { intent } : undefined}
+      onClick={trackLandingLinkClick}
       className="group inline-flex items-center justify-center gap-2 rounded-full border border-white/14 bg-white/8 px-5 py-3 text-[15px] font-black text-white no-underline backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5"
     >
       {children}
@@ -2130,9 +2228,13 @@ function LightLink({
   to: "/tryout" | "/auth/login";
   children: ReactNode;
 }) {
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "light_link");
+
   return (
     <Link
       to={to}
+      search={intent ? { intent } : undefined}
+      onClick={trackLandingLinkClick}
       className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#dbe8ff] bg-[#edf5ff] px-5 py-3 text-[15px] font-black text-[#071a52] no-underline transition-transform duration-200 hover:-translate-y-0.5"
     >
       {children}

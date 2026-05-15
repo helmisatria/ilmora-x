@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useProductAnalytics } from "../lib/product-analytics-client";
+import { productAnalyticsEvents } from "../lib/product-analytics";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +47,7 @@ type Phase = "preparation" | "countdown" | "active";
 function TryoutTakeComponent() {
   const { tryout } = Route.useLoaderData() as { tryout: TryoutPreparation };
   const navigate = useNavigate();
+  const posthog = useProductAnalytics();
   const [isReady, setIsReady] = useState(false);
   const [phase, setPhase] = useState<Phase>("preparation");
   const [confirmStart, setConfirmStart] = useState(false);
@@ -87,6 +90,11 @@ function TryoutTakeComponent() {
     } catch {
       queueProgress(payload);
       setSaveStatus("error");
+      posthog.capture(productAnalyticsEvents.attemptAutosaveFailed, {
+        attempt_id: payload.attemptId,
+        tryout_id: tryout.id,
+        tryout_title: tryout.title,
+      });
     }
   }
 
@@ -521,6 +529,13 @@ function TryoutTakeComponent() {
                         snapshotId: q.snapshotId,
                         reason: toReportReason(reason),
                       },
+                    }).then(() => {
+                      posthog.capture(productAnalyticsEvents.questionReported, {
+                        tryout_id: tryout.id,
+                        attempt_id: attemptData.attempt.id,
+                        snapshot_id: q.snapshotId,
+                        reason: toReportReason(reason),
+                      });
                     }).catch(() => {});
                   }}
                 >

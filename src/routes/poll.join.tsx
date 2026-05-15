@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useProductAnalytics } from "../lib/product-analytics-client";
 import { useApp } from "../data";
 import { joinPollSession } from "../lib/poll-functions";
 import { getSafeErrorMessage } from "../lib/user-errors";
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/poll/join")({
 function PollJoinComponent() {
   const navigate = useNavigate();
   const { user } = useApp();
+  const posthog = useProductAnalytics();
   const [code, setCode] = useState("");
   const [displayName, setDisplayName] = useState(user.email ? user.name : "");
   const [error, setError] = useState("");
@@ -54,6 +56,10 @@ function PollJoinComponent() {
       });
 
       window.localStorage.setItem(getParticipantStorageKey(digits), result.participantToken);
+      posthog.capture("poll_joined", {
+        poll_code: digits,
+        is_authenticated: Boolean(user.email),
+      });
       await navigate({ to: "/poll/$code", params: { code: digits } });
     } catch (error) {
       setError(getSafeErrorMessage(error, "Gagal gabung Poll."));

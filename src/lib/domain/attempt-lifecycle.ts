@@ -82,6 +82,7 @@ export async function startOrResumeAttemptForStudent({
   const [tryout] = await db
     .select({
       id: tryouts.id,
+      title: tryouts.title,
       durationMinutes: tryouts.durationMinutes,
       accessLevel: tryouts.accessLevel,
     })
@@ -186,6 +187,23 @@ export async function startOrResumeAttemptForStudent({
     return createdAttempt.id;
   });
 
+  const { captureProductAnalyticsEvent } = await import("../product-analytics-server");
+  const { productAnalyticsEvents } = await import("../product-analytics");
+
+  captureProductAnalyticsEvent({
+    distinctId: viewer.userId,
+    event: productAnalyticsEvents.tryoutStarted,
+    properties: {
+      tryout_id: tryoutId,
+      tryout_title: tryout.title,
+      attempt_id: createdAttemptId,
+      attempt_number: attemptNumber,
+      question_count: questionRows.length,
+      access_level: tryout.accessLevel,
+      ...getImpersonationMetadata(viewer),
+    },
+  });
+
   return getTakeAttemptData(createdAttemptId);
 }
 
@@ -213,18 +231,13 @@ export async function submitAttemptForStudent({
 
   await saveAttemptProgress(data.attemptId, data);
 
-  const answerRows = await db
-    .select({
-      isCorrect: attemptAnswers.isCorrect,
-    })
-    .from(attemptAnswers)
-    .where(eq(attemptAnswers.attemptId, data.attemptId));
-  const correctCount = answerRows.filter((answer) => answer.isCorrect).length;
-  const answeredCount = answerRows.filter((answer) => answer.isCorrect !== null).length;
+  const finalAnswers = await getAttemptProductAnalyticsAnswers(data.attemptId);
+  const correctCount = finalAnswers.filter((answer) => answer.is_correct).length;
+  const answeredCount = finalAnswers.filter((answer) => answer.selected_option !== null).length;
   const wrongCount = Math.max(attempt.totalQuestions - correctCount, 0);
   const score = Math.round((correctCount / attempt.totalQuestions) * 100);
   const [tryout] = await db
-    .select({ accessLevel: tryouts.accessLevel })
+    .select({ title: tryouts.title, accessLevel: tryouts.accessLevel })
     .from(tryouts)
     .where(eq(tryouts.id, attempt.tryoutId))
     .limit(1);
@@ -275,6 +288,30 @@ export async function submitAttemptForStudent({
         ...getImpersonationMetadata(viewer),
       },
     });
+  });
+
+  const { captureProductAnalyticsEvent } = await import("../product-analytics-server");
+  const { productAnalyticsEvents } = await import("../product-analytics");
+
+  captureProductAnalyticsEvent({
+    distinctId: viewer.userId,
+    event: productAnalyticsEvents.tryoutSubmitted,
+    properties: {
+      tryout_id: attempt.tryoutId,
+      tryout_title: tryout?.title ?? null,
+      attempt_id: data.attemptId,
+      attempt_number: attempt.attemptNumber,
+      status,
+      auto_submit_reason: data.autoSubmitReason ?? (timedOut ? "deadline_reached" : null),
+      correct_count: correctCount,
+      answered_count: answeredCount,
+      wrong_count: wrongCount,
+      total_questions: attempt.totalQuestions,
+      score,
+      xp_earned: xpEarned,
+      answers: finalAnswers,
+      ...getImpersonationMetadata(viewer),
+    },
   });
 
   const awardedBadges = isImpersonatedSubmission
@@ -513,6 +550,45 @@ function calculateAttemptXp({
   if (isExtraPractice) return 0;
 
   return calculateXp(correctCount, attemptNumber);
+}
+
+async function getAttemptProductAnalyticsAnswers(attemptId: string) {
+  const rows = await db
+    .select({
+      questionId: attemptQuestionSnapshots.questionId,
+      questionText: attemptQuestionSnapshots.questionText,
+      categoryId: attemptQuestionSnapshots.categoryId,
+      categoryName: categories.name,
+      subCategoryId: attemptQuestionSnapshots.subCategoryId,
+      subCategoryName: subCategories.name,
+      selectedOption: attemptAnswers.selectedOption,
+      correctOption: attemptQuestionSnapshots.correctOption,
+      isCorrect: attemptAnswers.isCorrect,
+    })
+    .from(attemptQuestionSnapshots)
+    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
+    .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
+    .leftJoin(
+      attemptAnswers,
+      and(
+        eq(attemptAnswers.attemptId, attemptId),
+        eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
+      ),
+    )
+    .where(eq(attemptQuestionSnapshots.attemptId, attemptId))
+    .orderBy(attemptQuestionSnapshots.sortOrder);
+
+  return rows.map((row) => ({
+    question_id: row.questionId,
+    question_text: row.questionText,
+    category_id: row.categoryId,
+    category_name: row.categoryName,
+    sub_category_id: row.subCategoryId,
+    sub_category_name: row.subCategoryName,
+    selected_option: row.selectedOption ?? null,
+    correct_option: row.correctOption,
+    is_correct: row.isCorrect,
+  }));
 }
 
 function getDailyTryoutAttemptLimit() {

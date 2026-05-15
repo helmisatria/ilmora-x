@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   addAdminAdmin,
@@ -31,6 +31,12 @@ export const Route = createFileRoute("/admin/users")({
 });
 
 function AdminUsersPage() {
+  const location = useLocation();
+
+  if (location.pathname !== "/admin/users") {
+    return <Outlet />;
+  }
+
   const { students, admins } = Route.useLoaderData() as {
     students: StudentRow[];
     admins: AdminRow[];
@@ -190,12 +196,19 @@ function AdminUsersPage() {
             {students.map((student) => {
               const nextStatus = student.status === "suspended" ? "active" : "suspended";
               const buttonLabel = student.status === "suspended" ? "Unsuspend" : "Suspend";
+              const isSuspendingSelf = student.isCurrentSessionUser && nextStatus === "suspended";
 
               return (
                 <div key={student.userId} className="admin-list-row">
                   <div className="admin-list-content">
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <h3 className="text-[15px] font-bold text-stone-800 tracking-tight">{student.displayName || student.name}</h3>
+                      <Link
+                        to="/admin/users/$studentId"
+                        params={{ studentId: student.userId }}
+                        className="text-[15px] font-bold tracking-tight text-stone-800 no-underline hover:text-primary"
+                      >
+                        {student.displayName || student.name}
+                      </Link>
                       <StatusPill status={student.status} />
                     </div>
                     <p className="mt-1 text-sm text-stone-500">{student.email}</p>
@@ -206,6 +219,13 @@ function AdminUsersPage() {
                   </div>
 
                   <div className="admin-list-actions">
+                    <Link
+                      to="/admin/users/$studentId"
+                      params={{ studentId: student.userId }}
+                      className="admin-button-ghost text-primary no-underline hover:bg-primary-tint hover:text-primary-dark"
+                    >
+                      Evaluation
+                    </Link>
                     <button
                       onClick={() => handleImpersonateStudent(student.userId)}
                       disabled={student.status === "suspended" || busyAction === `impersonate:${student.userId}`}
@@ -216,7 +236,7 @@ function AdminUsersPage() {
                     </button>
                     <button
                       onClick={() => handleSetStudentStatus(student.userId, nextStatus)}
-                      disabled={busyAction === `student:${student.userId}`}
+                      disabled={isSuspendingSelf || busyAction === `student:${student.userId}`}
                       className={`admin-button-ghost ${student.status === "suspended" ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"}`}
                       type="button"
                     >

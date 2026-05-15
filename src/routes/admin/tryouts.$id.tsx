@@ -1,20 +1,20 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
   getTryoutWorkbookAdmin,
   importTryoutWorkbookAdmin,
-  listCategoriesAdmin,
+  listCategoryOptionsAdmin,
   publishTryoutAdmin,
   unpublishTryoutAdmin,
   updateTryoutAdmin,
 } from "../../lib/admin-functions";
-import { normalizeTryoutAccessLevel as normalizeDomainTryoutAccessLevel } from "../../lib/domain/premium-access";
+import * as tryoutWorkbook from "../../lib/tryout-workbook";
 
 type TryoutWorkbook = Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>;
-type CategoryRow = Awaited<ReturnType<typeof listCategoriesAdmin>>[number];
+type CategoryRow = Awaited<ReturnType<typeof listCategoryOptionsAdmin>>[number];
 type AccessLevel = "free" | "premium";
 type ContentStatus = "draft" | "published" | "unpublished";
-type CorrectOption = "A" | "B" | "C" | "D" | "E";
 
 type TryoutForm = {
   title: string;
@@ -24,92 +24,11 @@ type TryoutForm = {
   accessLevel: AccessLevel;
 };
 
-type TryoutWorkbookTryout = {
-  title: string;
-  description: string;
-  categoryId: string;
-  durationMinutes: number;
-  accessLevel: AccessLevel;
-  status: ContentStatus;
-};
-
-type TryoutWorkbookQuestion = {
-  questionId?: string;
-  sortOrder: number;
-  categoryId: string;
-  subCategoryId: string;
-  questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  optionE?: string;
-  correctOption: CorrectOption;
-  explanation: string;
-  videoUrl?: string;
-  accessLevel: "free" | "premium";
-  status: ContentStatus;
-};
-
-type TryoutSheetRow = {
-  title?: string;
-  description?: string;
-  category_id?: string;
-  duration_minutes?: number | string;
-  access_level?: string;
-  status?: string;
-};
-
-type QuestionSheetRow = {
-  question_id?: string;
-  sort_order?: number | string;
-  category_id?: string;
-  sub_category_id?: string;
-  question_text?: string;
-  option_a?: string;
-  option_b?: string;
-  option_c?: string;
-  option_d?: string;
-  option_e?: string;
-  correct_option?: string;
-  explanation?: string;
-  video_url?: string;
-  access_level?: string;
-  status?: string;
-};
-
-const tryoutSheetHeaders = [
-  "title",
-  "description",
-  "category_id",
-  "duration_minutes",
-  "access_level",
-  "status",
-] as const;
-
-const questionSheetHeaders = [
-  "question_id",
-  "sort_order",
-  "category_id",
-  "sub_category_id",
-  "question_text",
-  "option_a",
-  "option_b",
-  "option_c",
-  "option_d",
-  "option_e",
-  "correct_option",
-  "explanation",
-  "video_url",
-  "access_level",
-  "status",
-] as const;
-
 export const Route = createFileRoute("/admin/tryouts/$id")({
   loader: async ({ params }) => {
     const [workbook, categories] = await Promise.all([
       getTryoutWorkbookAdmin({ data: { tryoutId: params.id } }),
-      listCategoriesAdmin(),
+      listCategoryOptionsAdmin(),
     ]);
 
     return { workbook, categories };
@@ -136,10 +55,11 @@ function AdminTryoutDetailPage() {
     description: workbook.tryout.description,
     categoryId: workbook.tryout.categoryId,
     durationMinutes: String(workbook.tryout.durationMinutes),
-    accessLevel: normalizeTryoutAccessLevel(workbook.tryout.accessLevel),
+    accessLevel: workbook.tryout.accessLevel,
   }));
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [workbookPreview, setWorkbookPreview] = useState<WorkbookPreview | null>(null);
 
   const refresh = async () => {
     await router.invalidate();
@@ -205,22 +125,22 @@ function AdminTryoutDetailPage() {
     try {
       const XLSX = await import("xlsx");
       const wb = XLSX.utils.book_new();
-      const tryoutRows = [toTryoutSheetRow(workbook.tryout)];
-      const questionRows = workbook.questions.map(toQuestionSheetRow);
+      const tryoutRows = [tryoutWorkbook.toTryoutSheetRow(workbook.tryout)];
+      const questionRows = workbook.questions.map(tryoutWorkbook.toQuestionSheetRow);
 
       XLSX.utils.book_append_sheet(
         wb,
-        makeSheet(XLSX, tryoutSheetHeaders, tryoutRows),
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.tryoutSheetHeaders, tryoutRows),
         "tryout",
       );
       XLSX.utils.book_append_sheet(
         wb,
-        makeSheet(XLSX, questionSheetHeaders, questionRows),
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.questionSheetHeaders, questionRows),
         "questions",
       );
 
       const slug = workbook.tryout.slug || "tryout";
-      saveWorkbook(XLSX, wb, `${slug}-workbook-${formatTimestamp(new Date())}.xlsx`);
+      tryoutWorkbook.saveWorkbook(XLSX, wb, `${slug}-workbook-${tryoutWorkbook.formatTimestamp(new Date())}.xlsx`);
     } catch {
       setErrorMessage("Try-out workbook was not downloaded.");
     } finally {
@@ -231,21 +151,43 @@ function AdminTryoutDetailPage() {
   const importWorkbook = async (file: File | undefined) => {
     if (!file) return;
 
+    setBusyAction("preview-import");
+    setErrorMessage("");
+
+    try {
+      const result = await tryoutWorkbook.readTryoutWorkbook(file, categories);
+
+      setWorkbookPreview({
+        fileName: file.name,
+        data: result.data,
+        issues: result.issues,
+        taxonomyActions: result.taxonomyActions,
+      });
+    } catch {
+      setErrorMessage("Workbook could not be read. Upload a valid .xlsx file.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const confirmWorkbookImport = async () => {
+    if (!workbookPreview?.data || workbookPreview.issues.length > 0) return;
+
     setBusyAction("import");
     setErrorMessage("");
 
     try {
-      const workbookData = await readTryoutWorkbook(file);
       await importTryoutWorkbookAdmin({
         data: {
           tryoutId,
-          tryout: workbookData.tryout,
-          questions: workbookData.questions,
+          tryout: workbookPreview.data.tryout,
+          questions: workbookPreview.data.questions,
         },
       });
+      setWorkbookPreview(null);
       await refresh();
     } catch {
-      setErrorMessage("Try-out workbook was not imported. Check both sheets and required fields.");
+      setErrorMessage("Try-out workbook was not imported. Check for server-side validation errors.");
     } finally {
       setBusyAction("");
     }
@@ -376,6 +318,16 @@ function AdminTryoutDetailPage() {
           </div>
         </section>
 
+        {workbookPreview && (
+          <WorkbookPreviewPanel
+            preview={workbookPreview}
+            busy={busyAction === "import"}
+            confirmLabel="Import workbook"
+            onCancel={() => setWorkbookPreview(null)}
+            onConfirm={confirmWorkbookImport}
+          />
+        )}
+
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
             <h2 className="admin-panel-title">Excel Import / Export</h2>
@@ -477,63 +429,6 @@ function StatusPill({ status }: { status: ContentStatus }) {
   );
 }
 
-function FileUpload({
-  accept,
-  busy,
-  placeholder,
-  onFileSelect,
-}: {
-  accept: string;
-  busy: boolean;
-  placeholder: string;
-  onFileSelect: (file: File) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState("");
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
-      onFileSelect(file);
-    }
-    event.currentTarget.value = "";
-  };
-
-  const handleClick = () => {
-    inputRef.current?.click();
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={busy}
-      className={`admin-file-upload ${fileName ? "admin-file-upload-active" : ""}`}
-      type="button"
-    >
-      <UploadIcon className="w-4 h-4 shrink-0" />
-      <span className="truncate">{fileName || placeholder}</span>
-      <input
-        ref={inputRef}
-        onChange={handleChange}
-        disabled={busy}
-        className="sr-only"
-        type="file"
-        accept={accept}
-      />
-    </button>
-  );
-}
-
-function UploadIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M12 15V3m0 0L7 8m5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 17.5V20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function DownloadIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
@@ -559,167 +454,4 @@ function EyeOffIcon({ className }: { className?: string }) {
       <path d="M1 1 23 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-}
-
-function toTryoutSheetRow(tryout: TryoutWorkbook["tryout"]) {
-  return {
-    title: tryout.title,
-    description: tryout.description,
-    category_id: tryout.categoryId,
-    duration_minutes: tryout.durationMinutes,
-    access_level: tryout.accessLevel,
-    status: tryout.status,
-  };
-}
-
-function toQuestionSheetRow(question: TryoutWorkbook["questions"][number]) {
-  return {
-    question_id: question.questionId,
-    sort_order: question.sortOrder,
-    category_id: question.categoryId,
-    sub_category_id: question.subCategoryId,
-    question_text: question.questionText,
-    option_a: question.optionA,
-    option_b: question.optionB,
-    option_c: question.optionC,
-    option_d: question.optionD,
-    option_e: question.optionE,
-    correct_option: question.correctOption,
-    explanation: question.explanation,
-    video_url: question.videoUrl,
-    access_level: question.accessLevel,
-    status: question.status,
-  };
-}
-
-function makeSheet(
-  XLSX: typeof import("xlsx"),
-  headers: readonly string[],
-  rows: Record<string, string | number | null | undefined>[],
-) {
-  const sheet = XLSX.utils.aoa_to_sheet([Array.from(headers)]);
-
-  if (rows.length === 0) {
-    return sheet;
-  }
-
-  XLSX.utils.sheet_add_json(sheet, rows, {
-    header: Array.from(headers),
-    skipHeader: true,
-    origin: "A2",
-  });
-
-  return sheet;
-}
-
-function saveWorkbook(XLSX: typeof import("xlsx"), workbook: import("xlsx").WorkBook, fileName: string) {
-  const workbookBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
-  const blob = new Blob([workbookBuffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-async function readTryoutWorkbook(file: File) {
-  const XLSX = await import("xlsx");
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer);
-  const tryoutSheet = workbook.Sheets.tryout;
-  const questionsSheet = workbook.Sheets.questions;
-
-  if (!tryoutSheet || !questionsSheet) {
-    throw new Error("Workbook must include tryout and questions sheets.");
-  }
-
-  const [tryoutRow] = XLSX.utils.sheet_to_json<TryoutSheetRow>(tryoutSheet, { defval: "" });
-  const questionRows = XLSX.utils.sheet_to_json<QuestionSheetRow>(questionsSheet, { defval: "" });
-
-  if (!tryoutRow) {
-    throw new Error("Try-out sheet must include one row.");
-  }
-
-  return {
-    tryout: {
-      title: textValue(tryoutRow.title),
-      description: textValue(tryoutRow.description),
-      categoryId: textValue(tryoutRow.category_id),
-      durationMinutes: numberValue(tryoutRow.duration_minutes),
-      accessLevel: normalizeTryoutAccessLevel(tryoutRow.access_level),
-      status: normalizeContentStatus(tryoutRow.status),
-    },
-    questions: questionRows.map((row, index) => ({
-      questionId: optionalTextValue(row.question_id),
-      sortOrder: numberValue(row.sort_order) || index + 1,
-      categoryId: textValue(row.category_id),
-      subCategoryId: textValue(row.sub_category_id),
-      questionText: textValue(row.question_text),
-      optionA: textValue(row.option_a),
-      optionB: textValue(row.option_b),
-      optionC: textValue(row.option_c),
-      optionD: textValue(row.option_d),
-      optionE: optionalTextValue(row.option_e),
-      correctOption: normalizeCorrectOption(row.correct_option),
-      explanation: textValue(row.explanation),
-      videoUrl: optionalTextValue(row.video_url),
-      accessLevel: normalizeQuestionAccessLevel(row.access_level),
-      status: normalizeContentStatus(row.status),
-    })),
-  };
-}
-
-function textValue(value: unknown) {
-  return String(value ?? "").trim();
-}
-
-function optionalTextValue(value: unknown) {
-  const text = textValue(value);
-  if (!text) return undefined;
-  return text;
-}
-
-function numberValue(value: unknown) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return 0;
-  return number;
-}
-
-function normalizeTryoutAccessLevel(value: unknown): AccessLevel {
-  const accessLevel = textValue(value).toLowerCase();
-  return normalizeDomainTryoutAccessLevel(accessLevel);
-}
-
-function normalizeQuestionAccessLevel(value: unknown): "free" | "premium" {
-  const accessLevel = textValue(value).toLowerCase();
-  if (accessLevel === "premium") return "premium";
-  return "free";
-}
-
-function normalizeContentStatus(value: unknown): ContentStatus {
-  const status = textValue(value).toLowerCase();
-  if (status === "published" || status === "unpublished") {
-    return status;
-  }
-  return "draft";
-}
-
-function normalizeCorrectOption(value: unknown): CorrectOption {
-  const option = textValue(value).toUpperCase();
-  if (option === "B" || option === "C" || option === "D" || option === "E") {
-    return option;
-  }
-  return "A";
-}
-
-function formatTimestamp(date: Date) {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}-${hours}-${minutes}`;
 }

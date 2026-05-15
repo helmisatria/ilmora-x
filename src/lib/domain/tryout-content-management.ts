@@ -26,6 +26,7 @@ export type TryoutWorkbookTryout = {
   title: string;
   description: string;
   categoryId: string;
+  categoryName?: string;
   durationMinutes: number;
   accessLevel: TryoutAccessLevel;
   status: ContentStatus;
@@ -35,7 +36,9 @@ export type TryoutWorkbookQuestion = {
   questionId?: string;
   sortOrder: number;
   categoryId: string;
+  categoryName?: string;
   subCategoryId: string;
+  subCategoryName?: string;
   questionText: string;
   optionA: string;
   optionB: string;
@@ -130,23 +133,24 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
   await ensureTryoutExists(data.tryoutId);
 
   const imported = await db.transaction(async (tx) => {
+    const resolvedData = await resolveWorkbookTaxonomy(tx, data);
     const assignedQuestionIds: string[] = [];
 
     await tx
       .update(tryouts)
       .set({
-        title: data.tryout.title,
-        description: data.tryout.description,
-        categoryId: data.tryout.categoryId,
-        durationMinutes: data.tryout.durationMinutes,
-        accessLevel: data.tryout.accessLevel,
-        status: data.tryout.status,
-        publishedAt: data.tryout.status === "published" ? new Date() : null,
+        title: resolvedData.tryout.title,
+        description: resolvedData.tryout.description,
+        categoryId: resolvedData.tryout.categoryId,
+        durationMinutes: resolvedData.tryout.durationMinutes,
+        accessLevel: resolvedData.tryout.accessLevel,
+        status: resolvedData.tryout.status,
+        publishedAt: resolvedData.tryout.status === "published" ? new Date() : null,
         updatedAt: new Date(),
       })
       .where(eq(tryouts.id, data.tryoutId));
 
-    for (const question of data.questions) {
+    for (const question of resolvedData.questions) {
       if (!question.questionId) {
         const [createdQuestion] = await tx
           .insert(questions)
@@ -226,7 +230,7 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
         assignedQuestionIds.map((questionId, index) => ({
           tryoutId: data.tryoutId,
           questionId,
-          sortOrder: data.questions[index].sortOrder,
+          sortOrder: resolvedData.questions[index].sortOrder,
         })),
       );
     }
@@ -241,23 +245,25 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
   await validateTryoutWorkbookInput(data);
 
   const created = await db.transaction(async (tx) => {
+    const resolvedData = await resolveWorkbookTaxonomy(tx, data);
+
     const [createdTryout] = await tx
       .insert(tryouts)
       .values({
-        slug: makeSlug(data.tryout.title),
-        title: data.tryout.title,
-        description: data.tryout.description,
-        categoryId: data.tryout.categoryId,
-        durationMinutes: data.tryout.durationMinutes,
-        accessLevel: data.tryout.accessLevel,
-        status: data.tryout.status,
-        publishedAt: data.tryout.status === "published" ? new Date() : null,
+        slug: makeSlug(resolvedData.tryout.title),
+        title: resolvedData.tryout.title,
+        description: resolvedData.tryout.description,
+        categoryId: resolvedData.tryout.categoryId,
+        durationMinutes: resolvedData.tryout.durationMinutes,
+        accessLevel: resolvedData.tryout.accessLevel,
+        status: resolvedData.tryout.status,
+        publishedAt: resolvedData.tryout.status === "published" ? new Date() : null,
       })
       .returning({ id: tryouts.id });
 
     const assignedQuestionIds: string[] = [];
 
-    for (const question of data.questions) {
+    for (const question of resolvedData.questions) {
       if (!question.questionId) {
         const [createdQuestion] = await tx
           .insert(questions)
@@ -311,7 +317,7 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
         assignedQuestionIds.map((questionId, index) => ({
           tryoutId: createdTryout.id,
           questionId,
-          sortOrder: data.questions[index].sortOrder,
+          sortOrder: resolvedData.questions[index].sortOrder,
         })),
       );
     }
@@ -326,7 +332,7 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
 }
 
 async function validateTryoutWorkbookInput(data: TryoutWorkbookInput) {
-  await ensureCategoryExists(data.tryout.categoryId);
+  validateCategoryReference(data.tryout);
 
   const questionIds = data.questions
     .map((question) => question.questionId)
@@ -353,8 +359,215 @@ async function validateTryoutWorkbookInput(data: TryoutWorkbookInput) {
 
   for (const question of data.questions) {
     validateQuestionOptionE(question);
-    await validateQuestionTaxonomy(question.categoryId, question.subCategoryId);
+    validateCategoryReference(question);
+    validateSubCategoryReference(question);
   }
+}
+
+function validateCategoryReference(data: Pick<TryoutWorkbookTryout, "categoryId" | "categoryName">) {
+  if (data.categoryId?.trim()) return;
+  if (data.categoryName?.trim()) return;
+
+  throw conflict("category_id or category_name is required.");
+}
+
+function validateSubCategoryReference(data: Pick<TryoutWorkbookQuestion, "subCategoryId" | "subCategoryName">) {
+  if (data.subCategoryId?.trim()) return;
+  if (data.subCategoryName?.trim()) return;
+
+  throw conflict("sub_category_id or sub_category_name is required.");
+}
+
+type TaxonomyExecutor = Pick<typeof db, "select" | "insert">;
+
+async function resolveWorkbookTaxonomy(
+  tx: TaxonomyExecutor,
+  data: TryoutWorkbookInput,
+): Promise<TryoutWorkbookInput> {
+  const tryoutCategoryId = await resolveCategoryReference(tx, data.tryout);
+  const resolvedQuestions: TryoutWorkbookQuestion[] = [];
+
+  for (const question of data.questions) {
+    const categoryId = await resolveCategoryReference(tx, question);
+    const subCategoryId = await resolveSubCategoryReference(tx, categoryId, question);
+
+    resolvedQuestions.push({
+      ...question,
+      categoryId,
+      subCategoryId,
+    });
+  }
+
+  return {
+    tryout: {
+      ...data.tryout,
+      categoryId: tryoutCategoryId,
+    },
+    questions: resolvedQuestions,
+  };
+}
+
+async function resolveCategoryReference(
+  tx: TaxonomyExecutor,
+  data: Pick<TryoutWorkbookTryout, "categoryId" | "categoryName">,
+) {
+  const categoryId = data.categoryId?.trim() ?? "";
+
+  if (categoryId) {
+    await ensureCategoryExistsWithExecutor(tx, categoryId);
+    return categoryId;
+  }
+
+  const categoryName = data.categoryName?.trim();
+
+  if (!categoryName) {
+    throw conflict("category_id or category_name is required.");
+  }
+
+  const [existingCategory] = await tx
+    .select({ id: categories.id })
+    .from(categories)
+    .where(sql`lower(trim(${categories.name})) = lower(trim(${categoryName}))`)
+    .limit(1);
+
+  if (existingCategory) {
+    return existingCategory.id;
+  }
+
+  const [sortOrderRow] = await tx
+    .select({ maxSortOrder: sql<number | null>`max(${categories.sortOrder})` })
+    .from(categories);
+  const slug = await makeUniqueCategorySlug(tx, categoryName);
+  const [createdCategory] = await tx
+    .insert(categories)
+    .values({
+      slug,
+      name: categoryName,
+      sortOrder: Number(sortOrderRow?.maxSortOrder ?? 0) + 10,
+    })
+    .returning({ id: categories.id });
+
+  return createdCategory.id;
+}
+
+async function resolveSubCategoryReference(
+  tx: TaxonomyExecutor,
+  categoryId: string,
+  data: Pick<TryoutWorkbookQuestion, "subCategoryId" | "subCategoryName">,
+) {
+  const subCategoryId = data.subCategoryId?.trim() ?? "";
+
+  if (subCategoryId) {
+    await ensureSubCategoryBelongsToCategoryWithExecutor(tx, categoryId, subCategoryId);
+    return subCategoryId;
+  }
+
+  const subCategoryName = data.subCategoryName?.trim();
+
+  if (!subCategoryName) {
+    throw conflict("sub_category_id or sub_category_name is required.");
+  }
+
+  const [existingSubCategory] = await tx
+    .select({ id: subCategories.id })
+    .from(subCategories)
+    .where(and(
+      eq(subCategories.categoryId, categoryId),
+      sql`lower(trim(${subCategories.name})) = lower(trim(${subCategoryName}))`,
+    ))
+    .limit(1);
+
+  if (existingSubCategory) {
+    return existingSubCategory.id;
+  }
+
+  const [sortOrderRow] = await tx
+    .select({ maxSortOrder: sql<number | null>`max(${subCategories.sortOrder})` })
+    .from(subCategories)
+    .where(eq(subCategories.categoryId, categoryId));
+  const slug = await makeUniqueSubCategorySlug(tx, categoryId, subCategoryName);
+  const [createdSubCategory] = await tx
+    .insert(subCategories)
+    .values({
+      categoryId,
+      slug,
+      name: subCategoryName,
+      sortOrder: Number(sortOrderRow?.maxSortOrder ?? 0) + 10,
+    })
+    .returning({ id: subCategories.id });
+
+  return createdSubCategory.id;
+}
+
+async function ensureCategoryExistsWithExecutor(tx: TaxonomyExecutor, categoryId: string) {
+  const [category] = await tx
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.id, categoryId))
+    .limit(1);
+
+  if (category) return;
+
+  throw notFound("Category was not found.");
+}
+
+async function ensureSubCategoryBelongsToCategoryWithExecutor(
+  tx: TaxonomyExecutor,
+  categoryId: string,
+  subCategoryId: string,
+) {
+  const [subCategory] = await tx
+    .select({ id: subCategories.id })
+    .from(subCategories)
+    .where(and(eq(subCategories.id, subCategoryId), eq(subCategories.categoryId, categoryId)))
+    .limit(1);
+
+  if (subCategory) return;
+
+  throw notFound("Sub-category was not found for this category.");
+}
+
+async function makeUniqueCategorySlug(tx: TaxonomyExecutor, name: string) {
+  return makeUniqueTaxonomySlug(makeTaxonomySlug(name), async (slug) => {
+    const [category] = await tx
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.slug, slug))
+      .limit(1);
+
+    return Boolean(category);
+  });
+}
+
+async function makeUniqueSubCategorySlug(tx: TaxonomyExecutor, categoryId: string, name: string) {
+  return makeUniqueTaxonomySlug(makeTaxonomySlug(name), async (slug) => {
+    const [subCategory] = await tx
+      .select({ id: subCategories.id })
+      .from(subCategories)
+      .where(and(eq(subCategories.categoryId, categoryId), eq(subCategories.slug, slug)))
+      .limit(1);
+
+    return Boolean(subCategory);
+  });
+}
+
+async function makeUniqueTaxonomySlug(
+  baseSlug: string,
+  slugExists: (slug: string) => Promise<boolean>,
+) {
+  if (!(await slugExists(baseSlug))) {
+    return baseSlug;
+  }
+
+  for (let index = 2; index <= 100; index += 1) {
+    const nextSlug = `${baseSlug}-${index}`;
+
+    if (!(await slugExists(nextSlug))) {
+      return nextSlug;
+    }
+  }
+
+  return `${baseSlug}-${Date.now()}`;
 }
 
 async function ensureTryoutExists(tryoutId: string) {
@@ -493,4 +706,16 @@ function makeSlug(value: string) {
   if (slug) return slug;
 
   return `tryout-${Date.now()}`;
+}
+
+function makeTaxonomySlug(value: string) {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  if (slug) return slug;
+
+  return `taxonomy-${Date.now()}`;
 }

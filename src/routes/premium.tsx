@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useProductAnalytics } from "../lib/product-analytics-client";
 import gsap from "gsap";
 import { TopBar } from "../components/Navigation";
 import { membershipProducts } from "../data";
@@ -35,6 +36,7 @@ const features = [
 
 function PremiumComponent() {
   const { summary } = Route.useLoaderData() as { summary: Awaited<ReturnType<typeof listProgressSummary>> };
+  const posthog = useProductAnalytics();
   const [selectedProductId, setSelectedProductId] = useState(membershipProducts.find((product) => product.active)?.id ?? 1);
   const selectedProduct = membershipProducts.find((product) => product.id === selectedProductId) ?? membershipProducts[0];
   const activeProducts = membershipProducts.filter((product) => product.active);
@@ -138,7 +140,15 @@ function PremiumComponent() {
                   <PackageCard
                     product={product}
                     isSelected={selectedProductId === product.id}
-                    onSelect={() => setSelectedProductId(product.id)}
+                    onSelect={() => {
+                      setSelectedProductId(product.id);
+                      posthog.capture("premium_package_selected", {
+                        product_id: product.id,
+                        product_name: product.name,
+                        price: product.price,
+                        duration_days: product.durationDays,
+                      });
+                    }}
                   />
                 </div>
               ))}
@@ -179,6 +189,12 @@ function PremiumComponent() {
                   borderBottomWidth: 5,
                   borderBottomColor: "#b45309",
                 }}
+                onClick={() => posthog.capture("premium_checkout_clicked", {
+                  product_id: selectedProduct.id,
+                  product_name: selectedProduct.name,
+                  price: selectedProduct.price,
+                  duration_days: selectedProduct.durationDays,
+                })}
               >
                 <span>Lanjut bayar</span>
                 <span className="flex items-center gap-2">

@@ -13,6 +13,7 @@ export const Route = createFileRoute("/admin")({
 const adminSections = [
   { label: "Users", to: "/admin/users", description: "Student accounts, status, and profile details.", icon: UsersIcon },
   { label: "Try-outs", to: "/admin/tryouts", description: "Assessment setup, publishing, and question assignment.", icon: BookIcon },
+  { label: "Categories", to: "/admin/categories", description: "Two-level curriculum taxonomy for Questions and Materi links.", icon: TagsIcon },
   { label: "Polls", to: "/admin/polls", description: "Live classroom Poll Sessions, rounds, and history.", icon: SignalIcon },
   { label: "Reports", to: "/admin/reports", description: "Question reports from Students.", icon: FlagIcon },
   { label: "Insights", to: "/admin/insights", description: "Basic platform metrics for Milestone 1.", icon: ChartIcon },
@@ -87,6 +88,15 @@ function BookIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <path d="M5 4.8A2.8 2.8 0 0 1 7.8 2H19v17H7.8A2.8 2.8 0 0 0 5 21.8v-17Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M5 18.2A2.8 2.8 0 0 1 7.8 15H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TagsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="7.5" cy="7.5" r="1.5" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }

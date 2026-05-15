@@ -1,9 +1,11 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { useApp } from "../data";
 import { isPaidTryout, resolveTryoutAccess } from "../lib/domain/premium-access";
+import { analyticsSearchSchema, productAnalyticsEvents } from "../lib/product-analytics";
+import { useProductAnalytics } from "../lib/product-analytics-client";
 import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
 
 type TryoutRow = Awaited<ReturnType<typeof listPublishedTryouts>>[number];
@@ -28,15 +30,30 @@ export const Route = createFileRoute("/tryout")({
     ],
   }),
   component: TryoutComponent,
+  validateSearch: analyticsSearchSchema,
 });
 
 function TryoutComponent() {
   const { summary, tryouts } = Route.useLoaderData() as { summary: ProgressSummary; tryouts: TryoutRow[] };
+  const { intent } = Route.useSearch();
   const { hasPremiumMembership } = useApp();
+  const analytics = useProductAnalytics();
   const location = useLocation();
   const [showPremium, setShowPremium] = useState(false);
   const [selectedTryout, setSelectedTryout] = useState<TryoutRow | null>(null);
   const [filter, setFilter] = useState<TryoutFilter>("all");
+
+  useEffect(() => {
+    if (location.pathname !== "/tryout") {
+      return;
+    }
+
+    analytics.capture(productAnalyticsEvents.tryoutCatalogViewed, {
+      intent,
+      source_path: "/tryout",
+      tryout_count: tryouts.length,
+    });
+  }, [analytics, intent, location.pathname, tryouts.length]);
 
   if (location.pathname !== "/tryout") {
     return <Outlet />;

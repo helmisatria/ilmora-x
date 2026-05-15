@@ -6,6 +6,15 @@
 
 This checklist tracks the practical work needed to finish M1. Keep every item tied to real backend behavior. Do not reintroduce mock runtime state.
 
+**Scope update 2026-05-15**
+
+- Standalone Admin Questions is not an M1 demo path. Questions are managed through the Try-out workbook.
+- Standalone Admin Materi management is skipped for M1. Materi CMS/upload/publish/archive moves out of the M1 acceptance path.
+- Question difficulty is deferred to M2.
+- Category/Sub-category Admin management is in M1 as a simple two-level manager: create, rename, recolor, reorder, and show stable IDs. Merge/delete stays deferred until an analytics history policy exists.
+- Try-out workbook import may auto-create Category/Sub-category from names when IDs are blank, reusing existing names case-insensitively.
+- Student Try-out list attempt metadata is accepted as non-blocking for M1.
+
 ---
 
 ## 1. Baseline Health
@@ -42,14 +51,14 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 
 ## 3. Route Protection
 
-- [ ] Protect all Student-only routes behind an authenticated session.
-- [ ] Protect all Admin routes behind authenticated session plus admin whitelist.
-- [ ] Recheck Admin access on every Admin route load.
-- [ ] Recheck Admin access at the start of every Admin mutation.
-- [ ] Redirect unauthenticated users to login.
-- [ ] Redirect incomplete Student profiles to profile completion.
-- [ ] Redirect Admin users to the Admin dashboard after login.
-- [ ] Prevent completed Students from using profile completion as an edit page.
+- [x] Protect all Student-only routes behind an authenticated session.
+- [x] Protect all Admin routes behind authenticated session plus admin whitelist.
+- [x] Recheck Admin access on every Admin route load.
+- [x] Recheck Admin access at the start of every Admin mutation.
+- [x] Redirect unauthenticated users to login.
+- [x] Redirect incomplete Student profiles to profile completion.
+- [x] Redirect Admin users to the Admin dashboard after login.
+- [x] Prevent completed Students from using profile completion as an edit page.
 - [ ] Show a clear blocked state for suspended users.
 
 ## 4. Mock Runtime Removal
@@ -71,109 +80,114 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 
 ## 5. Admin Foundation
 
-- [ ] Create Admin layout and navigation.
-- [ ] Create Admin dashboard route.
-- [ ] Create Admin users route.
-- [ ] Create Admin user detail route.
-- [ ] Create Admin try-outs route.
-- [ ] Create Admin questions route.
-- [ ] Create Admin materi route.
-- [ ] Create Admin reports route.
-- [ ] Create Admin insights route.
-- [ ] Add admin whitelist table and bootstrap from `ADMIN_EMAILS`.
-- [ ] Add Super-admin capability for adding Admin users.
-- [ ] Add Super-admin capability for removing Admin users.
+- [x] Create Admin layout and navigation.
+- [x] Create Admin dashboard route.
+- [x] Create Admin users route.
+- [x] Create Admin user detail route.
+- [x] Create Admin try-outs route.
+- [x] Skip standalone Admin questions route for M1; manage Questions through Try-out workbook.
+- [x] Skip standalone Admin materi management for M1; keep placeholder/count route only.
+- [x] Create Admin reports route.
+- [x] Create Admin insights route.
+- [x] Add admin whitelist table and bootstrap from `ADMIN_EMAILS`.
+- [x] Add Super-admin capability for adding Admin users.
+- [x] Add Super-admin capability for removing Admin users.
 - [ ] Add Admin audit fields where useful.
 - [ ] Add clear empty states for all Admin pages.
 
 ## 6. Content Categories And Questions
 
-- [ ] Store categories in the database.
-- [ ] Store sub-categories in the database.
-- [ ] Enforce a maximum of two category levels.
-- [ ] Store questions in the database.
-- [ ] Store question choices in the database.
-- [ ] Store correct answer keys securely enough for M1.
-- [ ] Store question explanations.
-- [ ] Store question difficulty.
-- [ ] Store question status.
-- [ ] Allow Admins to create questions.
-- [ ] Allow Admins to edit questions.
-- [ ] Allow Admins to archive questions.
-- [ ] Prevent archived questions from appearing in new attempts.
-- [ ] Validate every question mutation with Zod.
+- [x] Store categories in the database.
+- [x] Store sub-categories in the database.
+- [x] Enforce a maximum of two category levels.
+- [x] Add Category/Sub-category Admin management for create, rename, recolor, and reorder.
+- [x] Show stable Category/Sub-category IDs for workbook import use.
+- [x] Defer Category/Sub-category merge/delete until a history policy exists.
+- [x] Store questions in the database.
+- [x] Store question choices in the database.
+- [x] Store correct answer keys securely enough for M1.
+- [x] Store question explanations.
+- [x] Defer question difficulty to M2.
+- [x] Store question status.
+- [x] Allow Admins to create questions through Try-out workbook import.
+- [x] Allow Admins to edit questions through Try-out workbook import.
+- [x] Use unpublish instead of archive for M1 Questions.
+- [x] Prevent unpublished questions from appearing in new attempts.
+- [x] Validate every question mutation with Zod.
 
 ## 7. Try-Out Management
 
-- [ ] Store try-outs in the database.
-- [ ] Store try-out section/question membership in the database.
-- [ ] Support draft try-outs.
-- [ ] Support published try-outs.
-- [ ] Support archived try-outs.
-- [ ] Allow Admins to create try-outs.
-- [ ] Allow Admins to edit try-outs.
-- [ ] Allow Admins to publish try-outs.
-- [ ] Allow Admins to archive try-outs.
-- [ ] Prevent Students from starting unpublished try-outs.
-- [ ] Prevent Students from starting archived try-outs.
-- [ ] Keep Try-out terminology consistent in UI and code.
+- [x] Store try-outs in the database.
+- [x] Store try-out section/question membership in the database.
+- [x] Support draft try-outs.
+- [x] Support published try-outs.
+- [x] Use unpublished instead of archived for M1 Try-outs.
+- [x] Allow Admins to create try-outs.
+- [x] Allow Admins to edit try-outs.
+- [x] Allow Admins to publish try-outs.
+- [x] Allow Admins to unpublish try-outs.
+- [x] Prevent Students from starting unpublished try-outs.
+- [x] Prevent Students from starting unavailable Try-outs.
+- [x] Keep Try-out terminology consistent in UI and code.
 
 ## 8. Excel Import
 
-- [ ] Define the final M1 Excel template.
-- [ ] Validate required columns before import.
-- [ ] Validate category names during import.
-- [ ] Validate answer options during import.
-- [ ] Validate correct answer key during import.
-- [ ] Validate duplicate question rows.
-- [ ] Show import preview before commit.
-- [ ] Commit valid import rows in a transaction.
-- [ ] Report invalid rows with row numbers.
-- [ ] Add an import sample file or update the existing sample file.
-- [ ] Add Admin UI for downloading the template.
-- [ ] Add Admin UI for uploading Excel.
+- [x] Define the final M1 Excel template.
+- [x] Validate required columns before import.
+- [x] Validate category/sub-category IDs during import.
+- [x] Validate answer options during import.
+- [x] Validate correct answer key during import.
+- [x] Validate duplicate question rows.
+- [x] Show import preview before commit.
+- [x] Preview Category/Sub-category reuse/create actions before commit.
+- [x] Auto-create Category/Sub-category from workbook names when IDs are blank.
+- [x] Commit valid import rows in a transaction.
+- [x] Report invalid rows with row numbers.
+- [x] Add an import sample file or update the existing sample file.
+- [x] Add Admin UI for downloading the template.
+- [x] Add Admin UI for uploading Excel.
 
 ## 9. Materi Management
 
-- [ ] Store Materi records in the database.
-- [ ] Store Materi category/sub-category links.
-- [ ] Store Materi status.
-- [ ] Add local upload abstraction for M1 files.
-- [ ] Allow Admins to upload Materi PDFs.
-- [ ] Allow Admins to create Materi metadata.
-- [ ] Allow Admins to edit Materi metadata.
-- [ ] Allow Admins to publish Materi.
-- [ ] Allow Admins to archive Materi.
-- [ ] Show published Materi to Students.
-- [ ] Prevent archived Materi from appearing to Students.
+- [x] Store Materi records in the database.
+- [x] Store Materi category/sub-category links.
+- [x] Store Materi status.
+- [x] Skip local upload abstraction for M1; Materi upload moves out of M1.
+- [x] Skip Admin Materi PDF upload for M1.
+- [x] Skip Admin Materi metadata creation for M1.
+- [x] Skip Admin Materi metadata editing for M1.
+- [x] Skip Admin Materi publishing for M1.
+- [x] Skip Admin Materi archiving for M1.
+- [x] Keep published Materi available only where already seeded/linked.
+- [x] Use published/unpublished status; Materi archive behavior moves out of M1.
 
 ## 10. Student Try-Out List
 
-- [ ] Load published try-outs from the server.
-- [ ] Show attempt count per try-out.
-- [ ] Show latest attempt status per try-out.
-- [ ] Show latest score per try-out.
-- [ ] Show duration and question count from real try-out data.
-- [ ] Support retake entry points.
-- [ ] Hide unavailable try-outs.
-- [ ] Replace any remaining static try-out list behavior.
+- [x] Load published try-outs from the server.
+- [x] Accept no attempt count per Try-out in M1.
+- [x] Accept no latest attempt status per Try-out in M1.
+- [x] Accept no latest score per Try-out in M1.
+- [x] Show duration and question count from real try-out data.
+- [x] Support retake entry points.
+- [x] Hide unavailable try-outs.
+- [x] Replace any remaining static try-out list behavior.
 
 ## 11. Attempt Lifecycle
 
-- [ ] Create an Attempt when a Student starts a Try-out.
-- [ ] Store Attempt status.
-- [ ] Store Attempt start time.
-- [ ] Store Attempt deadline.
-- [ ] Store per-question answers.
-- [ ] Store flagged questions.
-- [ ] Store visited questions if needed by the UI.
-- [ ] Resume an in-progress Attempt.
-- [ ] Prevent another active Attempt for the same Student and Try-out unless the product explicitly allows it.
-- [ ] Auto-submit expired attempts.
-- [ ] Submit attempts from the Student UI.
-- [ ] Score attempts on the server.
-- [ ] Make retake create a new Attempt.
-- [ ] Keep previous Attempt history immutable after submission.
+- [x] Create an Attempt when a Student starts a Try-out.
+- [x] Store Attempt status.
+- [x] Store Attempt start time.
+- [x] Store Attempt deadline.
+- [x] Store per-question answers.
+- [x] Store flagged questions.
+- [x] Store last question index instead of full visited-question trail.
+- [x] Resume an in-progress Attempt.
+- [x] Prevent another active Attempt for the same Student and Try-out unless the product explicitly allows it.
+- [x] Auto-submit expired attempts from the Student UI.
+- [x] Submit attempts from the Student UI.
+- [x] Score attempts on the server.
+- [x] Make retake create a new Attempt.
+- [x] Keep previous Attempt history immutable after submission.
 
 ## 12. Autosave And Offline Queue
 
@@ -192,16 +206,16 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 
 ## 13. Results And Review
 
-- [ ] Load submitted result summary from the server.
-- [ ] Show score from server-scored Attempt data.
-- [ ] Show correct count from server-scored Attempt data.
-- [ ] Show incorrect count from server-scored Attempt data.
-- [ ] Show unanswered count from server-scored Attempt data.
-- [ ] Show time spent from Attempt timestamps.
-- [ ] Load review questions from server-backed Attempt answers.
-- [ ] Show explanations from database questions.
-- [ ] Allow Students to report a question from review.
-- [ ] Store question reports in the database.
+- [x] Load submitted result summary from the server.
+- [x] Show score from server-scored Attempt data.
+- [x] Show correct count from server-scored Attempt data.
+- [x] Show incorrect count from server-scored Attempt data.
+- [x] Show unanswered count from server-scored Attempt data.
+- [x] Show time spent from Attempt timestamps.
+- [x] Load review questions from server-backed Attempt answers.
+- [x] Show explanations from database questions.
+- [x] Allow Students to report a question from review.
+- [x] Store question reports in the database.
 - [ ] Prevent duplicate noisy reports where reasonable.
 
 ## 14. Admin Reports
@@ -233,26 +247,26 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 - [ ] Add tests for streak calculation.
 - [ ] Add tests for level calculation.
 - [ ] Add tests for progress summary aggregation.
-- [ ] Add category-level performance breakdown from real attempts.
-- [ ] Add sub-category performance breakdown from real attempts.
-- [ ] Add attempt history UI backed by real attempts.
+- [x] Add category-level performance breakdown from real attempts.
+- [x] Add sub-category performance breakdown from real attempts.
+- [x] Add attempt history UI backed by real attempts.
 
 ## 16. Admin Student Evaluation
 
-- [ ] List Students for Admin evaluation.
+- [x] List Students for Admin evaluation.
 - [ ] Search Students by name.
 - [ ] Search Students by email.
 - [ ] Filter Students by profile status.
 - [ ] Filter Students by suspension status.
-- [ ] Show Student detail with profile information.
-- [ ] Show Student detail with XP.
-- [ ] Show Student detail with level.
-- [ ] Show Student detail with streak.
-- [ ] Show Student detail with attempt history.
-- [ ] Show Student detail with category performance.
-- [ ] Show Student detail with sub-category performance.
-- [ ] Allow Admins to suspend Students.
-- [ ] Allow Admins to unsuspend Students.
+- [x] Show Student detail with profile information.
+- [x] Show Student detail with XP.
+- [x] Show Student detail with level.
+- [x] Show Student detail with streak.
+- [x] Show Student detail with attempt history.
+- [x] Show Student detail with category performance.
+- [x] Show Student detail with sub-category performance.
+- [x] Allow Admins to suspend Students.
+- [x] Allow Admins to unsuspend Students.
 
 ## 17. Insights
 
@@ -268,16 +282,16 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 
 ## 18. Security And Validation
 
-- [ ] Validate every server function input with Zod.
-- [ ] Put authorization checks at the top of mutations.
-- [ ] Ensure Students can only read their own private attempts.
-- [ ] Ensure Students cannot read other Students' private profile details.
-- [ ] Ensure public profile data is intentionally limited.
-- [ ] Ensure Admin-only data is not exposed to Student routes.
+- [x] Validate every server function input with Zod where input exists.
+- [x] Put authorization checks at the top of mutations.
+- [x] Ensure Students can only read their own private attempts.
+- [x] Ensure Students cannot read other Students' private profile details.
+- [x] Ensure public profile data is intentionally limited.
+- [x] Ensure Admin-only data is not exposed to Student routes.
 - [x] Ensure question answer keys are not sent to active Attempt pages.
-- [ ] Ensure archived content cannot be started by Students.
-- [ ] Ensure database writes use transactions when multiple tables must stay consistent.
-- [ ] Ensure uploaded files are constrained by type and size.
+- [x] Ensure unpublished content cannot be started by Students.
+- [x] Ensure database writes use transactions when multiple tables must stay consistent.
+- [x] Ensure Excel uploads are constrained by accepted `.xlsx` file input and workbook validation.
 
 ## 19. Observability And Error Handling
 
@@ -304,10 +318,10 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 - [ ] Demo review and report question.
 - [ ] Demo My Progress attempt history.
 - [ ] Demo Admin login path.
-- [ ] Demo Admin question management.
+- [ ] Demo Admin question management through Try-out workbook.
 - [ ] Demo Admin Try-out management.
 - [ ] Demo Admin Excel import.
-- [ ] Demo Admin Materi management.
+- [x] Skip Admin Materi management demo for M1.
 - [ ] Demo Admin report moderation.
 - [ ] Demo Admin Student evaluation.
 - [ ] Demo basic Admin insights.
@@ -324,9 +338,9 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 - [ ] Try-out Attempt data survives temporary offline usage.
 - [ ] Submitted Attempts are scored on the server.
 - [ ] Progress, level, and streak come from real Attempt data.
-- [ ] Admin can manage questions and Try-outs.
+- [ ] Admin can manage questions through Try-out workbook and manage Try-outs.
 - [ ] Admin can import questions from Excel.
-- [ ] Admin can manage Materi.
+- [x] Admin Materi management is skipped for M1.
 - [ ] Admin can review question reports.
 - [ ] Admin can inspect Student evaluation data.
 - [ ] TypeScript validation passes.
