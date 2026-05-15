@@ -8,6 +8,7 @@ import { db } from "./db/client";
 import {
   pollAnswers,
   pollParticipants,
+  pollRoundPlanItems,
   pollRounds,
   pollSessions,
 } from "./db/schema";
@@ -33,13 +34,49 @@ const archivePollSessionSchema = sessionIdSchema.extend({
 
 const createPollRoundSchema = z.object({
   sessionId: z.string().trim().min(1),
+  planItemId: z.string().trim().min(1).optional(),
   label: z.string().trim().max(80).optional(),
+  questionText: z.string().trim().max(2000).optional(),
+  optionA: z.string().trim().max(500).optional(),
+  optionB: z.string().trim().max(500).optional(),
+  optionC: z.string().trim().max(500).optional(),
+  optionD: z.string().trim().max(500).optional(),
+  optionE: z.string().trim().max(500).optional(),
   correctOption: pollOptionSchema,
   timerSeconds: z.number().int().min(5).max(600).nullable().optional(),
 });
 
+const pollRoundPlanItemSchema = z.object({
+  label: z.string().trim().max(80).optional(),
+  questionText: z.string().trim().min(1).max(2000),
+  optionA: z.string().trim().min(1).max(500),
+  optionB: z.string().trim().min(1).max(500),
+  optionC: z.string().trim().min(1).max(500),
+  optionD: z.string().trim().min(1).max(500),
+  optionE: z.string().trim().max(500).optional(),
+  correctOption: pollOptionSchema,
+  timerSeconds: z.number().int().min(5).max(600).nullable().optional(),
+}).superRefine((item, context) => {
+  if (item.correctOption !== "E") return;
+  if (item.optionE?.trim()) return;
+
+  context.addIssue({
+    code: "custom",
+    message: "Option E is required when the correct option is E.",
+    path: ["optionE"],
+  });
+});
+
+const importPollRoundPlanSchema = sessionIdSchema.extend({
+  items: z.array(pollRoundPlanItemSchema).min(1).max(500),
+});
+
 const closePollRoundSchema = z.object({
   roundId: z.string().trim().min(1),
+});
+
+const planItemIdSchema = z.object({
+  planItemId: z.string().trim().min(1),
 });
 
 const correctPollRoundSchema = closePollRoundSchema.extend({
@@ -125,6 +162,64 @@ function makeDefaultSessionTitle() {
 
 function toIso(value: Date | null | undefined) {
   return value?.toISOString() ?? null;
+}
+
+function toOptionalText(value: string | null | undefined) {
+  const text = value?.trim() ?? "";
+
+  if (!text) return null;
+
+  return text;
+}
+
+function hasAnyTeacherContent(data: {
+  questionText?: string;
+  optionA?: string;
+  optionB?: string;
+  optionC?: string;
+  optionD?: string;
+  optionE?: string;
+}) {
+  return Boolean(
+    toOptionalText(data.questionText)
+      || toOptionalText(data.optionA)
+      || toOptionalText(data.optionB)
+      || toOptionalText(data.optionC)
+      || toOptionalText(data.optionD)
+      || toOptionalText(data.optionE),
+  );
+}
+
+function getRoundTeacherContent(data: z.infer<typeof createPollRoundSchema>) {
+  if (!hasAnyTeacherContent(data)) {
+    return {
+      questionText: null,
+      optionA: null,
+      optionB: null,
+      optionC: null,
+      optionD: null,
+      optionE: null,
+    };
+  }
+
+  const content = {
+    questionText: toOptionalText(data.questionText),
+    optionA: toOptionalText(data.optionA),
+    optionB: toOptionalText(data.optionB),
+    optionC: toOptionalText(data.optionC),
+    optionD: toOptionalText(data.optionD),
+    optionE: toOptionalText(data.optionE),
+  };
+
+  if (!content.questionText || !content.optionA || !content.optionB || !content.optionC || !content.optionD) {
+    throw badRequest("Question text and options A-D are required for teacher-facing content.");
+  }
+
+  if (data.correctOption === "E" && !content.optionE) {
+    throw badRequest("Option E is required when the correct option is E.");
+  }
+
+  return content;
 }
 
 function makeParticipantToken() {
@@ -218,6 +313,18 @@ async function getRoundById(roundId: string) {
   throw notFound("Poll Round was not found.");
 }
 
+async function getPlanItemById(planItemId: string) {
+  const [planItem] = await db
+    .select()
+    .from(pollRoundPlanItems)
+    .where(eq(pollRoundPlanItems.id, planItemId))
+    .limit(1);
+
+  if (planItem) return planItem;
+
+  throw notFound("Poll Round Plan item was not found.");
+}
+
 async function closeOpenRound(sessionId: string, now = new Date()) {
   const [round] = await db
     .select()
@@ -236,6 +343,8 @@ async function closeOpenRound(sessionId: string, now = new Date()) {
       updatedAt: now,
     })
     .where(eq(pollRounds.id, round.id));
+
+  await recalculateRoundAnswers(round.id, round.correctOption as PollOption, now);
 
   return round;
 }
@@ -271,12 +380,13 @@ async function closeExpiredOpenRoundBySession(sessionId: string, now = new Date(
     })
     .where(eq(pollRounds.id, round.id));
 
+  await recalculateRoundAnswers(round.id, round.correctOption as PollOption, now);
   await publishPollSessionChanged(sessionId);
 
   return round;
 }
 
-async function recalculateRoundAnswers(roundId: string, correctOption: PollOption) {
+async function recalculateRoundAnswers(roundId: string, correctOption: PollOption, now = new Date()) {
   const answers = await db
     .select({
       id: pollAnswers.id,
@@ -298,7 +408,7 @@ async function recalculateRoundAnswers(roundId: string, correctOption: PollOptio
           correctOption,
           responseMs: answer.responseMs,
         }),
-        updatedAt: new Date(),
+        updatedAt: now,
       })
       .where(eq(pollAnswers.id, answer.id));
   }
@@ -322,7 +432,7 @@ async function getParticipantScores(sessionId: string) {
     })
     .from(pollAnswers)
     .innerJoin(pollRounds, eq(pollRounds.id, pollAnswers.roundId))
-    .where(eq(pollRounds.sessionId, sessionId));
+    .where(and(eq(pollRounds.sessionId, sessionId), eq(pollRounds.status, "closed")));
 
   const scoreMap = new Map<string, ParticipantScore>();
 
@@ -363,7 +473,7 @@ async function getParticipantScores(sessionId: string) {
 async function getSessionDetail(sessionId: string) {
   const session = await getSessionById(sessionId);
   await closeExpiredOpenRoundBySession(session.id);
-  const [participants, rounds, answers, scores] = await Promise.all([
+  const [participants, rounds, planItems, answers, scores] = await Promise.all([
     db
       .select()
       .from(pollParticipants)
@@ -374,6 +484,11 @@ async function getSessionDetail(sessionId: string) {
       .from(pollRounds)
       .where(eq(pollRounds.sessionId, sessionId))
       .orderBy(asc(pollRounds.roundNumber)),
+    db
+      .select()
+      .from(pollRoundPlanItems)
+      .where(eq(pollRoundPlanItems.sessionId, sessionId))
+      .orderBy(asc(pollRoundPlanItems.sortOrder)),
     db
       .select({
         id: pollAnswers.id,
@@ -438,6 +553,12 @@ async function getSessionDetail(sessionId: string) {
         id: round.id,
         roundNumber: round.roundNumber,
         label: round.label,
+        questionText: round.questionText,
+        optionA: round.optionA,
+        optionB: round.optionB,
+        optionC: round.optionC,
+        optionD: round.optionD,
+        optionE: round.optionE,
         correctOption: round.correctOption as PollOption,
         status: round.status as "open" | "closed",
         timerSeconds: round.timerSeconds,
@@ -457,6 +578,23 @@ async function getSessionDetail(sessionId: string) {
         })),
       };
     }),
+    planItems: planItems.map((item) => ({
+      id: item.id,
+      sortOrder: item.sortOrder,
+      status: item.status as "planned" | "started" | "skipped",
+      label: item.label,
+      questionText: item.questionText,
+      optionA: item.optionA,
+      optionB: item.optionB,
+      optionC: item.optionC,
+      optionD: item.optionD,
+      optionE: item.optionE,
+      correctOption: item.correctOption as PollOption,
+      timerSeconds: item.timerSeconds,
+      startedRoundId: item.startedRoundId,
+      startedAt: toIso(item.startedAt),
+      skippedAt: toIso(item.skippedAt),
+    })),
     activeRoundId: activeRound?.id ?? null,
     scores,
   };
@@ -523,6 +661,84 @@ export const getPollSessionAdmin = createServerFn({ method: "GET" })
   .inputValidator((input) => parseInput(sessionIdSchema, input))
   .handler(async ({ data }) => getSessionDetail(data.sessionId));
 
+export const importPollRoundPlanAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(importPollRoundPlanSchema, input))
+  .handler(async ({ data }) => {
+    const session = await getSessionById(data.sessionId);
+
+    if (session.archivedAt) {
+      throw conflict("Unarchive the Poll Session before replacing its plan.");
+    }
+
+    if (session.status === "closed") {
+      throw conflict("Reopen the Poll Session before replacing its plan.");
+    }
+
+    const now = new Date();
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(pollRoundPlanItems)
+        .where(and(eq(pollRoundPlanItems.sessionId, session.id), ne(pollRoundPlanItems.status, "started")));
+
+      const [lastStartedItem] = await tx
+        .select({ sortOrder: pollRoundPlanItems.sortOrder })
+        .from(pollRoundPlanItems)
+        .where(eq(pollRoundPlanItems.sessionId, session.id))
+        .orderBy(desc(pollRoundPlanItems.sortOrder))
+        .limit(1);
+      const baseSortOrder = lastStartedItem?.sortOrder ?? 0;
+
+      await tx.insert(pollRoundPlanItems).values(data.items.map((item, index) => ({
+        sessionId: session.id,
+        sortOrder: baseSortOrder + index + 1,
+        status: "planned",
+        label: toOptionalText(item.label),
+        questionText: item.questionText,
+        optionA: item.optionA,
+        optionB: item.optionB,
+        optionC: item.optionC,
+        optionD: item.optionD,
+        optionE: toOptionalText(item.optionE),
+        correctOption: item.correctOption,
+        timerSeconds: item.timerSeconds ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })));
+    });
+
+    const detail = await getSessionDetail(session.id);
+    await publishPollSessionChanged(session.id);
+
+    return detail;
+  });
+
+export const skipPollRoundPlanItemAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(planItemIdSchema, input))
+  .handler(async ({ data }) => {
+    const planItem = await getPlanItemById(data.planItemId);
+
+    if (planItem.status !== "planned") {
+      throw conflict("Only planned Poll Round rows can be skipped.");
+    }
+
+    await db
+      .update(pollRoundPlanItems)
+      .set({
+        status: "skipped",
+        skippedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(pollRoundPlanItems.id, planItem.id));
+
+    const detail = await getSessionDetail(planItem.sessionId);
+    await publishPollSessionChanged(planItem.sessionId);
+
+    return detail;
+  });
+
 export const createPollSessionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(createPollSessionSchema, input ?? {}))
@@ -554,33 +770,102 @@ export const createPollRoundAdmin = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(createPollRoundSchema, input))
   .handler(async ({ data }) => {
     const session = await getSessionById(data.sessionId);
+    const planItem = data.planItemId ? await getPlanItemById(data.planItemId) : null;
 
     if (session.status !== "open") {
       throw conflict("Poll Session is not open.");
     }
 
+    if (planItem && planItem.sessionId !== session.id) {
+      throw conflict("Poll Round Plan item does not belong to this Poll Session.");
+    }
+
+    if (planItem && planItem.status !== "planned") {
+      throw conflict("Poll Round Plan item has already been used.");
+    }
+
     const now = new Date();
-    await closeOpenRound(session.id, now);
+    let closedRoundId: string | null = null;
+    let closedRoundCorrectOption: PollOption = "A";
+    const contentData = planItem && !hasAnyTeacherContent(data)
+      ? {
+          ...data,
+          questionText: planItem.questionText,
+          optionA: planItem.optionA,
+          optionB: planItem.optionB,
+          optionC: planItem.optionC,
+          optionD: planItem.optionD,
+          optionE: planItem.optionE ?? undefined,
+        }
+      : data;
+    const teacherContent = getRoundTeacherContent(contentData);
 
-    const [lastRound] = await db
-      .select({ roundNumber: pollRounds.roundNumber })
-      .from(pollRounds)
-      .where(eq(pollRounds.sessionId, session.id))
-      .orderBy(desc(pollRounds.roundNumber))
-      .limit(1);
-    const roundNumber = (lastRound?.roundNumber ?? 0) + 1;
+    await db.transaction(async (tx) => {
+      const [openRound] = await tx
+        .select()
+        .from(pollRounds)
+        .where(and(eq(pollRounds.sessionId, session.id), eq(pollRounds.status, "open")))
+        .orderBy(desc(pollRounds.roundNumber))
+        .limit(1);
 
-    await db.insert(pollRounds).values({
-      sessionId: session.id,
-      roundNumber,
-      label: data.label?.trim() || `Round ${roundNumber}`,
-      correctOption: data.correctOption,
-      status: "open",
-      timerSeconds: data.timerSeconds ?? null,
-      openedAt: now,
-      createdAt: now,
-      updatedAt: now,
+      if (openRound) {
+        await tx
+          .update(pollRounds)
+          .set({
+            status: "closed",
+            closedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(pollRounds.id, openRound.id));
+
+        closedRoundId = openRound.id;
+        closedRoundCorrectOption = openRound.correctOption as PollOption;
+      }
+
+      const [lastRound] = await tx
+        .select({ roundNumber: pollRounds.roundNumber })
+        .from(pollRounds)
+        .where(eq(pollRounds.sessionId, session.id))
+        .orderBy(desc(pollRounds.roundNumber))
+        .limit(1);
+      const roundNumber = (lastRound?.roundNumber ?? 0) + 1;
+      const [round] = await tx
+        .insert(pollRounds)
+        .values({
+          sessionId: session.id,
+          roundNumber,
+          label: data.label?.trim() || planItem?.label?.trim() || `Round ${roundNumber}`,
+          questionText: teacherContent.questionText,
+          optionA: teacherContent.optionA,
+          optionB: teacherContent.optionB,
+          optionC: teacherContent.optionC,
+          optionD: teacherContent.optionD,
+          optionE: teacherContent.optionE,
+          correctOption: data.correctOption,
+          status: "open",
+          timerSeconds: data.timerSeconds === undefined ? planItem?.timerSeconds ?? null : data.timerSeconds,
+          openedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: pollRounds.id });
+
+      if (!planItem) return;
+
+      await tx
+        .update(pollRoundPlanItems)
+        .set({
+          status: "started",
+          startedRoundId: round.id,
+          startedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(pollRoundPlanItems.id, planItem.id));
     });
+
+    if (closedRoundId) {
+      await recalculateRoundAnswers(closedRoundId, closedRoundCorrectOption, now);
+    }
 
     const detail = await getSessionDetail(session.id);
     await publishPollSessionChanged(session.id);
@@ -598,14 +883,17 @@ export const closePollRoundAdmin = createServerFn({ method: "POST" })
       return getSessionDetail(round.sessionId);
     }
 
+    const now = new Date();
+
     await db
       .update(pollRounds)
       .set({
         status: "closed",
-        closedAt: new Date(),
-        updatedAt: new Date(),
+        closedAt: now,
+        updatedAt: now,
       })
       .where(eq(pollRounds.id, round.id));
+    await recalculateRoundAnswers(round.id, round.correctOption as PollOption, now);
 
     const detail = await getSessionDetail(round.sessionId);
     await publishPollSessionChanged(round.sessionId);
@@ -950,17 +1238,10 @@ export const submitPollAnswer = createServerFn({ method: "POST" })
       .limit(1);
 
     const responseMs = Math.max(now.getTime() - activeRound.openedAt.getTime(), 0);
-    const correctOption = activeRound.correctOption as PollOption;
-    const points = calculatePoints({
-      selectedOption: data.selectedOption,
-      correctOption,
-      responseMs,
-    });
-
     const answerValues = {
       selectedOption: data.selectedOption,
-      isCorrect: data.selectedOption === correctOption,
-      points,
+      isCorrect: false,
+      points: 0,
       responseMs,
       answeredAt: now,
       updatedAt: now,

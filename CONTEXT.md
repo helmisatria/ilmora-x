@@ -31,6 +31,10 @@ _Avoid_: Soal (Bahasa only — ok in UI), item
 The per-Question review content shown after an Attempt, consisting of the correct answer, explanation ("pembahasan"), and optional video pembahasan. It belongs to the Question, not to standalone Materi.
 _Avoid_: Materi (unless referring to a standalone study-material unit)
 
+**Student Evaluation**:
+A per-Student learning-performance view computed from submitted and auto-submitted **Attempts**, covering totals, accuracy, Attempt history, and Category/Sub-category breakdowns.
+_Avoid_: Users Insights, platform analytics
+
 **Engagement surface**:
 The complete set of gamification concepts in scope: **EXP**, **Level** (1–50), **Badge**, **Streak** (daily Try-out consecutive days), **Leaderboard**. Hearts (lives) and Gems (currency) are **out of scope** and must not appear in the prototype top bar.
 
@@ -121,6 +125,13 @@ A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuse
 - **On submit: flush local queue first, then submit.** If offline at submit time, queue and retry on reconnect. If the wall-clock deadline elapses while offline, the server auto-submits with the last-synced state.
 - **"Auto-saved at HH:MM" UI shows last server-confirmed save**, not last local save. Avoids false reassurance.
 - **Attempt lifecycle may trigger Badge evaluation after submit, but Badge rules belong to the Engagement surface.** Attempt submission records the Attempt result and may orchestrate downstream Badge evaluation; it does not own Badge eligibility rules.
+
+## Rules (Student Evaluation)
+
+- **Admin Student Evaluation reuses the Student Evaluation model.** Admins may inspect the same per-Student learning-performance data a Student sees, scoped to a selected Student and presented inside Admin CMS with profile/status context.
+- **Admin Attempt Review is read-only inspection.** From Admin Student Evaluation, Admins may open submitted or auto-submitted Attempt result/review for the selected Student, but cannot edit answers, rescore Attempts, or submit in-progress Attempts from that surface.
+- **Admin Student Evaluation ignores Student premium gating.** Student-facing Evaluation may lock or blur premium-only details, but Admin-facing Student Evaluation always shows the full basic evaluation because it is an operational oversight surface, not a Student entitlement.
+- **Users Insights is platform-level analytics.** Cross-Student aggregates, cohorts, and platform-wide performance questions belong to Users Insights, not Admin Student Evaluation.
 
 ## Rules (Try-out content management)
 

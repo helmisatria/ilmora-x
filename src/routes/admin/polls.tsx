@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from "react";
 import { z } from "zod";
 import {
   archivePollSessionAdmin,
@@ -9,8 +9,10 @@ import {
   createPollRoundAdmin,
   createPollSessionAdmin,
   getPollSessionAdmin,
+  importPollRoundPlanAdmin,
   listPollSessionsAdmin,
   reopenPollSessionAdmin,
+  skipPollRoundPlanItemAdmin,
 } from "../../lib/poll-functions";
 import { subscribeToPollUpdates } from "../../lib/poll-live";
 import { getSafeErrorMessage } from "../../lib/user-errors";
@@ -24,15 +26,42 @@ type PollOption = (typeof pollOptions)[number];
 type PollSessionList = Awaited<ReturnType<typeof listPollSessionsAdmin>>;
 type PollSessionDetail = Awaited<ReturnType<typeof getPollSessionAdmin>>;
 type PollRound = PollSessionDetail["rounds"][number];
+type PollPlanItem = PollSessionDetail["planItems"][number];
+
+type PollPlanWorkbookRow = {
+  label?: string;
+  question_text?: string;
+  option_a?: string;
+  option_b?: string;
+  option_c?: string;
+  option_d?: string;
+  option_e?: string;
+  correct_option?: string;
+  timer_seconds?: string | number;
+};
+
+const pollPlanSheetHeaders = [
+  "label",
+  "question_text",
+  "option_a",
+  "option_b",
+  "option_c",
+  "option_d",
+  "option_e",
+  "correct_option",
+  "timer_seconds",
+] as const;
 
 export const Route = createFileRoute("/admin/polls")({
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => ({ sessionId: search.sessionId }),
   loader: async ({ deps }) => {
     const sessions = await listPollSessionsAdmin();
-    const selectedSessionId = deps.sessionId || sessions.find((session) => session.status === "open")?.id || sessions[0]?.id || "";
+    const fallbackSessionId = sessions.find((session) => session.status === "open")?.id || sessions[0]?.id || "";
+    const requestedSessionExists = Boolean(deps.sessionId && sessions.some((session) => session.id === deps.sessionId));
+    const selectedSessionId = requestedSessionExists ? deps.sessionId || "" : fallbackSessionId;
     const detail = selectedSessionId
-      ? await getPollSessionAdmin({ data: { sessionId: selectedSessionId } }).catch(() => null)
+      ? await getPollSessionAdmin({ data: { sessionId: selectedSessionId } })
       : null;
 
     return { sessions, detail };
@@ -52,6 +81,13 @@ function AdminPollsPage() {
   const [correctOption, setCorrectOption] = useState<PollOption>("A");
   const [roundLabel, setRoundLabel] = useState("");
   const [timerSeconds, setTimerSeconds] = useState("");
+  const [questionText, setQuestionText] = useState("");
+  const [optionA, setOptionA] = useState("");
+  const [optionB, setOptionB] = useState("");
+  const [optionC, setOptionC] = useState("");
+  const [optionD, setOptionD] = useState("");
+  const [optionE, setOptionE] = useState("");
+  const [selectedPlanItemId, setSelectedPlanItemId] = useState("");
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [copiedSessionId, setCopiedSessionId] = useState("");
@@ -60,6 +96,7 @@ function AdminPollsPage() {
   const visibleRound = activeRound ?? latestRound ?? null;
   const selectedSessionId = detail?.session.id ?? "";
   const selectedSessionStatus = detail?.session.status ?? "";
+  const selectedPlanItem = detail?.planItems.find((item) => item.id === selectedPlanItemId) ?? null;
 
   useEffect(() => {
     if (!selectedSessionId || selectedSessionStatus !== "open") return;
@@ -122,13 +159,92 @@ function AdminPollsPage() {
       await createPollRoundAdmin({
         data: {
           sessionId: detail.session.id,
+          planItemId: selectedPlanItemId || undefined,
           label: roundLabel,
+          questionText,
+          optionA,
+          optionB,
+          optionC,
+          optionD,
+          optionE,
           correctOption,
           timerSeconds: timerSeconds ? Number(timerSeconds) : null,
         },
       });
       setRoundLabel("");
       setTimerSeconds("");
+      setQuestionText("");
+      setOptionA("");
+      setOptionB("");
+      setOptionC("");
+      setOptionD("");
+      setOptionE("");
+      setSelectedPlanItemId("");
+    });
+  };
+
+  const loadPlanItem = (item: PollPlanItem) => {
+    setSelectedPlanItemId(item.id);
+    setRoundLabel(item.label ?? "");
+    setQuestionText(item.questionText);
+    setOptionA(item.optionA);
+    setOptionB(item.optionB);
+    setOptionC(item.optionC);
+    setOptionD(item.optionD);
+    setOptionE(item.optionE ?? "");
+    setCorrectOption(item.correctOption);
+    setTimerSeconds(item.timerSeconds ? String(item.timerSeconds) : "");
+  };
+
+  const clearRoundForm = () => {
+    setSelectedPlanItemId("");
+    setRoundLabel("");
+    setTimerSeconds("");
+    setQuestionText("");
+    setOptionA("");
+    setOptionB("");
+    setOptionC("");
+    setOptionD("");
+    setOptionE("");
+    setCorrectOption("A");
+  };
+
+  const downloadPlanTemplate = async () => {
+    await runAction("download-plan-template", async () => {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        makeSheet(XLSX, pollPlanSheetHeaders, makeSamplePlanRows()),
+        "rounds",
+      );
+      saveWorkbook(XLSX, workbook, `ilmorax-poll-plan-template-${formatTimestamp(new Date())}.xlsx`);
+    });
+  };
+
+  const importPlanWorkbook = async (file: File) => {
+    if (!detail) return;
+
+    await runAction("import-plan", async () => {
+      const items = await readPollPlanWorkbook(file);
+      await importPollRoundPlanAdmin({
+        data: {
+          sessionId: detail.session.id,
+          items,
+        },
+      });
+      clearRoundForm();
+    });
+  };
+
+  const skipPlanItem = async (item: PollPlanItem) => {
+    await runAction(`skip-plan:${item.id}`, async () => {
+      await skipPollRoundPlanItemAdmin({ data: { planItemId: item.id } });
+
+      if (selectedPlanItemId === item.id) {
+        clearRoundForm();
+      }
     });
   };
 
@@ -263,26 +379,74 @@ function AdminPollsPage() {
                 </div>
               </div>
 
+              <PollPlanPanel
+                detail={detail}
+                busyAction={busyAction}
+                selectedPlanItemId={selectedPlanItemId}
+                onDownloadTemplate={downloadPlanTemplate}
+                onImportWorkbook={importPlanWorkbook}
+                onLoadPlanItem={loadPlanItem}
+                onSkipPlanItem={skipPlanItem}
+              />
+
               {detail.session.status === "open" && (
                 <section className="admin-panel p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-                    <label className="block flex-1">
-                      <span className="admin-kicker">Round label</span>
-                      <input value={roundLabel} onChange={(event) => setRoundLabel(event.target.value)} placeholder={`Round ${detail.rounds.length + 1}`} className="admin-control mt-2" />
-                    </label>
-                    <label className="block">
-                      <span className="admin-kicker">Correct</span>
-                      <select value={correctOption} onChange={(event) => setCorrectOption(event.target.value as PollOption)} className="admin-control mt-2 w-28">
-                        {pollOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                      </select>
-                    </label>
-                    <label className="block">
-                      <span className="admin-kicker">Timer sec</span>
-                      <input value={timerSeconds} onChange={(event) => setTimerSeconds(event.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="Manual" className="admin-control mt-2 w-32" />
-                    </label>
-                    <button className="admin-button-success h-12 min-w-32" onClick={createRound} disabled={busyAction === "create-round"} type="button">
-                      {activeRound ? "Next" : "Start Round"}
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="admin-panel-title">Start next round</h2>
+                      <p className="mt-1 text-xs font-semibold text-stone-400">
+                        {selectedPlanItem ? `Loaded planned row ${selectedPlanItem.sortOrder}. Review before opening.` : "Use a planned row or type a manual classroom prompt."}
+                      </p>
+                    </div>
+                    <button className="admin-button-ghost" onClick={clearRoundForm} type="button">
+                      Clear
                     </button>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_120px_140px] lg:items-end">
+                      <label className="block">
+                        <span className="admin-kicker">Round label</span>
+                        <input value={roundLabel} onChange={(event) => setRoundLabel(event.target.value)} placeholder={`Round ${detail.rounds.length + 1}`} className="admin-control mt-2" />
+                      </label>
+                      <label className="block">
+                        <span className="admin-kicker">Correct</span>
+                        <select value={correctOption} onChange={(event) => setCorrectOption(event.target.value as PollOption)} className="admin-control mt-2">
+                          {pollOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="admin-kicker">Timer sec</span>
+                        <input value={timerSeconds} onChange={(event) => setTimerSeconds(event.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="Manual" className="admin-control mt-2" />
+                      </label>
+                    </div>
+
+                    <label className="block">
+                      <span className="admin-kicker">Teacher question</span>
+                      <textarea value={questionText} onChange={(event) => setQuestionText(event.target.value)} placeholder="Optional. Shown only on the teacher presentation view." className="admin-control mt-2 min-h-24" />
+                    </label>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <OptionInput label="A" value={optionA} onChange={setOptionA} />
+                      <OptionInput label="B" value={optionB} onChange={setOptionB} />
+                      <OptionInput label="C" value={optionC} onChange={setOptionC} />
+                      <OptionInput label="D" value={optionD} onChange={setOptionD} />
+                      <OptionInput label="E" value={optionE} onChange={setOptionE} />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button className="admin-button-success h-12 min-w-36" onClick={createRound} disabled={busyAction === "create-round"} type="button">
+                        {activeRound ? "Close current & start" : "Start Round"}
+                      </button>
+                      <a
+                        href={`/admin/polls/presentation?sessionId=${encodeURIComponent(detail.session.id)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="admin-button-secondary no-underline"
+                      >
+                        Presentation view
+                      </a>
+                    </div>
                   </div>
                 </section>
               )}
@@ -363,6 +527,192 @@ function SessionList({ sessions, selectedSessionId }: { sessions: PollSessionLis
   );
 }
 
+function PollPlanPanel({
+  detail,
+  busyAction,
+  selectedPlanItemId,
+  onDownloadTemplate,
+  onImportWorkbook,
+  onLoadPlanItem,
+  onSkipPlanItem,
+}: {
+  detail: PollSessionDetail;
+  busyAction: string;
+  selectedPlanItemId: string;
+  onDownloadTemplate: () => void;
+  onImportWorkbook: (file: File) => Promise<void> | void;
+  onLoadPlanItem: (item: PollPlanItem) => void;
+  onSkipPlanItem: (item: PollPlanItem) => void;
+}) {
+  const plannedItems = detail.planItems.filter((item) => item.status === "planned");
+  const startedCount = detail.planItems.filter((item) => item.status === "started").length;
+  const skippedCount = detail.planItems.filter((item) => item.status === "skipped").length;
+  const canReplacePlan = detail.session.status === "open" && !detail.session.archivedAt;
+
+  return (
+    <section className="admin-panel overflow-hidden">
+      <div className="admin-panel-header flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="admin-panel-title">Poll Round Plan</h2>
+          <p className="mt-1 text-xs font-semibold text-stone-400">
+            {plannedItems.length} queued · {startedCount} started · {skippedCount} skipped
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className="admin-button-secondary" onClick={onDownloadTemplate} disabled={busyAction === "download-plan-template"} type="button">
+            Download template
+          </button>
+          <FileUpload
+            accept=".xlsx"
+            busy={busyAction === "import-plan" || !canReplacePlan}
+            placeholder="Upload plan"
+            onFileSelect={onImportWorkbook}
+          />
+        </div>
+      </div>
+
+      {plannedItems.length === 0 ? (
+        <div className="p-6 text-sm font-semibold text-stone-400">
+          No queued rows. Upload an XLSX plan or start rounds manually.
+        </div>
+      ) : (
+        <div className="grid gap-3 p-4">
+          {plannedItems.map((item) => (
+            <div key={item.id} className={`rounded-[var(--radius-lg)] border-2 p-4 ${selectedPlanItemId === item.id ? "border-primary bg-primary-tint" : "border-stone-100 bg-white"}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-black uppercase tracking-wide text-stone-400">
+                    Row {item.sortOrder} · Correct {item.correctOption}{item.timerSeconds ? ` · ${item.timerSeconds}s` : ""}
+                  </div>
+                  <h3 className="mt-1 text-sm font-black leading-snug text-stone-800">
+                    {item.label || `Round ${item.sortOrder}`}
+                  </h3>
+                  <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-stone-500">
+                    {item.questionText}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button className="admin-button-secondary" onClick={() => onLoadPlanItem(item)} type="button">
+                    Load
+                  </button>
+                  <button className="admin-button-ghost text-amber-700 hover:bg-amber-50" onClick={() => onSkipPlanItem(item)} disabled={busyAction === `skip-plan:${item.id}`} type="button">
+                    Skip
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function OptionInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="admin-kicker">Option {label}</span>
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={`Option ${label}`} className="admin-control mt-2" />
+    </label>
+  );
+}
+
+function FileUpload({
+  accept,
+  busy,
+  placeholder,
+  onFileSelect,
+}: {
+  accept: string;
+  busy: boolean;
+  placeholder: string;
+  onFileSelect: (file: File) => Promise<void> | void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const isUnavailable = busy || isUploading;
+
+  const selectFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (isUnavailable) return;
+    if (!isAcceptedFile(file, accept)) return;
+
+    setFileName(file.name);
+
+    try {
+      setIsUploading(true);
+      await onFileSelect(file);
+    } finally {
+      setIsUploading(false);
+      setFileName("");
+    }
+  };
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+
+    event.currentTarget.value = "";
+    void selectFile(file);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = isUnavailable ? "none" : "copy";
+
+    if (isUnavailable) return;
+
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+
+    setIsDragging(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+
+    if (isUnavailable) return;
+
+    void selectFile(event.dataTransfer.files?.[0]);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    inputRef.current?.click();
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={isUnavailable ? -1 : 0}
+      aria-disabled={isUnavailable}
+      onClick={() => inputRef.current?.click()}
+      onKeyDown={handleKeyDown}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`admin-file-upload ${isUnavailable ? "pointer-events-none opacity-50" : ""} ${fileName ? "admin-file-upload-active" : ""} ${isDragging ? "border-primary bg-primary-tint text-primary-dark" : ""}`}
+    >
+      <UploadIcon className="h-4 w-4 shrink-0" />
+      <span className="truncate">{isDragging ? "Drop .xlsx here" : isUploading ? "Importing..." : fileName || placeholder}</span>
+      <input ref={inputRef} onChange={handleChange} disabled={isUnavailable} className="sr-only" type="file" accept={accept} />
+    </div>
+  );
+}
+
+function isAcceptedFile(file: File, accept: string) {
+  if (accept !== ".xlsx") return true;
+
+  return file.name.toLowerCase().endsWith(".xlsx");
+}
+
 function RoundPanel({
   round,
   participantCount,
@@ -418,6 +768,8 @@ function RoundPanel({
     );
   }
 
+  const hasTeacherContent = Boolean(round.questionText);
+
   return (
     <section className="admin-panel overflow-hidden">
       <div className="admin-panel-header">
@@ -440,6 +792,25 @@ function RoundPanel({
           <StatusPill status="closed" />
         )}
       </div>
+
+      {hasTeacherContent && (
+        <div className="border-b border-stone-100 p-5">
+          <p className="text-base font-black leading-relaxed text-stone-800">{round.questionText}</p>
+          <div className="mt-4 grid gap-2">
+            {pollOptions.map((option) => {
+              const optionText = getRoundOptionText(round, option);
+              if (!optionText) return null;
+
+              return (
+                <div key={option} className="flex gap-3 rounded-[var(--radius-md)] border border-stone-100 bg-stone-50 p-3 text-sm font-semibold text-stone-600">
+                  <span className="font-black text-primary">{option}</span>
+                  <span>{optionText}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-3 p-5">
         {pollOptions.map((option) => {
@@ -601,6 +972,15 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+function UploadIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M12 15V3m0 0L7 8m5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 17.5V20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function defaultSessionTitle() {
   return `Kelas ${new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
@@ -633,4 +1013,153 @@ function formatCountdown(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
 
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getRoundOptionText(round: PollRound, option: PollOption) {
+  if (option === "A") return round.optionA;
+  if (option === "B") return round.optionB;
+  if (option === "C") return round.optionC;
+  if (option === "D") return round.optionD;
+  return round.optionE;
+}
+
+function makeSamplePlanRows() {
+  return [
+    {
+      label: "Review Farmakologi 1",
+      question_text: "Obat antihipertensi yang bekerja menghambat ACE adalah...",
+      option_a: "Captopril",
+      option_b: "Amlodipine",
+      option_c: "Furosemide",
+      option_d: "Propranolol",
+      option_e: "",
+      correct_option: "A",
+      timer_seconds: 60,
+    },
+    {
+      label: "Review Farmakologi 2",
+      question_text: "Efek samping khas aminoglikosida yang perlu dimonitor adalah...",
+      option_a: "Hipoglikemia",
+      option_b: "Ototoksisitas",
+      option_c: "Batuk kering",
+      option_d: "Hiperpigmentasi",
+      option_e: "",
+      correct_option: "B",
+      timer_seconds: "",
+    },
+  ];
+}
+
+function makeSheet(
+  XLSX: typeof import("xlsx"),
+  headers: readonly string[],
+  rows: Record<string, string | number | null | undefined>[],
+) {
+  const sheet = XLSX.utils.aoa_to_sheet([Array.from(headers)]);
+
+  if (rows.length === 0) return sheet;
+
+  XLSX.utils.sheet_add_json(sheet, rows, {
+    header: Array.from(headers),
+    skipHeader: true,
+    origin: "A2",
+  });
+
+  return sheet;
+}
+
+function saveWorkbook(XLSX: typeof import("xlsx"), workbook: import("xlsx").WorkBook, fileName: string) {
+  const workbookBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+  const blob = new Blob([workbookBuffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function readPollPlanWorkbook(file: File) {
+  const XLSX = await import("xlsx");
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer);
+  const sheet = workbook.Sheets.rounds ?? workbook.Sheets[workbook.SheetNames[0]];
+
+  if (!sheet) {
+    throw new Error("Workbook must include a rounds sheet.");
+  }
+
+  const rows = XLSX.utils.sheet_to_json<PollPlanWorkbookRow>(sheet, { defval: "" });
+
+  if (rows.length === 0) {
+    throw new Error("The rounds sheet must include at least one row.");
+  }
+
+  return rows.map((row, index) => {
+    const rowNumber = index + 2;
+    const item = {
+      label: optionalTextValue(row.label),
+      questionText: textValue(row.question_text),
+      optionA: textValue(row.option_a),
+      optionB: textValue(row.option_b),
+      optionC: textValue(row.option_c),
+      optionD: textValue(row.option_d),
+      optionE: optionalTextValue(row.option_e),
+      correctOption: normalizePollOption(row.correct_option, rowNumber),
+      timerSeconds: optionalNumberValue(row.timer_seconds, rowNumber),
+    };
+
+    if (!item.questionText) throw new Error(`Row ${rowNumber}: question_text is required.`);
+    if (!item.optionA) throw new Error(`Row ${rowNumber}: option_a is required.`);
+    if (!item.optionB) throw new Error(`Row ${rowNumber}: option_b is required.`);
+    if (!item.optionC) throw new Error(`Row ${rowNumber}: option_c is required.`);
+    if (!item.optionD) throw new Error(`Row ${rowNumber}: option_d is required.`);
+    if (item.correctOption === "E" && !item.optionE) throw new Error(`Row ${rowNumber}: option_e is required when correct_option is E.`);
+
+    return item;
+  });
+}
+
+function textValue(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function optionalTextValue(value: unknown) {
+  const text = textValue(value);
+  if (!text) return undefined;
+  return text;
+}
+
+function optionalNumberValue(value: unknown, rowNumber: number) {
+  const text = textValue(value);
+  if (!text) return null;
+
+  const number = Number(text);
+  if (!Number.isInteger(number) || number < 5 || number > 600) {
+    throw new Error(`Row ${rowNumber}: timer_seconds must be blank or an integer from 5 to 600.`);
+  }
+
+  return number;
+}
+
+function normalizePollOption(value: unknown, rowNumber: number): PollOption {
+  const option = textValue(value).toUpperCase();
+
+  if (option === "A" || option === "B" || option === "C" || option === "D" || option === "E") {
+    return option;
+  }
+
+  throw new Error(`Row ${rowNumber}: correct_option must be A, B, C, D, or E.`);
+}
+
+function formatTimestamp(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${date.getFullYear()}-${month}-${day}-${hours}-${minutes}`;
 }

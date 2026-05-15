@@ -50,6 +50,13 @@
       "when": 1778736534244,
       "tag": "0006_remove_platinum_tryout_access",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778840400000,
+      "tag": "0007_poll_round_plans",
+      "breakpoints": true
     }
   ]
 }
