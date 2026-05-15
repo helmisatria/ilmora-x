@@ -1,9 +1,10 @@
-import { createRootRoute, HeadContent, Outlet, Scripts, redirect } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, redirect, useLocation, useMatches } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AppProvider } from "../data/provider";
 import { getCurrentViewer } from "../lib/auth-functions";
-import { getAcquisitionIntent } from "../lib/product-analytics";
-import { ProductAnalyticsIdentity, ProductAnalyticsProvider } from "../lib/product-analytics-client";
+import { getAcquisitionIntent, productAnalyticsEvents } from "../lib/product-analytics";
+import { ProductAnalyticsIdentity, ProductAnalyticsProvider, useProductAnalytics } from "../lib/product-analytics-client";
 import { getProtectedRedirect, needsProtectedViewer } from "../lib/route-protection";
 import { getSafeErrorMessage } from "../lib/user-errors";
 import "../styles/app.css";
@@ -154,6 +155,7 @@ function RootComponent() {
       <body className="antialiased">
         <ProductAnalyticsProvider>
           <ProductAnalyticsIdentity viewer={viewer} />
+          <RouteAnalyticsTracker />
           <AppProvider viewer={viewer}>
             <div id="app" className="view">
               <Outlet />
@@ -165,6 +167,38 @@ function RootComponent() {
       </body>
     </html>
   );
+}
+
+function RouteAnalyticsTracker() {
+  const location = useLocation();
+  const matches = useMatches();
+  const analytics = useProductAnalytics();
+  const currentMatch = matches[matches.length - 1];
+  const routeId = currentMatch?.routeId ?? location.pathname;
+
+  useEffect(() => {
+    analytics.capture(productAnalyticsEvents.routeViewed, {
+      route_id: routeId,
+      route_name: getRouteAnalyticsName(routeId),
+      pathname: location.pathname,
+      href: location.href,
+    });
+  }, [analytics, location.href, location.pathname, routeId]);
+
+  return null;
+}
+
+function getRouteAnalyticsName(routeId: string) {
+  if (routeId === "/") {
+    return "home";
+  }
+
+  return routeId
+    .replace(/^\/+/, "")
+    .replace(/\$/g, "by_")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
 }
 
 function NotFoundIcon() {

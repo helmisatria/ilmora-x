@@ -15,6 +15,7 @@ export type AcquisitionIntent = z.infer<typeof acquisitionIntentSchema>;
 export type ProductAnalyticsProperties = Record<string, unknown>;
 
 export const productAnalyticsEvents = {
+  routeViewed: "route_viewed",
   homePageViewed: "home_page_viewed",
   homeSignupSelected: "home_signup_selected",
   homeTryoutSelected: "home_tryout_selected",
