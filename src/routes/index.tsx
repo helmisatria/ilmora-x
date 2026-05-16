@@ -432,13 +432,6 @@ function useLandingLinkAnalytics(to: LandingLinkPath, entryPoint: LandingLinkEnt
 
 function LandingPage() {
   const pageRef = useRef<HTMLElement>(null);
-  const analytics = useProductAnalytics();
-
-  useEffect(() => {
-    analytics.capture(productAnalyticsEvents.homePageViewed, {
-      source_path: "/",
-    });
-  }, [analytics]);
 
   useSafeLayoutEffect(() => {
     if (!pageRef.current) {
