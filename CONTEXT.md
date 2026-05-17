@@ -130,10 +130,15 @@ A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuse
 ## Rules (Try-out autosave)
 
 - **Server-first persistence, localStorage fallback.** Server is the source of truth; localStorage buffers state when offline and syncs on reconnect.
+- **Queued Attempt progress carries `queued_at`.** Local queued progress may overwrite server progress only when it is newer than the server's `last_server_saved_at`. Older or equal queued progress is discarded.
+- **Stale Attempt progress is rejected at both edges.** The client should avoid replaying stale local queues, and the server must no-op stale saves so delayed tabs cannot overwrite newer progress.
+- **Autosave is idempotent by final state.** Duplicate writes of the same latest snapshot are allowed. M1 does not need a separate autosave idempotency-key table; last accepted non-stale snapshot wins.
+- **Offline queue stores one latest full snapshot per Attempt.** M1 does not keep an ordered event queue. Each local fallback replaces the previous local snapshot for that Attempt with the newest `{answers, marked, last_question_index, queued_at}` state.
+- **In-progress Attempts auto-resume on reopen.** Visiting a Try-out with an existing in-progress Attempt restores that Attempt immediately from server state plus any newer local snapshot. The timer is recomputed from the server `deadline_at`; refresh, tab close, and browser reopen never pause the Attempt.
 - **Saves are triggered by answer-change (debounced ~500ms) + tab events** (blur, visibilitychange, beforeunload). No periodic timer saves.
 - **Persisted state per in-progress Attempt**: `{answers: {[qid]: choice}, marked: [qid…], last_question_index}`. Nothing else.
-- **Only one active Attempt session per Student.** Opening the Attempt on a second device invalidates the first; the losing client shows a kick-out modal.
-- **On submit: flush local queue first, then submit.** If offline at submit time, queue and retry on reconnect. If the wall-clock deadline elapses while offline, the server auto-submits with the last-synced state.
+- **M1 Attempt resilience is same-browser/device only.** Refresh, browser close/reopen on the same device, and temporary offline state must preserve the in-progress Attempt. Cross-device active-session invalidation is post-M1 anti-cheat scope.
+- **Submit requires an online server round trip in M1.** On submit, flush the latest local snapshot first, then submit. If offline at submit time, keep the local snapshot and tell the Student to reconnect before submitting. If the wall-clock deadline elapses while offline, the server auto-submits with the last accepted server state.
 - **"Auto-saved at HH:MM" UI shows last server-confirmed save**, not last local save. Avoids false reassurance.
 - **Attempt lifecycle may trigger Badge evaluation after submit, but Badge rules belong to the Engagement surface.** Attempt submission records the Attempt result and may orchestrate downstream Badge evaluation; it does not own Badge eligibility rules.
 

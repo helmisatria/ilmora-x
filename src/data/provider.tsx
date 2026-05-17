@@ -6,10 +6,12 @@ import { hasPremiumMembership, type User } from "./users";
 export interface AppState {
   user: User;
   hasPremiumMembership: boolean;
+  devPremiumOverride: boolean;
   impersonation: {
     adminEmail: string;
     targetUserId: string;
   } | null;
+  setDevPremiumOverride: (enabled: boolean) => void;
   updateUserAvatar: (avatar: string, photoUrl: string | null) => void;
 }
 
@@ -37,6 +39,7 @@ const fallbackUser: User = {
 };
 
 const AppContext = createContext<AppState | null>(null);
+const devPremiumOverrideKey = "ilmorax:dev-premium-override";
 
 function getUserFromViewer(viewer: Viewer | null): User {
   if (!viewer) return fallbackUser;
@@ -66,10 +69,24 @@ function getUserFromViewer(viewer: Viewer | null): User {
 
 export function AppProvider({ children, viewer = null }: { children: ReactNode; viewer?: Viewer | null }) {
   const [user, setUser] = useState(() => getUserFromViewer(viewer));
+  const [devPremiumOverride, setDevPremiumOverrideState] = useState(false);
 
   useEffect(() => {
     setUser(getUserFromViewer(viewer));
   }, [viewer]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    setDevPremiumOverrideState(localStorage.getItem(devPremiumOverrideKey) === "true");
+  }, []);
+
+  const setDevPremiumOverride = (enabled: boolean) => {
+    if (!import.meta.env.DEV) return;
+
+    setDevPremiumOverrideState(enabled);
+    localStorage.setItem(devPremiumOverrideKey, enabled ? "true" : "false");
+  };
 
   const updateUserAvatar = (avatar: string, photoUrl: string | null) => {
     setUser((currentUser) => ({
@@ -83,13 +100,15 @@ export function AppProvider({ children, viewer = null }: { children: ReactNode; 
     <AppContext.Provider
       value={{
         user,
-        hasPremiumMembership: hasPremiumMembership(user),
+        hasPremiumMembership: hasPremiumMembership(user) || devPremiumOverride,
+        devPremiumOverride,
         impersonation: viewer?.impersonation
           ? {
               adminEmail: viewer.impersonation.adminEmail,
               targetUserId: viewer.impersonation.targetUserId,
             }
           : null,
+        setDevPremiumOverride,
         updateUserAvatar,
       }}
     >

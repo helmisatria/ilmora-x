@@ -1,20 +1,24 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
   getTryoutWorkbookAdmin,
   importTryoutWorkbookAdmin,
   listCategoryOptionsAdmin,
   publishTryoutAdmin,
+  removeTryoutQuestionAdmin,
   unpublishTryoutAdmin,
+  updateTryoutQuestionAdmin,
   updateTryoutAdmin,
 } from "../../lib/admin-functions";
 import * as tryoutWorkbook from "../../lib/tryout-workbook";
 
 type TryoutWorkbook = Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>;
+type TryoutQuestion = TryoutWorkbook["questions"][number];
 type CategoryRow = Awaited<ReturnType<typeof listCategoryOptionsAdmin>>[number];
 type AccessLevel = "free" | "premium";
 type ContentStatus = "draft" | "published" | "unpublished";
+type CorrectOption = "A" | "B" | "C" | "D" | "E";
 
 type TryoutForm = {
   title: string;
@@ -23,6 +27,26 @@ type TryoutForm = {
   durationMinutes: string;
   accessLevel: AccessLevel;
 };
+
+type QuestionForm = {
+  questionId: string;
+  sortOrder: string;
+  categoryId: string;
+  subCategoryId: string;
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  optionE: string;
+  correctOption: CorrectOption;
+  explanation: string;
+  videoUrl: string;
+  accessLevel: AccessLevel;
+  status: ContentStatus;
+};
+
+const correctOptions: CorrectOption[] = ["A", "B", "C", "D", "E"];
 
 export const Route = createFileRoute("/admin/tryouts/$id")({
   loader: async ({ params }) => {
@@ -60,6 +84,13 @@ function AdminTryoutDetailPage() {
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [workbookPreview, setWorkbookPreview] = useState<WorkbookPreview | null>(null);
+  const [questionForm, setQuestionForm] = useState<QuestionForm | null>(null);
+
+  const selectedSubCategories = useMemo(() => {
+    if (!questionForm) return [];
+
+    return categories.find((category) => category.id === questionForm.categoryId)?.subCategories ?? [];
+  }, [categories, questionForm]);
 
   const refresh = async () => {
     await router.invalidate();
@@ -113,6 +144,112 @@ function AdminTryoutDetailPage() {
       await refresh();
     } catch {
       setErrorMessage("Publication status was not updated.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const editQuestion = (question: TryoutQuestion) => {
+    setQuestionForm({
+      questionId: question.questionId,
+      sortOrder: String(question.sortOrder),
+      categoryId: question.categoryId,
+      subCategoryId: question.subCategoryId,
+      questionText: question.questionText,
+      optionA: question.optionA,
+      optionB: question.optionB,
+      optionC: question.optionC,
+      optionD: question.optionD,
+      optionE: question.optionE ?? "",
+      correctOption: question.correctOption,
+      explanation: question.explanation,
+      videoUrl: question.videoUrl ?? "",
+      accessLevel: question.accessLevel,
+      status: question.status,
+    });
+    setErrorMessage("");
+  };
+
+  const updateQuestionCategory = (categoryId: string) => {
+    if (!questionForm) return;
+
+    const subCategoryId = categories.find((category) => category.id === categoryId)?.subCategories[0]?.id ?? "";
+
+    setQuestionForm({
+      ...questionForm,
+      categoryId,
+      subCategoryId,
+    });
+  };
+
+  const saveQuestion = async () => {
+    if (!questionForm) return;
+
+    const sortOrder = Number(questionForm.sortOrder);
+    const validationMessage = getQuestionValidationMessage(questionForm, sortOrder);
+
+    if (validationMessage) {
+      setErrorMessage(validationMessage);
+      return;
+    }
+
+    setBusyAction(`question-save:${questionForm.questionId}`);
+    setErrorMessage("");
+
+    try {
+      await updateTryoutQuestionAdmin({
+        data: {
+          tryoutId,
+          questionId: questionForm.questionId,
+          sortOrder,
+          categoryId: questionForm.categoryId,
+          subCategoryId: questionForm.subCategoryId,
+          questionText: questionForm.questionText,
+          optionA: questionForm.optionA,
+          optionB: questionForm.optionB,
+          optionC: questionForm.optionC,
+          optionD: questionForm.optionD,
+          optionE: questionForm.optionE,
+          correctOption: questionForm.correctOption,
+          explanation: questionForm.explanation,
+          videoUrl: questionForm.videoUrl,
+          accessLevel: questionForm.accessLevel,
+          status: questionForm.status,
+        },
+      });
+
+      setQuestionForm(null);
+      await refresh();
+    } catch {
+      setErrorMessage("Question was not saved. Check for duplicate sort order or invalid fields.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const deleteQuestion = async (question: TryoutQuestion) => {
+    const confirmed = window.confirm("Remove this Question from this Try-out?");
+
+    if (!confirmed) return;
+
+    setBusyAction(`question-delete:${question.questionId}`);
+    setErrorMessage("");
+
+    try {
+      await removeTryoutQuestionAdmin({
+        data: {
+          tryoutId,
+          questionId: question.questionId,
+        },
+      });
+
+      if (questionForm?.questionId === question.questionId) {
+        setQuestionForm(null);
+      }
+
+      await refresh();
+    } catch {
+      setErrorMessage("Question was not removed from this Try-out.");
     } finally {
       setBusyAction("");
     }
@@ -352,6 +489,138 @@ function AdminTryoutDetailPage() {
           </div>
         </section>
 
+        {questionForm && (
+          <section className="admin-panel mt-6">
+            <div className="admin-panel-header">
+              <h2 className="admin-panel-title">Edit Question</h2>
+            </div>
+
+            <div className="grid gap-5 p-5 sm:p-6">
+              <div className="grid gap-5 sm:grid-cols-[120px_1fr_1fr]">
+                <Field label="Order">
+                  <input
+                    value={questionForm.sortOrder}
+                    onChange={(event) => setQuestionForm({ ...questionForm, sortOrder: event.target.value })}
+                    className="admin-control"
+                    inputMode="numeric"
+                  />
+                </Field>
+
+                <Field label="Category">
+                  <select
+                    value={questionForm.categoryId}
+                    onChange={(event) => updateQuestionCategory(event.target.value)}
+                    className="admin-control"
+                  >
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Sub-category">
+                  <select
+                    value={questionForm.subCategoryId}
+                    onChange={(event) => setQuestionForm({ ...questionForm, subCategoryId: event.target.value })}
+                    className="admin-control"
+                  >
+                    {selectedSubCategories.map((subCategory) => (
+                      <option key={subCategory.id} value={subCategory.id}>
+                        {subCategory.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <Field label="Question">
+                <textarea
+                  value={questionForm.questionText}
+                  onChange={(event) => setQuestionForm({ ...questionForm, questionText: event.target.value })}
+                  className="admin-control min-h-28"
+                />
+              </Field>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <TextInput label="Option A" value={questionForm.optionA} onChange={(optionA) => setQuestionForm({ ...questionForm, optionA })} />
+                <TextInput label="Option B" value={questionForm.optionB} onChange={(optionB) => setQuestionForm({ ...questionForm, optionB })} />
+                <TextInput label="Option C" value={questionForm.optionC} onChange={(optionC) => setQuestionForm({ ...questionForm, optionC })} />
+                <TextInput label="Option D" value={questionForm.optionD} onChange={(optionD) => setQuestionForm({ ...questionForm, optionD })} />
+                <TextInput label="Option E" value={questionForm.optionE} onChange={(optionE) => setQuestionForm({ ...questionForm, optionE })} />
+
+                <Field label="Correct option">
+                  <select
+                    value={questionForm.correctOption}
+                    onChange={(event) => setQuestionForm({ ...questionForm, correctOption: event.target.value as CorrectOption })}
+                    className="admin-control"
+                  >
+                    {correctOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <Field label="Explanation">
+                <textarea
+                  value={questionForm.explanation}
+                  onChange={(event) => setQuestionForm({ ...questionForm, explanation: event.target.value })}
+                  className="admin-control min-h-28"
+                />
+              </Field>
+
+              <div className="grid gap-5 md:grid-cols-3">
+                <TextInput label="Video URL" value={questionForm.videoUrl} onChange={(videoUrl) => setQuestionForm({ ...questionForm, videoUrl })} />
+
+                <Field label="Access">
+                  <select
+                    value={questionForm.accessLevel}
+                    onChange={(event) => setQuestionForm({ ...questionForm, accessLevel: event.target.value as AccessLevel })}
+                    className="admin-control"
+                  >
+                    <option value="free">Free</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </Field>
+
+                <Field label="Status">
+                  <select
+                    value={questionForm.status}
+                    onChange={(event) => setQuestionForm({ ...questionForm, status: event.target.value as ContentStatus })}
+                    className="admin-control"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="unpublished">Unpublished</option>
+                  </select>
+                </Field>
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-1">
+                <button
+                  onClick={saveQuestion}
+                  disabled={busyAction === `question-save:${questionForm.questionId}`}
+                  className="admin-button-primary"
+                  type="button"
+                >
+                  {busyAction === `question-save:${questionForm.questionId}` ? "Saving..." : "Save Question"}
+                </button>
+                <button
+                  onClick={() => setQuestionForm(null)}
+                  className="admin-button-secondary"
+                  type="button"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
             <h2 className="admin-panel-title">Questions ({workbook.questions.length})</h2>
@@ -386,6 +655,27 @@ function AdminTryoutDetailPage() {
                     <p className="mt-1.5 text-sm text-stone-400 line-clamp-2">{question.explanation}</p>
                   )}
                 </div>
+                <div className="admin-list-actions">
+                  <div className="admin-list-actions-bar">
+                    <button
+                      onClick={() => editQuestion(question)}
+                      className="admin-button-ghost"
+                      type="button"
+                    >
+                      <PencilIcon className="w-3.5 h-3.5" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteQuestion(question)}
+                      disabled={busyAction === `question-delete:${question.questionId}`}
+                      className="admin-button-ghost text-red-600 hover:bg-red-50 hover:text-red-700"
+                      type="button"
+                    >
+                      <TrashIcon className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -401,6 +691,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-2 block text-sm font-bold text-stone-700">{label}</span>
       {children}
     </label>
+  );
+}
+
+function TextInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Field label={label}>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="admin-control"
+      />
+    </Field>
   );
 }
 
@@ -429,6 +739,26 @@ function StatusPill({ status }: { status: ContentStatus }) {
   );
 }
 
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M4 20h4L18.5 9.5a2.8 2.8 0 1 0-4-4L4 16v4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m14.5 5.5 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function DownloadIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
@@ -454,4 +784,28 @@ function EyeOffIcon({ className }: { className?: string }) {
       <path d="M1 1 23 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
+}
+
+function getQuestionValidationMessage(form: QuestionForm, sortOrder: number) {
+  if (!Number.isInteger(sortOrder) || sortOrder < 1 || sortOrder > 1000) {
+    return "Order must be an integer from 1 to 1000.";
+  }
+
+  if (!form.categoryId || !form.subCategoryId) {
+    return "Category and sub-category are required.";
+  }
+
+  if (!form.questionText.trim() || !form.explanation.trim()) {
+    return "Question and explanation are required.";
+  }
+
+  if (!form.optionA.trim() || !form.optionB.trim() || !form.optionC.trim() || !form.optionD.trim()) {
+    return "Options A, B, C, and D are required.";
+  }
+
+  if (form.correctOption === "E" && !form.optionE.trim()) {
+    return "Option E is required when the correct option is E.";
+  }
+
+  return "";
 }

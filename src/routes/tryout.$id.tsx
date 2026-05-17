@@ -70,6 +70,7 @@ function TryoutTakeComponent() {
   const [lastSaved, setLastSaved] = useState<string>("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [startError, setStartError] = useState<string>("");
+  const [submitError, setSubmitError] = useState<string>("");
   const [submitting, setSubmitting] = useState<{ attemptId: string } | null>(null);
   const hasAutoResumed = useRef(false);
 
@@ -84,7 +85,7 @@ function TryoutTakeComponent() {
 
     try {
       const result = await saveAttempt({ data: payload });
-      removeQueuedProgress(payload.attemptId);
+      removeQueuedProgressIfNotNewer(payload.attemptId, payload.queuedAt);
       setLastSaved(formatSavedTime(result.savedAt));
       setSaveStatus("saved");
     } catch {
@@ -161,7 +162,7 @@ function TryoutTakeComponent() {
     if (!attemptData) return;
 
     const flushQueuedProgress = () => {
-      const queuedProgress = readQueuedProgress(attemptData.attempt.id);
+      const queuedProgress = getUsableQueuedProgress(attemptData);
 
       if (!queuedProgress) return;
 
@@ -264,7 +265,7 @@ function TryoutTakeComponent() {
       return;
     }
 
-    const queuedProgress = readQueuedProgress(nextAttemptData.attempt.id);
+    const queuedProgress = getUsableQueuedProgress(nextAttemptData);
     const nextAnswers = getRestoredAnswers(nextAttemptData, queuedProgress);
     const markedIndexes = getRestoredMarkedIndexes(nextAttemptData, queuedProgress);
     const nextQuestionIndex = getRestoredQuestionIndex(nextAttemptData, queuedProgress);
@@ -345,14 +346,25 @@ function TryoutTakeComponent() {
   };
 
   const handleSubmit = () => {
-    submitAttempt({ data: makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex) })
+    const payload = makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex);
+
+    if (!window.navigator.onLine) {
+      queueProgress(payload);
+      setSaveStatus("offline");
+      setSubmitError("Koneksi terputus. Sambungkan internet dulu sebelum submit.");
+      return;
+    }
+
+    setSubmitError("");
+
+    submitAttempt({ data: payload })
       .then((result) => {
         removeQueuedProgress(result.attemptId);
         setShowSubmitConfirm(false);
         setSubmitting({ attemptId: result.attemptId });
       })
-      .catch(() => {
-        setShowSubmitConfirm(false);
+      .catch((error) => {
+        setSubmitError(getSafeErrorMessage(error, "Submit belum berhasil. Coba lagi sebentar lagi."));
       });
   };
 
@@ -471,7 +483,10 @@ function TryoutTakeComponent() {
       <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-32px)] max-w-3xl -translate-x-1/2 rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-200 border-b-stone-300 bg-white/98 p-3 shadow-xl backdrop-blur-xl sm:p-4">
         <button
           className="btn btn-primary w-full"
-          onClick={qIndex === total - 1 ? () => setShowSubmitConfirm(true) : () => {
+          onClick={qIndex === total - 1 ? () => {
+            setSubmitError("");
+            setShowSubmitConfirm(true);
+          } : () => {
             if (qIndex < total - 1) {
               setQIndex(qIndex + 1);
               setSelected(answers[qIndex + 1] ?? null);
@@ -498,6 +513,11 @@ function TryoutTakeComponent() {
               <MiniStat label="Kosong" value={`${answers.filter((a) => a === undefined).length}`} />
               <MiniStat label="Ragu" value={`${flagged.length}`} />
             </div>
+            {submitError && (
+              <p className="mb-4 rounded-[var(--radius-md)] border-2 border-amber-100 bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-700">
+                {submitError}
+              </p>
+            )}
             <div className="flex gap-3">
               <button className="btn btn-white flex-1" onClick={() => setShowSubmitConfirm(false)}>Lanjut kerjain</button>
               <button className="btn btn-primary flex-1" onClick={handleSubmit}>Submit</button>
@@ -569,6 +589,7 @@ function makeAttemptProgressPayload(
 ) {
   return {
     attemptId,
+    queuedAt: new Date().toISOString(),
     lastQuestionIndex,
     answers: questions.map((question, index) => ({
       snapshotId: question.snapshotId,
@@ -656,6 +677,12 @@ function getProgressQueueKey(attemptId: string) {
 }
 
 function queueProgress(payload: AttemptProgressPayload) {
+  const queuedProgress = readQueuedProgress(payload.attemptId);
+
+  if (queuedProgress && isSameOrAfter(queuedProgress.queuedAt, payload.queuedAt)) {
+    return;
+  }
+
   window.localStorage.setItem(getProgressQueueKey(payload.attemptId), JSON.stringify(payload));
 }
 
@@ -665,15 +692,63 @@ function readQueuedProgress(attemptId: string) {
   if (!value) return null;
 
   try {
-    return JSON.parse(value) as AttemptProgressPayload;
+    const parsed = JSON.parse(value) as AttemptProgressPayload;
+
+    if (!parsed.queuedAt || Number.isNaN(new Date(parsed.queuedAt).getTime())) {
+      removeQueuedProgress(attemptId);
+      return null;
+    }
+
+    return parsed;
   } catch {
     removeQueuedProgress(attemptId);
     return null;
   }
 }
 
+function getUsableQueuedProgress(attemptData: TakeAttempt) {
+  const queuedProgress = readQueuedProgress(attemptData.attempt.id);
+
+  if (!queuedProgress) return null;
+
+  if (!isQueuedProgressNewerThanServer(queuedProgress, attemptData)) {
+    removeQueuedProgress(attemptData.attempt.id);
+    return null;
+  }
+
+  return queuedProgress;
+}
+
 function removeQueuedProgress(attemptId: string) {
   window.localStorage.removeItem(getProgressQueueKey(attemptId));
+}
+
+function removeQueuedProgressIfNotNewer(attemptId: string, queuedAt: string) {
+  const queuedProgress = readQueuedProgress(attemptId);
+
+  if (!queuedProgress) return;
+  if (isAfter(queuedProgress.queuedAt, queuedAt)) return;
+
+  removeQueuedProgress(attemptId);
+}
+
+function isQueuedProgressNewerThanServer(
+  queuedProgress: AttemptProgressPayload,
+  attemptData: TakeAttempt,
+) {
+  const lastServerSavedAt = attemptData.attempt.lastServerSavedAt;
+
+  if (!lastServerSavedAt) return true;
+
+  return isAfter(queuedProgress.queuedAt, lastServerSavedAt);
+}
+
+function isSameOrAfter(left: string, right: string) {
+  return new Date(left).getTime() >= new Date(right).getTime();
+}
+
+function isAfter(left: string, right: string) {
+  return new Date(left).getTime() > new Date(right).getTime();
 }
 
 function formatSavedTime(value: string) {

@@ -62,7 +62,13 @@ function getProfileAvatarState({
 
 function ProfileComponent() {
   const { summary, viewer } = Route.useLoaderData();
-  const { user, hasPremiumMembership, updateUserAvatar } = useApp();
+  const {
+    user,
+    hasPremiumMembership,
+    devPremiumOverride,
+    setDevPremiumOverride,
+    updateUserAvatar,
+  } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const router = useRouter();
@@ -205,6 +211,12 @@ function ProfileComponent() {
             <StatCard label="Streak" value={`${summary.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
 
+          <PerformanceReviewCard
+            totalQuestions={summary.totalQuestions}
+            totalCorrect={summary.totalCorrect}
+            categoryCount={summary.categories.length}
+          />
+
           {!hasPremiumMembership && <PremiumProfileCallout />}
         </div>
 
@@ -231,12 +243,18 @@ function ProfileComponent() {
             />
           </div>
 
+          {import.meta.env.DEV && (
+            <DevPremiumToggle
+              enabled={devPremiumOverride}
+              onChange={setDevPremiumOverride}
+            />
+          )}
+
           <div>
             <SectionHeader title="Akun" />
             <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
               <AccountRow label="Email" value={profileEmail} />
               <AccountRow label="Institusi" value={profileInstitution} />
-              <AccountRow label="Kode Referral" value={user.referralCode} copyable />
               <AccountRow
                 label="Bergabung"
                 value={new Date(user.joinDate).toLocaleDateString("id-ID", {
@@ -488,6 +506,45 @@ function StatCard({ label, value, accent, icon }: { label: string; value: string
   );
 }
 
+function PerformanceReviewCard({
+  totalQuestions,
+  totalCorrect,
+  categoryCount,
+}: {
+  totalQuestions: number;
+  totalCorrect: number;
+  categoryCount: number;
+}) {
+  const accuracy = totalQuestions > 0
+    ? Math.round((totalCorrect / totalQuestions) * 100)
+    : 0;
+
+  return (
+    <Link
+      to="/evaluation"
+      className="group block rounded-[var(--radius-xl)] border-2 border-b-4 border-[#cfe7df] border-b-[#88b9ad] bg-white p-5 text-stone-800 no-underline shadow-sm transition-transform duration-200 hover:-translate-y-0.5"
+    >
+      <div className="flex items-start gap-3">
+        <IconTile icon={<ChartIcon />} accent="#205072" />
+        <div className="min-w-0 flex-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
+            Evaluasi
+          </span>
+          <b className="mt-1 block text-xl font-bold leading-none tracking-tight text-stone-800">
+            {accuracy}% akurasi
+          </b>
+          <span className="mt-2 block text-xs font-semibold text-stone-500">
+            {totalQuestions} soal · {categoryCount} kategori
+          </span>
+        </div>
+        <span className="text-primary transition-transform duration-200 group-hover:translate-x-0.5">
+          <ArrowRightIcon />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 function EmptyBadges() {
   return (
     <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-6 text-center shadow-sm">
@@ -596,6 +653,47 @@ function SubscriptionCard({
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DevPremiumToggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="rounded-[var(--radius-lg)] border-2 border-dashed border-stone-300 bg-stone-50 p-4">
+      <label className="flex cursor-pointer items-center justify-between gap-4">
+        <span className="min-w-0">
+          <span className="block text-[10px] font-bold uppercase tracking-wide text-stone-400">
+            Dev only
+          </span>
+          <span className="mt-1 block text-sm font-bold text-stone-700">
+            Premium user
+          </span>
+        </span>
+        <input
+          checked={enabled}
+          className="sr-only"
+          onChange={(event) => onChange(event.target.checked)}
+          type="checkbox"
+        />
+        <span
+          className="relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors"
+          style={{
+            background: enabled ? "#fbbf24" : "#e7e5e4",
+            borderColor: enabled ? "#f59e0b" : "#d6d3d1",
+          }}
+        >
+          <span
+            className="absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform"
+            style={{ transform: enabled ? "translateX(24px)" : "translateX(0)" }}
+          />
+        </span>
+      </label>
     </div>
   );
 }

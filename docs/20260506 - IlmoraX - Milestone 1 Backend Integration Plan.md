@@ -681,7 +681,7 @@ Autosave payload:
 ```ts
 type SaveAttemptProgressInput = {
   attemptId: string;
-  activeSessionId: string;
+  queuedAt: string;
   answers: Array<{
     snapshotId: string;
     selectedOption: "A" | "B" | "C" | "D" | "E" | null;
@@ -696,8 +696,15 @@ Autosave rules:
 - Save on answer change with debounce around 500ms.
 - Save on `blur`, `visibilitychange`, and `beforeunload`.
 - Use localStorage only as a temporary offline queue.
+- Local queued progress may overwrite server progress only when `queuedAt` is newer than the Attempt's `last_server_saved_at`; older or equal queued progress is discarded.
+- Enforce stale-progress protection on both client and server. The client avoids replaying stale local queues; the server treats stale saves as no-ops and returns the current saved timestamp.
+- Autosave is idempotent by final state. Duplicate writes of the same latest snapshot are allowed; M1 does not require a separate autosave idempotency-key table.
+- Store one latest full local snapshot per Attempt, not an ordered event queue. Each local fallback replaces the previous snapshot for that Attempt with the newest `{answers, markedSnapshotIds, lastQuestionIndex, queuedAt}` state.
+- Visiting a Try-out with an existing in-progress Attempt auto-resumes it from server state plus any newer local snapshot. The timer is recomputed from server `deadline_at`; refresh, tab close, and browser reopen do not pause the Attempt.
+- Submit requires an online server round trip in M1. Flush the latest local snapshot first, then submit. If the Student is offline, keep the local snapshot and show a reconnect-before-submit message.
 - UI displays last server-confirmed save time.
-- One active browser session per Attempt. If `activeSessionId` changes, older clients must be rejected and show a modal.
+- M1 resilience is same-browser/device only: refresh, browser close/reopen on the same device, and temporary offline state must preserve the in-progress Attempt.
+- Cross-device active-session invalidation is post-M1 anti-cheat scope.
 
 ### 10.3 Student Evaluation
 

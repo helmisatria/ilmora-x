@@ -198,8 +198,8 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 - [x] Show failed-save state in the Try-out UI.
 - [x] Queue answer changes while offline.
 - [x] Replay queued answer changes when online.
-- [ ] Resolve stale queued changes predictably.
-- [ ] Prevent duplicate answer writes from corrupting Attempt state.
+- [x] Resolve stale queued changes predictably.
+- [x] Prevent duplicate answer writes from corrupting Attempt state.
 - [ ] Test refresh during an active Attempt.
 - [ ] Test network drop during an active Attempt.
 - [ ] Test browser close and resume during an active Attempt.

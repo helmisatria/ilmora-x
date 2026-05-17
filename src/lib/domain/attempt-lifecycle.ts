@@ -23,6 +23,7 @@ type AttemptOption = (typeof attemptOptionLetters)[number];
 
 export type AttemptProgressInput = {
   attemptId: string;
+  queuedAt: string;
   lastQuestionIndex: number;
   answers: Array<{
     snapshotId: string;
@@ -214,10 +215,10 @@ export async function saveAttemptForStudent({
   studentUserId: string;
   data: AttemptProgressInput;
 }) {
-  await ensureAttemptCanBeEdited(data.attemptId, studentUserId);
-  await saveAttemptProgress(data.attemptId, data);
+  const attempt = await ensureAttemptCanBeEdited(data.attemptId, studentUserId);
+  const saveResult = await saveAttemptProgress(attempt, data);
 
-  return { ok: true, savedAt: new Date().toISOString() };
+  return { ok: true, savedAt: saveResult.savedAt.toISOString(), stale: saveResult.stale };
 }
 
 export async function submitAttemptForStudent({
@@ -229,7 +230,7 @@ export async function submitAttemptForStudent({
 }) {
   const attempt = await ensureAttemptCanBeEdited(data.attemptId, viewer.userId);
 
-  await saveAttemptProgress(data.attemptId, data);
+  await saveAttemptProgress(attempt, data);
 
   const finalAnswers = await getAttemptProductAnalyticsAnswers(data.attemptId);
   const correctCount = finalAnswers.filter((answer) => answer.is_correct).length;
@@ -381,16 +382,22 @@ async function ensureAttemptCanBeEdited(attemptId: string, studentUserId: string
 }
 
 async function saveAttemptProgress(
-  attemptId: string,
+  attempt: Awaited<ReturnType<typeof ensureAttemptCanBeEdited>>,
   data: AttemptProgressInput,
 ) {
+  const queuedAt = new Date(data.queuedAt);
+
+  if (attempt.lastServerSavedAt && queuedAt <= attempt.lastServerSavedAt) {
+    return { savedAt: attempt.lastServerSavedAt, stale: true };
+  }
+
   const snapshots = await db
     .select({
       id: attemptQuestionSnapshots.id,
       correctOption: attemptQuestionSnapshots.correctOption,
     })
     .from(attemptQuestionSnapshots)
-    .where(eq(attemptQuestionSnapshots.attemptId, attemptId));
+    .where(eq(attemptQuestionSnapshots.attemptId, attempt.id));
   const snapshotIds = new Set(snapshots.map((snapshot) => snapshot.id));
 
   for (const answer of data.answers) {
@@ -405,6 +412,8 @@ async function saveAttemptProgress(
     }
   }
 
+  const savedAt = new Date();
+
   await db.transaction(async (tx) => {
     for (const answer of data.answers) {
       const snapshot = snapshots.find((item) => item.id === answer.snapshotId);
@@ -415,7 +424,7 @@ async function saveAttemptProgress(
       await tx
         .insert(attemptAnswers)
         .values({
-          attemptId,
+          attemptId: attempt.id,
           snapshotId: answer.snapshotId,
           selectedOption: answer.selectedOption,
           isCorrect,
@@ -427,19 +436,19 @@ async function saveAttemptProgress(
             selectedOption: answer.selectedOption,
             isCorrect,
             answeredAt: answer.selectedOption ? new Date() : null,
-            updatedAt: new Date(),
+            updatedAt: savedAt,
           },
         });
     }
 
     await tx
       .delete(attemptMarkedQuestions)
-      .where(eq(attemptMarkedQuestions.attemptId, attemptId));
+      .where(eq(attemptMarkedQuestions.attemptId, attempt.id));
 
     if (data.markedSnapshotIds.length > 0) {
       await tx.insert(attemptMarkedQuestions).values(
         data.markedSnapshotIds.map((snapshotId) => ({
-          attemptId,
+          attemptId: attempt.id,
           snapshotId,
         })),
       );
@@ -449,11 +458,13 @@ async function saveAttemptProgress(
       .update(attempts)
       .set({
         lastQuestionIndex: data.lastQuestionIndex,
-        lastServerSavedAt: new Date(),
-        updatedAt: new Date(),
+        lastServerSavedAt: savedAt,
+        updatedAt: savedAt,
       })
-      .where(eq(attempts.id, attemptId));
+      .where(eq(attempts.id, attempt.id));
   });
+
+  return { savedAt, stale: false };
 }
 
 async function getTakeAttemptData(attemptId: string) {

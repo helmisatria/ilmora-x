@@ -144,6 +144,18 @@ const questionIdSchema = z.object({
 
 const contentStatusSchema = z.enum(["draft", "published", "unpublished"]);
 
+const updateTryoutQuestionSchema = questionInputSchema.extend({
+  tryoutId: z.string().trim().min(1),
+  questionId: z.string().trim().min(1),
+  sortOrder: z.number().int().min(1).max(1000),
+  status: contentStatusSchema,
+});
+
+const removeTryoutQuestionSchema = z.object({
+  tryoutId: z.string().trim().min(1),
+  questionId: z.string().trim().min(1),
+});
+
 const tryoutWorkbookTryoutSchema = z.object({
   title: z.string().trim().min(1).max(160),
   description: z.string().trim().min(1).max(500),
@@ -367,6 +379,55 @@ function validateQuestionOptionE(data: z.infer<typeof questionInputSchema>) {
 async function validateQuestionTaxonomy(categoryId: string, subCategoryId: string) {
   await ensureCategoryExists(categoryId);
   await ensureSubCategoryBelongsToCategory(categoryId, subCategoryId);
+}
+
+function sameAdminQuestionContent(
+  existingQuestion: {
+    categoryId: string;
+    subCategoryId: string;
+    questionText: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    optionE: string | null;
+    correctOption: string;
+    explanation: string;
+    videoUrl: string | null;
+    accessLevel: string;
+    status: string;
+  },
+  nextQuestion: {
+    categoryId: string;
+    subCategoryId: string;
+    questionText: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    optionE: string | null;
+    correctOption: string;
+    explanation: string;
+    videoUrl: string | null;
+    accessLevel: string;
+    status: string;
+  },
+) {
+  return (
+    existingQuestion.categoryId === nextQuestion.categoryId &&
+    existingQuestion.subCategoryId === nextQuestion.subCategoryId &&
+    existingQuestion.questionText === nextQuestion.questionText &&
+    existingQuestion.optionA === nextQuestion.optionA &&
+    existingQuestion.optionB === nextQuestion.optionB &&
+    existingQuestion.optionC === nextQuestion.optionC &&
+    existingQuestion.optionD === nextQuestion.optionD &&
+    existingQuestion.optionE === nextQuestion.optionE &&
+    existingQuestion.correctOption === nextQuestion.correctOption &&
+    existingQuestion.explanation === nextQuestion.explanation &&
+    existingQuestion.videoUrl === nextQuestion.videoUrl &&
+    existingQuestion.accessLevel === nextQuestion.accessLevel &&
+    existingQuestion.status === nextQuestion.status
+  );
 }
 
 export const listStudentsAdmin = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async ({ context }) => {
@@ -1116,6 +1177,200 @@ export const importTryoutWorkbookAdmin = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(importTryoutWorkbookSchema, input))
   .handler(async ({ data }) => {
     return importTryoutWorkbook(data);
+  });
+
+export const updateTryoutQuestionAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(updateTryoutQuestionSchema, input))
+  .handler(async ({ data }) => {
+    validateQuestionOptionE(data);
+    await validateQuestionTaxonomy(data.categoryId, data.subCategoryId);
+
+    const nextQuestion = {
+      categoryId: data.categoryId,
+      subCategoryId: data.subCategoryId,
+      questionText: data.questionText,
+      optionA: data.optionA,
+      optionB: data.optionB,
+      optionC: data.optionC,
+      optionD: data.optionD,
+      optionE: normalizeOptionalText(data.optionE),
+      correctOption: data.correctOption,
+      explanation: data.explanation,
+      videoUrl: normalizeOptionalText(data.videoUrl),
+      accessLevel: data.accessLevel,
+      status: data.status,
+    };
+
+    await db.transaction(async (tx) => {
+      const [assignment] = await tx
+        .select({
+          id: tryoutQuestions.id,
+        })
+        .from(tryoutQuestions)
+        .where(and(
+          eq(tryoutQuestions.tryoutId, data.tryoutId),
+          eq(tryoutQuestions.questionId, data.questionId),
+        ))
+        .limit(1);
+
+      if (!assignment) {
+        throw notFound("Question was not assigned to this Try-out.");
+      }
+
+      const [existingQuestion] = await tx
+        .select({
+          id: questions.id,
+          categoryId: questions.categoryId,
+          subCategoryId: questions.subCategoryId,
+          questionText: questions.questionText,
+          optionA: questions.optionA,
+          optionB: questions.optionB,
+          optionC: questions.optionC,
+          optionD: questions.optionD,
+          optionE: questions.optionE,
+          correctOption: questions.correctOption,
+          explanation: questions.explanation,
+          videoUrl: questions.videoUrl,
+          accessLevel: questions.accessLevel,
+          status: questions.status,
+        })
+        .from(questions)
+        .where(eq(questions.id, data.questionId))
+        .limit(1);
+
+      if (!existingQuestion) {
+        throw notFound("Question was not found.");
+      }
+
+      const [tryout] = await tx
+        .select({ status: tryouts.status })
+        .from(tryouts)
+        .where(eq(tryouts.id, data.tryoutId))
+        .limit(1);
+
+      if (!tryout) {
+        throw notFound("Try-out was not found.");
+      }
+
+      if (tryout.status === "published" && nextQuestion.status !== "published") {
+        const [row] = await tx
+          .select({ count: sql<number>`count(${questions.id})` })
+          .from(tryoutQuestions)
+          .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
+          .where(and(
+            eq(tryoutQuestions.tryoutId, data.tryoutId),
+            eq(questions.status, "published"),
+            sql`${tryoutQuestions.questionId} <> ${data.questionId}`,
+          ));
+
+        if (Number(row?.count ?? 0) === 0) {
+          throw conflict("A published Try-out needs at least one published Question.");
+        }
+      }
+
+      let questionId = data.questionId;
+      const contentChanged = !sameAdminQuestionContent(existingQuestion, nextQuestion);
+
+      if (contentChanged) {
+        const otherAssignments = await tx
+          .select({ tryoutId: tryoutQuestions.tryoutId })
+          .from(tryoutQuestions)
+          .where(and(
+            eq(tryoutQuestions.questionId, data.questionId),
+            sql`${tryoutQuestions.tryoutId} <> ${data.tryoutId}`,
+          ))
+          .limit(1);
+
+        if (otherAssignments.length > 0) {
+          const [createdQuestion] = await tx
+            .insert(questions)
+            .values(nextQuestion)
+            .returning({ id: questions.id });
+
+          questionId = createdQuestion.id;
+        } else {
+          await tx
+            .update(questions)
+            .set({
+              ...nextQuestion,
+              updatedAt: new Date(),
+            })
+            .where(eq(questions.id, data.questionId));
+        }
+      }
+
+      await tx
+        .update(tryoutQuestions)
+        .set({
+          questionId,
+          sortOrder: data.sortOrder,
+        })
+        .where(eq(tryoutQuestions.id, assignment.id));
+
+      await tx
+        .update(attemptQuestionSnapshots)
+        .set({
+          videoUrl: nextQuestion.videoUrl,
+          accessLevel: nextQuestion.accessLevel,
+        })
+        .where(and(
+          eq(attemptQuestionSnapshots.questionId, data.questionId),
+          sql`${attemptQuestionSnapshots.attemptId} in (
+            select ${attempts.id}
+            from ${attempts}
+            where ${attempts.tryoutId} = ${data.tryoutId}
+          )`,
+        ));
+    });
+
+    return { ok: true };
+  });
+
+export const removeTryoutQuestionAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(removeTryoutQuestionSchema, input))
+  .handler(async ({ data }) => {
+    const [assignment] = await db
+      .select({
+        id: tryoutQuestions.id,
+        questionStatus: questions.status,
+        tryoutStatus: tryouts.status,
+      })
+      .from(tryoutQuestions)
+      .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
+      .innerJoin(tryouts, eq(tryouts.id, tryoutQuestions.tryoutId))
+      .where(and(
+        eq(tryoutQuestions.tryoutId, data.tryoutId),
+        eq(tryoutQuestions.questionId, data.questionId),
+      ))
+      .limit(1);
+
+    if (!assignment) {
+      throw notFound("Question was not assigned to this Try-out.");
+    }
+
+    if (assignment.tryoutStatus === "published" && assignment.questionStatus === "published") {
+      const [row] = await db
+        .select({ count: sql<number>`count(${questions.id})` })
+        .from(tryoutQuestions)
+        .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
+        .where(and(
+          eq(tryoutQuestions.tryoutId, data.tryoutId),
+          eq(questions.status, "published"),
+          sql`${tryoutQuestions.questionId} <> ${data.questionId}`,
+        ));
+
+      if (Number(row?.count ?? 0) === 0) {
+        throw conflict("A published Try-out needs at least one published Question.");
+      }
+    }
+
+    await db
+      .delete(tryoutQuestions)
+      .where(eq(tryoutQuestions.id, assignment.id));
+
+    return { ok: true };
   });
 
 export const createTryoutFromWorkbookAdmin = createServerFn({ method: "POST" })

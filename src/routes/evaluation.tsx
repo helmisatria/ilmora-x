@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { useApp } from "../data";
+import { restoreReturnScroll, saveReturnScroll } from "../lib/return-scroll";
 import { listProgressSummary } from "../lib/student-functions";
 
 type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
@@ -32,6 +34,10 @@ function EvaluationComponent() {
   const totalWrong = totalQuestions - totalCorrect;
   const pctCorrect = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
   const recommendation = getRecommendation(summary);
+
+  useEffect(() => {
+    restoreReturnScroll("evaluation");
+  }, []);
 
   return (
     <main
@@ -101,7 +107,7 @@ function EvaluationComponent() {
         </div>
 
         <div className="mt-6">
-          <SectionHeader title="Riwayat Attempt" />
+          <SectionHeader title="Riwayat Try-out" />
           {!hasPremiumMembership ? (
             <LockedAttempts />
           ) : (
@@ -178,23 +184,20 @@ function CategoryCard({
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
-      <div className="p-5 pb-4">
+      <div className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <b className="text-base font-bold text-stone-800">{category.name}</b>
-            <div className="mt-1 text-xs font-semibold text-stone-400">
+            <div className="mt-1 text-xs font-semibold text-stone-500">
               {categoryCorrect}/{categoryTotal} soal benar
             </div>
           </div>
-          <span className="rounded-full border-2 border-brand-sky bg-primary-tint px-2.5 py-1 text-[12px] font-bold text-primary-dark">
-            {categoryPct}%
-          </span>
+          <ScorePill value={categoryPct} />
         </div>
-        <ProgressBar value={categoryPct} />
       </div>
 
       <div className={`relative ${!isPremium ? "select-none" : ""}`}>
-        <div className="space-y-3 border-t border-stone-100 px-5 py-4">
+        <div className="divide-y divide-stone-100 border-t border-stone-100">
           {category.subCategories.map((subcategory) => (
             <SubcategoryRow
               key={subcategory.name}
@@ -227,12 +230,15 @@ function SubcategoryRow({
 
   return (
     <div className={isBlurred ? "blur-[3px] opacity-70" : ""}>
-      <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-        <span className="min-w-0 truncate font-semibold text-stone-600">{subcategory.name}</span>
-        <span className="shrink-0 font-bold text-primary">{pct}%</span>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-bold text-stone-700">{subcategory.name}</div>
+          <div className="mt-0.5 text-xs font-semibold text-stone-400">
+            {subcategory.correct}/{subcategory.total} soal benar
+          </div>
+        </div>
+        <ScorePill value={pct} compact />
       </div>
-      <ProgressBar value={pct} size="sm" />
-      <div className="mt-1 text-xs font-medium text-stone-400">{subcategory.correct}/{subcategory.total}</div>
     </div>
   );
 }
@@ -245,7 +251,7 @@ function LockedAttempts() {
       </div>
       <h2 className="mt-4 text-xl font-bold tracking-tight text-amber-50">Riwayat lengkap untuk Premium</h2>
       <p className="mx-auto mt-2 max-w-[30ch] text-sm font-medium leading-relaxed text-amber-100/72">
-        Buka tren attempt, XP, dan kualitas skor dari waktu ke waktu.
+        Buka tren try-out, XP, dan kualitas skor dari waktu ke waktu.
       </p>
       <Link to="/premium" className="btn mt-4 w-full" style={{ background: "#f5b544", color: "#2f281c", borderBottomColor: "#b45309" }}>
         Upgrade ke Premium
@@ -258,7 +264,13 @@ function AttemptRow({ attempt }: { attempt: EvaluationAttempt }) {
   const accent = attempt.score >= 70 ? "#22c55e" : "#fb7185";
 
   return (
-    <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-4 shadow-sm">
+    <Link
+      to="/results/$attemptId/review"
+      params={{ attemptId: attempt.id }}
+      search={{ returnTo: "evaluation" }}
+      onClick={() => saveReturnScroll("evaluation")}
+      className="group flex items-center gap-4 rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-4 text-stone-800 no-underline shadow-sm transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
+    >
       <div
         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold"
         style={{
@@ -272,12 +284,17 @@ function AttemptRow({ attempt }: { attempt: EvaluationAttempt }) {
       <div className="min-w-0 flex-1">
         <b className="block truncate text-[15px] font-bold text-stone-800">{attempt.tryoutTitle}</b>
         <div className="mt-0.5 flex gap-3 text-xs font-medium text-stone-400">
-          <span>Attempt #{attempt.attemptNumber}</span>
+          <span>Try-out ke-{attempt.attemptNumber}</span>
           {attempt.submittedAt && <span>{formatDate(attempt.submittedAt)}</span>}
         </div>
       </div>
-      <div className="shrink-0 text-right text-sm font-bold text-amber">+{attempt.xpEarned} XP</div>
-    </div>
+      <div className="shrink-0 text-right">
+        <div className="text-sm font-bold text-amber">+{attempt.xpEarned} XP</div>
+        <div className="mt-0.5 text-[11px] font-bold text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          Review
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -345,20 +362,11 @@ function SummaryCard({
   );
 }
 
-function ProgressBar({ value, size = "md" }: { value: number; size?: "sm" | "md" }) {
+function ScorePill({ value, compact = false }: { value: number; compact?: boolean }) {
   return (
-    <div className={`${size === "md" ? "mt-3" : ""} rounded-full border-2 border-primary-soft bg-primary-tint/80 p-1 shadow-[inset_0_1px_2px_rgba(15,118,110,0.12)]`}>
-      <div className={`${size === "md" ? "h-3" : "h-2"} overflow-hidden rounded-full bg-white/90`}>
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{
-            width: `${value}%`,
-            minWidth: value > 0 ? "20px" : "0",
-            background: "linear-gradient(90deg, #205072 0%, #153d5c 100%)",
-          }}
-        />
-      </div>
-    </div>
+    <span className={`shrink-0 rounded-full border-2 border-brand-sky bg-primary-tint font-bold text-primary-dark ${compact ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm"}`}>
+      {value}%
+    </span>
   );
 }
 

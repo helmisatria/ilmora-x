@@ -15,6 +15,7 @@ import {
   categories,
   materi,
   questionReports,
+  questions,
   subCategories,
   studentBadges,
   studentExpLedger,
@@ -54,6 +55,7 @@ const studentUserIdSchema = z.object({
 
 const saveAttemptSchema = z.object({
   attemptId: z.string().trim().min(1),
+  queuedAt: z.string().datetime(),
   lastQuestionIndex: z.number().int().min(0).max(1000),
   answers: z.array(z.object({
     snapshotId: z.string().trim().min(1),
@@ -625,6 +627,8 @@ async function getAttemptSnapshotRows(attemptId: string) {
       explanation: attemptQuestionSnapshots.explanation,
       videoUrl: attemptQuestionSnapshots.videoUrl,
       accessLevel: attemptQuestionSnapshots.accessLevel,
+      currentVideoUrl: questions.videoUrl,
+      currentAccessLevel: questions.accessLevel,
       selectedOption: attemptAnswers.selectedOption,
       isCorrect: attemptAnswers.isCorrect,
       relatedMateriId: sql<string | null>`(
@@ -647,6 +651,7 @@ async function getAttemptSnapshotRows(attemptId: string) {
       )`,
     })
     .from(attemptQuestionSnapshots)
+    .innerJoin(questions, eq(questions.id, attemptQuestionSnapshots.questionId))
     .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
     .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
     .leftJoin(
@@ -672,8 +677,8 @@ async function getAttemptSnapshotRows(attemptId: string) {
     correctOption: row.correctOption as "A" | "B" | "C" | "D" | "E",
     correctIndex: toOptionIndex(row.correctOption) ?? 0,
     explanation: row.explanation,
-    videoUrl: row.videoUrl,
-    accessLevel: row.accessLevel as "free" | "premium",
+    videoUrl: row.currentVideoUrl ?? row.videoUrl,
+    accessLevel: row.currentAccessLevel as "free" | "premium",
     selectedOption: row.selectedOption as "A" | "B" | "C" | "D" | "E" | null,
     selectedIndex: toOptionIndex(row.selectedOption),
     isCorrect: row.isCorrect,

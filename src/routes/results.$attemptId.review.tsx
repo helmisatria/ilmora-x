@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 import { useApp } from "../data";
 import { PremiumDialog } from "../components/PremiumDialog";
@@ -17,9 +17,11 @@ const FREE_WRONG_PREVIEW = 3;
 const searchSchema = z.object({
   q: z.string().optional(),
   filter: z.enum(["all", "wrong", "correct", "unanswered"]).optional(),
+  returnTo: z.enum(["evaluation", "progress", "result"]).optional(),
 });
 
 type ReviewFilter = "all" | "wrong" | "correct" | "unanswered";
+type ReviewReturnTo = "evaluation" | "progress" | "result" | undefined;
 type ReportReason = "answer_key_wrong" | "explanation_wrong" | "question_unclear" | "typo" | "other";
 
 const reportReasons: Array<{ label: string; value: ReportReason }> = [
@@ -67,10 +69,25 @@ function ReviewComponent() {
   const [busyReportSnapshotId, setBusyReportSnapshotId] = useState("");
   const [reportedSnapshotId, setReportedSnapshotId] = useState("");
   const [reportError, setReportError] = useState("");
+  const [expandedVideoIds, setExpandedVideoIds] = useState<Set<string>>(() => new Set());
   const filter: ReviewFilter = search.filter ?? "all";
 
   const openPremiumAccess = () => {
     setShowPremium(true);
+  };
+
+  const toggleVideo = (snapshotId: string) => {
+    setExpandedVideoIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+
+      if (nextIds.has(snapshotId)) {
+        nextIds.delete(snapshotId);
+        return nextIds;
+      }
+
+      nextIds.add(snapshotId);
+      return nextIds;
+    });
   };
 
   const headerRef = useRef<HTMLDivElement>(null);
@@ -111,10 +128,15 @@ function ReviewComponent() {
   const unansweredCount = questions.filter((q) => q.selectedIndex === null).length;
 
   const changeFilter = (nextFilter: ReviewFilter) => {
+    const nextSearch = {
+      ...(search.returnTo ? { returnTo: search.returnTo } : {}),
+      ...(nextFilter === "all" ? {} : { filter: nextFilter }),
+    };
+
     navigate({
       to: "/results/$attemptId/review",
       params: { attemptId },
-      search: nextFilter === "all" ? {} : { filter: nextFilter },
+      search: nextSearch,
     });
   };
 
@@ -199,13 +221,13 @@ function ReviewComponent() {
         className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-stone-200/80"
       >
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link
-            to="/results/$attemptId"
-            params={{ attemptId }}
+          <ReviewBackLink
+            attemptId={attemptId}
+            returnTo={search.returnTo}
             className="w-10 h-10 rounded-xl bg-stone-100 border-2 border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-200 transition-colors"
           >
             <ArrowLeftIcon />
-          </Link>
+          </ReviewBackLink>
 
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold text-stone-900 truncate">Pembahasan Lengkap</h1>
@@ -264,7 +286,13 @@ function ReviewComponent() {
               const isCorrect = q.isCorrect === true;
               const hasAnswer = q.selectedIndex !== null;
               const premiumLocked = lockedIds.has(q.snapshotId);
-              const relatedMateri = q.relatedMateri;
+              const videoUrl = getVideoEmbedUrl(q.videoUrl);
+              const canViewVideo = Boolean(videoUrl)
+                && (
+                  q.accessLevel === "free"
+                  || (!premiumLocked && (hasPremiumMembership || hasFullTryoutAccess))
+                );
+              const isVideoExpanded = expandedVideoIds.has(q.snapshotId);
 
               return (
                 <div
@@ -391,27 +419,43 @@ function ReviewComponent() {
                     </div>
 
                     {/* Video */}
-                    {q.videoUrl && !premiumLocked && (hasPremiumMembership || hasFullTryoutAccess) && (
-                      <div className="mt-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-8 h-8 rounded-lg bg-rose-100 border-2 border-rose-200 flex items-center justify-center text-rose-600">
-                            <PlayIcon />
+                    {canViewVideo && (
+                      <div className="mt-4 rounded-[16px] border-2 border-rose-100 bg-rose-50/40">
+                        <button
+                          type="button"
+                          onClick={() => toggleVideo(q.snapshotId)}
+                          aria-expanded={isVideoExpanded}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-rose-50"
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-rose-200 bg-rose-100 text-rose-600">
+                            {isVideoExpanded ? <ChevronUpIcon /> : <PlayIcon />}
                           </div>
-                          <span className="font-bold text-sm text-stone-700">Video Pembelajaran</span>
-                        </div>
-                        <div className="relative pb-[56.25%] h-0 overflow-hidden rounded-[16px] bg-stone-900 border-2 border-stone-200">
-                          <iframe
-                            src={q.videoUrl}
-                            title={`Pembahasan soal ${idx + 1}`}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            className="absolute top-0 left-0 w-full h-full"
-                          />
-                        </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-sm text-stone-800">Video Pembelajaran</div>
+                            <div className="text-xs font-semibold text-stone-400">
+                              {isVideoExpanded ? "Sembunyikan video" : "Klik untuk membuka video pembahasan"}
+                            </div>
+                          </div>
+                          <ChevronDownIcon className={`h-5 w-5 shrink-0 text-stone-400 transition-transform ${isVideoExpanded ? "rotate-180" : ""}`} />
+                        </button>
+
+                        {isVideoExpanded && (
+                          <div className="px-4 pb-4">
+                            <div className="relative h-0 overflow-hidden rounded-[16px] border-2 border-stone-200 bg-stone-900 pb-[56.25%]">
+                              <iframe
+                                src={videoUrl}
+                                title={`Pembahasan soal ${idx + 1}`}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="absolute left-0 top-0 h-full w-full"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {q.videoUrl && !(hasPremiumMembership || hasFullTryoutAccess) && (
+                    {q.videoUrl && !canViewVideo && (
                       <div className="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-200 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-amber-100 border-2 border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
                           <PlayIcon className="w-4 h-4" />
@@ -428,34 +472,6 @@ function ReviewComponent() {
                           Unlock
                         </button>
                       </div>
-                    )}
-
-                    {/* Related Materi */}
-                    {!isCorrect && relatedMateri && (hasPremiumMembership || hasFullTryoutAccess) && (
-                      <Link
-                        to="/coming-soon"
-                        search={{ feature: "materi" }}
-                        onClick={() => {
-                          analytics.capture(productAnalyticsEvents.materiBacklinkOpened, {
-                            attempt_id: attempt.id,
-                            tryout_id: attempt.tryoutId,
-                            snapshot_id: q.snapshotId,
-                            question_id: q.questionId,
-                            materi_id: relatedMateri.id,
-                            materi_title: relatedMateri.title,
-                          });
-                        }}
-                        className="mt-4 flex items-center gap-4 p-4 rounded-xl bg-primary-tint border-2 border-brand-sky hover:bg-primary-soft transition-colors group"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-primary-soft border-2 border-brand-sky flex items-center justify-center text-primary">
-                          <BookIcon />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm text-primary-darker truncate">{relatedMateri.title}</div>
-                          <div className="text-xs font-medium text-primary">Pelajari topik ini lebih dalam</div>
-                        </div>
-                        <ArrowRightIcon className="w-5 h-5 text-primary group-hover:translate-x-1 transition-transform" />
-                      </Link>
                     )}
 
                     <div className="mt-4 rounded-xl border-2 border-stone-100 bg-stone-50 p-4">
@@ -504,14 +520,14 @@ function ReviewComponent() {
 
           {/* Bottom Actions */}
           <div className="mt-8 flex gap-4">
-            <Link
-              to="/results/$attemptId"
-              params={{ attemptId }}
+            <ReviewBackLink
+              attemptId={attemptId}
+              returnTo={search.returnTo}
               className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-stone-100 text-stone-700 font-bold border-b-4 border-stone-300 hover:bg-stone-200 transition-all active:translate-y-[2px] active:border-b-0"
             >
               <ArrowLeftIcon />
               Kembali
-            </Link>
+            </ReviewBackLink>
             <Link
               to="/dashboard"
               className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-primary text-white font-bold border-b-4 border-primary-darker hover:bg-primary-dark transition-all active:translate-y-[2px] active:border-b-0 shadow-lg shadow-primary/20"
@@ -541,6 +557,121 @@ function getCategoryLabel(catId: string): string {
     "farmasi-klinik": "FARMASI KLINIK",
   };
   return labels[catId] || catId.toUpperCase();
+}
+
+function ReviewBackLink({
+  attemptId,
+  returnTo,
+  className,
+  children,
+}: {
+  attemptId: string;
+  returnTo: ReviewReturnTo;
+  className: string;
+  children: ReactNode;
+}) {
+  if (returnTo === "evaluation") {
+    return (
+      <Link to="/evaluation" className={className}>
+        {children}
+      </Link>
+    );
+  }
+
+  if (returnTo === "progress") {
+    return (
+      <Link to="/progress" className={className}>
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <Link to="/results/$attemptId" params={{ attemptId }} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+function getVideoEmbedUrl(value: string | null | undefined) {
+  const rawUrl = value?.trim();
+
+  if (!rawUrl) return "";
+
+  try {
+    const url = new URL(rawUrl);
+    const hostname = url.hostname.replace(/^www\./, "");
+
+    if (hostname === "youtu.be") {
+      const videoId = url.pathname.split("/").filter(Boolean)[0];
+
+      if (!videoId) return rawUrl;
+
+      return makeYouTubeEmbedUrl(videoId, url.searchParams.get("t") ?? url.searchParams.get("start"));
+    }
+
+    if (hostname === "youtube.com" || hostname === "m.youtube.com") {
+      if (url.pathname.startsWith("/embed/")) {
+        return rawUrl;
+      }
+
+      if (url.pathname.startsWith("/shorts/")) {
+        const videoId = url.pathname.split("/").filter(Boolean)[1];
+
+        if (!videoId) return rawUrl;
+
+        return makeYouTubeEmbedUrl(videoId, url.searchParams.get("t") ?? url.searchParams.get("start"));
+      }
+
+      const videoId = url.searchParams.get("v");
+
+      if (!videoId) return rawUrl;
+
+      return makeYouTubeEmbedUrl(videoId, url.searchParams.get("t") ?? url.searchParams.get("start"));
+    }
+
+    return rawUrl;
+  } catch {
+    return rawUrl;
+  }
+}
+
+function makeYouTubeEmbedUrl(videoId: string, startTime: string | null) {
+  const embedUrl = new URL(`https://www.youtube-nocookie.com/embed/${videoId}`);
+  const startSeconds = toYouTubeStartSeconds(startTime);
+
+  embedUrl.searchParams.set("controls", "0");
+  embedUrl.searchParams.set("disablekb", "1");
+  embedUrl.searchParams.set("iv_load_policy", "3");
+  embedUrl.searchParams.set("modestbranding", "1");
+  embedUrl.searchParams.set("rel", "0");
+  embedUrl.searchParams.set("playsinline", "1");
+
+  if (startSeconds > 0) {
+    embedUrl.searchParams.set("start", String(startSeconds));
+  }
+
+  return embedUrl.toString();
+}
+
+function toYouTubeStartSeconds(value: string | null) {
+  if (!value) return 0;
+
+  const numericValue = Number(value);
+
+  if (Number.isFinite(numericValue)) {
+    return Math.max(0, Math.floor(numericValue));
+  }
+
+  const match = value.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/i);
+
+  if (!match) return 0;
+
+  const hours = Number(match[1] ?? 0);
+  const minutes = Number(match[2] ?? 0);
+  const seconds = Number(match[3] ?? 0);
+
+  return (hours * 3600) + (minutes * 60) + seconds;
 }
 
 // Icons
@@ -604,11 +735,18 @@ function PlayIcon({ className }: { className?: string }) {
   );
 }
 
-function BookIcon() {
+function ChevronDownIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    <svg viewBox="0 0 24 24" className={className ?? "w-5 h-5"} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+function ChevronUpIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className ?? "w-5 h-5"} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m18 15-6-6-6 6" />
     </svg>
   );
 }
