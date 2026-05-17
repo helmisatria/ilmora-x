@@ -61,8 +61,6 @@ export function ProductAnalyticsProvider({ children }: { children: ReactNode }) 
       options={{
         api_host: apiHost,
         defaults: "2026-01-30",
-        capture_pageview: "history_change",
-        capture_pageleave: true,
       }}
     >
       {children}
