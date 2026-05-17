@@ -68,6 +68,8 @@ function ReviewComponent() {
   const [openReportSnapshotId, setOpenReportSnapshotId] = useState("");
   const [busyReportSnapshotId, setBusyReportSnapshotId] = useState("");
   const [reportedSnapshotId, setReportedSnapshotId] = useState("");
+  const [otherReportSnapshotId, setOtherReportSnapshotId] = useState("");
+  const [otherReportNote, setOtherReportNote] = useState("");
   const [reportError, setReportError] = useState("");
   const [expandedVideoIds, setExpandedVideoIds] = useState<Set<string>>(() => new Set());
   const filter: ReviewFilter = search.filter ?? "all";
@@ -140,7 +142,32 @@ function ReviewComponent() {
     });
   };
 
-  const submitQuestionReport = async (snapshotId: string, reason: ReportReason) => {
+  const toggleReportMenu = (snapshotId: string) => {
+    const isOpen = openReportSnapshotId === snapshotId;
+
+    setOpenReportSnapshotId(isOpen ? "" : snapshotId);
+    setOtherReportSnapshotId("");
+    setOtherReportNote("");
+    setReportError("");
+  };
+
+  const openOtherReportInput = (snapshotId: string) => {
+    setOtherReportSnapshotId(snapshotId);
+    setReportError("");
+  };
+
+  const submitOtherQuestionReport = (snapshotId: string) => {
+    const note = otherReportNote.trim();
+
+    if (!note) {
+      setReportError("Tulis alasan laporan terlebih dahulu.");
+      return;
+    }
+
+    submitQuestionReport(snapshotId, "other", note);
+  };
+
+  const submitQuestionReport = async (snapshotId: string, reason: ReportReason, note?: string) => {
     setBusyReportSnapshotId(snapshotId);
     setReportError("");
 
@@ -150,6 +177,7 @@ function ReviewComponent() {
           attemptId: attempt.id,
           snapshotId,
           reason,
+          note,
         },
       });
       analytics.capture(productAnalyticsEvents.questionReported, {
@@ -157,9 +185,12 @@ function ReviewComponent() {
         tryout_id: attempt.tryoutId,
         snapshot_id: snapshotId,
         reason,
+        note_length: note?.length ?? 0,
       });
       setReportedSnapshotId(snapshotId);
       setOpenReportSnapshotId("");
+      setOtherReportSnapshotId("");
+      setOtherReportNote("");
     } catch {
       setReportError("Laporan belum terkirim. Coba lagi sebentar lagi.");
     } finally {
@@ -484,7 +515,7 @@ function ReviewComponent() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setOpenReportSnapshotId(openReportSnapshotId === q.snapshotId ? "" : q.snapshotId)}
+                          onClick={() => toggleReportMenu(q.snapshotId)}
                           disabled={busyReportSnapshotId === q.snapshotId}
                           className="rounded-lg border-2 border-stone-200 bg-white px-4 py-2 text-xs font-bold text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                         >
@@ -493,19 +524,61 @@ function ReviewComponent() {
                       </div>
 
                       {openReportSnapshotId === q.snapshotId && (
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-                          {reportReasons.map((reason) => (
-                            <button
-                              key={reason.value}
-                              type="button"
-                              onClick={() => submitQuestionReport(q.snapshotId, reason.value)}
-                              disabled={busyReportSnapshotId === q.snapshotId}
-                              className="rounded-lg border-2 border-stone-200 bg-white px-3 py-2 text-left text-xs font-bold text-stone-600 transition-colors hover:border-primary-soft hover:bg-primary-tint hover:text-primary-dark"
-                            >
-                              {reason.label}
-                            </button>
-                          ))}
+                        <div className="mt-3">
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                            {reportReasons.map((reason) => (
+                              <button
+                                key={reason.value}
+                                type="button"
+                                onClick={() => {
+                                  if (reason.value === "other") {
+                                    openOtherReportInput(q.snapshotId);
+                                    return;
+                                  }
+
+                                  submitQuestionReport(q.snapshotId, reason.value);
+                                }}
+                                disabled={busyReportSnapshotId === q.snapshotId}
+                                className="rounded-lg border-2 border-stone-200 bg-white px-3 py-2 text-left text-xs font-bold text-stone-600 transition-colors hover:border-primary-soft hover:bg-primary-tint hover:text-primary-dark"
+                              >
+                                {reason.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {otherReportSnapshotId === q.snapshotId && (
+                            <div className="mt-3 rounded-lg border-2 border-stone-200 bg-white p-3">
+                              <label className="block">
+                                <span className="text-xs font-bold text-stone-600">Alasan lainnya</span>
+                                <textarea
+                                  value={otherReportNote}
+                                  onChange={(event) => setOtherReportNote(event.target.value)}
+                                  maxLength={1000}
+                                  rows={3}
+                                  placeholder="Tulis alasan laporan untuk admin..."
+                                  className="mt-2 w-full resize-none rounded-lg border-2 border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 outline-none transition-colors placeholder:text-stone-300 focus:border-primary-soft"
+                                />
+                              </label>
+                              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                                <span className="text-xs font-semibold text-stone-400">{otherReportNote.trim().length}/1000</span>
+                                <button
+                                  type="button"
+                                  onClick={() => submitOtherQuestionReport(q.snapshotId)}
+                                  disabled={busyReportSnapshotId === q.snapshotId}
+                                  className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-stone-300"
+                                >
+                                  Kirim laporan
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
+                      )}
+
+                      {reportedSnapshotId === q.snapshotId && (
+                        <p className="m-0 mt-3 rounded-lg border-2 border-green-100 bg-green-50 px-3 py-2 text-xs font-bold text-success-dark">
+                          Laporan terkirim. Tim akan meninjau soal ini.
+                        </p>
                       )}
 
                       {reportError && openReportSnapshotId === q.snapshotId && (

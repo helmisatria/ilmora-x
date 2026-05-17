@@ -8,15 +8,18 @@ import {
 
 const reportStatusFilters = ["open", "reviewed", "resolved", "dismissed", "all"] as const;
 const reportStatuses = ["open", "reviewed", "resolved", "dismissed"] as const;
+const reportReasonFilters = ["answer_key_wrong", "explanation_wrong", "question_unclear", "typo", "other", "all"] as const;
 
 const searchSchema = z.object({
   status: z.enum(reportStatusFilters).optional(),
+  reason: z.enum(reportReasonFilters).optional(),
   tryoutId: z.string().optional(),
   questionId: z.string().optional(),
 });
 
 type ReportStatusFilter = (typeof reportStatusFilters)[number];
 type ReportStatus = (typeof reportStatuses)[number];
+type ReportReasonFilter = (typeof reportReasonFilters)[number];
 type ReportQueue = Awaited<ReturnType<typeof listQuestionReportsAdmin>>;
 type ReportRow = ReportQueue["reports"][number];
 
@@ -24,6 +27,7 @@ export const Route = createFileRoute("/admin/reports")({
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => ({
     status: search.status ?? "open",
+    reason: search.reason ?? "all",
     tryoutId: search.tryoutId,
     questionId: search.questionId,
   }),
@@ -38,16 +42,23 @@ function AdminReportsPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const status = search.status ?? "open";
+  const reason = search.reason ?? "all";
   const tryoutId = search.tryoutId ?? "";
   const questionId = search.questionId ?? "";
   const [busyReportId, setBusyReportId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const updateFilters = (nextFilters: { status?: ReportStatusFilter; tryoutId?: string; questionId?: string }) => {
+  const updateFilters = (nextFilters: {
+    status?: ReportStatusFilter;
+    reason?: ReportReasonFilter;
+    tryoutId?: string;
+    questionId?: string;
+  }) => {
     navigate({
       to: "/admin/reports",
       search: {
         status: nextFilters.status ?? status,
+        reason: nextFilters.reason ?? reason,
         tryoutId: nextFilters.tryoutId ?? tryoutId,
         questionId: nextFilters.questionId ?? questionId,
       },
@@ -82,7 +93,7 @@ function AdminReportsPage() {
         )}
 
         <section className="admin-panel mt-6 p-5">
-          <div className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid gap-4 lg:grid-cols-[180px_220px_minmax(0,1fr)_minmax(0,1fr)]">
             <label className="block">
               <span className="admin-kicker">Status</span>
               <select
@@ -95,6 +106,20 @@ function AdminReportsPage() {
                 <option value="resolved">Resolved</option>
                 <option value="dismissed">Dismissed</option>
                 <option value="all">All</option>
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="admin-kicker">Reason</span>
+              <select
+                value={reason}
+                onChange={(event) => updateFilters({ reason: event.target.value as ReportReasonFilter })}
+                className="admin-control mt-2"
+              >
+                <option value="all">All Reasons</option>
+                {reportReasonFilters.filter((value) => value !== "all").map((value) => (
+                  <option key={value} value={value}>{getReasonLabel(value)}</option>
+                ))}
               </select>
             </label>
 
@@ -125,6 +150,26 @@ function AdminReportsPage() {
                 ))}
               </select>
             </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => updateFilters({ reason: "all" })}
+              className={reason === "all" ? "admin-button-primary" : "admin-button-ghost"}
+            >
+              All reasons
+            </button>
+            {queue.reasons.map((reasonGroup) => (
+              <button
+                key={reasonGroup.reason}
+                type="button"
+                onClick={() => updateFilters({ reason: reasonGroup.reason })}
+                className={reason === reasonGroup.reason ? "admin-button-primary" : "admin-button-ghost"}
+              >
+                {getReasonLabel(reasonGroup.reason)} ({reasonGroup.count})
+              </button>
+            ))}
           </div>
         </section>
 
@@ -171,7 +216,7 @@ function ReportCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill status={report.status} />
-            <span className="admin-meta-tag first:before:hidden">{getReasonLabel(report.reason)}</span>
+            <span className="admin-meta-tag first:before:hidden">Reason: {getReasonLabel(report.reason)}</span>
             <span className="admin-meta-tag">Reported {formatDateTime(report.createdAt)}</span>
           </div>
 
@@ -203,7 +248,7 @@ function ReportCard({
 
       {report.note && (
         <div className="mt-4 rounded-[var(--radius-md)] border-2 border-amber-100 bg-amber-50/60 p-4">
-          <p className="admin-kicker text-amber-700">Student note</p>
+          <p className="admin-kicker text-amber-700">{report.reason === "other" ? "Custom reason" : "Student note"}</p>
           <p className="mt-2 text-sm font-semibold leading-relaxed text-stone-700">{report.note}</p>
         </div>
       )}
@@ -278,13 +323,14 @@ function getStatusLabel(status: ReportStatus) {
   return labels[status];
 }
 
-function getReasonLabel(reason: ReportRow["reason"]) {
+function getReasonLabel(reason: ReportRow["reason"] | ReportReasonFilter) {
   const labels = {
     answer_key_wrong: "Answer key wrong",
     explanation_wrong: "Explanation wrong",
     question_unclear: "Question unclear",
     typo: "Typo",
     other: "Other",
+    all: "All Reasons",
   };
 
   return labels[reason];

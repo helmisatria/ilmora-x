@@ -84,9 +84,11 @@ const updateSubCategorySchema = z.object({
 });
 
 const reportStatusSchema = z.enum(["open", "reviewed", "resolved", "dismissed"]);
+const reportReasonSchema = z.enum(["answer_key_wrong", "explanation_wrong", "question_unclear", "typo", "other"]);
 
 const reportFiltersSchema = z.object({
   status: z.union([reportStatusSchema, z.literal("all")]).optional(),
+  reason: z.union([reportReasonSchema, z.literal("all")]).optional(),
   tryoutId: z.string().trim().optional(),
   questionId: z.string().trim().optional(),
 });
@@ -1523,6 +1525,10 @@ export const listQuestionReportsAdmin = createServerFn({ method: "GET" })
       conditions.push(eq(questionReports.status, data.status));
     }
 
+    if (data.reason && data.reason !== "all") {
+      conditions.push(eq(questionReports.reason, data.reason));
+    }
+
     if (data.tryoutId) {
       conditions.push(eq(attempts.tryoutId, data.tryoutId));
     }
@@ -1593,6 +1599,14 @@ export const listQuestionReportsAdmin = createServerFn({ method: "GET" })
       .innerJoin(attemptQuestionSnapshots, eq(attemptQuestionSnapshots.id, questionReports.snapshotId))
       .groupBy(questionReports.questionId, attemptQuestionSnapshots.questionText)
       .orderBy(attemptQuestionSnapshots.questionText);
+    const reasonRows = await db
+      .select({
+        reason: questionReports.reason,
+        count: sql<number>`count(*)`,
+      })
+      .from(questionReports)
+      .groupBy(questionReports.reason)
+      .orderBy(questionReports.reason);
 
     return {
       reports: rows.map((row) => ({
@@ -1608,6 +1622,10 @@ export const listQuestionReportsAdmin = createServerFn({ method: "GET" })
       })),
       tryouts: tryoutRows,
       questions: questionRows,
+      reasons: reasonRows.map((row) => ({
+        reason: row.reason as "answer_key_wrong" | "explanation_wrong" | "question_unclear" | "typo" | "other",
+        count: Number(row.count ?? 0),
+      })),
     };
   });
 

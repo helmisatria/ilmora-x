@@ -23,6 +23,15 @@ type TakeAttempt = Awaited<ReturnType<typeof startOrResumeAttempt>>;
 type TakeQuestion = TakeAttempt["questions"][number];
 type AttemptProgressPayload = ReturnType<typeof makeAttemptProgressPayload>;
 type SaveStatus = "idle" | "saving" | "saved" | "offline" | "error";
+type ReportReason = "answer_key_wrong" | "explanation_wrong" | "question_unclear" | "typo" | "other";
+
+const reportReasons: Array<{ label: string; value: ReportReason }> = [
+  { label: "Answer key salah", value: "answer_key_wrong" },
+  { label: "Pembahasan keliru", value: "explanation_wrong" },
+  { label: "Soal tidak jelas", value: "question_unclear" },
+  { label: "Typo", value: "typo" },
+  { label: "Lainnya", value: "other" },
+];
 
 export const Route = createFileRoute("/tryout/$id")({
   loader: async ({ params }) => {
@@ -65,6 +74,11 @@ function TryoutTakeComponent() {
 
   const [timeLeft, setTimeLeft] = useState(tryout.durationMinutes * 60);
   const [showReport, setShowReport] = useState(false);
+  const [showCustomReportReason, setShowCustomReportReason] = useState(false);
+  const [customReportReason, setCustomReportReason] = useState("");
+  const [reportingSnapshotId, setReportingSnapshotId] = useState("");
+  const [reportedSnapshotId, setReportedSnapshotId] = useState("");
+  const [reportError, setReportError] = useState("");
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const [lastSaved, setLastSaved] = useState<string>("");
@@ -368,6 +382,62 @@ function TryoutTakeComponent() {
       });
   };
 
+  const closeReportDialog = () => {
+    setShowReport(false);
+    setShowCustomReportReason(false);
+    setCustomReportReason("");
+    setReportError("");
+  };
+
+  const openReportDialog = () => {
+    setShowReport(true);
+    setShowCustomReportReason(false);
+    setCustomReportReason("");
+    setReportError("");
+  };
+
+  const submitQuestionReport = async (reason: ReportReason, note?: string) => {
+    setReportingSnapshotId(q.snapshotId);
+    setReportError("");
+
+    try {
+      await reportAttemptQuestion({
+        data: {
+          attemptId: attemptData.attempt.id,
+          snapshotId: q.snapshotId,
+          reason,
+          note,
+        },
+      });
+
+      posthog.capture(productAnalyticsEvents.questionReported, {
+        tryout_id: tryout.id,
+        attempt_id: attemptData.attempt.id,
+        snapshot_id: q.snapshotId,
+        reason,
+        note_length: note?.length ?? 0,
+      });
+
+      setReportedSnapshotId(q.snapshotId);
+      closeReportDialog();
+    } catch {
+      setReportError("Laporan belum terkirim. Coba lagi sebentar lagi.");
+    } finally {
+      setReportingSnapshotId("");
+    }
+  };
+
+  const submitCustomQuestionReport = () => {
+    const note = customReportReason.trim();
+
+    if (!note) {
+      setReportError("Tulis alasan laporan terlebih dahulu.");
+      return;
+    }
+
+    submitQuestionReport("other", note);
+  };
+
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex flex-col relative">
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b-2 border-stone-200">
@@ -411,7 +481,7 @@ function TryoutTakeComponent() {
               </button>
               <button
                 className="w-10 h-10 sm:w-11 sm:h-11 rounded-[var(--radius-md)] border-2 border-stone-200 bg-white text-stone-500 cursor-pointer flex items-center justify-center transition-all hover:bg-stone-50 hover:border-stone-300"
-                onClick={() => setShowReport(true)}
+                onClick={openReportDialog}
                 title="Laporkan soal"
                 type="button"
               >
@@ -420,6 +490,11 @@ function TryoutTakeComponent() {
             </div>
           </div>
           <h2 className="m-0 max-w-[34ch] text-lg font-bold leading-relaxed sm:text-xl">{q.questionText}</h2>
+          {reportedSnapshotId === q.snapshotId && (
+            <p className="mt-4 rounded-[var(--radius-md)] border-2 border-green-100 bg-green-50 px-3 py-2 text-sm font-bold text-success-dark">
+              Laporan terkirim. Tim akan meninjau soal ini.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-2.5 sm:gap-3">
@@ -527,7 +602,7 @@ function TryoutTakeComponent() {
       )}
 
       {showReport && (
-        <div className="dialog-backdrop show" onClick={(e) => { if (e.target === e.currentTarget) setShowReport(false) }}>
+        <div className="dialog-backdrop show" onClick={(e) => { if (e.target === e.currentTarget) closeReportDialog() }}>
           <div className="dialog-box text-left">
             <div className="w-14 h-14 rounded-2xl mx-auto mb-3 bg-rose-50 text-coral border-2 border-rose-100 flex items-center justify-center">
               <AlertIcon />
@@ -537,33 +612,61 @@ function TryoutTakeComponent() {
               Pilih alasan yang paling dekat supaya tim bisa meninjau soal ini.
             </p>
             <div className="space-y-3">
-              {["Answer key salah", "Pembahasan keliru", "Soal tidak jelas", "Typo", "Lainnya"].map((reason) => (
+              {reportReasons.map((reason) => (
                 <button
-                  key={reason}
+                  key={reason.value}
                   className="w-full text-left px-4 py-3 rounded-[var(--radius-md)] border-2 border-stone-200 font-semibold text-sm hover:border-primary hover:bg-primary-tint transition-all"
+                  disabled={reportingSnapshotId === q.snapshotId}
                   onClick={() => {
-                    setShowReport(false);
-                    reportAttemptQuestion({
-                      data: {
-                        attemptId: attemptData.attempt.id,
-                        snapshotId: q.snapshotId,
-                        reason: toReportReason(reason),
-                      },
-                    }).then(() => {
-                      posthog.capture(productAnalyticsEvents.questionReported, {
-                        tryout_id: tryout.id,
-                        attempt_id: attemptData.attempt.id,
-                        snapshot_id: q.snapshotId,
-                        reason: toReportReason(reason),
-                      });
-                    }).catch(() => {});
+                    if (reason.value === "other") {
+                      setShowCustomReportReason(true);
+                      setReportError("");
+                      return;
+                    }
+
+                    submitQuestionReport(reason.value);
                   }}
+                  type="button"
                 >
-                  {reason}
+                  {reason.label}
                 </button>
               ))}
             </div>
-            <button className="btn btn-white w-full mt-4" onClick={() => setShowReport(false)}>Batal</button>
+
+            {showCustomReportReason && (
+              <div className="mt-4 rounded-[var(--radius-md)] border-2 border-stone-200 bg-white p-3">
+                <label className="block">
+                  <span className="text-xs font-bold text-stone-600">Alasan lainnya</span>
+                  <textarea
+                    value={customReportReason}
+                    onChange={(event) => setCustomReportReason(event.target.value)}
+                    maxLength={1000}
+                    rows={3}
+                    placeholder="Tulis alasan laporan untuk admin..."
+                    className="mt-2 w-full resize-none rounded-[var(--radius-md)] border-2 border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 outline-none transition-colors placeholder:text-stone-300 focus:border-primary"
+                  />
+                </label>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-stone-400">{customReportReason.trim().length}/1000</span>
+                  <button
+                    type="button"
+                    onClick={submitCustomQuestionReport}
+                    disabled={reportingSnapshotId === q.snapshotId}
+                    className="btn btn-primary"
+                  >
+                    Kirim laporan
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {reportError && (
+              <p className="mt-4 rounded-[var(--radius-md)] border-2 border-amber-100 bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-700">
+                {reportError}
+              </p>
+            )}
+
+            <button className="btn btn-white w-full mt-4" onClick={closeReportDialog} type="button">Batal</button>
           </div>
         </div>
       )}
@@ -795,15 +898,6 @@ function SaveStatusLine({ status, lastSaved }: { status: SaveStatus; lastSaved: 
 
 function getStartErrorMessage(error: unknown) {
   return getSafeErrorMessage(error, "Gagal memulai tryout. Silakan coba lagi.");
-}
-
-function toReportReason(reason: string) {
-  if (reason === "Answer key salah") return "answer_key_wrong";
-  if (reason === "Pembahasan keliru") return "explanation_wrong";
-  if (reason === "Soal tidak jelas") return "question_unclear";
-  if (reason === "Typo") return "typo";
-
-  return "other";
 }
 
 interface PreparationScreenProps {
