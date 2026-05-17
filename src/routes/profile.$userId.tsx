@@ -2,10 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { AvatarDisplay } from "../components/AvatarDisplay";
-import { useApp, badges, mockUsers, getLevelForXp, getXpProgress, isUserPremium } from "../data";
-import { getLevelGrade } from "../data/users";
+import { badges, getLevelForXp, getNextLevel, getXpProgress } from "../data";
+import { getGradeForLevel } from "../data/users";
+import { getPublicStudentProfile, listProgressSummary } from "../lib/student-functions";
 
 export const Route = createFileRoute("/profile/$userId")({
+  loader: async ({ params }) => {
+    const [profile, summary] = await Promise.all([
+      getPublicStudentProfile({ data: { studentUserId: params.userId } }),
+      listProgressSummary(),
+    ]);
+
+    return { profile, summary };
+  },
   head: ({ params }) => ({
     meta: [
       { title: "Profil Pengguna — IlmoraX" },
@@ -18,18 +27,17 @@ export const Route = createFileRoute("/profile/$userId")({
 });
 
 function PublicProfileComponent() {
-  const { userId } = Route.useParams();
-  const { badgeProgress } = useApp();
-  const viewedUser = mockUsers.find((u) => u.id === parseInt(userId, 10)) || mockUsers[1];
-  const levelInfo = getLevelForXp(viewedUser.xp);
-  const xpProgress = getXpProgress(viewedUser.xp);
-  const grade = getLevelGrade(viewedUser);
-  const premium = isUserPremium(viewedUser);
-  const nextLevelXp = (levelInfo.level + 1) * 500;
-  const currentLevelXp = Math.max(levelInfo.level * 500, 0);
-
-  const unlockedMap = new Map(badgeProgress.filter((bp) => bp.unlocked).map((bp) => [bp.badgeId, bp]));
-  const unlockedBadgeList = badges.filter((b) => unlockedMap.has(b.id));
+  const { profile, summary } = Route.useLoaderData() as {
+    profile: Awaited<ReturnType<typeof getPublicStudentProfile>>;
+    summary: Awaited<ReturnType<typeof listProgressSummary>>;
+  };
+  const levelInfo = getLevelForXp(profile.xp);
+  const nextLevel = getNextLevel(profile.xp);
+  const xpProgress = getXpProgress(profile.xp);
+  const grade = getGradeForLevel(levelInfo.level);
+  const currentLevelXp = levelInfo.xp;
+  const nextLevelXp = nextLevel?.xp ?? levelInfo.xp;
+  const unlockedBadgeList = badges.filter((badge) => isBadgeUnlocked(badge, profile, levelInfo.level));
 
   return (
     <div
@@ -43,7 +51,7 @@ function PublicProfileComponent() {
             "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
-        <TopBar />
+        <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
         <div className="page-lane pt-7 lg:pt-10">
           <Link to="/leaderboard" className="mb-5 inline-flex items-center gap-2 text-sm font-extrabold text-stone-500 no-underline transition-colors hover:text-primary">
             <ArrowLeftIcon />
@@ -53,7 +61,7 @@ function PublicProfileComponent() {
             Profil Peserta
           </div>
           <h1 className="mt-2 max-w-[18ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
-            {viewedUser.name}
+            {profile.name}
           </h1>
           <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
             Lihat progres, ritme belajar, dan koleksi lencana peserta ini.
@@ -65,12 +73,11 @@ function PublicProfileComponent() {
         <div className="rounded-[var(--radius-xl)] border-2 border-b-4 border-[#cfe7df] border-b-[#a9d1c6] bg-[linear-gradient(135deg,rgba(235,250,247,0.98)_0%,rgba(255,252,245,0.98)_100%)] p-5 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[44px] font-black tracking-wide text-stone-800 shadow-sm">
-              <AvatarDisplay avatar={viewedUser.avatar} photoUrl={viewedUser.googlePhotoUrl} className="h-full w-full" />
+              <AvatarDisplay avatar={profile.avatar} photoUrl={profile.photoUrl} className="h-full w-full" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-xl font-bold tracking-tight text-stone-800">{viewedUser.name}</h2>
-              <p className="m-0 mt-1 truncate text-sm font-semibold text-stone-500">{viewedUser.institution}</p>
-              {premium && <StatusPill label="Premium" accent="#f59e0b" />}
+              <h2 className="truncate text-xl font-bold tracking-tight text-stone-800">{profile.name}</h2>
+              <p className="m-0 mt-1 truncate text-sm font-semibold text-stone-500">{profile.institution}</p>
             </div>
           </div>
 
@@ -109,9 +116,9 @@ function PublicProfileComponent() {
 
         <div className="grid gap-6">
           <div className="grid grid-flow-dense grid-cols-3 gap-3">
-            <StatCard label="Soal" value={String(viewedUser.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
-            <StatCard label="Try-out" value={String(viewedUser.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
-            <StatCard label="Streak" value={String(viewedUser.streak)} accent="#f59e0b" icon={<FlameIcon />} />
+            <StatCard label="Soal" value={String(profile.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
+            <StatCard label="Try-out" value={String(profile.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
+            <StatCard label="Streak" value={String(profile.streak)} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
 
           <div>
@@ -136,6 +143,29 @@ function PublicProfileComponent() {
       <BottomNav active="rank" />
     </div>
   );
+}
+
+function isBadgeUnlocked(
+  badge: (typeof badges)[number],
+  profile: Awaited<ReturnType<typeof getPublicStudentProfile>>,
+  level: number,
+) {
+  if (profile.awardedBadgeIds.includes(badge.id)) return true;
+
+  const accuracy = profile.totalQuestions > 0
+    ? Math.round((profile.totalCorrect / profile.totalQuestions) * 100)
+    : 0;
+  const levelMatch = badge.task.match(/Reach Level (\d+)/i);
+  const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
+  const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
+
+  if (levelMatch) return level >= Number(levelMatch[1]);
+  if (streakMatch) return profile.streak >= Number(streakMatch[1]);
+  if (tryoutMatch) return profile.totalTryouts >= Number(tryoutMatch[1]);
+  if (badge.id === 1) return profile.totalTryouts > 0;
+  if (badge.name === "100% Club") return accuracy >= 100;
+
+  return false;
 }
 
 function SectionHeader({ title }: { title: string }) {

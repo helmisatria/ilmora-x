@@ -1,10 +1,30 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { AvatarDisplay } from "../components/AvatarDisplay";
 import { badges, getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
-import { getLevelGrade } from "../data/users";
+import { getGradeForLevel } from "../data/users";
+import { avatarOptions as sharedAvatarOptions, defaultAvatar, isSelectableAvatar, resolveAvatarDisplay } from "../lib/avatar";
+import { signOut } from "../lib/auth-client";
+import { getCurrentViewer, updateProfileAvatar } from "../lib/auth-functions";
+import { listProgressSummary } from "../lib/student-functions";
 
 export const Route = createFileRoute("/profile")({
+  loader: async () => {
+    const viewer = await getCurrentViewer();
+
+    if (!viewer) {
+      throw redirect({ to: "/auth/login" });
+    }
+
+    if (!viewer.admin && !viewer.profile?.completed) {
+      throw redirect({ to: "/auth/complete-profile" });
+    }
+
+    const summary = await listProgressSummary();
+
+    return { summary, viewer };
+  },
   head: () => ({
     meta: [
       { title: "Profil Belajar — IlmoraX" },
@@ -17,34 +37,114 @@ export const Route = createFileRoute("/profile")({
 });
 
 const profileAccent = "#205072";
-const avatarOptions = [
-  "🦉",
-  "🧑‍⚕️",
-  "👩‍⚕️",
-  "👨‍⚕️",
-  "🧑‍🔬",
-  "👩‍🔬",
-  "👨‍🔬",
-  "🧑‍🎓",
-  "👩‍🎓",
-  "👨‍🎓",
-  "💊",
-] as const;
+const avatarOptions = sharedAvatarOptions.filter((avatar) => avatar !== "google");
+
+function getProfileAvatarState({
+  userAvatar,
+  userPhotoUrl,
+  viewer,
+}: {
+  userAvatar: string;
+  userPhotoUrl: string | null;
+  viewer: Awaited<ReturnType<typeof getCurrentViewer>>;
+}) {
+  const preferredAvatar = isSelectableAvatar(userAvatar)
+    ? userAvatar
+    : viewer?.profile?.avatar;
+
+  return resolveAvatarDisplay({
+    avatar: preferredAvatar,
+    photoUrl: viewer?.profile?.photoUrl ?? userPhotoUrl,
+    googlePhotoUrl: viewer?.image,
+    fallbackName: defaultAvatar,
+  });
+}
 
 function ProfileComponent() {
-  const { user, setUser, badgeProgress, hasPremiumMembership, togglePremiumMembership } = useApp();
+  const { summary, viewer } = Route.useLoaderData();
+  const {
+    user,
+    hasPremiumMembership,
+    devPremiumOverride,
+    setDevPremiumOverride,
+    updateUserAvatar,
+  } = useApp();
+  const location = useLocation();
   const navigate = useNavigate();
-  const levelInfo = getLevelForXp(user.xp);
-  const nextLevel = getNextLevel(user.xp);
-  const xpProgress = getXpProgress(user.xp);
-  const grade = getLevelGrade(user);
-  const unlockedBadges = badgeProgress.filter((progress) => progress.unlocked);
-  const unlockedBadgeIds = new Set(unlockedBadges.map((progress) => progress.badgeId));
+  const router = useRouter();
+  const profileName = viewer?.profile?.displayName ?? viewer?.name ?? user.name;
+  const profileEmail = viewer?.email ?? user.email;
+  const profileInstitution = viewer?.profile?.institution ?? user.institution;
+  const initialAvatarState = getProfileAvatarState({
+    userAvatar: user.avatar,
+    userPhotoUrl: user.googlePhotoUrl,
+    viewer,
+  });
+  const [selectedAvatar, setSelectedAvatar] = useState(initialAvatarState.avatar);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(initialAvatarState.photoUrl);
+  const [avatarStatus, setAvatarStatus] = useState<"idle" | "saving" | "error">("idle");
+  const profilePhotoUrl = selectedPhotoUrl;
+  const displayAvatar = selectedAvatar ?? defaultAvatar;
+  const levelInfo = getLevelForXp(summary.xp);
+  const nextLevel = getNextLevel(summary.xp);
+  const xpProgress = getXpProgress(summary.xp);
+  const grade = getGradeForLevel(levelInfo.level);
+  const unlockedBadgeIds = getUnlockedBadgeIds(summary);
   const unlockedBadgeList = badges.filter((badge) => unlockedBadgeIds.has(badge.id));
   const highestLevelBadge = unlockedBadgeList
     .filter((badge) => badge.category === "Level" && badge.id >= 4 && badge.id <= 11)
     .sort((a, b) => b.id - a.id)[0];
   const activeBonus = highestLevelBadge ? getBonusByBadge(highestLevelBadge.id) : 0;
+
+  useEffect(() => {
+    if (avatarStatus === "saving") return;
+
+    const nextAvatarState = getProfileAvatarState({
+      userAvatar: user.avatar,
+      userPhotoUrl: user.googlePhotoUrl,
+      viewer,
+    });
+
+    setSelectedAvatar(nextAvatarState.avatar);
+    setSelectedPhotoUrl(nextAvatarState.photoUrl);
+  }, [avatarStatus, user.avatar, user.googlePhotoUrl, viewer]);
+
+  if (location.pathname !== "/profile") {
+    return <Outlet />;
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/auth/login" });
+  };
+
+  const handleAvatarSelect = async (avatar: string) => {
+    if (avatar === selectedAvatar) return;
+
+    const previousAvatar = selectedAvatar;
+    const previousPhotoUrl = selectedPhotoUrl;
+
+    setAvatarStatus("saving");
+    setSelectedAvatar(avatar);
+    const optimisticPhotoUrl = avatar === "google" ? viewer?.profile?.photoUrl ?? viewer?.image ?? null : null;
+    setSelectedPhotoUrl(optimisticPhotoUrl);
+    updateUserAvatar(avatar, optimisticPhotoUrl);
+
+    try {
+      const result = await updateProfileAvatar({ data: { avatar } });
+
+      setSelectedAvatar(result.avatar ?? defaultAvatar);
+      setSelectedPhotoUrl(result.photoUrl);
+      updateUserAvatar(result.avatar ?? defaultAvatar, result.photoUrl);
+      setAvatarStatus("idle");
+      await router.invalidate();
+    } catch {
+      setSelectedAvatar(previousAvatar);
+      setSelectedPhotoUrl(previousPhotoUrl);
+      updateUserAvatar(previousAvatar ?? defaultAvatar, previousPhotoUrl);
+      setAvatarStatus("error");
+    }
+  };
 
   return (
     <main
@@ -61,7 +161,10 @@ function ProfileComponent() {
             "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
         }}
       >
-        <TopBar />
+        <TopBar
+          progress={{ xp: summary.xp, streak: summary.streak }}
+          profile={{ name: profileName, avatar: displayAvatar, photoUrl: profilePhotoUrl }}
+        />
 
         <div className="page-lane pt-7 lg:pt-10">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
@@ -75,14 +178,14 @@ function ProfileComponent() {
           </p>
 
           <ProfileHero
-            avatar={user.avatar}
-            photoUrl={user.googlePhotoUrl}
-            name={user.name}
-            institution={user.institution}
+            avatar={displayAvatar}
+            photoUrl={profilePhotoUrl}
+            name={profileName}
+            institution={profileInstitution}
             isPremium={hasPremiumMembership}
             level={levelInfo.level}
             grade={grade}
-            xp={user.xp}
+            xp={summary.xp}
             nextXp={nextLevel?.xp}
             xpProgress={xpProgress}
           />
@@ -92,11 +195,10 @@ function ProfileComponent() {
       <div className="page-lane relative -mt-4 grid gap-6 pb-28 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.15fr)] lg:items-start">
         <div className="grid gap-5">
           <AvatarPicker
-            selectedAvatar={user.avatar}
-            googlePhotoUrl={user.googlePhotoUrl}
-            onSelect={(avatar) => {
-              setUser((currentUser) => ({ ...currentUser, avatar }));
-            }}
+            selectedAvatar={displayAvatar}
+            googlePhotoUrl={viewer?.profile?.photoUrl ?? viewer?.image ?? null}
+            onSelect={handleAvatarSelect}
+            status={avatarStatus}
           />
 
           {activeBonus > 0 && highestLevelBadge && (
@@ -104,10 +206,16 @@ function ProfileComponent() {
           )}
 
           <div className="grid grid-flow-dense grid-cols-3 gap-3">
-            <StatCard label="Soal" value={String(user.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
-            <StatCard label="Try-out" value={String(user.totalTryouts)} accent="#0ea5e9" icon={<ChartIcon />} />
-            <StatCard label="Streak" value={`${user.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
+            <StatCard label="Soal" value={String(summary.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
+            <StatCard label="Try-out" value={String(summary.attempts.length)} accent="#0ea5e9" icon={<ChartIcon />} />
+            <StatCard label="Streak" value={`${summary.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
+
+          <PerformanceReviewCard
+            totalQuestions={summary.totalQuestions}
+            totalCorrect={summary.totalCorrect}
+            categoryCount={summary.categories.length}
+          />
 
           {!hasPremiumMembership && <PremiumProfileCallout />}
         </div>
@@ -135,12 +243,18 @@ function ProfileComponent() {
             />
           </div>
 
+          {import.meta.env.DEV && (
+            <DevPremiumToggle
+              enabled={devPremiumOverride}
+              onChange={setDevPremiumOverride}
+            />
+          )}
+
           <div>
             <SectionHeader title="Akun" />
             <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
-              <AccountRow label="Email" value={user.email} />
-              <AccountRow label="Institusi" value={user.institution} />
-              <AccountRow label="Kode Referral" value={user.referralCode} copyable />
+              <AccountRow label="Email" value={profileEmail} />
+              <AccountRow label="Institusi" value={profileInstitution} />
               <AccountRow
                 label="Bergabung"
                 value={new Date(user.joinDate).toLocaleDateString("id-ID", {
@@ -153,10 +267,7 @@ function ProfileComponent() {
           </div>
 
           <div className="flex gap-3">
-            <button className="btn btn-white flex-1 text-xs" onClick={togglePremiumMembership} type="button">
-              {hasPremiumMembership ? "Demo Premium ON" : "Demo Premium OFF"}
-            </button>
-            <button className="btn btn-white flex-1 text-xs" onClick={() => navigate({ to: "/auth/login" })} type="button">
+            <button className="btn btn-white flex-1 text-xs" onClick={handleSignOut} type="button">
               Keluar
             </button>
           </div>
@@ -165,6 +276,33 @@ function ProfileComponent() {
 
       <BottomNav active="learn" />
     </main>
+  );
+}
+
+function getUnlockedBadgeIds(summary: Awaited<ReturnType<typeof listProgressSummary>>) {
+  const level = getLevelForXp(summary.xp).level;
+  const accuracy = summary.totalQuestions > 0
+    ? Math.round((summary.totalCorrect / summary.totalQuestions) * 100)
+    : 0;
+
+  return new Set(
+    badges
+      .filter((badge) => {
+        if (summary.awardedBadgeIds.includes(badge.id)) return true;
+
+        const levelMatch = badge.task.match(/Reach Level (\d+)/i);
+        const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
+        const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
+
+        if (levelMatch) return level >= Number(levelMatch[1]);
+        if (streakMatch) return summary.streak >= Number(streakMatch[1]);
+        if (tryoutMatch) return summary.attempts.length >= Number(tryoutMatch[1]);
+        if (badge.id === 1) return summary.attempts.length > 0;
+        if (badge.name === "100% Club") return accuracy >= 100;
+
+        return false;
+      })
+      .map((badge) => badge.id),
   );
 }
 
@@ -265,17 +403,24 @@ function AvatarPicker({
   selectedAvatar,
   googlePhotoUrl,
   onSelect,
+  status,
 }: {
   selectedAvatar: string;
   googlePhotoUrl: string | null;
   onSelect: (avatar: string) => void;
+  status: "idle" | "saving" | "error";
 }) {
   const googleKey = "google";
   const hasGooglePhoto = !!googlePhotoUrl;
 
   return (
     <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm">
-      <SectionHeader title="Foto Profil" />
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <SectionHeader title="Foto Profil" />
+        {status === "saving" && (
+          <span className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Menyimpan</span>
+        )}
+      </div>
       <div className="grid grid-cols-6 gap-2.5">
         {hasGooglePhoto && (
           <button
@@ -287,6 +432,7 @@ function AvatarPicker({
               background: selectedAvatar === googleKey ? "#dcecf7" : "#ffffff",
             }}
             onClick={() => onSelect(googleKey)}
+            disabled={status === "saving"}
             type="button"
             aria-label="Pilih foto profil Google"
           >
@@ -311,6 +457,7 @@ function AvatarPicker({
                 color: isSelected ? "#0b2135" : "#57534e",
               }}
               onClick={() => onSelect(avatar)}
+              disabled={status === "saving"}
               type="button"
               aria-label={`Pilih avatar ${avatar}`}
             >
@@ -319,6 +466,11 @@ function AvatarPicker({
           );
         })}
       </div>
+      {status === "error" && (
+        <div className="mt-3 rounded-[var(--radius-md)] border-2 border-rose-100 bg-rose-50 p-3 text-xs font-bold text-coral-dark">
+          Avatar belum tersimpan. Coba pilih lagi.
+        </div>
+      )}
     </div>
   );
 }
@@ -351,6 +503,45 @@ function StatCard({ label, value, accent, icon }: { label: string; value: string
       <div className="mt-3 text-lg font-bold leading-none tracking-tight text-stone-800">{value}</div>
       <div className="mt-1 text-[10.5px] font-semibold leading-tight text-stone-400">{label}</div>
     </div>
+  );
+}
+
+function PerformanceReviewCard({
+  totalQuestions,
+  totalCorrect,
+  categoryCount,
+}: {
+  totalQuestions: number;
+  totalCorrect: number;
+  categoryCount: number;
+}) {
+  const accuracy = totalQuestions > 0
+    ? Math.round((totalCorrect / totalQuestions) * 100)
+    : 0;
+
+  return (
+    <Link
+      to="/evaluation"
+      className="group block rounded-[var(--radius-xl)] border-2 border-b-4 border-[#cfe7df] border-b-[#88b9ad] bg-white p-5 text-stone-800 no-underline shadow-sm transition-transform duration-200 hover:-translate-y-0.5"
+    >
+      <div className="flex items-start gap-3">
+        <IconTile icon={<ChartIcon />} accent="#205072" />
+        <div className="min-w-0 flex-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
+            Evaluasi
+          </span>
+          <b className="mt-1 block text-xl font-bold leading-none tracking-tight text-stone-800">
+            {accuracy}% akurasi
+          </b>
+          <span className="mt-2 block text-xs font-semibold text-stone-500">
+            {totalQuestions} soal · {categoryCount} kategori
+          </span>
+        </div>
+        <span className="text-primary transition-transform duration-200 group-hover:translate-x-0.5">
+          <ArrowRightIcon />
+        </span>
+      </div>
+    </Link>
   );
 }
 
@@ -462,6 +653,47 @@ function SubscriptionCard({
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DevPremiumToggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="rounded-[var(--radius-lg)] border-2 border-dashed border-stone-300 bg-stone-50 p-4">
+      <label className="flex cursor-pointer items-center justify-between gap-4">
+        <span className="min-w-0">
+          <span className="block text-[10px] font-bold uppercase tracking-wide text-stone-400">
+            Dev only
+          </span>
+          <span className="mt-1 block text-sm font-bold text-stone-700">
+            Premium user
+          </span>
+        </span>
+        <input
+          checked={enabled}
+          className="sr-only"
+          onChange={(event) => onChange(event.target.checked)}
+          type="checkbox"
+        />
+        <span
+          className="relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors"
+          style={{
+            background: enabled ? "#fbbf24" : "#e7e5e4",
+            borderColor: enabled ? "#f59e0b" : "#d6d3d1",
+          }}
+        >
+          <span
+            className="absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform"
+            style={{ transform: enabled ? "translateX(24px)" : "translateX(0)" }}
+          />
+        </span>
+      </label>
     </div>
   );
 }

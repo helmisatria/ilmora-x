@@ -1,7 +1,20 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { signInWithGoogle } from "../../lib/auth-client";
+import { getPostLoginRedirect } from "../../lib/auth-functions";
+import { getLoginCallbackUrl, analyticsSearchSchema, productAnalyticsEvents } from "../../lib/product-analytics";
+import { useProductAnalytics } from "../../lib/product-analytics-client";
 
 export const Route = createFileRoute("/auth/login")({
+  loader: async () => {
+    const redirectTo = await getPostLoginRedirect();
+
+    if (redirectTo !== "/auth/login") {
+      throw redirect({ to: redirectTo });
+    }
+
+    return null;
+  },
   head: () => ({
     meta: [
       { title: "Masuk — IlmoraX" },
@@ -19,6 +32,7 @@ export const Route = createFileRoute("/auth/login")({
     ],
   }),
   component: LoginComponent,
+  validateSearch: analyticsSearchSchema,
 });
 
 const trustPills = [
@@ -46,15 +60,40 @@ const trustPills = [
 ] as const;
 
 function LoginComponent() {
-  const navigate = useNavigate();
+  const { intent } = Route.useSearch();
+  const analytics = useProductAnalytics();
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
+    setErrorMessage("");
 
-    setTimeout(() => {
-      navigate({ to: "/dashboard" });
-    }, 1000);
+    if (intent === "tryout_catalog_signup") {
+      analytics.capture(productAnalyticsEvents.tryoutCatalogSignupStarted, {
+        intent,
+        source_path: "/auth/login",
+        provider: "google",
+      });
+    }
+
+    analytics.capture(productAnalyticsEvents.signupStarted, {
+      intent,
+      source_path: "/auth/login",
+      provider: "google",
+    });
+
+    const result = await signInWithGoogle(getLoginCallbackUrl(intent));
+
+    if (result.ok && result.redirectTo) {
+      window.location.href = result.redirectTo;
+      return;
+    }
+
+    if (result.ok) return;
+
+    setLoading(false);
+    setErrorMessage("Google login belum bisa dimulai. Cek konfigurasi OAuth lokal.");
   };
 
   return (
@@ -141,6 +180,12 @@ function LoginComponent() {
                   {loading ? <LoadingIcon /> : <GoogleIcon />}
                   {loading ? "Menyiapkan akun..." : "Masuk dengan Google"}
                 </button>
+
+                {errorMessage && (
+                  <p className="mx-auto mt-4 max-w-[32ch] text-center text-xs font-semibold leading-relaxed text-red-500">
+                    {errorMessage}
+                  </p>
+                )}
 
                 <p className="mx-auto mt-5 max-w-[30ch] text-center text-xs font-normal leading-relaxed text-stone-400">
                   Dengan masuk, kamu menyetujui Syarat dan Ketentuan IlmoraX.

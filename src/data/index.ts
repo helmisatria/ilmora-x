@@ -1,26 +1,15 @@
 // Pure TypeScript barrel file — no JSX, just re-exports
-export { currentUser, mockUsers } from "./users";
 export type { User } from "./users";
-export { tryouts, questionBank, mockAttempts } from "./questions";
+export { hasPremiumMembership } from "./users";
 export type { Question, WrongAnswer, Attempt, Tryout, TryoutAccessLevel } from "./questions";
-export { mockBadgeProgress, badges } from "./badges";
+export { badges } from "./badges";
 export { levels, getLevelForXp, getNextLevel, getXpProgress } from "./levels";
-export { getPlatinumProductForTryout, getProductById, membershipProducts, mockEntitlements, platinumTryoutProducts, products } from "./entitlements";
+export { getLifetimeProductForTryout, getProductById, lifetimeTryoutProducts, membershipProducts, products } from "./entitlements";
 export type { Entitlement, Product, ProductType } from "./entitlements";
-export { mockCoupons, applyCoupon } from "./coupons";
-export { mockMateri } from "./materi";
-export { mockPolls } from "./polls";
 export type { Poll } from "./polls";
 export { categories, getCategoryName, getCategoryColor, getSubCategoryName, getSubCategories } from "./categories";
 export { institutions } from "./institutions";
 export { AppProvider, useApp } from "./provider";
-export type { AppState, LeaderboardEntry } from "./provider";
+export type { AppState } from "./provider";
 
-// Helper function
-import { type User } from "./users";
-export function hasPremiumMembership(user: User): boolean {
-  if (!user.entitlementEndsAt) return false;
-  return new Date(user.entitlementEndsAt) > new Date();
-}
-
-export const isUserPremium = hasPremiumMembership;
+export { hasPremiumMembership as isUserPremium } from "./users";

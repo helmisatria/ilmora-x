@@ -1,6 +1,12 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, redirect, useLocation, useMatches } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AppProvider } from "../data/provider";
+import { getCurrentViewer } from "../lib/auth-functions";
+import { getAcquisitionIntent, productAnalyticsEvents } from "../lib/product-analytics";
+import { ProductAnalyticsIdentity, ProductAnalyticsProvider, useProductAnalytics } from "../lib/product-analytics-client";
+import { getProtectedRedirect, needsProtectedViewer } from "../lib/route-protection";
+import { getSafeErrorMessage } from "../lib/user-errors";
 import "../styles/app.css";
 
 const SITE_URL = "https://ilmorax.id";
@@ -10,6 +16,41 @@ const DEFAULT_DESCRIPTION = "Platform latihan UKAI terbaik untuk calon apoteker.
 const OG_IMAGE = "/og-image.svg";
 
 export const Route = createRootRoute({
+  beforeLoad: async ({ location }) => {
+    if (location.pathname === "/poll" || location.pathname === "/poll/") {
+      throw redirect({ to: "/poll/join" });
+    }
+
+    if (!needsProtectedViewer(location.pathname)) {
+      if (location.pathname.startsWith("/poll/")) {
+        const viewer = await getCurrentViewer().catch(() => null);
+
+        return { viewer };
+      }
+
+      return { viewer: null };
+    }
+
+    const viewer = await getCurrentViewer();
+    const redirectTo = getProtectedRedirect(location.pathname, viewer);
+
+    if (redirectTo) {
+      if (redirectTo === "/auth/login") {
+        const search = location.search as { intent?: unknown };
+        const searchIntent = getAcquisitionIntent(search.intent);
+        const intent = searchIntent ?? (location.pathname.startsWith("/tryout") ? "tryout_catalog_signup" : undefined);
+
+        throw redirect({
+          to: redirectTo,
+          search: intent ? { intent } : undefined,
+        });
+      }
+
+      throw redirect({ to: redirectTo });
+    }
+
+    return { viewer };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -52,7 +93,7 @@ export const Route = createRootRoute({
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" },
       
       // Favicon
       { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
@@ -93,9 +134,14 @@ export const Route = createRootRoute({
       </div>
     </div>
   ),
+  errorComponent: ({ error }) => (
+    <ErrorMessagePage message={getSafeErrorMessage(error, "Terjadi kesalahan saat memuat halaman. Silakan coba lagi.")} />
+  ),
 });
 
 function RootComponent() {
+  const { viewer } = Route.useRouteContext();
+
   return (
     <html lang="id">
       <head>
@@ -107,11 +153,15 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body className="antialiased">
-        <AppProvider>
-          <div id="app" className="view">
-            <Outlet />
-          </div>
-        </AppProvider>
+        <ProductAnalyticsProvider>
+          <ProductAnalyticsIdentity viewer={viewer} />
+          <RouteAnalyticsTracker />
+          <AppProvider viewer={viewer}>
+            <div id="app" className="view">
+              <Outlet />
+            </div>
+          </AppProvider>
+        </ProductAnalyticsProvider>
         <Scripts />
         <TanStackRouterDevtools position="bottom-right" />
       </body>
@@ -119,11 +169,82 @@ function RootComponent() {
   );
 }
 
+function RouteAnalyticsTracker() {
+  const location = useLocation();
+  const matches = useMatches();
+  const analytics = useProductAnalytics();
+  const currentMatch = matches[matches.length - 1];
+  const routeId = currentMatch?.routeId ?? location.pathname;
+
+  useEffect(() => {
+    analytics.capture(productAnalyticsEvents.routeViewed, {
+      route_id: routeId,
+      route_name: getRouteAnalyticsName(routeId),
+      pathname: location.pathname,
+      href: location.href,
+    });
+  }, [analytics, location.href, location.pathname, routeId]);
+
+  return null;
+}
+
+function getRouteAnalyticsName(routeId: string) {
+  if (routeId === "/") {
+    return "home";
+  }
+
+  return routeId
+    .replace(/^\/+/, "")
+    .replace(/\$/g, "by_")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
 function NotFoundIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
       <path d="M10.5 10.5h.1M14.5 10.5h.1M9 16c1.8-1.4 4.2-1.4 6 0" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
       <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function ErrorMessagePage({ message }: { message: string }) {
+  return (
+    <main className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eef8f6_0%,#fbfaf7_48%,#f7f3ea_100%)]">
+      <div
+        className="relative flex min-h-screen items-center justify-center px-5 py-16"
+        style={{
+          background:
+            "radial-gradient(900px 340px at 10% -16%, rgba(32,80,114,0.18), transparent 62%), radial-gradient(760px 360px at 92% 0%, rgba(121,183,217,0.2), transparent 66%)",
+        }}
+      >
+        <div className="w-full max-w-[440px] rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary-soft bg-primary-tint text-primary">
+            <ErrorIcon />
+          </div>
+          <div className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-stone-400">
+            Terjadi kesalahan
+          </div>
+          <h1 className="mx-auto mt-2 max-w-[16ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800">
+            Sesi ini tidak bisa dimuat
+          </h1>
+          <p className="mx-auto mt-3 max-w-[34ch] text-[14px] font-medium leading-relaxed text-stone-500">
+            {message}
+          </p>
+          <a href="/dashboard" className="btn btn-primary mt-6 w-full">Kembali ke Dashboard</a>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function ErrorIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+      <path d="M12 3v1M12 20v1M5 17l2 2m10-2-2 2M4 9h16" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2.2" />
     </svg>
   );
 }

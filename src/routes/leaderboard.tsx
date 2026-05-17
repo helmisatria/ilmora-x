@@ -1,9 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { AvatarDisplay } from "../components/AvatarDisplay";
-import { mockUsers, useApp, type LeaderboardEntry } from "../data";
+import { getLevelForXp } from "../data";
+import { getGradeForLevel } from "../data/users";
+import { listLeaderboard, listProgressSummary } from "../lib/student-functions";
+
+type LeaderboardEntry = {
+  r: number;
+  userId: string;
+  n: string;
+  xp: number;
+  a: string;
+  photoUrl?: string | null;
+  ch: "up" | "down";
+  me: boolean;
+  level: number;
+  grade: string;
+};
 
 export const Route = createFileRoute("/leaderboard")({
+  preloadStaleTime: 0,
+  loader: async () => {
+    const [leaderboard, summary] = await Promise.all([
+      listLeaderboard(),
+      listProgressSummary(),
+    ]);
+
+    return { leaderboard, summary };
+  },
   head: () => ({
     meta: [
       { title: "Leaderboard Mingguan — IlmoraX" },
@@ -26,16 +50,37 @@ export const Route = createFileRoute("/leaderboard")({
 const accent = "#f59e0b";
 
 function LeaderboardComponent() {
-  const { leaderboardUsers } = useApp();
+  const { leaderboard, summary } = Route.useLoaderData() as {
+    leaderboard: Awaited<ReturnType<typeof listLeaderboard>>;
+    summary: Awaited<ReturnType<typeof listProgressSummary>>;
+  };
+  const leaderboardUsers = leaderboard.entries.map((entry): LeaderboardEntry => {
+    const level = getLevelForXp(entry.xp).level;
+
+    return {
+      r: entry.rank,
+      userId: entry.userId,
+      n: entry.name,
+      xp: entry.xp,
+      a: entry.avatar,
+      photoUrl: entry.photoUrl,
+      ch: "up",
+      me: entry.me,
+      level,
+      grade: getGradeForLevel(level),
+    };
+  });
   const podium = [
     leaderboardUsers[1],
     leaderboardUsers[0],
     leaderboardUsers[2],
-  ].filter(Boolean);
-  const currentUser = leaderboardUsers.find((user) => user.me);
+  ].filter(isLeaderboardEntry);
+  const viewerEntry = leaderboardUsers.find((user) => user.me);
   const leader = leaderboardUsers[0];
   const leaderGap =
-    currentUser && leader ? Math.max(leader.xp - currentUser.xp, 0) : 0;
+    viewerEntry && leader ? Math.max(leader.xp - viewerEntry.xp, 0) : 0;
+  const weekRange = formatWeekRange(leaderboard.week.startsAt, leaderboard.week.endsAt);
+  const rewardsAt = formatJakartaDateTime(leaderboard.week.rewardsFinaliseAt);
 
   return (
     <div
@@ -52,7 +97,7 @@ function LeaderboardComponent() {
               "radial-gradient(900px 320px at 14% -18%, #f59e0b33, transparent 62%), radial-gradient(760px 340px at 94% -14%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
           }}
         >
-          <TopBar />
+          <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
           <div className="page-lane pt-7 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Peringkat Mingguan
@@ -61,14 +106,14 @@ function LeaderboardComponent() {
               Kejar posisi terbaik minggu ini
             </h1>
             <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-              Peringkat dihitung dari XP mingguan dan diperbarui otomatis dari
-              aktivitas tryout.
+              Peringkat ini live untuk minggu berjalan: {weekRange}. Reward
+              badge Top leaderboard diproses sekitar {rewardsAt}.
             </p>
 
             <div className="mt-5 grid max-w-[560px] grid-flow-dense grid-cols-2 gap-3">
               <SummaryCard
                 label="Peringkatmu"
-                value={currentUser ? `#${currentUser.r}` : "-"}
+                value={viewerEntry ? `#${viewerEntry.r}` : "-"}
                 accent="#205072"
               />
               <SummaryCard
@@ -113,9 +158,18 @@ function LeaderboardComponent() {
                   alignItems: "end",
                 }}
               >
-                {podium.map((user) => (
-                  <PodiumCard key={user.r} user={user} />
-                ))}
+                {podium.length > 0 ? (
+                  podium.map((user) => (
+                    <PodiumCard key={user.r} user={user} />
+                  ))
+                ) : (
+                  <div className="col-span-3 rounded-[var(--radius-md)] border-2 border-dashed border-stone-200 bg-stone-50 p-5 text-center">
+                    <p className="text-sm font-extrabold text-stone-600">Belum ada peserta minggu ini.</p>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-stone-400">
+                      Selesaikan tryout untuk masuk leaderboard live.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -129,7 +183,8 @@ function LeaderboardComponent() {
                     Reset mingguan
                   </h3>
                   <p className="mt-1 text-[13.5px] leading-relaxed text-stone-500 font-medium max-w-[30ch]">
-                    Papan peringkat dimulai ulang setiap Senin pukul 00.00 WIB.
+                    Papan peringkat ini ditutup {formatJakartaDateTime(leaderboard.week.endsAt)}.
+                    Badge Top 1/3/5/10 diberikan saat finalisasi mingguan.
                   </p>
                 </div>
               </div>
@@ -139,15 +194,72 @@ function LeaderboardComponent() {
           <div className="flex min-w-0 flex-col overflow-hidden lg:pt-4">
             <SectionHeader title="Daftar peserta" />
             <div className="flex w-full min-w-0 flex-col gap-2.5 overflow-hidden">
-              {leaderboardUsers.map((user) => (
-                <LeaderboardRow key={user.r} user={user} />
-              ))}
+              {leaderboardUsers.length > 0 ? (
+                leaderboardUsers.map((user) => (
+                  <LeaderboardRow key={user.r} user={user} />
+                ))
+              ) : (
+                <EmptyLeaderboard excludedReason={leaderboard.viewerExcludedReason} />
+              )}
             </div>
           </div>
         </div>
 
         <BottomNav active="rank" />
       </div>
+    </div>
+  );
+}
+
+function formatJakartaDateTime(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+    timeZoneName: "short",
+  }).format(new Date(value));
+}
+
+function isLeaderboardEntry(user: LeaderboardEntry | undefined): user is LeaderboardEntry {
+  return Boolean(user);
+}
+
+function formatWeekRange(startsAt: string, endsAt: string) {
+  const start = formatJakartaDateTime(startsAt);
+  const end = formatJakartaDateTime(endsAt);
+
+  return `${start} - ${end}`;
+}
+
+function EmptyLeaderboard({
+  excludedReason,
+}: {
+  excludedReason: Awaited<ReturnType<typeof listLeaderboard>>["viewerExcludedReason"];
+}) {
+  if (excludedReason === "admin_account") {
+    return (
+      <div className="rounded-[var(--radius-lg)] border-2 border-dashed border-amber-200 bg-white p-6 text-center shadow-sm">
+        <p className="text-base font-extrabold text-stone-700">Akun admin tidak ikut leaderboard.</p>
+        <p className="mx-auto mt-2 max-w-[46ch] text-sm font-semibold leading-relaxed text-stone-500">
+          XP tryout tetap masuk progress akunmu, tapi akun admin dikeluarkan dari kompetisi mingguan
+          dan badge Top 1/3/5/10.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-[var(--radius-lg)] border-2 border-dashed border-stone-200 bg-white p-6 text-center shadow-sm">
+      <p className="text-base font-extrabold text-stone-700">Leaderboard minggu ini masih kosong.</p>
+      <p className="mx-auto mt-2 max-w-[42ch] text-sm font-semibold leading-relaxed text-stone-500">
+        Hanya XP dari tryout yang sudah dikumpulkan minggu berjalan yang dihitung. Setelah ada peserta,
+        peringkat live akan muncul di sini.
+      </p>
+      <Link to="/tryout" className="btn btn-primary mt-4 inline-flex no-underline">
+        Mulai Tryout
+      </Link>
     </div>
   );
 }
@@ -362,8 +474,7 @@ function getProfileTo(user: LeaderboardEntry) {
 function getProfileParams(user: LeaderboardEntry) {
   if (user.me) return undefined;
 
-  const userRecord = mockUsers.find((mockUser) => mockUser.name === user.n);
-  return { userId: String(userRecord?.id ?? 2) };
+  return { userId: user.userId };
 }
 
 function TrophyIcon() {

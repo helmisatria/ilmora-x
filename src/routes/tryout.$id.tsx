@@ -1,14 +1,35 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useProductAnalytics } from "../lib/product-analytics-client";
+import { productAnalyticsEvents } from "../lib/product-analytics";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "../components/ui/dialog";
-import { useApp, questionBank, tryouts, getCategoryColor, getCategoryName, type Attempt, type Tryout } from "../data";
+import { isPaidTryout } from "../lib/domain/premium-access";
+import { getSafeErrorMessage } from "../lib/user-errors";
+import {
+  getTryoutPreparation,
+  reportAttemptQuestion,
+  saveAttempt,
+  startOrResumeAttempt,
+  submitAttempt,
+} from "../lib/student-functions";
+
+type TryoutPreparation = Awaited<ReturnType<typeof getTryoutPreparation>>;
+type TakeAttempt = Awaited<ReturnType<typeof startOrResumeAttempt>>;
+type TakeQuestion = TakeAttempt["questions"][number];
+type AttemptProgressPayload = ReturnType<typeof makeAttemptProgressPayload>;
+type SaveStatus = "idle" | "saving" | "saved" | "offline" | "error";
 
 export const Route = createFileRoute("/tryout/$id")({
+  loader: async ({ params }) => {
+    const tryout = await getTryoutPreparation({ data: { tryoutId: params.id } });
+
+    return { tryout };
+  },
   head: ({ params }) => ({
     meta: [
       { title: "Try-out UKAI — IlmoraX" },
@@ -24,41 +45,73 @@ export const Route = createFileRoute("/tryout/$id")({
 type Phase = "preparation" | "countdown" | "active";
 
 function TryoutTakeComponent() {
-  const { id } = Route.useParams();
+  const { tryout } = Route.useLoaderData() as { tryout: TryoutPreparation };
   const navigate = useNavigate();
-  const { user, attempts, addAttempt, canAccessTryout } = useApp();
-  const testId = parseInt(id, 10);
+  const posthog = useProductAnalytics();
   const [isReady, setIsReady] = useState(false);
   const [phase, setPhase] = useState<Phase>("preparation");
   const [confirmStart, setConfirmStart] = useState(false);
   const [countdownValue, setCountdownValue] = useState<number | "GO">(3);
+  const [attemptData, setAttemptData] = useState<TakeAttempt | null>(null);
+  const [questions, setQuestions] = useState<TakeQuestion[]>([]);
 
   const [qIndex, setQIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [flagged, setFlagged] = useState<number[]>([]);
   const [answers, setAnswers] = useState<(number | undefined)[]>([]);
 
-  const tryout = tryouts.find((t) => t.id === testId) || tryouts[0];
-  const questions = questionBank[testId] || questionBank[1];
-  const total = questions.length;
+  const total = phase === "preparation" ? tryout.questionCount : questions.length;
   const pct = Math.round(((qIndex + 1) / total) * 100);
 
-  const [timeLeft, setTimeLeft] = useState(tryout.duration * 60);
+  const [timeLeft, setTimeLeft] = useState(tryout.durationMinutes * 60);
   const [showReport, setShowReport] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const [lastSaved, setLastSaved] = useState<string>("");
-  const [submitting, setSubmitting] = useState<{ attemptId: number } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [startError, setStartError] = useState<string>("");
+  const [submitError, setSubmitError] = useState<string>("");
+  const [submitting, setSubmitting] = useState<{ attemptId: string } | null>(null);
+  const hasAutoResumed = useRef(false);
+
+  async function saveProgress(payload: AttemptProgressPayload) {
+    if (!window.navigator.onLine) {
+      queueProgress(payload);
+      setSaveStatus("offline");
+      return;
+    }
+
+    setSaveStatus("saving");
+
+    try {
+      const result = await saveAttempt({ data: payload });
+      removeQueuedProgressIfNotNewer(payload.attemptId, payload.queuedAt);
+      setLastSaved(formatSavedTime(result.savedAt));
+      setSaveStatus("saved");
+    } catch {
+      queueProgress(payload);
+      setSaveStatus("error");
+      posthog.capture(productAnalyticsEvents.attemptAutosaveFailed, {
+        attempt_id: payload.attemptId,
+        tryout_id: tryout.id,
+        tryout_title: tryout.title,
+      });
+    }
+  }
 
   useEffect(() => {
     setIsReady(true);
-    setAnswers(new Array(questions.length).fill(undefined));
-  }, [testId]);
+  }, []);
 
   useEffect(() => {
-    if (canAccessTryout(tryout)) return;
-    navigate({ to: "/tryout" });
-  }, [canAccessTryout, navigate, tryout]);
+    if (!isReady) return;
+    if (!tryout.activeAttemptId) return;
+    if (hasAutoResumed.current) return;
+    if (attemptData) return;
+
+    hasAutoResumed.current = true;
+    resumeAttempt({ withCountdown: false });
+  }, [attemptData, isReady, tryout.activeAttemptId]);
 
   useEffect(() => {
     if (phase !== "active") return;
@@ -70,13 +123,75 @@ function TryoutTakeComponent() {
 
   useEffect(() => {
     if (phase !== "active") return;
-    if (timeLeft > 0 && timeLeft % 30 === 0 && timeLeft !== tryout.duration * 60) {
-      const now = new Date();
-      setLastSaved(
-        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
-      );
-    }
-  }, [timeLeft, phase]);
+    if (!attemptData) return;
+    if (submitting) return;
+
+    const saveCurrentProgress = () => {
+      queueProgress(makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex));
+    };
+
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      saveCurrentProgress();
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    window.addEventListener("pagehide", saveCurrentProgress);
+
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      window.removeEventListener("pagehide", saveCurrentProgress);
+    };
+  }, [answers, attemptData, flagged, phase, qIndex, questions, submitting]);
+
+  useEffect(() => {
+    if (phase !== "active") return;
+    if (!attemptData) return;
+    if (submitting) return;
+
+    const payload = makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex);
+    const timer = window.setTimeout(() => {
+      saveProgress(payload);
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [answers, attemptData, flagged, phase, qIndex, questions, submitting]);
+
+  useEffect(() => {
+    if (!attemptData) return;
+
+    const flushQueuedProgress = () => {
+      const queuedProgress = getUsableQueuedProgress(attemptData);
+
+      if (!queuedProgress) return;
+
+      saveProgress(queuedProgress);
+    };
+
+    window.addEventListener("online", flushQueuedProgress);
+
+    return () => window.removeEventListener("online", flushQueuedProgress);
+  }, [attemptData]);
+
+  useEffect(() => {
+    if (phase !== "active") return;
+    if (!attemptData) return;
+    if (submitting) return;
+    if (timeLeft > 0) return;
+
+    submitAttempt({
+      data: {
+        ...makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex),
+        autoSubmitReason: "deadline_reached",
+      },
+    })
+      .then((result) => {
+        removeQueuedProgress(result.attemptId);
+        setSubmitting({ attemptId: result.attemptId });
+      })
+      .catch(() => {});
+  }, [answers, attemptData, flagged, phase, qIndex, questions, submitting, timeLeft]);
 
   useEffect(() => {
     if (!submitting) return;
@@ -137,6 +252,48 @@ function TryoutTakeComponent() {
     );
   }
 
+  const resumeAttempt = async ({ withCountdown }: { withCountdown: boolean }) => {
+    setStartError("");
+
+    let nextAttemptData: TakeAttempt;
+
+    try {
+      nextAttemptData = await startOrResumeAttempt({ data: { tryoutId: tryout.id } });
+    } catch (error) {
+      setConfirmStart(false);
+      setStartError(getStartErrorMessage(error));
+      return;
+    }
+
+    const queuedProgress = getUsableQueuedProgress(nextAttemptData);
+    const nextAnswers = getRestoredAnswers(nextAttemptData, queuedProgress);
+    const markedIndexes = getRestoredMarkedIndexes(nextAttemptData, queuedProgress);
+    const nextQuestionIndex = getRestoredQuestionIndex(nextAttemptData, queuedProgress);
+
+    const remainingSeconds = Math.max(
+      0,
+      Math.floor((new Date(nextAttemptData.attempt.deadlineAt).getTime() - Date.now()) / 1000),
+    );
+
+    setAttemptData(nextAttemptData);
+    setQuestions(nextAttemptData.questions);
+    setAnswers(nextAnswers);
+    setFlagged(markedIndexes);
+    setQIndex(nextQuestionIndex);
+    setSelected(nextAnswers[nextQuestionIndex] ?? null);
+    setTimeLeft(remainingSeconds);
+    setConfirmStart(false);
+    setPhase(withCountdown ? "countdown" : "active");
+
+    if (queuedProgress) {
+      saveProgress(queuedProgress);
+    }
+  };
+
+  const handleStart = () => {
+    resumeAttempt({ withCountdown: true });
+  };
+
   if (phase === "preparation") {
     return (
       <PreparationScreen
@@ -146,10 +303,8 @@ function TryoutTakeComponent() {
         onStart={() => setConfirmStart(true)}
         confirmOpen={confirmStart}
         onConfirmCancel={() => setConfirmStart(false)}
-        onConfirmStart={() => {
-          setConfirmStart(false);
-          setPhase("countdown");
-        }}
+        onConfirmStart={handleStart}
+        startError={startError}
       />
     );
   }
@@ -163,6 +318,10 @@ function TryoutTakeComponent() {
   }
 
   const q = questions[qIndex];
+  if (!q || !attemptData) {
+    return <CalculatingOverlay />;
+  }
+
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const timeDisplay = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
@@ -187,40 +346,26 @@ function TryoutTakeComponent() {
   };
 
   const handleSubmit = () => {
-    let correct = 0;
-    const attemptAnswers: Attempt["answers"] = [];
-    questions.forEach((question, i) => {
-      const sel = answers[i];
-      const ok = sel === question.correct;
-      if (ok) correct++;
-      if (sel !== undefined) {
-        attemptAnswers.push({ questionId: question.id, selected: sel, correct: ok });
-      }
-    });
-    const score = Math.round((correct / questions.length) * 100);
-    const xpEarn = 50 + correct * 20;
-    const newId = Math.max(0, ...attempts.map((a) => a.id)) + 1;
-    const now = new Date();
-    const attemptNumber = attempts.filter((a) => a.tryoutId === testId && a.userId === user.id).length + 1;
-    const attempt: Attempt = {
-      id: newId,
-      userId: user.id,
-      tryoutId: testId,
-      attemptNumber,
-      status: "submitted",
-      startedAt: new Date(now.getTime() - (tryout.duration * 60 - timeLeft) * 1000).toISOString(),
-      deadlineAt: new Date(now.getTime() + timeLeft * 1000).toISOString(),
-      score,
-      correct,
-      total: questions.length,
-      xpEarned: attemptNumber === 1 ? xpEarn : Math.round(xpEarn * 0.25),
-      completedAt: now.toISOString(),
-      answers: attemptAnswers,
-      markedQuestionIds: flagged.map((fi) => questions[fi].id),
-    };
-    addAttempt(attempt);
-    setShowSubmitConfirm(false);
-    setSubmitting({ attemptId: newId });
+    const payload = makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex);
+
+    if (!window.navigator.onLine) {
+      queueProgress(payload);
+      setSaveStatus("offline");
+      setSubmitError("Koneksi terputus. Sambungkan internet dulu sebelum submit.");
+      return;
+    }
+
+    setSubmitError("");
+
+    submitAttempt({ data: payload })
+      .then((result) => {
+        removeQueuedProgress(result.attemptId);
+        setShowSubmitConfirm(false);
+        setSubmitting({ attemptId: result.attemptId });
+      })
+      .catch((error) => {
+        setSubmitError(getSafeErrorMessage(error, "Submit belum berhasil. Coba lagi sebentar lagi."));
+      });
   };
 
   return (
@@ -251,7 +396,7 @@ function TryoutTakeComponent() {
         <div className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 mb-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
           <div className="flex justify-between items-start gap-3 mb-4">
             <span className="bg-primary text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full tracking-wide uppercase shrink-0">
-              {getCategoryLabel(q.categoryId)}
+              {q.categoryName.toUpperCase()}
             </span>
             <div className="flex gap-2 shrink-0">
               <button
@@ -274,7 +419,7 @@ function TryoutTakeComponent() {
               </button>
             </div>
           </div>
-          <h2 className="m-0 max-w-[34ch] text-lg font-bold leading-relaxed sm:text-xl">{q.question}</h2>
+          <h2 className="m-0 max-w-[34ch] text-lg font-bold leading-relaxed sm:text-xl">{q.questionText}</h2>
         </div>
 
         <div className="flex flex-col gap-2.5 sm:gap-3">
@@ -300,11 +445,7 @@ function TryoutTakeComponent() {
           })}
         </div>
 
-        {lastSaved && (
-          <div className="text-center text-xs text-stone-400 mt-4 font-medium">
-            Tersimpan pukul {lastSaved}
-          </div>
-        )}
+        <SaveStatusLine status={saveStatus} lastSaved={lastSaved} />
 
         <div className="mt-6 bg-white rounded-[var(--radius-lg)] p-4 sm:p-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
           <div className="font-semibold text-xs text-stone-400 mb-3 uppercase tracking-wide">Navigasi Soal</div>
@@ -342,7 +483,10 @@ function TryoutTakeComponent() {
       <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-32px)] max-w-3xl -translate-x-1/2 rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-200 border-b-stone-300 bg-white/98 p-3 shadow-xl backdrop-blur-xl sm:p-4">
         <button
           className="btn btn-primary w-full"
-          onClick={qIndex === total - 1 ? () => setShowSubmitConfirm(true) : () => {
+          onClick={qIndex === total - 1 ? () => {
+            setSubmitError("");
+            setShowSubmitConfirm(true);
+          } : () => {
             if (qIndex < total - 1) {
               setQIndex(qIndex + 1);
               setSelected(answers[qIndex + 1] ?? null);
@@ -369,6 +513,11 @@ function TryoutTakeComponent() {
               <MiniStat label="Kosong" value={`${answers.filter((a) => a === undefined).length}`} />
               <MiniStat label="Ragu" value={`${flagged.length}`} />
             </div>
+            {submitError && (
+              <p className="mb-4 rounded-[var(--radius-md)] border-2 border-amber-100 bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-700">
+                {submitError}
+              </p>
+            )}
             <div className="flex gap-3">
               <button className="btn btn-white flex-1" onClick={() => setShowSubmitConfirm(false)}>Lanjut kerjain</button>
               <button className="btn btn-primary flex-1" onClick={handleSubmit}>Submit</button>
@@ -394,7 +543,20 @@ function TryoutTakeComponent() {
                   className="w-full text-left px-4 py-3 rounded-[var(--radius-md)] border-2 border-stone-200 font-semibold text-sm hover:border-primary hover:bg-primary-tint transition-all"
                   onClick={() => {
                     setShowReport(false);
-                    alert("Laporan kami terima. Terima kasih!");
+                    reportAttemptQuestion({
+                      data: {
+                        attemptId: attemptData.attempt.id,
+                        snapshotId: q.snapshotId,
+                        reason: toReportReason(reason),
+                      },
+                    }).then(() => {
+                      posthog.capture(productAnalyticsEvents.questionReported, {
+                        tryout_id: tryout.id,
+                        attempt_id: attemptData.attempt.id,
+                        snapshot_id: q.snapshotId,
+                        reason: toReportReason(reason),
+                      });
+                    }).catch(() => {});
                   }}
                 >
                   {reason}
@@ -418,14 +580,241 @@ function getCategoryLabel(catId: string): string {
   return labels[catId] || catId.toUpperCase();
 }
 
+function makeAttemptProgressPayload(
+  attemptId: string,
+  questions: TakeQuestion[],
+  answers: (number | undefined)[],
+  flagged: number[],
+  lastQuestionIndex: number,
+) {
+  return {
+    attemptId,
+    queuedAt: new Date().toISOString(),
+    lastQuestionIndex,
+    answers: questions.map((question, index) => ({
+      snapshotId: question.snapshotId,
+      selectedOption: toOptionLetter(answers[index]),
+    })),
+    markedSnapshotIds: flagged
+      .map((index) => questions[index]?.snapshotId)
+      .filter((snapshotId): snapshotId is string => Boolean(snapshotId)),
+  };
+}
+
+function getRestoredAnswers(
+  attemptData: TakeAttempt,
+  queuedProgress: AttemptProgressPayload | null,
+) {
+  const restoredAnswers = new Array<number | undefined>(attemptData.questions.length).fill(undefined);
+
+  for (const answer of attemptData.answers) {
+    const answerIndex = attemptData.questions.findIndex((question) => question.snapshotId === answer.snapshotId);
+
+    if (answerIndex >= 0 && answer.selectedIndex !== null) {
+      restoredAnswers[answerIndex] = answer.selectedIndex;
+    }
+  }
+
+  if (!queuedProgress) return restoredAnswers;
+
+  for (const answer of queuedProgress.answers) {
+    const answerIndex = attemptData.questions.findIndex((question) => question.snapshotId === answer.snapshotId);
+
+    if (answerIndex >= 0) {
+      restoredAnswers[answerIndex] = toOptionIndex(answer.selectedOption);
+    }
+  }
+
+  return restoredAnswers;
+}
+
+function getRestoredMarkedIndexes(
+  attemptData: TakeAttempt,
+  queuedProgress: AttemptProgressPayload | null,
+) {
+  const snapshotIds = queuedProgress?.markedSnapshotIds ?? attemptData.markedSnapshotIds;
+
+  return snapshotIds
+    .map((snapshotId) => attemptData.questions.findIndex((question) => question.snapshotId === snapshotId))
+    .filter((index) => index >= 0);
+}
+
+function getRestoredQuestionIndex(
+  attemptData: TakeAttempt,
+  queuedProgress: AttemptProgressPayload | null,
+) {
+  const lastQuestionIndex = queuedProgress?.lastQuestionIndex ?? attemptData.attempt.lastQuestionIndex;
+  const lastAvailableIndex = attemptData.questions.length - 1;
+
+  if (lastAvailableIndex < 0) return 0;
+  if (lastQuestionIndex < 0) return 0;
+  if (lastQuestionIndex > lastAvailableIndex) return lastAvailableIndex;
+
+  return lastQuestionIndex;
+}
+
+function toOptionLetter(index: number | undefined) {
+  if (index === undefined) return null;
+
+  const optionLetters = ["A", "B", "C", "D", "E"] as const;
+
+  return optionLetters[index] ?? null;
+}
+
+function toOptionIndex(option: "A" | "B" | "C" | "D" | "E" | null) {
+  if (!option) return undefined;
+
+  const optionLetters = ["A", "B", "C", "D", "E"] as const;
+  const optionIndex = optionLetters.findIndex((letter) => letter === option);
+
+  if (optionIndex < 0) return undefined;
+
+  return optionIndex;
+}
+
+function getProgressQueueKey(attemptId: string) {
+  return `ilmorax:attempt-progress:${attemptId}`;
+}
+
+function queueProgress(payload: AttemptProgressPayload) {
+  const queuedProgress = readQueuedProgress(payload.attemptId);
+
+  if (queuedProgress && isSameOrAfter(queuedProgress.queuedAt, payload.queuedAt)) {
+    return;
+  }
+
+  window.localStorage.setItem(getProgressQueueKey(payload.attemptId), JSON.stringify(payload));
+}
+
+function readQueuedProgress(attemptId: string) {
+  const value = window.localStorage.getItem(getProgressQueueKey(attemptId));
+
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value) as AttemptProgressPayload;
+
+    if (!parsed.queuedAt || Number.isNaN(new Date(parsed.queuedAt).getTime())) {
+      removeQueuedProgress(attemptId);
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    removeQueuedProgress(attemptId);
+    return null;
+  }
+}
+
+function getUsableQueuedProgress(attemptData: TakeAttempt) {
+  const queuedProgress = readQueuedProgress(attemptData.attempt.id);
+
+  if (!queuedProgress) return null;
+
+  if (!isQueuedProgressNewerThanServer(queuedProgress, attemptData)) {
+    removeQueuedProgress(attemptData.attempt.id);
+    return null;
+  }
+
+  return queuedProgress;
+}
+
+function removeQueuedProgress(attemptId: string) {
+  window.localStorage.removeItem(getProgressQueueKey(attemptId));
+}
+
+function removeQueuedProgressIfNotNewer(attemptId: string, queuedAt: string) {
+  const queuedProgress = readQueuedProgress(attemptId);
+
+  if (!queuedProgress) return;
+  if (isAfter(queuedProgress.queuedAt, queuedAt)) return;
+
+  removeQueuedProgress(attemptId);
+}
+
+function isQueuedProgressNewerThanServer(
+  queuedProgress: AttemptProgressPayload,
+  attemptData: TakeAttempt,
+) {
+  const lastServerSavedAt = attemptData.attempt.lastServerSavedAt;
+
+  if (!lastServerSavedAt) return true;
+
+  return isAfter(queuedProgress.queuedAt, lastServerSavedAt);
+}
+
+function isSameOrAfter(left: string, right: string) {
+  return new Date(left).getTime() >= new Date(right).getTime();
+}
+
+function isAfter(left: string, right: string) {
+  return new Date(left).getTime() > new Date(right).getTime();
+}
+
+function formatSavedTime(value: string) {
+  const savedAt = new Date(value);
+
+  return `${String(savedAt.getHours()).padStart(2, "0")}:${String(savedAt.getMinutes()).padStart(2, "0")}`;
+}
+
+function SaveStatusLine({ status, lastSaved }: { status: SaveStatus; lastSaved: string }) {
+  if (status === "idle") return null;
+
+  if (status === "saving") {
+    return (
+      <div className="text-center text-xs text-stone-400 mt-4 font-medium">
+        Menyimpan jawaban...
+      </div>
+    );
+  }
+
+  if (status === "offline") {
+    return (
+      <div className="text-center text-xs text-amber-600 mt-4 font-semibold">
+        Offline. Jawaban disimpan di perangkat dan akan dikirim saat online.
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="text-center text-xs text-rose-600 mt-4 font-semibold">
+        Gagal menyimpan ke server. Perubahan disimpan sementara di perangkat.
+      </div>
+    );
+  }
+
+  if (!lastSaved) return null;
+
+  return (
+    <div className="text-center text-xs text-stone-400 mt-4 font-medium">
+      Tersimpan pukul {lastSaved}
+    </div>
+  );
+}
+
+function getStartErrorMessage(error: unknown) {
+  return getSafeErrorMessage(error, "Gagal memulai tryout. Silakan coba lagi.");
+}
+
+function toReportReason(reason: string) {
+  if (reason === "Answer key salah") return "answer_key_wrong";
+  if (reason === "Pembahasan keliru") return "explanation_wrong";
+  if (reason === "Soal tidak jelas") return "question_unclear";
+  if (reason === "Typo") return "typo";
+
+  return "other";
+}
+
 interface PreparationScreenProps {
-  tryout: Tryout;
+  tryout: TryoutPreparation;
   totalQuestions: number;
   onBack: () => void;
   onStart: () => void;
   confirmOpen: boolean;
   onConfirmCancel: () => void;
   onConfirmStart: () => void;
+  startError: string;
 }
 
 function PreparationScreen({
@@ -436,11 +825,20 @@ function PreparationScreen({
   confirmOpen,
   onConfirmCancel,
   onConfirmStart,
+  startError,
 }: PreparationScreenProps) {
-  const avgSecondsPerQuestion = Math.round((tryout.duration * 60) / totalQuestions);
+  const avgSecondsPerQuestion = Math.round((tryout.durationMinutes * 60) / totalQuestions);
   const xpReward = 50 + totalQuestions * 20;
-  const categoryName = getCategoryName(tryout.categoryId);
-  const color = getCategoryColor(tryout.categoryId);
+  const categoryName = tryout.categoryName;
+  const color = tryout.categoryColor;
+  const hasReachedDailyLimit = Boolean(
+    !tryout.activeAttemptId &&
+    tryout.dailyAttemptLimit !== null &&
+    tryout.attemptsToday >= tryout.dailyAttemptLimit,
+  );
+  const attemptLimitText = tryout.hasExtendedPractice
+    ? `Normal ${tryout.normalDailyAttemptLimit} kali pertama per hari dapat XP. Setelah itu tetap bisa latihan tanpa XP.`
+    : `Maksimal ${tryout.dailyAttemptLimit} kali pengerjaan per hari untuk tryout yang sama.`;
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] antialiased page-enter">
@@ -498,7 +896,7 @@ function PreparationScreen({
       <div className="max-w-[480px] mx-auto px-5 -mt-4 pb-36 relative">
         <div className="grid grid-cols-2 gap-3">
           <StatCard icon={<DocumentIcon />} label="Jumlah Soal" value={`${totalQuestions}`} unit="soal" accent="#205072" />
-          <StatCard icon={<ClockIcon />} label="Durasi" value={`${tryout.duration}`} unit="menit" accent="#0ea5e9" />
+          <StatCard icon={<ClockIcon />} label="Durasi" value={`${tryout.durationMinutes}`} unit="menit" accent="#0ea5e9" />
           <StatCard
             icon={<BoltIcon />}
             label="XP Reward"
@@ -535,10 +933,38 @@ function PreparationScreen({
             <RuleItem icon={<CheckIcon />}>
               Pastikan semua soal terjawab. Soal kosong dihitung salah saat submit.
             </RuleItem>
+            <RuleItem icon={<RefreshIcon />}>
+              {attemptLimitText}
+            </RuleItem>
           </ul>
         </div>
 
-        {tryout.accessLevel !== "free" && (
+        <div
+          className={`mt-4 rounded-[var(--radius-lg)] p-4 text-[13px] font-medium flex items-start gap-3 border-2 ${
+            hasReachedDailyLimit
+              ? "border-rose-200 bg-rose-50 text-rose-700"
+              : "border-primary-soft bg-primary-tint text-primary-dark"
+          }`}
+        >
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-white/70 bg-white/70">
+            <RefreshIcon />
+          </span>
+          <div>
+            <div className="font-semibold mb-0.5">Kesempatan hari ini</div>
+            {tryout.hasExtendedPractice
+              ? `Kamu sudah mengerjakan ${tryout.attemptsToday} kali hari ini. XP hanya diberikan untuk ${tryout.normalDailyAttemptLimit} kesempatan normal.`
+              : `Kamu sudah mengerjakan ${tryout.attemptsToday}/${tryout.dailyAttemptLimit} kali hari ini.`}
+            {hasReachedDailyLimit && " Silakan coba lagi besok."}
+          </div>
+        </div>
+
+        {startError && (
+          <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-rose-200 bg-rose-50 p-4 text-[13px] font-semibold text-rose-700">
+            {startError}
+          </div>
+        )}
+
+        {isPaidTryout(tryout.accessLevel) && (
           <div
             className="mt-4 rounded-[var(--radius-lg)] p-4 text-[13px] font-medium flex items-start gap-3 border-2"
             style={{
@@ -551,7 +977,7 @@ function PreparationScreen({
               <CrownIcon />
             </span>
             <div>
-              <div className="font-semibold mb-0.5">Modul {tryout.accessLevel === "platinum" ? "Platinum" : "Premium"}</div>
+              <div className="font-semibold mb-0.5">Modul Premium</div>
               Modul ini membuka soal pilihan dan pembahasan lengkap untuk akses yang sesuai.
             </div>
           </div>
@@ -563,7 +989,7 @@ function PreparationScreen({
           <button className="btn btn-white px-5" onClick={onBack}>
             Batal
           </button>
-          <button className="btn btn-primary flex-1" onClick={onStart}>
+          <button className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-55" onClick={onStart} disabled={hasReachedDailyLimit}>
             Mulai Tryout
           </button>
         </div>
@@ -584,12 +1010,12 @@ function PreparationScreen({
             Siap memulai?
           </DialogTitle>
           <DialogDescription className="mb-4 text-center text-stone-500">
-            Timer akan berjalan selama {tryout.duration} menit dan tidak dapat dijeda.
+            Timer akan berjalan selama {tryout.durationMinutes} menit dan tidak dapat dijeda.
             Pastikan kamu sudah siap.
           </DialogDescription>
           <div className="grid grid-cols-3 gap-2 mb-5 text-center">
             <MiniStat label="Soal" value={`${totalQuestions}`} />
-            <MiniStat label="Menit" value={`${tryout.duration}`} />
+            <MiniStat label="Menit" value={`${tryout.durationMinutes}`} />
             <MiniStat label="XP" value={`+${xpReward}`} />
           </div>
           <div className="flex gap-3">
@@ -668,12 +1094,12 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TryoutModuleIcon({ tryoutId }: { tryoutId: number }) {
-  if (tryoutId === 2) return <CapsuleIcon />;
-  if (tryoutId === 3) return <HeartPulseIcon />;
-  if (tryoutId === 4) return <MicrobeIcon />;
-  if (tryoutId === 5) return <HospitalIcon />;
-  if (tryoutId === 6) return <CalculatorIcon />;
+function TryoutModuleIcon({ tryoutId }: { tryoutId: string }) {
+  if (tryoutId === "2") return <CapsuleIcon />;
+  if (tryoutId === "3") return <HeartPulseIcon />;
+  if (tryoutId === "4") return <MicrobeIcon />;
+  if (tryoutId === "5") return <HospitalIcon />;
+  if (tryoutId === "6") return <CalculatorIcon />;
   return <FlaskIcon />;
 }
 
@@ -778,6 +1204,16 @@ function CrownIcon() {
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
       <path d="m4 8 4 4 4-7 4 7 4-4-1.5 10h-13L4 8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M6.5 21h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 20v-4h-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

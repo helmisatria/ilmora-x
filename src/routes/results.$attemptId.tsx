@@ -1,13 +1,38 @@
-import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useApp, tryouts, questionBank, type WrongAnswer } from "../data";
+import { useProductAnalytics } from "../lib/product-analytics-client";
+import { productAnalyticsEvents } from "../lib/product-analytics";
+import { getLevelForXp, useApp } from "../data";
 import { runConfetti } from "../utils/confetti";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { BottomNav, TopBar } from "../components/Navigation";
+import { hasFullTryoutReviewAccess } from "../lib/domain/premium-access";
+import { getAttemptResult, listProgressSummary } from "../lib/student-functions";
 
 const FREE_WRONG_PREVIEW = 3;
 
+type WrongAnswerView = {
+  id: string;
+  subject: string;
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+  explanationPreview?: string;
+  videoUrl?: string;
+  accessLevel: "free" | "premium";
+  user: string;
+};
+
 export const Route = createFileRoute("/results/$attemptId")({
+  loader: async ({ params }) => {
+    const [result, summary] = await Promise.all([
+      getAttemptResult({ data: { attemptId: params.attemptId } }),
+      listProgressSummary(),
+    ]);
+
+    return { result, summary };
+  },
   head: () => ({
     meta: [
       { title: "Hasil Tryout — IlmoraX" },
@@ -22,24 +47,27 @@ export const Route = createFileRoute("/results/$attemptId")({
 
 function ResultsComponent() {
   const { attemptId } = Route.useParams();
+  const { result, summary } = Route.useLoaderData() as {
+    result: Awaited<ReturnType<typeof getAttemptResult>>;
+    summary: Awaited<ReturnType<typeof listProgressSummary>>;
+  };
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, hasPremiumMembership, canAccessTryout, attempts } = useApp();
+  const { hasPremiumMembership } = useApp();
   const isChildRoute = location.pathname !== `/results/${attemptId}`;
 
-  const attempt = attempts.find((a) => a.id === parseInt(attemptId, 10)) || attempts[0];
-
-  const tryout = tryouts.find((t) => t.id === attempt.tryoutId);
-  const questions = questionBank[attempt.tryoutId] || [];
-  const hasFullTryoutAccess = Boolean(tryout && canAccessTryout(tryout) && tryout.accessLevel !== "free");
+  const { attempt, tryout, questions } = result;
+  const hasFullTryoutAccess = hasFullTryoutReviewAccess({
+    accessLevel: tryout.accessLevel,
+    hasPremiumMembership,
+  });
 
   const score = attempt.score;
-  const correct = attempt.correct;
-  const total = attempt.total;
+  const total = attempt.totalQuestions;
   const xpEarn = attempt.xpEarned;
-  const isFirstAttempt = attempt.attemptNumber === 1;
-  const duration = attempt.completedAt
-    ? Math.round((new Date(attempt.completedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000)
+  const levelInfo = getLevelForXp(summary.xp);
+  const xpNote = getXpNote(attempt.attemptNumber, xpEarn);
+  const duration = attempt.submittedAt
+    ? Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 60000)
     : 0;
 
   const dash = 339;
@@ -48,44 +76,59 @@ function ResultsComponent() {
   const accent = passed ? "#205072" : "#f59e0b";
   const accentDark = passed ? "#153d5c" : "#b45309";
 
-  const answered = attempt.answers.length;
-  const wrongCount = Math.max(answered - correct, 0);
+  const correct = questions.filter((question) => question.isCorrect === true).length;
+  const wrongCount = questions.filter((question) => question.selectedIndex !== null && question.isCorrect === false).length;
+  const answered = correct + wrongCount;
   const unansweredCount = Math.max(total - answered, 0);
   const grade = getGradeLabel(score);
 
+  const posthog = useProductAnalytics();
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [displayScore, setDisplayScore] = useState(0);
 
-  const wrongs: WrongAnswer[] = questions
-    .filter((q) => {
-      const ans = attempt.answers.find((a) => a.questionId === q.id);
-      return !ans || !ans.correct;
-    })
+  useEffect(() => {
+    if (isChildRoute) {
+      return;
+    }
+
+    posthog.capture(productAnalyticsEvents.resultViewed, {
+      attempt_id: attempt.id,
+      tryout_id: attempt.tryoutId,
+      tryout_title: tryout.title,
+      score: attempt.score,
+      correct_count: correct,
+      wrong_count: wrongCount,
+      unanswered_count: unansweredCount,
+      total_questions: total,
+    });
+  }, [attempt.id, attempt.score, attempt.tryoutId, correct, isChildRoute, posthog, total, tryout.title, unansweredCount, wrongCount]);
+
+  const wrongs: WrongAnswerView[] = questions
+    .filter((question) => question.selectedIndex !== null && question.isCorrect === false)
     .map((q) => {
-      const ans = attempt.answers.find((a) => a.questionId === q.id);
       return {
-        id: q.id,
-        subject: getCategoryLabel(q.categoryId),
-        question: q.question,
+        id: q.snapshotId,
+        subject: q.categoryName.toUpperCase(),
+        question: q.questionText,
         options: q.options,
-        correct: q.correct,
+        correct: q.correctIndex,
         explanation: q.explanation,
         explanationPreview: q.explanation.slice(0, 120) + "...",
-        videoUrl: q.videoUrl,
+        videoUrl: q.videoUrl ?? undefined,
         accessLevel: q.accessLevel,
-        user: ans !== undefined ? q.options[ans.selected] : "Tidak dijawab",
+        user: q.selectedIndex !== null ? q.options[q.selectedIndex] : "Tidak dijawab",
       };
     });
   const hasFullReviewAccess = hasPremiumMembership || hasFullTryoutAccess;
   const lockedCount = hasFullReviewAccess ? 0 : Math.max(0, wrongs.length - FREE_WRONG_PREVIEW);
 
   const openPremiumAccess = () => {
-    if (tryout?.accessLevel === "platinum") {
-      setShowPremiumDialog(true);
-      return;
-    }
-
-    navigate({ to: "/premium" });
+    setShowPremiumDialog(true);
+    posthog.capture("premium_unlock_banner_clicked", {
+      attempt_id: attempt.id,
+      tryout_id: attempt.tryoutId,
+      locked_count: lockedCount,
+    });
   };
 
   useEffect(() => {
@@ -123,7 +166,7 @@ function ResultsComponent() {
         <canvas id="confetti" className="pointer-events-none fixed inset-0 z-[5]" />
 
         <div className="relative overflow-hidden pb-8" style={{ background: headerBg }}>
-          <TopBar />
+          <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
           <div className="page-lane pt-7 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Hasil Tryout
@@ -232,7 +275,7 @@ function ResultsComponent() {
                       Level
                     </div>
                     <div className="mt-1 text-[18px] font-bold leading-none tracking-tight text-stone-800">
-                      Lv.{user.level}
+                      Lv.{levelInfo.level}
                     </div>
                   </div>
                 </div>
@@ -243,9 +286,9 @@ function ResultsComponent() {
                   <BreakdownDot color="#a8a29e" label="Kosong" value={unansweredCount} />
                 </div>
 
-                {!isFirstAttempt && (
+                {xpNote && (
                   <p className="m-0 max-w-[36ch] text-[12px] font-medium text-stone-400">
-                    Retake #{attempt.attemptNumber} · XP dikurangi 75%.
+                    {xpNote}
                   </p>
                 )}
               </div>
@@ -255,13 +298,13 @@ function ResultsComponent() {
           <div className="mt-5 grid grid-flow-dense grid-cols-3 gap-3">
             <StatCard icon={<TargetIcon />} label="Benar" value={`${correct}/${total}`} accent="#205072" />
             <StatCard icon={<ClockIcon />} label="Durasi" value={duration > 0 ? `${duration} min` : "-"} accent="#0ea5e9" />
-            <StatCard icon={<FlameIcon />} label="Streak" value={`${user.streak} hari`} accent="#f59e0b" />
+            <StatCard icon={<FlameIcon />} label="Streak" value={`${summary.streak} hari`} accent="#f59e0b" />
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <Link
               to="/tryout/$id"
-              params={{ id: String(attempt.tryoutId) }}
+              params={{ id: attempt.tryoutId }}
               className="btn btn-white"
             >
               <RefreshIcon />
@@ -271,6 +314,12 @@ function ResultsComponent() {
               to="/results/$attemptId/review"
               params={{ attemptId: String(attempt.id) }}
               className="btn btn-primary"
+              onClick={() => posthog.capture(productAnalyticsEvents.tryoutReviewOpened, {
+                attempt_id: attempt.id,
+                tryout_id: attempt.tryoutId,
+                score: attempt.score,
+                passed,
+              })}
             >
               <BookIcon />
               Review Pembahasan
@@ -326,7 +375,7 @@ function ResultsComponent() {
         onClose={() => setShowPremiumDialog(false)}
         onUpgrade={() => setShowPremiumDialog(false)}
         hasPremiumMembership={hasPremiumMembership}
-        tryout={tryout}
+        tryout={null}
       />
     </>
   );
@@ -425,7 +474,7 @@ function SectionHeader({
 }: {
   title: string;
   action?: string;
-  attemptId: number;
+  attemptId: string;
   filter?: "all" | "wrong" | "correct" | "unanswered";
 }) {
   return (
@@ -453,9 +502,9 @@ function WrongCard({
   locked,
   attemptId,
 }: {
-  wrong: WrongAnswer;
+  wrong: WrongAnswerView;
   locked: boolean;
-  attemptId: number;
+  attemptId: string;
 }) {
   return (
     <Link
@@ -506,6 +555,13 @@ function getGradeLabel(score: number): string {
   if (score >= 70) return "B";
   if (score >= 60) return "C";
   return "D";
+}
+
+function getXpNote(attemptNumber: number, xpEarned: number) {
+  if (attemptNumber === 1) return null;
+  if (xpEarned === 0) return `Retake #${attemptNumber} · Latihan ekstra tanpa XP.`;
+
+  return `Retake #${attemptNumber} · XP dikurangi 75%.`;
 }
 
 function BreakdownDot({ color, label, value }: { color: string; label: string; value: number }) {

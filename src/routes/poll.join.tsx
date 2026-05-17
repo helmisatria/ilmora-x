@@ -1,12 +1,15 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { mockPolls, useApp } from "../data";
+import { useProductAnalytics } from "../lib/product-analytics-client";
+import { useApp } from "../data";
+import { joinPollSession } from "../lib/poll-functions";
+import { getSafeErrorMessage } from "../lib/user-errors";
 
 export const Route = createFileRoute("/poll/join")({
   head: () => ({
     meta: [
       { title: "Gabung Live Poll — IlmoraX" },
-      { name: "description", content: "Gabung live poll dengan kode 6 digit dari pembimbing. Vote A/B/C/D/E secara real-time dan lihat hasil setelah poll ditutup." },
+      { name: "description", content: "Gabung live poll dengan kode 6 digit dari pembimbing. Vote A/B/C/D/E secara real-time dan lihat hasil setelah round ditutup." },
       { property: "og:title", content: "Gabung Live Poll — IlmoraX" },
       { property: "og:description", content: "Gabung live poll dengan kode 6 digit dari pembimbing. Vote secara real-time." },
     ],
@@ -17,151 +20,187 @@ export const Route = createFileRoute("/poll/join")({
 function PollJoinComponent() {
   const navigate = useNavigate();
   const { user } = useApp();
+  const posthog = useProductAnalytics();
   const [code, setCode] = useState("");
-  const [displayName, setDisplayName] = useState(user.name);
-  const [error, setError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState(user.email ? user.name : "");
+  const [error, setError] = useState("");
+  const [joining, setJoining] = useState(false);
 
   const digits = code.replace(/\D/g, "").slice(0, 6);
-  const poll = mockPolls.find((item) => item.code === digits);
-  const needsName = poll?.accessMode === "open_guest";
+  const cleanDisplayName = displayName.trim();
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
+    if (joining) return;
+
     if (digits.length !== 6) {
       setError("Kode harus 6 digit.");
       return;
     }
 
-    if (!poll) {
-      setError("Kode poll tidak ditemukan. Coba 123456 atau 789012 untuk demo.");
+    if (!cleanDisplayName) {
+      setError("Isi nama dulu.");
       return;
     }
 
-    if (poll.status === "closed" && !poll.resultsRevealed) {
-      setError("Poll ini sudah ditutup dan hasilnya belum dibuka.");
-      return;
-    }
+    setJoining(true);
+    setError("");
 
-    if (needsName && !displayName.trim()) {
-      setError("Masukkan nama dulu ya.");
-      return;
-    }
+    try {
+      const participantToken = getOrCreateParticipantToken(digits);
+      const result = await joinPollSession({
+        data: {
+          code: digits,
+          displayName: cleanDisplayName,
+          participantToken,
+        },
+      });
 
-    navigate({ to: "/poll/$code", params: { code: digits } });
+      window.localStorage.setItem(getParticipantStorageKey(digits), result.participantToken);
+      posthog.capture("poll_joined", {
+        poll_code: digits,
+        is_authenticated: Boolean(user.email),
+      });
+      await navigate({ to: "/poll/$code", params: { code: digits } });
+    } catch (error) {
+      setError(getSafeErrorMessage(error, "Gagal gabung Poll."));
+    } finally {
+      setJoining(false);
+    }
   };
 
   return (
     <main
-      className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eef8f6_0%,#fbfaf7_44%,#f7f3ea_100%)]"
+      className="min-h-[100dvh] overflow-hidden page-enter"
       style={{
         background:
-          "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #0ea5e91a, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 48%, #f7f3ea 100%)",
+          "radial-gradient(680px 420px at 50% -18%, rgba(32,80,114,0.10), transparent 68%), linear-gradient(180deg, #fbfaf6 0%, #f7f6f0 100%)",
+        fontFamily: "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
       }}
     >
-      <div className="mx-auto flex min-h-screen w-full max-w-[1040px] flex-col px-5 py-5 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <Link to="/dashboard" className="icon-btn" aria-label="Kembali">
-            <ArrowLeftIcon />
-          </Link>
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
-              Live Poll
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[560px] items-center justify-center px-4 py-12 sm:px-6">
+        <section className="w-full translate-y-0 opacity-100 blur-0 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
+          <div className="mb-10 flex items-center justify-center gap-3 text-stone-950">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[15px] font-semibold shadow-[inset_0_0_0_1px_rgba(28,25,23,0.08),0_18px_50px_rgba(28,25,23,0.08)]">
+              IX
             </div>
-            <b className="text-base font-bold text-stone-800">Gabung Poll</b>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+              Poll
+            </span>
           </div>
-        </div>
 
-        <div className="grid flex-1 items-center gap-8 py-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,0.75fr)]">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
-              Kode Pembimbing
-            </div>
-            <h1 className="mt-2 max-w-[18ch] text-[36px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[48px] lg:text-[56px]">
-              Masuk ke sesi vote kelas
+          <div className="mb-7 text-center">
+            <h1 className="text-[28px] font-semibold leading-none tracking-normal text-stone-950 sm:text-[36px]">
+              Masukkan kode
             </h1>
-            <p className="m-0 mt-4 max-w-[50ch] text-[15px] font-medium leading-relaxed text-stone-500">
-              Gunakan kode 6 digit dari pembimbing. Jawaban peserta hanya berupa pilihan A, B, C, D, atau E.
+            <p className="mt-3 text-[13px] font-medium leading-6 text-stone-500">
+              6 digit dari pembimbing.
             </p>
           </div>
 
-          <div className="rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-5 shadow-sm">
-            <label className="block text-xs font-black uppercase tracking-wide text-stone-400">
-              Kode Poll
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={digits}
-              onChange={(event) => {
-                setCode(event.target.value);
-                setError(null);
-              }}
-              placeholder="000000"
-              maxLength={6}
-              className="mt-2 w-full rounded-[var(--radius-md)] border-2 border-stone-200 bg-stone-50 py-4 text-center text-4xl font-black tracking-[0.3em] outline-none transition-colors focus:border-primary"
-            />
-
-            {needsName && (
-              <>
-                <label className="mt-5 block text-xs font-black uppercase tracking-wide text-stone-400">
-                  Nama Tampilan
-                </label>
+          <div className="rounded-[2rem] bg-stone-950/[0.035] p-1.5 shadow-[0_34px_90px_rgba(28,25,23,0.10)] ring-1 ring-stone-950/[0.06]">
+            <div className="rounded-[calc(2rem-0.375rem)] bg-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] sm:p-5">
+              <label className="sr-only" htmlFor="poll-code">
+                Kode Poll
+              </label>
+              <div className="rounded-[1.35rem] bg-stone-950/[0.035] p-1.5 ring-1 ring-stone-950/[0.05]">
                 <input
+                  id="poll-code"
                   type="text"
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                  placeholder="Nama kamu"
-                  className="mt-2 w-full rounded-[var(--radius-md)] border-2 border-stone-200 px-4 py-3 font-semibold outline-none transition-colors focus:border-primary"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  value={digits}
+                  onChange={(event) => {
+                    setCode(event.target.value);
+                    setError("");
+                  }}
+                  placeholder="000000"
+                  maxLength={6}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      void handleJoin();
+                    }
+                  }}
+                  className="w-full rounded-[calc(1.35rem-0.375rem)] bg-[#fbfaf6] px-3 py-6 text-center text-[36px] font-semibold tracking-[0.20em] text-stone-950 caret-stone-950 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.92)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] placeholder:text-stone-300 focus:bg-white focus:shadow-[inset_0_0_0_1px_rgba(28,25,23,0.72),0_0_0_6px_rgba(32,80,114,0.08)] sm:px-5 sm:py-7 sm:text-[48px]"
                 />
-              </>
-            )}
-
-            {poll?.accessMode === "login_required" && (
-              <div className="mt-4 flex items-start gap-3 rounded-[var(--radius-md)] border-2 border-primary-soft bg-primary-tint p-3 text-xs font-bold text-primary-darker">
-                <LockIcon />
-                <span>Poll ini memakai akunmu: {user.name}</span>
               </div>
-            )}
 
-            {error && (
-              <div className="mt-4 rounded-[var(--radius-md)] border-2 border-red-200 bg-red-50 p-3 text-xs font-bold text-coral-dark">
-                {error}
-              </div>
-            )}
+              <label className="sr-only" htmlFor="poll-name">
+                Nama
+              </label>
+              <input
+                id="poll-name"
+                type="text"
+                autoComplete="name"
+                value={displayName}
+                onChange={(event) => {
+                  setDisplayName(event.target.value);
+                  setError("");
+                }}
+                placeholder="Nama"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    void handleJoin();
+                  }
+                }}
+                className="mt-4 w-full rounded-2xl bg-stone-950/[0.035] px-5 py-4 text-[13px] font-medium text-stone-950 outline-none ring-1 ring-stone-950/[0.05] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] placeholder:text-stone-400 focus:bg-white focus:ring-stone-950/70"
+              />
 
-            <button className="btn btn-primary mt-5 w-full" onClick={handleJoin} disabled={digits.length !== 6} type="button">
-              Gabung Poll
-            </button>
+              {error && (
+                <div className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-center text-xs font-semibold text-coral-dark ring-1 ring-red-200/80">
+                  {error}
+                </div>
+              )}
 
-            <div className="mt-6 border-t border-stone-100 pt-4">
-              <p className="mb-2 text-center text-xs font-medium text-stone-400">Coba demo</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-xs font-extrabold text-stone-600" onClick={() => setCode("123456")} type="button">
-                  123456 aktif
-                </button>
-                <button className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-xs font-extrabold text-stone-600" onClick={() => setCode("789012")} type="button">
-                  789012 hasil
-                </button>
-              </div>
+              <button
+                className="group mt-5 inline-flex w-full items-center justify-between rounded-full bg-stone-950 py-2 pl-6 pr-2 text-[13px] font-semibold uppercase tracking-[0.16em] text-white shadow-[0_18px_50px_rgba(28,25,23,0.16)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:bg-stone-800 active:scale-[0.98]"
+                onClick={handleJoin}
+                type="button"
+              >
+                <span>{joining ? "Menghubungkan" : "Gabung"}</span>
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/12 text-sm transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-1 group-hover:-translate-y-[1px] group-hover:scale-105">
+                  <ArrowRightIcon />
+                </span>
+              </button>
             </div>
           </div>
-        </div>
+        </section>
       </div>
     </main>
   );
 }
 
-function ArrowLeftIcon() {
+function ArrowRightIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-      <path d="m15 6-6 6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M5 12h13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="m13 7 5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function LockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0" fill="none" aria-hidden="true">
-      <path d="M7 11V8a5 5 0 0 1 10 0v3M6.8 11h10.4c1 0 1.8.8 1.8 1.8v5.4c0 1-.8 1.8-1.8 1.8H6.8c-1 0-1.8-.8-1.8-1.8v-5.4c0-1 .8-1.8 1.8-1.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+function getParticipantStorageKey(code: string) {
+  return `ilmorax:poll:${code}:participant-token`;
+}
+
+function getOrCreateParticipantToken(code: string) {
+  const storedToken = getStoredParticipantToken(code);
+
+  if (storedToken) return storedToken;
+
+  return makeParticipantToken();
+}
+
+function getStoredParticipantToken(code: string) {
+  if (typeof window === "undefined") return undefined;
+
+  return window.localStorage.getItem(getParticipantStorageKey(code)) ?? undefined;
+}
+
+function makeParticipantToken() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID().replaceAll("-", "");
+  }
+
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`;
 }

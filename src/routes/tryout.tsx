@@ -1,10 +1,26 @@
-import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../components/Navigation";
 import { PremiumDialog } from "../components/PremiumDialog";
-import { getCategoryColor, getCategoryName, tryouts, useApp, type Tryout } from "../data";
+import { useApp } from "../data";
+import { isPaidTryout, resolveTryoutAccess } from "../lib/domain/premium-access";
+import { analyticsSearchSchema, productAnalyticsEvents } from "../lib/product-analytics";
+import { useProductAnalytics } from "../lib/product-analytics-client";
+import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
+
+type TryoutRow = Awaited<ReturnType<typeof listPublishedTryouts>>[number];
+type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
+type TryoutFilter = "all" | "free" | "premium" | "owned";
 
 export const Route = createFileRoute("/tryout")({
+  loader: async () => {
+    const [summary, tryouts] = await Promise.all([
+      listProgressSummary(),
+      listPublishedTryouts(),
+    ]);
+
+    return { summary, tryouts };
+  },
   head: () => ({
     meta: [
       { title: "Try-out UKAI — IlmoraX" },
@@ -14,15 +30,30 @@ export const Route = createFileRoute("/tryout")({
     ],
   }),
   component: TryoutComponent,
+  validateSearch: analyticsSearchSchema,
 });
 
 function TryoutComponent() {
+  const { summary, tryouts } = Route.useLoaderData() as { summary: ProgressSummary; tryouts: TryoutRow[] };
+  const { intent } = Route.useSearch();
+  const { hasPremiumMembership } = useApp();
+  const analytics = useProductAnalytics();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { hasPremiumMembership, canAccessTryout, ownsTryout } = useApp();
   const [showPremium, setShowPremium] = useState(false);
-  const [selectedTryout, setSelectedTryout] = useState<Tryout | null>(null);
-  const [filter, setFilter] = useState<"all" | "free" | "premium" | "platinum" | "owned">("all");
+  const [selectedTryout, setSelectedTryout] = useState<TryoutRow | null>(null);
+  const [filter, setFilter] = useState<TryoutFilter>("all");
+
+  useEffect(() => {
+    if (location.pathname !== "/tryout") {
+      return;
+    }
+
+    analytics.capture(productAnalyticsEvents.tryoutCatalogViewed, {
+      intent,
+      source_path: "/tryout",
+      tryout_count: tryouts.length,
+    });
+  }, [analytics, intent, location.pathname, tryouts.length]);
 
   if (location.pathname !== "/tryout") {
     return <Outlet />;
@@ -30,7 +61,8 @@ function TryoutComponent() {
 
   const filtered = tryouts.filter((t) => {
     if (filter === "all") return true;
-    if (filter === "owned") return ownsTryout(t.id);
+    if (filter === "owned") return false;
+    if (filter === "premium") return isPaidTryout(t.accessLevel);
     return t.accessLevel === filter;
   });
 
@@ -44,7 +76,7 @@ function TryoutComponent() {
       >
       <div className="app-shell page-enter" style={{ background: "transparent" }}>
         <div className="relative overflow-hidden pb-8">
-          <TopBar />
+          <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
           <div className="page-lane pt-7 pb-5 lg:pt-10">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
               Modul Tryout
@@ -58,7 +90,7 @@ function TryoutComponent() {
           </div>
 
           <div className="page-lane flex gap-2 overflow-x-auto pb-1">
-            {(["all", "free", "premium", "platinum", "owned"] as const).map((option) => (
+            {(["all", "free", "premium", "owned"] as const).map((option) => (
               <FilterButton
                 key={option}
                 filter={option}
@@ -75,14 +107,9 @@ function TryoutComponent() {
               <TryoutCard
                 key={tryout.id}
                 tryout={tryout}
-                isLocked={!canAccessTryout(tryout)}
-                isOwned={ownsTryout(tryout.id)}
+                isLocked={isTryoutLocked(tryout, hasPremiumMembership, false)}
+                isOwned={false}
                 onLockedClick={() => {
-                  if (tryout.accessLevel === "premium") {
-                    navigate({ to: "/premium" });
-                    return;
-                  }
-
                   setSelectedTryout(tryout);
                   setShowPremium(true);
                 }}
@@ -108,12 +135,20 @@ function TryoutComponent() {
   );
 }
 
+function isTryoutLocked(tryout: TryoutRow, hasPremiumMembership: boolean, isOwned: boolean) {
+  return resolveTryoutAccess({
+    accessLevel: tryout.accessLevel,
+    hasPremiumMembership,
+    hasLifetimeTryoutPurchase: isOwned,
+  }).locked;
+}
+
 function FilterButton({
   filter,
   isActive,
   onClick,
 }: {
-  filter: "all" | "free" | "premium" | "platinum" | "owned";
+  filter: TryoutFilter;
   isActive: boolean;
   onClick: () => void;
 }) {
@@ -145,14 +180,14 @@ function TryoutCard({
   isOwned,
   onLockedClick,
 }: {
-  tryout: Tryout;
+  tryout: TryoutRow;
   isLocked: boolean;
   isOwned: boolean;
   onLockedClick: () => void;
 }) {
-  const categoryColor = getCategoryColor(tryout.categoryId);
+  const categoryColor = tryout.categoryColor;
   const accent = isLocked ? "var(--color-amber)" : categoryColor;
-  const categoryName = getCategoryName(tryout.categoryId);
+  const categoryName = tryout.categoryName;
 
   return (
     <Link
@@ -166,7 +201,7 @@ function TryoutCard({
         onLockedClick();
       }}
     >
-      {tryout.accessLevel !== "free" && <AccessPill accessLevel={tryout.accessLevel} isOwned={isOwned} />}
+      {isPaidTryout(tryout.accessLevel) && <AccessPill isOwned={isOwned} />}
 
       <div
         className="w-14 h-14 rounded-2xl flex items-center justify-center border-2"
@@ -191,7 +226,7 @@ function TryoutCard({
       <div className="mt-4 space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <MiniMetric label="Soal" value={String(tryout.questionCount)} />
-          <MiniMetric label="Menit" value={String(tryout.duration)} />
+          <MiniMetric label="Menit" value={String(tryout.durationMinutes)} />
         </div>
         <span
           className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1.5 rounded-full border-2 max-w-full"
@@ -209,11 +244,9 @@ function TryoutCard({
   );
 }
 
-function AccessPill({ accessLevel, isOwned }: { accessLevel: Tryout["accessLevel"]; isOwned: boolean }) {
-  const label = isOwned ? "Dimiliki" : accessLevel === "platinum" ? "Platinum" : "Premium";
-  const className = accessLevel === "platinum" && !isOwned
-    ? "absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-sky-500 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm"
-    : "absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-amber px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm";
+function AccessPill({ isOwned }: { isOwned: boolean }) {
+  const label = isOwned ? "Dimiliki" : "Premium";
+  const className = "absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-amber px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm";
 
   return (
     <div className={className}>
@@ -234,7 +267,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState({ filter }: { filter: "all" | "free" | "premium" | "platinum" | "owned" }) {
+function EmptyState({ filter }: { filter: TryoutFilter }) {
   return (
     <div className="mt-5 bg-white rounded-[var(--radius-lg)] p-5 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
       <div className="mx-auto w-14 h-14 rounded-2xl bg-primary-tint text-primary border-2 border-primary-soft flex items-center justify-center">
@@ -248,10 +281,9 @@ function EmptyState({ filter }: { filter: "all" | "free" | "premium" | "platinum
   );
 }
 
-function getFilterLabel(filter: "all" | "free" | "premium" | "platinum" | "owned") {
+function getFilterLabel(filter: TryoutFilter) {
   if (filter === "free") return "Gratis";
   if (filter === "premium") return "Premium";
-  if (filter === "platinum") return "Platinum";
   if (filter === "owned") return "Dimiliki";
   return "Semua";
 }
@@ -261,12 +293,12 @@ function normalizeCssColor(color: string) {
   return color;
 }
 
-function TryoutIcon({ tryoutId }: { tryoutId: number }) {
-  if (tryoutId === 2) return <CapsuleIcon />;
-  if (tryoutId === 3) return <HeartPulseIcon />;
-  if (tryoutId === 4) return <MicrobeIcon />;
-  if (tryoutId === 5) return <HospitalIcon />;
-  if (tryoutId === 6) return <CalculatorIcon />;
+function TryoutIcon({ tryoutId }: { tryoutId: string }) {
+  if (tryoutId === "2") return <CapsuleIcon />;
+  if (tryoutId === "3") return <HeartPulseIcon />;
+  if (tryoutId === "4") return <MicrobeIcon />;
+  if (tryoutId === "5") return <HospitalIcon />;
+  if (tryoutId === "6") return <CalculatorIcon />;
   return <FlaskIcon />;
 }
 
