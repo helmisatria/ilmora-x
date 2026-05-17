@@ -49,6 +49,7 @@ function AdminCategoriesPage() {
   const [newSubCategories, setNewSubCategories] = useState<Record<string, SubCategoryForm>>({});
   const [editingCategory, setEditingCategory] = useState<CategoryForm | null>(null);
   const [editingSubCategory, setEditingSubCategory] = useState<SubCategoryForm | null>(null);
+  const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Set<string>>(() => new Set());
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -176,6 +177,19 @@ function AdminCategoriesPage() {
     });
   };
 
+  const toggleCategory = (categoryId: string) => {
+    const nextCategoryIds = new Set(collapsedCategoryIds);
+
+    if (nextCategoryIds.has(categoryId)) {
+      nextCategoryIds.delete(categoryId);
+      setCollapsedCategoryIds(nextCategoryIds);
+      return;
+    }
+
+    nextCategoryIds.add(categoryId);
+    setCollapsedCategoryIds(nextCategoryIds);
+  };
+
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
@@ -222,67 +236,96 @@ function AdminCategoriesPage() {
           </div>
         </section>
 
-        <section className="mt-6 space-y-4">
+        <section className="admin-panel mt-6 overflow-hidden">
+          <div className="admin-panel-header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="admin-panel-title">Category Tree</h2>
+              <p className="mt-1 text-xs font-semibold text-stone-500">
+                {categories.length} categories, {countSubCategories(categories)} sub-categories
+              </p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-stone-100">
           {categories.map((category) => {
             const categoryForm = editingCategory?.categoryId === category.id ? editingCategory : toCategoryForm(category);
             const isEditingCategory = editingCategory?.categoryId === category.id;
             const subCategoryDraft = getSubCategoryDraft(category.id, newSubCategories, categories);
+            const isCollapsed = collapsedCategoryIds.has(category.id);
 
             return (
-              <article key={category.id} className="admin-panel">
-                <div className="admin-panel-header">
-                  <div className="min-w-0">
-                    <h2 className="admin-panel-title">{category.name}</h2>
-                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wide text-stone-400">
-                      <span>ID: <code className="normal-case text-stone-500">{category.id}</code></span>
-                      <span>Slug: <code className="normal-case text-stone-500">{category.slug}</code></span>
-                    </div>
-                  </div>
+              <article key={category.id} className="category-tree-group">
+                <div className="category-tree-row category-tree-row-parent">
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(category.id)}
+                    className="category-tree-toggle"
+                    aria-label={isCollapsed ? `Expand ${category.name}` : `Collapse ${category.name}`}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <ChevronIcon isOpen={!isCollapsed} />
+                  </button>
+
                   <span
-                    className="h-8 w-8 rounded-full border border-stone-200"
+                    className="category-tree-swatch"
                     style={{ backgroundColor: category.color ?? defaultColor }}
                     aria-hidden="true"
                   />
-                </div>
 
-                <div className="grid gap-4 border-b border-stone-100 p-5 md:grid-cols-[1fr_120px_130px_auto]">
-                  <TextInput
-                    label="Category name"
-                    value={categoryForm.name}
-                    disabled={!isEditingCategory}
-                    onChange={(name) => setEditingCategory({ ...categoryForm, name })}
-                  />
-                  <Field label="Color">
-                    <input
-                      type="color"
-                      value={categoryForm.color}
-                      disabled={!isEditingCategory}
-                      onChange={(event) => setEditingCategory({ ...categoryForm, color: event.target.value })}
-                      className="admin-control h-11 p-1 disabled:cursor-not-allowed disabled:opacity-60"
-                    />
-                  </Field>
-                  <TextInput
-                    label="Sort"
-                    value={categoryForm.sortOrder}
-                    disabled={!isEditingCategory}
-                    onChange={(sortOrder) => setEditingCategory({ ...categoryForm, sortOrder })}
-                  />
-                  <CategoryActions
-                    isEditing={isEditingCategory}
-                    isBusy={busyAction === `category:${category.id}`}
-                    onEdit={() => setEditingCategory(toCategoryForm(category))}
-                    onCancel={() => setEditingCategory(null)}
-                    onSave={updateCategory}
-                  />
-                </div>
-
-                <div className="p-5">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black uppercase tracking-wide text-stone-500">Sub-categories</h3>
-                    <span className="text-xs font-bold text-stone-400">{category.subCategories.length} total</span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-extrabold tracking-tight text-stone-800">{category.name}</p>
+                    <MetaLine id={category.id} slug={category.slug} />
                   </div>
 
-                  <div className="space-y-3">
+                  <span className="category-tree-count">
+                    {category.subCategories.length} sub
+                  </span>
+
+                  {!isEditingCategory && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingCategory(toCategoryForm(category))}
+                      className="admin-button-secondary category-tree-row-action"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+
+                {isEditingCategory && (
+                  <div className="category-tree-edit-row">
+                    <TextInput
+                      label="Category name"
+                      value={categoryForm.name}
+                      compact
+                      onChange={(name) => setEditingCategory({ ...categoryForm, name })}
+                    />
+                    <Field label="Color" compact>
+                      <input
+                        type="color"
+                        value={categoryForm.color}
+                        onChange={(event) => setEditingCategory({ ...categoryForm, color: event.target.value })}
+                        className="admin-control h-9 p-1"
+                      />
+                    </Field>
+                    <TextInput
+                      label="Sort"
+                      value={categoryForm.sortOrder}
+                      compact
+                      onChange={(sortOrder) => setEditingCategory({ ...categoryForm, sortOrder })}
+                    />
+                    <CategoryActions
+                      isEditing
+                      isBusy={busyAction === `category:${category.id}`}
+                      onEdit={() => setEditingCategory(toCategoryForm(category))}
+                      onCancel={() => setEditingCategory(null)}
+                      onSave={updateCategory}
+                    />
+                  </div>
+                )}
+
+                {!isCollapsed && (
+                  <div className="category-tree-children">
                     {category.subCategories.map((subCategory) => {
                       const subCategoryForm = editingSubCategory?.subCategoryId === subCategory.id
                         ? editingSubCategory
@@ -290,69 +333,79 @@ function AdminCategoriesPage() {
                       const isEditingSubCategory = editingSubCategory?.subCategoryId === subCategory.id;
 
                       return (
-                        <div key={subCategory.id} className="grid gap-3 rounded-lg border border-stone-100 bg-stone-50/70 p-3 md:grid-cols-[1fr_120px_auto]">
-                          <div>
+                        <div key={subCategory.id} className="category-tree-child">
+                          <div className="category-tree-branch" aria-hidden="true" />
+                          <div className="category-tree-child-grid">
+                            <div className="category-tree-name-cell">
+                              <TextInput
+                                label="Name"
+                                value={subCategoryForm.name}
+                                disabled={!isEditingSubCategory}
+                                compact
+                                onChange={(name) => setEditingSubCategory({ ...subCategoryForm, name })}
+                              />
+                            </div>
                             <TextInput
-                              label="Name"
-                              value={subCategoryForm.name}
+                              label="Sort"
+                              value={subCategoryForm.sortOrder}
                               disabled={!isEditingSubCategory}
-                              onChange={(name) => setEditingSubCategory({ ...subCategoryForm, name })}
+                              compact
+                              onChange={(sortOrder) => setEditingSubCategory({ ...subCategoryForm, sortOrder })}
                             />
-                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wide text-stone-400">
-                              <span>ID: <code className="normal-case text-stone-500">{subCategory.id}</code></span>
-                              <span>Slug: <code className="normal-case text-stone-500">{subCategory.slug}</code></span>
+                            <CategoryActions
+                              isEditing={isEditingSubCategory}
+                              isBusy={busyAction === `sub-category:${subCategory.id}`}
+                              onEdit={() => setEditingSubCategory(toSubCategoryForm(category.id, subCategory))}
+                              onCancel={() => setEditingSubCategory(null)}
+                              onSave={updateSubCategory}
+                            />
+                            <div className="category-tree-meta-cell">
+                              <MetaLine id={subCategory.id} slug={subCategory.slug} />
                             </div>
                           </div>
-                          <TextInput
-                            label="Sort"
-                            value={subCategoryForm.sortOrder}
-                            disabled={!isEditingSubCategory}
-                            onChange={(sortOrder) => setEditingSubCategory({ ...subCategoryForm, sortOrder })}
-                          />
-                          <CategoryActions
-                            isEditing={isEditingSubCategory}
-                            isBusy={busyAction === `sub-category:${subCategory.id}`}
-                            onEdit={() => setEditingSubCategory(toSubCategoryForm(category.id, subCategory))}
-                            onCancel={() => setEditingSubCategory(null)}
-                            onSave={updateSubCategory}
-                          />
                         </div>
                       );
                     })}
 
                     {category.subCategories.length === 0 && (
-                      <p className="rounded-lg border border-dashed border-stone-200 p-4 text-sm font-semibold text-stone-500">
-                        No Sub-categories yet.
+                      <p className="category-tree-empty">
+                        No sub-categories yet.
                       </p>
                     )}
-                  </div>
 
-                  <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-stone-200 p-3 md:grid-cols-[1fr_120px_auto]">
-                    <TextInput
-                      label="New Sub-category"
-                      value={subCategoryDraft.name}
-                      onChange={(name) => updateSubCategoryDraft(category.id, { ...subCategoryDraft, name })}
-                    />
-                    <TextInput
-                      label="Sort"
-                      value={subCategoryDraft.sortOrder}
-                      onChange={(sortOrder) => updateSubCategoryDraft(category.id, { ...subCategoryDraft, sortOrder })}
-                    />
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={() => createSubCategory(category.id)}
-                        disabled={busyAction === `create-sub-category:${category.id}`}
-                        className="admin-button-secondary w-full"
-                      >
-                        {busyAction === `create-sub-category:${category.id}` ? "Saving..." : "Add"}
-                      </button>
+                    <div className="category-tree-child category-tree-new-child">
+                      <div className="category-tree-branch" aria-hidden="true" />
+                      <div className="category-tree-child-grid">
+                        <TextInput
+                          label="New sub-category"
+                          value={subCategoryDraft.name}
+                          compact
+                          onChange={(name) => updateSubCategoryDraft(category.id, { ...subCategoryDraft, name })}
+                        />
+                        <TextInput
+                          label="Sort"
+                          value={subCategoryDraft.sortOrder}
+                          compact
+                          onChange={(sortOrder) => updateSubCategoryDraft(category.id, { ...subCategoryDraft, sortOrder })}
+                        />
+                        <div className="category-tree-action-cell">
+                          <button
+                            type="button"
+                            onClick={() => createSubCategory(category.id)}
+                            disabled={busyAction === `create-sub-category:${category.id}`}
+                            className="admin-button-secondary category-tree-action-button w-full"
+                          >
+                            {busyAction === `create-sub-category:${category.id}` ? "Saving..." : "Add"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </article>
             );
           })}
+          </div>
         </section>
       </div>
     </main>
@@ -374,8 +427,8 @@ function CategoryActions({
 }) {
   if (!isEditing) {
     return (
-      <div className="flex items-end">
-        <button type="button" onClick={onEdit} className="admin-button-secondary w-full">
+      <div className="category-tree-action-cell">
+        <button type="button" onClick={onEdit} className="admin-button-secondary category-tree-action-button w-full">
           Edit
         </button>
       </div>
@@ -383,11 +436,11 @@ function CategoryActions({
   }
 
   return (
-    <div className="flex items-end gap-2">
-      <button type="button" onClick={onCancel} className="admin-button-secondary">
+    <div className="category-tree-action-cell gap-2">
+      <button type="button" onClick={onCancel} className="admin-button-secondary category-tree-action-button">
         Cancel
       </button>
-      <button type="button" onClick={onSave} disabled={isBusy} className="admin-button-primary">
+      <button type="button" onClick={onSave} disabled={isBusy} className="admin-button-primary category-tree-action-button">
         {isBusy ? "Saving..." : "Save"}
       </button>
     </div>
@@ -398,31 +451,55 @@ function TextInput({
   label,
   value,
   disabled,
+  compact,
   onChange,
 }: {
   label: string;
   value: string;
   disabled?: boolean;
+  compact?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} compact={compact}>
       <input
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="admin-control disabled:cursor-not-allowed disabled:opacity-60"
+        className={`admin-control disabled:cursor-not-allowed disabled:opacity-60 ${compact ? "category-tree-control" : ""}`}
       />
     </Field>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, compact, children }: { label: string; compact?: boolean; children: ReactNode }) {
   return (
-    <label className="grid gap-2">
-      <span className="text-xs font-black uppercase tracking-wide text-stone-500">{label}</span>
+    <label className={`grid ${compact ? "gap-1" : "gap-2"}`}>
+      <span className="text-[11px] font-black uppercase tracking-wide text-stone-500">{label}</span>
       {children}
     </label>
+  );
+}
+
+function MetaLine({ id, slug }: { id: string; slug: string }) {
+  return (
+    <div className="mt-1 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+      <span>ID: <code className="normal-case text-stone-500">{id}</code></span>
+      <span>Slug: <code className="normal-case text-stone-500">{slug}</code></span>
+    </div>
+  );
+}
+
+function ChevronIcon({ isOpen }: { isOpen: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -515,4 +592,8 @@ function getNextSortOrder(items: Array<{ sortOrder: number }>) {
   if (items.length === 0) return 10;
 
   return Math.max(...items.map((item) => item.sortOrder)) + 10;
+}
+
+function countSubCategories(categories: CategoryRow[]) {
+  return categories.reduce((total, category) => total + category.subCategories.length, 0);
 }

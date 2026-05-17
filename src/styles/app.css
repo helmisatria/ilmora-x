@@ -414,6 +414,87 @@
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider;
   }
 
+  .category-tree-group {
+    @apply bg-white;
+  }
+
+  .category-tree-row {
+    @apply grid grid-cols-[32px_18px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:grid-cols-[32px_18px_minmax(0,1fr)_auto_auto] sm:px-5;
+  }
+
+  .category-tree-row-parent {
+    @apply bg-stone-50/60;
+  }
+
+  .category-tree-toggle {
+    @apply flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 transition-all duration-200 hover:border-primary-soft hover:bg-primary-tint hover:text-primary active:translate-y-[1px];
+  }
+
+  .category-tree-swatch {
+    @apply h-4.5 w-4.5 rounded-full border border-white shadow-[0_0_0_1px_rgba(120,113,108,0.22)];
+  }
+
+  .category-tree-count {
+    @apply w-fit rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-stone-500 ring-1 ring-stone-200;
+  }
+
+  .category-tree-row-action {
+    @apply col-span-4 w-full py-2 sm:col-span-1 sm:w-auto;
+  }
+
+  .category-tree-edit-row {
+    @apply grid items-center gap-2 border-t border-stone-100 px-4 py-2 sm:px-5 md:grid-cols-[minmax(0,1fr)_84px_84px_auto];
+  }
+
+  .category-tree-children {
+    @apply border-t border-stone-100 bg-white px-4 py-1.5 sm:px-5;
+  }
+
+  .category-tree-child {
+    @apply relative grid grid-cols-[24px_minmax(0,1fr)] gap-3 py-1.5;
+  }
+
+  .category-tree-branch {
+    @apply pointer-events-none absolute left-3 top-0 h-full w-3 border-l border-stone-200;
+  }
+
+  .category-tree-branch::after {
+    content: "";
+    @apply absolute left-0 top-1/2 h-px w-3 -translate-y-1/2 bg-stone-200;
+  }
+
+  .category-tree-child-grid {
+    @apply col-start-2 grid min-w-0 items-center gap-2 rounded-xl border border-stone-100 bg-stone-50/70 px-3 py-2 md:grid-cols-[minmax(0,1fr)_84px_auto];
+  }
+
+  .category-tree-name-cell {
+    @apply min-w-0 self-center;
+  }
+
+  .category-tree-meta-cell {
+    @apply min-w-0 md:col-span-3;
+  }
+
+  .category-tree-new-child .category-tree-child-grid {
+    @apply border-dashed bg-white;
+  }
+
+  .category-tree-empty {
+    @apply ml-9 rounded-xl border border-dashed border-stone-200 bg-stone-50/60 px-4 py-3 text-sm font-semibold text-stone-500;
+  }
+
+  .category-tree-control {
+    @apply px-3 py-1.5 text-[13px];
+  }
+
+  .category-tree-action-button {
+    @apply px-4 py-2 text-[13px];
+  }
+
+  .category-tree-action-cell {
+    @apply flex h-full items-start pt-[18px];
+  }
+
   .bottom-nav-a {
     @apply bg-transparent border-none py-2.5 px-4 rounded-[var(--radius-md)] flex flex-col items-center gap-1 font-extrabold text-[11px] text-stone-400 min-w-[64px] cursor-pointer transition-all duration-200 no-underline md:min-w-[132px] md:flex-row md:justify-center md:text-[12px];
   }
