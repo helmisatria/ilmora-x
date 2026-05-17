@@ -1,5 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { TryoutIcon } from "../../components/TryoutIcon";
+import { TryoutIconField } from "../../components/admin/TryoutIconField";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
   createTryoutAdmin,
@@ -17,6 +19,7 @@ type AccessLevel = "free" | "premium";
 type TryoutForm = {
   title: string;
   description: string;
+  icon: string;
   categoryId: string;
   durationMinutes: string;
   accessLevel: AccessLevel;
@@ -25,6 +28,7 @@ type TryoutForm = {
 const emptyForm: TryoutForm = {
   title: "",
   description: "",
+  icon: "",
   categoryId: "",
   durationMinutes: "30",
   accessLevel: "free",
@@ -95,6 +99,7 @@ function AdminTryoutsPage() {
     const payload = {
       title: form.title,
       description: form.description,
+      icon: form.icon,
       categoryId: form.categoryId,
       durationMinutes,
       accessLevel: form.accessLevel,
@@ -258,6 +263,15 @@ function AdminTryoutsPage() {
               />
             </Field>
 
+            <Field label="Icon">
+              <TryoutIconField
+                value={form.icon}
+                accent={categories.find((category) => category.id === form.categoryId)?.color ?? "#205072"}
+                onChange={(icon) => setForm({ ...form, icon })}
+                onError={setErrorMessage}
+              />
+            </Field>
+
             <div className="grid gap-5 sm:grid-cols-3">
               <Field label="Category">
                 <select
@@ -356,6 +370,12 @@ function AdminTryoutsPage() {
           <div>
             {tryouts.map((tryout) => (
               <div key={tryout.id} className="admin-list-row">
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-stone-100 bg-stone-50 text-stone-500"
+                  aria-hidden="true"
+                >
+                  <TryoutIcon icon={tryout.icon} tryoutId={tryout.id} />
+                </div>
                 <div className="admin-list-content">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h3 className="text-[15px] font-bold text-stone-800 tracking-tight">{tryout.title}</h3>

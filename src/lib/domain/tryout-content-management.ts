@@ -17,6 +17,7 @@ type QuestionOption = "A" | "B" | "C" | "D" | "E";
 export type TryoutContentInput = {
   title: string;
   description: string;
+  icon?: string;
   categoryId: string;
   durationMinutes: number;
   accessLevel: TryoutAccessLevel;
@@ -67,6 +68,7 @@ export async function createTryoutContent(data: TryoutContentInput) {
       slug,
       title: data.title,
       description: data.description,
+      icon: normalizeTryoutIcon(data.icon),
       categoryId: data.categoryId,
       durationMinutes: data.durationMinutes,
       accessLevel: data.accessLevel,
@@ -88,6 +90,7 @@ export async function updateTryoutContent(data: TryoutContentInput & { tryoutId:
     .set({
       title: data.title,
       description: data.description,
+      icon: normalizeTryoutIcon(data.icon),
       categoryId: data.categoryId,
       durationMinutes: data.durationMinutes,
       accessLevel: data.accessLevel,
@@ -96,6 +99,14 @@ export async function updateTryoutContent(data: TryoutContentInput & { tryoutId:
     .where(eq(tryouts.id, data.tryoutId));
 
   return { ok: true };
+}
+
+function normalizeTryoutIcon(icon: string | undefined) {
+  const value = icon?.trim();
+
+  if (!value) return null;
+
+  return value;
 }
 
 export async function publishTryoutContent(tryoutId: string) {

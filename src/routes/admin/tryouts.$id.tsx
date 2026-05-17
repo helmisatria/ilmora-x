@@ -1,5 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { TryoutIconField } from "../../components/admin/TryoutIconField";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
   getTryoutWorkbookAdmin,
@@ -23,6 +24,7 @@ type CorrectOption = "A" | "B" | "C" | "D" | "E";
 type TryoutForm = {
   title: string;
   description: string;
+  icon: string;
   categoryId: string;
   durationMinutes: string;
   accessLevel: AccessLevel;
@@ -77,6 +79,7 @@ function AdminTryoutDetailPage() {
   const [form, setForm] = useState<TryoutForm>(() => ({
     title: workbook.tryout.title,
     description: workbook.tryout.description,
+    icon: workbook.tryout.icon ?? "",
     categoryId: workbook.tryout.categoryId,
     durationMinutes: String(workbook.tryout.durationMinutes),
     accessLevel: workbook.tryout.accessLevel,
@@ -117,6 +120,7 @@ function AdminTryoutDetailPage() {
         data: {
           title: form.title,
           description: form.description,
+          icon: form.icon,
           categoryId: form.categoryId,
           durationMinutes,
           accessLevel: form.accessLevel,
@@ -333,6 +337,7 @@ function AdminTryoutDetailPage() {
   const hasChanges =
     form.title !== workbook.tryout.title ||
     form.description !== workbook.tryout.description ||
+    form.icon !== (workbook.tryout.icon ?? "") ||
     form.categoryId !== workbook.tryout.categoryId ||
     Number(form.durationMinutes) !== workbook.tryout.durationMinutes ||
     form.accessLevel !== workbook.tryout.accessLevel;
@@ -382,6 +387,16 @@ function AdminTryoutDetailPage() {
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
                 className="admin-control min-h-24"
                 placeholder="Short description shown to Students before starting."
+              />
+            </Field>
+
+            <Field label="Icon">
+              <TryoutIconField
+                value={form.icon}
+                accent={categories.find((category) => category.id === form.categoryId)?.color ?? "#205072"}
+                tryoutId={tryoutId}
+                onChange={(icon) => setForm({ ...form, icon })}
+                onError={setErrorMessage}
               />
             </Field>
 

@@ -141,6 +141,7 @@ export const tryouts = pgTable("tryouts", {
   slug: text("slug").notNull().unique(),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  icon: text("icon"),
   categoryId: text("category_id").notNull().references(() => categories.id),
   durationMinutes: integer("duration_minutes").notNull(),
   accessLevel: text("access_level").notNull(),

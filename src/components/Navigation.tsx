@@ -24,6 +24,7 @@ export function TopBar({ progress, profile }: { progress?: TopBarProgress; profi
   const initials = getInitials(name);
   const avatar = profile?.avatar ?? user.avatar ?? initials;
   const photoUrl = avatar === "google" ? profile?.photoUrl ?? user.googlePhotoUrl : null;
+  const showAdminEntry = user.isAdmin;
 
   const stopImpersonation = async () => {
     const result = await stopStudentImpersonationAdmin();
@@ -85,7 +86,20 @@ export function TopBar({ progress, profile }: { progress?: TopBarProgress; profi
             <TopBarPill icon={<ShieldIcon />} value={`Lv.${level}`} color="teal" />
           </div>
 
-          <div aria-hidden="true" />
+          <div className="flex justify-self-end">
+            {showAdminEntry ? (
+              <Link
+                to="/admin"
+                className="flex h-10 items-center gap-2 rounded-full border-2 border-primary-soft bg-white/88 px-3 text-[12px] font-extrabold text-primary-dark no-underline shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary-light hover:bg-primary-tint"
+                title="Admin dashboard"
+              >
+                <AdminDashboardIcon />
+                <span className="hidden sm:inline">Admin</span>
+              </Link>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+          </div>
         </div>
       </div>
     </>
@@ -253,6 +267,15 @@ function ShieldIcon() {
   return (
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" aria-hidden="true">
       <path d="M12 3 19 6v5.2c0 4.4-2.8 8.3-7 9.8-4.2-1.5-7-5.4-7-9.8V6l7-3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function AdminDashboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M4 5.8A1.8 1.8 0 0 1 5.8 4h12.4A1.8 1.8 0 0 1 20 5.8v12.4a1.8 1.8 0 0 1-1.8 1.8H5.8A1.8 1.8 0 0 1 4 18.2V5.8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M8 9h8M8 13h3M14 13h2M8 17h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

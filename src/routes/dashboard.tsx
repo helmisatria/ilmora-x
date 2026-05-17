@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { PremiumDialog } from "../components/PremiumDialog";
 import { BottomNav, TopBar } from "../components/Navigation";
+import { TryoutIcon } from "../components/TryoutIcon";
 import { getLevelForXp, getNextLevel, getXpProgress, useApp } from "../data";
 import { isPaidTryout, resolveTryoutAccess } from "../lib/domain/premium-access";
 import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
@@ -406,7 +407,7 @@ function TryoutRow({
       }}
     >
       <IconTile
-        icon={isLocked ? <LockIcon /> : <TryoutIcon tryoutId={tryout.id} />}
+        icon={isLocked ? <LockIcon /> : <TryoutIcon icon={tryout.icon} tryoutId={tryout.id} />}
         accent={color}
         size="lg"
       />
@@ -604,15 +605,6 @@ function IconTile({
   );
 }
 
-function TryoutIcon({ tryoutId }: { tryoutId: string }) {
-  if (tryoutId === "2") return <CapsuleIcon />;
-  if (tryoutId === "3") return <HeartPulseIcon />;
-  if (tryoutId === "4") return <MicrobeIcon />;
-  if (tryoutId === "5") return <HospitalIcon />;
-  if (tryoutId === "6") return <CalculatorIcon />;
-  return <FlaskIcon />;
-}
-
 function BookIcon() {
   return (
     <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" aria-hidden="true">
@@ -719,61 +711,6 @@ function LockIcon() {
   return (
     <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
       <path d="M7 11V8a5 5 0 0 1 10 0v3M6.8 11h10.4c1 0 1.8.8 1.8 1.8v5.4c0 1-.8 1.8-1.8 1.8H6.8c-1 0-1.8-.8-1.8-1.8v-5.4c0-1 .8-1.8 1.8-1.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function FlaskIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
-      <path d="M9 3h6M10 3v5.8l-4.7 7.9A2.8 2.8 0 0 0 7.7 21h8.6a2.8 2.8 0 0 0 2.4-4.3L14 8.8V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M8.2 15h7.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CapsuleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
-      <path d="M10.5 20.2a5 5 0 0 1-7.1-7.1l6.2-6.2a5 5 0 0 1 7.1 7.1l-6.2 6.2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m8 8 8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function HeartPulseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
-      <path d="M20.4 5.6a5.2 5.2 0 0 0-7.4 0L12 6.7l-1-1.1a5.2 5.2 0 0 0-7.4 7.4l8.4 8.2 8.4-8.2a5.2 5.2 0 0 0 0-7.4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 13h3l1.5-3 3 6 1.5-3h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function MicrobeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
-      <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M10 10h.1M14 13h.1" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function HospitalIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
-      <path d="M5 21V5.8C5 4.8 5.8 4 6.8 4h10.4c1 0 1.8.8 1.8 1.8V21M3 21h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 8v6M9 11h6M8 21v-4h8v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CalculatorIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
-      <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M8 7h8M8.5 12h.1M12 12h.1M15.5 12h.1M8.5 16h.1M12 16h.1M15.5 16h.1" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   );
 }

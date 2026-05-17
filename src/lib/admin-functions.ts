@@ -101,6 +101,7 @@ const tryoutAccessLevelSchema = z.enum(["free", "premium"]);
 const tryoutInputSchema = z.object({
   title: z.string().trim().min(1).max(160),
   description: z.string().trim().min(1).max(500),
+  icon: z.string().trim().max(250000).optional(),
   categoryId: z.string().trim().min(1),
   durationMinutes: z.number().int().min(1).max(300),
   accessLevel: tryoutAccessLevelSchema,
@@ -1060,6 +1061,7 @@ export const listTryoutsAdmin = createServerFn({ method: "GET" }).middleware([ad
       slug: tryouts.slug,
       title: tryouts.title,
       description: tryouts.description,
+      icon: tryouts.icon,
       categoryId: tryouts.categoryId,
       categoryName: categories.name,
       durationMinutes: tryouts.durationMinutes,
@@ -1119,6 +1121,7 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
         slug: tryouts.slug,
         title: tryouts.title,
         description: tryouts.description,
+        icon: tryouts.icon,
         categoryId: tryouts.categoryId,
         durationMinutes: tryouts.durationMinutes,
         accessLevel: tryouts.accessLevel,
