@@ -34,3 +34,7 @@ To build the app for production:
 ```sh
 pnpm build
 ```
+
+## Environment Flags
+
+`VITE_ENABLE_PREMIUM_USER_TOGGLE=true` allows the profile premium-user toggle outside development builds. The toggle remains enabled by default in development.

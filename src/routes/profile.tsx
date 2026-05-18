@@ -66,6 +66,7 @@ function ProfileComponent() {
     user,
     hasPremiumMembership,
     devPremiumOverride,
+    canUsePremiumOverride,
     setDevPremiumOverride,
     updateUserAvatar,
   } = useApp();
@@ -243,7 +244,7 @@ function ProfileComponent() {
             />
           </div>
 
-          {import.meta.env.DEV && (
+          {canUsePremiumOverride && (
             <DevPremiumToggle
               enabled={devPremiumOverride}
               onChange={setDevPremiumOverride}
@@ -669,7 +670,7 @@ function DevPremiumToggle({
       <label className="flex cursor-pointer items-center justify-between gap-4">
         <span className="min-w-0">
           <span className="block text-[10px] font-bold uppercase tracking-wide text-stone-400">
-            Dev only
+            Config toggle
           </span>
           <span className="mt-1 block text-sm font-bold text-stone-700">
             Premium user

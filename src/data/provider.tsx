@@ -1,12 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { resolveAvatarDisplay } from "../lib/avatar";
 import type { Viewer } from "../lib/auth-functions";
+import { isPremiumUserToggleAllowed } from "../lib/premium-user-toggle-config";
 import { hasPremiumMembership, type User } from "./users";
 
 export interface AppState {
   user: User;
   hasPremiumMembership: boolean;
   devPremiumOverride: boolean;
+  canUsePremiumOverride: boolean;
   impersonation: {
     adminEmail: string;
     targetUserId: string;
@@ -70,19 +72,20 @@ function getUserFromViewer(viewer: Viewer | null): User {
 export function AppProvider({ children, viewer = null }: { children: ReactNode; viewer?: Viewer | null }) {
   const [user, setUser] = useState(() => getUserFromViewer(viewer));
   const [devPremiumOverride, setDevPremiumOverrideState] = useState(false);
+  const canUsePremiumOverride = isPremiumUserToggleAllowed();
 
   useEffect(() => {
     setUser(getUserFromViewer(viewer));
   }, [viewer]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!canUsePremiumOverride) return;
 
     setDevPremiumOverrideState(localStorage.getItem(devPremiumOverrideKey) === "true");
-  }, []);
+  }, [canUsePremiumOverride]);
 
   const setDevPremiumOverride = (enabled: boolean) => {
-    if (!import.meta.env.DEV) return;
+    if (!canUsePremiumOverride) return;
 
     setDevPremiumOverrideState(enabled);
     localStorage.setItem(devPremiumOverrideKey, enabled ? "true" : "false");
@@ -102,6 +105,7 @@ export function AppProvider({ children, viewer = null }: { children: ReactNode; 
         user,
         hasPremiumMembership: hasPremiumMembership(user) || devPremiumOverride,
         devPremiumOverride,
+        canUsePremiumOverride,
         impersonation: viewer?.impersonation
           ? {
               adminEmail: viewer.impersonation.adminEmail,
