@@ -14,6 +14,7 @@ import {
 } from "../db/schema";
 import { conflict, notFound } from "../http/errors";
 import { type Viewer } from "../auth-functions";
+import { getDailyAttemptWindow } from "./daily-attempt-window";
 import { awardDailyBadges } from "./engagement-surface";
 import { isPaidTryout } from "./premium-access";
 
@@ -611,17 +612,8 @@ function getDailyTryoutAttemptLimit() {
   return configuredLimit;
 }
 
-function getStartOfJakartaDaySql(referenceDate?: Date) {
-  if (!referenceDate) {
-    return sql`date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
-  }
-
-  return sql`date_trunc('day', ${referenceDate}::timestamptz at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
-}
-
 async function countTodayTryoutAttempts(studentUserId: string, tryoutId: string) {
-  const dayStart = getStartOfJakartaDaySql();
-  const dayEnd = sql`${dayStart} + interval '1 day'`;
+  const dayWindow = getDailyAttemptWindow(new Date());
 
   const [row] = await db
     .select({
@@ -631,8 +623,8 @@ async function countTodayTryoutAttempts(studentUserId: string, tryoutId: string)
     .where(and(
       eq(attempts.studentUserId, studentUserId),
       eq(attempts.tryoutId, tryoutId),
-      gte(attempts.startedAt, dayStart),
-      lt(attempts.startedAt, dayEnd),
+      gte(attempts.startedAt, dayWindow.startsAt),
+      lt(attempts.startedAt, dayWindow.endsAt),
     ));
 
   return Number(row?.count ?? 0);
@@ -649,8 +641,7 @@ function getVisibleDailyAttemptLimit(hasExtendedPractice: boolean, dailyAttemptL
 }
 
 async function isExtraPracticeAttempt(attempt: typeof attempts.$inferSelect, dailyAttemptLimit: number) {
-  const dayStart = getStartOfJakartaDaySql(attempt.startedAt);
-  const dayEnd = sql`${dayStart} + interval '1 day'`;
+  const dayWindow = getDailyAttemptWindow(attempt.startedAt);
 
   const [row] = await db
     .select({
@@ -660,8 +651,8 @@ async function isExtraPracticeAttempt(attempt: typeof attempts.$inferSelect, dai
     .where(and(
       eq(attempts.studentUserId, attempt.studentUserId),
       eq(attempts.tryoutId, attempt.tryoutId),
-      gte(attempts.startedAt, dayStart),
-      lt(attempts.startedAt, dayEnd),
+      gte(attempts.startedAt, dayWindow.startsAt),
+      lt(attempts.startedAt, dayWindow.endsAt),
       lte(attempts.startedAt, attempt.startedAt),
     ));
 
