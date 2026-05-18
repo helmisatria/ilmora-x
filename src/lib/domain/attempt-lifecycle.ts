@@ -611,8 +611,12 @@ function getDailyTryoutAttemptLimit() {
   return configuredLimit;
 }
 
-function getStartOfJakartaDaySql() {
-  return sql`date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
+function getStartOfJakartaDaySql(referenceDate?: Date) {
+  if (!referenceDate) {
+    return sql`date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
+  }
+
+  return sql`date_trunc('day', ${referenceDate}::timestamptz at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
 }
 
 async function countTodayTryoutAttempts(studentUserId: string, tryoutId: string) {
@@ -645,7 +649,7 @@ function getVisibleDailyAttemptLimit(hasExtendedPractice: boolean, dailyAttemptL
 }
 
 async function isExtraPracticeAttempt(attempt: typeof attempts.$inferSelect, dailyAttemptLimit: number) {
-  const dayStart = sql`date_trunc('day', ${attempt.startedAt} at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
+  const dayStart = getStartOfJakartaDaySql(attempt.startedAt);
   const dayEnd = sql`${dayStart} + interval '1 day'`;
 
   const [row] = await db
