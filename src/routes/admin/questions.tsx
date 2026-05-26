@@ -1,5 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { QuestionPictureField } from "../../components/admin/QuestionPictureField";
 import {
   createQuestionAdmin,
   listCategoryOptionsAdmin,
@@ -27,6 +28,7 @@ type QuestionForm = {
   correctOption: CorrectOption;
   explanation: string;
   videoUrl: string;
+  pictureUrl: string;
   accessLevel: AccessLevel;
 };
 
@@ -43,6 +45,7 @@ const emptyForm: QuestionForm = {
   correctOption: "A",
   explanation: "",
   videoUrl: "",
+  pictureUrl: "",
   accessLevel: "free",
 };
 
@@ -115,6 +118,7 @@ function AdminQuestionsPage() {
       correctOption: question.correctOption,
       explanation: question.explanation,
       videoUrl: question.videoUrl ?? "",
+      pictureUrl: question.pictureUrl ?? "",
       accessLevel: question.accessLevel,
     });
     setErrorMessage("");
@@ -268,6 +272,13 @@ function AdminQuestionsPage() {
                 </select>
               </Field>
             </div>
+
+            <QuestionPictureField
+              value={form.pictureUrl}
+              busy={busyAction === "save"}
+              onChange={(pictureUrl) => setForm({ ...form, pictureUrl })}
+              onError={setErrorMessage}
+            />
 
             <div className="flex flex-wrap gap-3 pt-1">
               <button
@@ -518,6 +529,7 @@ function toQuestionPayload(form: QuestionForm) {
     correctOption: form.correctOption,
     explanation: form.explanation,
     videoUrl: form.videoUrl,
+    pictureUrl: form.pictureUrl,
     accessLevel: form.accessLevel,
   };
 }

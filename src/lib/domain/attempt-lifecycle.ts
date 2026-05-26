@@ -121,6 +121,7 @@ export async function startOrResumeAttemptForStudent({
       correctOption: questions.correctOption,
       explanation: questions.explanation,
       videoUrl: questions.videoUrl,
+      pictureUrl: questions.pictureUrl,
       accessLevel: questions.accessLevel,
     })
     .from(tryoutQuestions)
@@ -172,6 +173,7 @@ export async function startOrResumeAttemptForStudent({
         correctOption: question.correctOption,
         explanation: question.explanation,
         videoUrl: question.videoUrl,
+        pictureUrl: question.pictureUrl,
         accessLevel: question.accessLevel,
       })),
     );

@@ -1,5 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { QuestionPictureField } from "../../components/admin/QuestionPictureField";
 import { TryoutIconField } from "../../components/admin/TryoutIconField";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
@@ -44,6 +45,7 @@ type QuestionForm = {
   correctOption: CorrectOption;
   explanation: string;
   videoUrl: string;
+  pictureUrl: string;
   accessLevel: AccessLevel;
   status: ContentStatus;
 };
@@ -168,6 +170,7 @@ function AdminTryoutDetailPage() {
       correctOption: question.correctOption,
       explanation: question.explanation,
       videoUrl: question.videoUrl ?? "",
+      pictureUrl: question.pictureUrl ?? "",
       accessLevel: question.accessLevel,
       status: question.status,
     });
@@ -217,6 +220,7 @@ function AdminTryoutDetailPage() {
           correctOption: questionForm.correctOption,
           explanation: questionForm.explanation,
           videoUrl: questionForm.videoUrl,
+          pictureUrl: questionForm.pictureUrl,
           accessLevel: questionForm.accessLevel,
           status: questionForm.status,
         },
@@ -620,6 +624,13 @@ function AdminTryoutDetailPage() {
                   </select>
                 </Field>
               </div>
+
+              <QuestionPictureField
+                value={questionForm.pictureUrl}
+                busy={busyAction === `question-save:${questionForm.questionId}`}
+                onChange={(pictureUrl) => setQuestionForm({ ...questionForm, pictureUrl })}
+                onError={setErrorMessage}
+              />
 
               <div className="flex flex-wrap gap-3 pt-1">
                 <button

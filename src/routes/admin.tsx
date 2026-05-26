@@ -13,6 +13,7 @@ export const Route = createFileRoute("/admin")({
 const adminSections = [
   { label: "Users", to: "/admin/users", description: "Student accounts, status, and profile details.", icon: UsersIcon },
   { label: "Try-outs", to: "/admin/tryouts", description: "Assessment setup, publishing, and question assignment.", icon: BookIcon },
+  { label: "Media", to: "/admin/media", description: "Reusable image and video links for Question review content.", icon: MediaIcon },
   { label: "Categories", to: "/admin/categories", description: "Two-level curriculum taxonomy for Questions and Materi links.", icon: TagsIcon },
   { label: "Polls", to: "/admin/polls", description: "Live classroom Poll Sessions, rounds, and history.", icon: SignalIcon },
   { label: "Reports", to: "/admin/reports", description: "Question reports from Students.", icon: FlagIcon },
@@ -97,6 +98,16 @@ function TagsIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="7.5" cy="7.5" r="1.5" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function MediaIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="m7 15 3-3 2.5 2.5L16 11l3 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="8.5" cy="8.5" r="1.3" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }

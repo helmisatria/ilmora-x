@@ -317,12 +317,14 @@ function ReviewComponent() {
               const isCorrect = q.isCorrect === true;
               const hasAnswer = q.selectedIndex !== null;
               const premiumLocked = lockedIds.has(q.snapshotId);
-              const videoUrl = getVideoEmbedUrl(q.videoUrl);
-              const canViewVideo = Boolean(videoUrl)
+              const videoSource = getVideoReviewSource(q.videoUrl);
+              const pictureUrl = q.pictureUrl?.trim() ?? "";
+              const canViewVideo = Boolean(videoSource)
                 && (
                   q.accessLevel === "free"
                   || (!premiumLocked && (hasPremiumMembership || hasFullTryoutAccess))
                 );
+              const canViewPicture = Boolean(pictureUrl) && !premiumLocked;
               const isVideoExpanded = expandedVideoIds.has(q.snapshotId);
 
               return (
@@ -449,6 +451,26 @@ function ReviewComponent() {
                       </div>
                     </div>
 
+                    {canViewPicture && (
+                      <div className="mt-4 rounded-[16px] border-2 border-sky-100 bg-sky-50/40 p-4">
+                        <div className="mb-3 flex items-center gap-2">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-sky-200 bg-sky-100 text-sky-700">
+                            <ImageIcon />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-sm text-stone-800">Gambar Pembahasan</div>
+                            <div className="text-xs font-semibold text-stone-400">Info tambahan untuk soal ini</div>
+                          </div>
+                        </div>
+                        <img
+                          src={pictureUrl}
+                          alt={`Gambar pembahasan soal ${idx + 1}`}
+                          className="max-h-[520px] w-full rounded-[14px] border-2 border-white bg-white object-contain"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+
                     {/* Video */}
                     {canViewVideo && (
                       <div className="mt-4 rounded-[16px] border-2 border-rose-100 bg-rose-50/40">
@@ -473,13 +495,23 @@ function ReviewComponent() {
                         {isVideoExpanded && (
                           <div className="px-4 pb-4">
                             <div className="relative h-0 overflow-hidden rounded-[16px] border-2 border-stone-200 bg-stone-900 pb-[56.25%]">
-                              <iframe
-                                src={videoUrl}
-                                title={`Pembahasan soal ${idx + 1}`}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="absolute left-0 top-0 h-full w-full"
-                              />
+                              {videoSource?.type === "file" ? (
+                                <video
+                                  src={videoSource.url}
+                                  title={`Pembahasan soal ${idx + 1}`}
+                                  controls
+                                  preload="metadata"
+                                  className="absolute left-0 top-0 h-full w-full bg-stone-950"
+                                />
+                              ) : (
+                                <iframe
+                                  src={videoSource?.url}
+                                  title={`Pembahasan soal ${idx + 1}`}
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                  className="absolute left-0 top-0 h-full w-full"
+                                />
+                              )}
                             </div>
                           </div>
                         )}
@@ -666,61 +698,105 @@ function ReviewBackLink({
   );
 }
 
-function getVideoEmbedUrl(value: string | null | undefined) {
+type ReviewVideoSource = {
+  type: "embed" | "file";
+  url: string;
+};
+
+function getVideoReviewSource(value: string | null | undefined): ReviewVideoSource | null {
   const rawUrl = value?.trim();
 
-  if (!rawUrl) return "";
+  if (!rawUrl) return null;
 
   try {
-    const url = new URL(rawUrl);
+    const url = parseReviewUrl(rawUrl);
     const hostname = url.hostname.replace(/^www\./, "");
 
     if (hostname === "youtu.be") {
-      const videoId = url.pathname.split("/").filter(Boolean)[0];
+      const videoId = getPathPart(url, 0);
 
-      if (!videoId) return rawUrl;
+      if (!videoId) return null;
 
-      return makeYouTubeEmbedUrl(videoId, url.searchParams.get("t") ?? url.searchParams.get("start"));
+      return getYouTubeVideoSource(videoId, url);
     }
 
     if (hostname === "youtube.com" || hostname === "m.youtube.com") {
       if (url.pathname.startsWith("/embed/")) {
-        const videoId = url.pathname.split("/").filter(Boolean)[1];
+        const videoId = getPathPart(url, 1);
 
-        if (!videoId) return "";
+        if (!videoId) return null;
 
-        return rawUrl;
+        return { type: "embed", url: rawUrl };
       }
 
       if (url.pathname.startsWith("/shorts/")) {
-        const videoId = url.pathname.split("/").filter(Boolean)[1];
+        const videoId = getPathPart(url, 1);
 
-        if (!videoId) return rawUrl;
+        if (!videoId) return null;
 
-        return makeYouTubeEmbedUrl(videoId, url.searchParams.get("t") ?? url.searchParams.get("start"));
+        return getYouTubeVideoSource(videoId, url);
       }
 
       const videoId = url.searchParams.get("v");
 
-      if (!videoId) return rawUrl;
+      if (!videoId) return null;
 
-      return makeYouTubeEmbedUrl(videoId, url.searchParams.get("t") ?? url.searchParams.get("start"));
+      return getYouTubeVideoSource(videoId, url);
     }
 
     if (hostname === "youtube-nocookie.com") {
-      if (!url.pathname.startsWith("/embed/")) return rawUrl;
+      if (!url.pathname.startsWith("/embed/")) return null;
 
-      const videoId = url.pathname.split("/").filter(Boolean)[1];
+      const videoId = getPathPart(url, 1);
 
-      if (!videoId) return "";
+      if (!videoId) return null;
 
-      return rawUrl;
+      return { type: "embed", url: rawUrl };
     }
 
-    return rawUrl;
+    if (isDirectVideoUrl(url)) {
+      return { type: "file", url: rawUrl };
+    }
+
+    return { type: "embed", url: rawUrl };
   } catch {
-    return rawUrl;
+    return null;
   }
+}
+
+function parseReviewUrl(rawUrl: string) {
+  if (rawUrl.startsWith("/")) {
+    return new URL(rawUrl, "http://ilmorax.local");
+  }
+
+  return new URL(rawUrl);
+}
+
+function getPathPart(url: URL, index: number) {
+  return url.pathname.split("/").filter(Boolean)[index] ?? "";
+}
+
+function getYouTubeVideoSource(videoId: string, url: URL): ReviewVideoSource {
+  return {
+    type: "embed",
+    url: makeYouTubeEmbedUrl(videoId, getYouTubeStartTime(url)),
+  };
+}
+
+function getYouTubeStartTime(url: URL) {
+  return url.searchParams.get("t") ?? url.searchParams.get("start");
+}
+
+function isDirectVideoUrl(url: URL) {
+  if (url.pathname.startsWith("/api/media/")) return true;
+
+  const extension = url.pathname.split(".").pop()?.toLowerCase();
+
+  return extension === "mp4"
+    || extension === "webm"
+    || extension === "ogg"
+    || extension === "mov"
+    || extension === "m4v";
 }
 
 function makeYouTubeEmbedUrl(videoId: string, startTime: string | null) {
@@ -809,6 +885,16 @@ function FileTextIcon() {
       <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
       <path d="M14 2v6h6" />
       <path d="M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  );
+}
+
+function ImageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
     </svg>
   );
 }

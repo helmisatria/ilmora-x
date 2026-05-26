@@ -12,6 +12,7 @@ import {
   attempts,
   categories,
   materi,
+  mediaAssets,
   questionReports,
   questions,
   studentBadges,
@@ -35,6 +36,7 @@ import {
 } from "./domain/tryout-content-management";
 import { conflict, notFound } from "./http/errors";
 import { parseInput } from "./http/validation";
+import { makeMediaAssetUrl } from "./media-url";
 
 const studentStatusSchema = z.object({
   studentUserId: z.string().min(1),
@@ -132,6 +134,7 @@ const questionInputSchema = z.object({
   correctOption: questionOptionSchema,
   explanation: z.string().trim().min(1),
   videoUrl: z.string().trim().optional(),
+  pictureUrl: z.string().trim().optional(),
   accessLevel: questionAccessLevelSchema,
 });
 
@@ -145,7 +148,13 @@ const questionIdSchema = z.object({
   questionId: z.string().trim().min(1),
 });
 
+const mediaListSchema = z.object({
+  page: z.number().int().min(1).optional().default(1),
+  type: z.enum(["all", "image", "video"]).optional().default("all"),
+});
+
 const contentStatusSchema = z.enum(["draft", "published", "unpublished"]);
+const mediaPageSize = 12;
 
 const updateTryoutQuestionSchema = questionInputSchema.extend({
   tryoutId: z.string().trim().min(1),
@@ -397,6 +406,7 @@ function sameAdminQuestionContent(
     correctOption: string;
     explanation: string;
     videoUrl: string | null;
+    pictureUrl: string | null;
     accessLevel: string;
     status: string;
   },
@@ -412,6 +422,7 @@ function sameAdminQuestionContent(
     correctOption: string;
     explanation: string;
     videoUrl: string | null;
+    pictureUrl: string | null;
     accessLevel: string;
     status: string;
   },
@@ -428,6 +439,7 @@ function sameAdminQuestionContent(
     existingQuestion.correctOption === nextQuestion.correctOption &&
     existingQuestion.explanation === nextQuestion.explanation &&
     existingQuestion.videoUrl === nextQuestion.videoUrl &&
+    existingQuestion.pictureUrl === nextQuestion.pictureUrl &&
     existingQuestion.accessLevel === nextQuestion.accessLevel &&
     existingQuestion.status === nextQuestion.status
   );
@@ -1152,6 +1164,7 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
         correctOption: questions.correctOption,
         explanation: questions.explanation,
         videoUrl: questions.videoUrl,
+        pictureUrl: questions.pictureUrl,
         accessLevel: questions.accessLevel,
         status: questions.status,
       })
@@ -1170,6 +1183,7 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
         ...row,
         optionE: row.optionE ?? "",
         videoUrl: row.videoUrl ?? "",
+        pictureUrl: row.pictureUrl ?? "",
         correctOption: row.correctOption as "A" | "B" | "C" | "D" | "E",
         accessLevel: row.accessLevel as "free" | "premium",
         status: row.status as "draft" | "published" | "unpublished",
@@ -1203,6 +1217,7 @@ export const updateTryoutQuestionAdmin = createServerFn({ method: "POST" })
       correctOption: data.correctOption,
       explanation: data.explanation,
       videoUrl: normalizeOptionalText(data.videoUrl),
+      pictureUrl: normalizeOptionalText(data.pictureUrl),
       accessLevel: data.accessLevel,
       status: data.status,
     };
@@ -1237,6 +1252,7 @@ export const updateTryoutQuestionAdmin = createServerFn({ method: "POST" })
           correctOption: questions.correctOption,
           explanation: questions.explanation,
           videoUrl: questions.videoUrl,
+          pictureUrl: questions.pictureUrl,
           accessLevel: questions.accessLevel,
           status: questions.status,
         })
@@ -1317,6 +1333,7 @@ export const updateTryoutQuestionAdmin = createServerFn({ method: "POST" })
         .update(attemptQuestionSnapshots)
         .set({
           videoUrl: nextQuestion.videoUrl,
+          pictureUrl: nextQuestion.pictureUrl,
           accessLevel: nextQuestion.accessLevel,
         })
         .where(and(
@@ -1385,6 +1402,56 @@ export const createTryoutFromWorkbookAdmin = createServerFn({ method: "POST" })
     return createTryoutFromWorkbook(data);
   });
 
+export const listMediaAdmin = createServerFn({ method: "GET" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(mediaListSchema, input))
+  .handler(async ({ data }) => {
+    const page = data.page;
+    const offset = (page - 1) * mediaPageSize;
+    const whereClause = data.type === "all"
+      ? undefined
+      : eq(mediaAssets.mediaType, data.type);
+
+    const [mediaRows, countRows] = await Promise.all([
+      db
+        .select({
+          id: mediaAssets.id,
+          mediaType: mediaAssets.mediaType,
+          fileName: mediaAssets.fileName,
+          url: mediaAssets.url,
+          contentType: mediaAssets.contentType,
+          sizeBytes: mediaAssets.sizeBytes,
+          createdAt: mediaAssets.createdAt,
+        })
+        .from(mediaAssets)
+        .where(whereClause)
+        .orderBy(desc(mediaAssets.createdAt))
+        .limit(mediaPageSize)
+        .offset(offset),
+      db
+        .select({ count: sql<number>`count(${mediaAssets.id})` })
+        .from(mediaAssets)
+        .where(whereClause),
+    ]);
+    const total = Number(countRows[0]?.count ?? 0);
+    const pageCount = Math.max(1, Math.ceil(total / mediaPageSize));
+
+    return {
+      media: mediaRows.map((row) => ({
+        ...row,
+        mediaType: row.mediaType as "image" | "video",
+        url: makeMediaAssetUrl(row.id),
+        createdAt: row.createdAt.toISOString(),
+      })),
+      pagination: {
+        page,
+        pageSize: mediaPageSize,
+        pageCount,
+        total,
+      },
+    };
+  });
+
 export const listQuestionsAdmin = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async () => {
   const rows = await db
     .select({
@@ -1402,6 +1469,7 @@ export const listQuestionsAdmin = createServerFn({ method: "GET" }).middleware([
       correctOption: questions.correctOption,
       explanation: questions.explanation,
       videoUrl: questions.videoUrl,
+      pictureUrl: questions.pictureUrl,
       accessLevel: questions.accessLevel,
       status: questions.status,
       updatedAt: questions.updatedAt,
@@ -1439,6 +1507,7 @@ export const createQuestionAdmin = createServerFn({ method: "POST" })
       correctOption: data.correctOption,
       explanation: data.explanation,
       videoUrl: normalizeOptionalText(data.videoUrl),
+      pictureUrl: normalizeOptionalText(data.pictureUrl),
       accessLevel: data.accessLevel,
       status: "draft",
     });
@@ -1477,6 +1546,7 @@ export const updateQuestionAdmin = createServerFn({ method: "POST" })
         correctOption: data.correctOption,
         explanation: data.explanation,
         videoUrl: normalizeOptionalText(data.videoUrl),
+        pictureUrl: normalizeOptionalText(data.pictureUrl),
         accessLevel: data.accessLevel,
         updatedAt: new Date(),
       })

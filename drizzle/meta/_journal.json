@@ -64,6 +64,20 @@
       "when": 1779037200000,
       "tag": "0008_tryout_icon",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779795600000,
+      "tag": "0009_question_picture_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779799200000,
+      "tag": "0010_media_assets",
+      "breakpoints": true
     }
   ]
 }

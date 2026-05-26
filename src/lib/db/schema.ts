@@ -167,6 +167,7 @@ export const questions = pgTable("questions", {
   correctOption: text("correct_option").notNull(),
   explanation: text("explanation").notNull(),
   videoUrl: text("video_url"),
+  pictureUrl: text("picture_url"),
   accessLevel: text("access_level").notNull().default("free"),
   status: text("status").notNull().default("draft"),
   ...timestamps,
@@ -229,6 +230,7 @@ export const attemptQuestionSnapshots = pgTable("attempt_question_snapshots", {
   correctOption: text("correct_option").notNull(),
   explanation: text("explanation").notNull(),
   videoUrl: text("video_url"),
+  pictureUrl: text("picture_url"),
   accessLevel: text("access_level").notNull(),
 }, (table) => [
   unique("attempt_snapshots_attempt_question_unique").on(table.attemptId, table.questionId),
@@ -272,6 +274,22 @@ export const questionReports = pgTable("question_reports", {
 }, (table) => [
   check("question_reports_reason_check", sql`${table.reason} in ('answer_key_wrong', 'explanation_wrong', 'question_unclear', 'typo', 'other')`),
   check("question_reports_status_check", sql`${table.status} in ('open', 'reviewed', 'dismissed', 'resolved')`),
+]);
+
+export const mediaAssets = pgTable("media_assets", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  mediaType: text("media_type").notNull(),
+  fileName: text("file_name").notNull(),
+  storageKey: text("storage_key").notNull().unique(),
+  url: text("url").notNull(),
+  contentType: text("content_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  uploadedByUserId: text("uploaded_by_user_id").references(() => user.id, { onDelete: "set null" }),
+  ...timestamps,
+}, (table) => [
+  index("media_assets_type_created_idx").on(table.mediaType, table.createdAt),
+  check("media_assets_type_check", sql`${table.mediaType} in ('image', 'video')`),
+  check("media_assets_size_check", sql`${table.sizeBytes} >= 0`),
 ]);
 
 export const materi = pgTable("materi", {
