@@ -685,6 +685,10 @@ function getVideoEmbedUrl(value: string | null | undefined) {
 
     if (hostname === "youtube.com" || hostname === "m.youtube.com") {
       if (url.pathname.startsWith("/embed/")) {
+        const videoId = url.pathname.split("/").filter(Boolean)[1];
+
+        if (!videoId) return "";
+
         return rawUrl;
       }
 
@@ -701,6 +705,16 @@ function getVideoEmbedUrl(value: string | null | undefined) {
       if (!videoId) return rawUrl;
 
       return makeYouTubeEmbedUrl(videoId, url.searchParams.get("t") ?? url.searchParams.get("start"));
+    }
+
+    if (hostname === "youtube-nocookie.com") {
+      if (!url.pathname.startsWith("/embed/")) return rawUrl;
+
+      const videoId = url.pathname.split("/").filter(Boolean)[1];
+
+      if (!videoId) return "";
+
+      return rawUrl;
     }
 
     return rawUrl;

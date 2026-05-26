@@ -121,6 +121,7 @@ function AdminTryoutsPage() {
     setErrorMessage("");
 
     try {
+      const latestCategories = await listCategoryOptionsAdmin();
       const XLSX = await import("xlsx");
       const workbook = XLSX.utils.book_new();
 
@@ -133,6 +134,11 @@ function AdminTryoutsPage() {
         workbook,
         tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.questionSheetHeaders, tryoutWorkbook.makeSampleQuestionRows()),
         "questions",
+      );
+      XLSX.utils.book_append_sheet(
+        workbook,
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.guidelineSheetHeaders, tryoutWorkbook.makeGuidelineRows(latestCategories)),
+        "guideline",
       );
 
       tryoutWorkbook.saveWorkbook(XLSX, workbook, `ilmorax-tryout-sample-${tryoutWorkbook.formatTimestamp(new Date())}.xlsx`);
@@ -193,7 +199,10 @@ function AdminTryoutsPage() {
     setErrorMessage("");
 
     try {
-      const workbookData = await getTryoutWorkbookAdmin({ data: { tryoutId } });
+      const [workbookData, latestCategories] = await Promise.all([
+        getTryoutWorkbookAdmin({ data: { tryoutId } }),
+        listCategoryOptionsAdmin(),
+      ]);
       const XLSX = await import("xlsx");
       const workbook = XLSX.utils.book_new();
       const tryoutRows = [tryoutWorkbook.toTryoutSheetRow(workbookData.tryout)];
@@ -208,6 +217,11 @@ function AdminTryoutsPage() {
         workbook,
         tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.questionSheetHeaders, questionRows),
         "questions",
+      );
+      XLSX.utils.book_append_sheet(
+        workbook,
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.guidelineSheetHeaders, tryoutWorkbook.makeGuidelineRows(latestCategories)),
+        "guideline",
       );
 
       tryoutWorkbook.saveWorkbook(XLSX, workbook, `${workbookData.tryout.slug || "tryout"}-workbook-${tryoutWorkbook.formatTimestamp(new Date())}.xlsx`);

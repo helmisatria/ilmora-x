@@ -56,12 +56,21 @@ A one-time Student achievement with an unlock requirement and optional EXP rewar
 An admin-created discount code redeemable at checkout during a validity window (`start_time`, `end_time`). Each **Student** may redeem a given Coupon at most once. Admin may additionally set a `max_total_uses` cap (≥1) on the Coupon itself — setting it to `1` produces a first-come-first-served single-claim code; leaving it unset allows unlimited redemptions across students within the validity window. A Coupon has an explicit product scope so it cannot accidentally apply to the wrong paid product type.
 _Avoid_: Promo, voucher, discount code
 
+**Dashboard Announcement**:
+An admin-created single-content message shown to Students as a dismissible dashboard modal.
+_Avoid_: Banner, notice, popup
+
 ## Rules (payment)
 
 - **Coupon redemption is per-Student.** Unique constraint `(coupon_id, student_id)` on the redemption ledger. A Student cannot redeem the same Coupon twice even if the global `max_total_uses` hasn't been reached.
 - **Referral discounts are out of scope for now.** Students may still have referral codes in profile for future use, but checkout does not validate or advertise referral discounts.
 - **Checkout accepts at most one Coupon.** Single input field labeled "Kode Kupon". Stacking is explicitly disallowed.
 - **Coupon scope is product-aware.** Admin chooses whether a Coupon applies to Premium Membership, Lifetime Try-out Purchase, Materi, or all paid products.
+
+## Rules (Dashboard Announcement)
+
+- **Dashboard Announcement dismissal is per-Student and per-announcement.** Dismissing one Dashboard Announcement must not suppress future Dashboard Announcements created by Admin.
+- **Only one Dashboard Announcement may be active at a time in v1.** The dashboard shows a single active Dashboard Announcement modal, with no carousel or nested announcement slides.
 
 ## Language (Live Poll)
 

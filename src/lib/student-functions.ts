@@ -679,7 +679,7 @@ async function getAttemptSnapshotRows(attemptId: string) {
     correctOption: row.correctOption as "A" | "B" | "C" | "D" | "E",
     correctIndex: toOptionIndex(row.correctOption) ?? 0,
     explanation: row.explanation,
-    videoUrl: row.currentVideoUrl ?? row.videoUrl,
+    videoUrl: row.currentVideoUrl,
     accessLevel: row.currentAccessLevel as "free" | "premium",
     selectedOption: row.selectedOption as "A" | "B" | "C" | "D" | "E" | null,
     selectedIndex: toOptionIndex(row.selectedOption),

@@ -264,6 +264,7 @@ function AdminTryoutDetailPage() {
     setErrorMessage("");
 
     try {
+      const latestCategories = await listCategoryOptionsAdmin();
       const XLSX = await import("xlsx");
       const wb = XLSX.utils.book_new();
       const tryoutRows = [tryoutWorkbook.toTryoutSheetRow(workbook.tryout)];
@@ -278,6 +279,11 @@ function AdminTryoutDetailPage() {
         wb,
         tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.questionSheetHeaders, questionRows),
         "questions",
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        tryoutWorkbook.makeSheet(XLSX, tryoutWorkbook.guidelineSheetHeaders, tryoutWorkbook.makeGuidelineRows(latestCategories)),
+        "guideline",
       );
 
       const slug = workbook.tryout.slug || "tryout";

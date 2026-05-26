@@ -196,15 +196,20 @@ function CategoryCard({
         </div>
       </div>
 
-      <div className={`relative ${!isPremium ? "select-none" : ""}`}>
-        <div className="divide-y divide-stone-100 border-t border-stone-100">
-          {category.subCategories.map((subcategory) => (
-            <SubcategoryRow
-              key={subcategory.name}
-              subcategory={subcategory}
-              isBlurred={!isPremium}
-            />
-          ))}
+      <div className={`relative border-t border-stone-100 bg-stone-50/70 px-3 py-3 sm:px-4 ${!isPremium ? "select-none" : ""}`}>
+        <div className="grid gap-2.5">
+          {category.subCategories.map((subcategory, index) => {
+            const isLast = index === category.subCategories.length - 1;
+
+            return (
+              <SubcategoryRow
+                key={subcategory.name}
+                subcategory={subcategory}
+                isBlurred={!isPremium}
+                isLast={isLast}
+              />
+            );
+          })}
         </div>
 
         {!isPremium && (
@@ -222,17 +227,22 @@ function CategoryCard({
 function SubcategoryRow({
   subcategory,
   isBlurred,
+  isLast,
 }: {
   subcategory: { name: string; total: number; correct: number };
   isBlurred: boolean;
+  isLast: boolean;
 }) {
   const pct = subcategory.total > 0 ? Math.round((subcategory.correct / subcategory.total) * 100) : 0;
+  const branchClassName = isLast ? "h-1/2" : "h-full";
 
   return (
-    <div className={isBlurred ? "blur-[3px] opacity-70" : ""}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5">
+    <div className={`relative pl-5 ${isBlurred ? "blur-[3px] opacity-70" : ""}`}>
+      <span className={`absolute left-1.5 top-0 w-px rounded-full bg-stone-200 ${branchClassName}`} aria-hidden="true" />
+      <span className="absolute left-1.5 top-1/2 h-px w-3 -translate-y-1/2 bg-stone-200" aria-hidden="true" />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-[var(--radius-md)] border border-stone-100 bg-white/90 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-stone-700">{subcategory.name}</div>
+          <div className="truncate text-sm font-extrabold text-stone-700">{subcategory.name}</div>
           <div className="mt-0.5 text-xs font-semibold text-stone-400">
             {subcategory.correct}/{subcategory.total} soal benar
           </div>
@@ -262,6 +272,7 @@ function LockedAttempts() {
 
 function AttemptRow({ attempt }: { attempt: EvaluationAttempt }) {
   const accent = attempt.score >= 70 ? "#22c55e" : "#fb7185";
+  const answerSummary = `${attempt.correctCount}/${attempt.totalQuestions} benar`;
 
   return (
     <Link
@@ -283,9 +294,10 @@ function AttemptRow({ attempt }: { attempt: EvaluationAttempt }) {
       </div>
       <div className="min-w-0 flex-1">
         <b className="block truncate text-[15px] font-bold text-stone-800">{attempt.tryoutTitle}</b>
-        <div className="mt-0.5 flex gap-3 text-xs font-medium text-stone-400">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-stone-400">
           <span>Try-out ke-{attempt.attemptNumber}</span>
           {attempt.submittedAt && <span>{formatDate(attempt.submittedAt)}</span>}
+          <span className="font-bold text-stone-500">{answerSummary}</span>
         </div>
       </div>
       <div className="shrink-0 text-right">

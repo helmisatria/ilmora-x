@@ -124,6 +124,14 @@ export const questionSheetHeaders = [
   "status",
 ] as const;
 
+export const guidelineSheetHeaders = [
+  "sheet",
+  "column",
+  "required",
+  "possible_values",
+  "notes",
+] as const;
+
 const requiredTryoutFields = [
   "title",
   "description",
@@ -272,6 +280,14 @@ export function makeSampleQuestionRows() {
   ];
 }
 
+export function makeGuidelineRows(categories: CategoryOption[]) {
+  return [
+    ...makeTryoutGuidelineRows(categories),
+    ...makeQuestionGuidelineRows(categories),
+    ...makeCategoryGuidelineRows(categories),
+  ];
+}
+
 export function makeSheet(
   XLSX: typeof import("xlsx"),
   headers: readonly string[],
@@ -288,6 +304,10 @@ export function makeSheet(
     skipHeader: true,
     origin: "A2",
   });
+
+  sheet["!cols"] = headers.map((header) => ({
+    wch: getColumnWidth(header, rows),
+  }));
 
   return sheet;
 }
@@ -338,6 +358,118 @@ export function toQuestionSheetRow(question: TryoutWorkbookQuestion & { question
     access_level: question.accessLevel,
     status: question.status,
   };
+}
+
+function makeTryoutGuidelineRows(categories: CategoryOption[]) {
+  return [
+    makeGuidelineRow("tryout", "title", "Yes", "Any text", "Name shown to students and admins."),
+    makeGuidelineRow("tryout", "description", "Yes", "Any text", "Short student-facing description."),
+    makeGuidelineRow("tryout", "category_id", "Use category_id or category_name", getCategoryIdsText(categories), "Use an existing Category ID when available."),
+    makeGuidelineRow("tryout", "category_name", "Use category_id or category_name", getCategoryNamesText(categories), "Use an existing Category name or type a new one to create it during import."),
+    makeGuidelineRow("tryout", "duration_minutes", "Yes", "1-300", "Whole number of minutes."),
+    makeGuidelineRow("tryout", "access_level", "Yes", "free, premium", "Controls who can access this Try-out."),
+    makeGuidelineRow("tryout", "status", "Yes", "draft, published, unpublished", "Use draft while preparing content."),
+  ];
+}
+
+function makeQuestionGuidelineRows(categories: CategoryOption[]) {
+  return [
+    makeGuidelineRow("questions", "question_id", "No", "Existing Question ID", "Leave blank to create a new Question. Use the exported ID to update an existing Question."),
+    makeGuidelineRow("questions", "sort_order", "Yes", "1-1000", "Question order inside the Try-out. Must be unique."),
+    makeGuidelineRow("questions", "category_id", "Use category_id or category_name", getCategoryIdsText(categories), "Use an existing Category ID when available."),
+    makeGuidelineRow("questions", "category_name", "Use category_id or category_name", getCategoryNamesText(categories), "Use an existing Category name or type a new one to create it during import."),
+    makeGuidelineRow("questions", "sub_category_id", "Use sub_category_id or sub_category_name", getSubCategoryIdsText(categories), "Must belong to the selected category_id."),
+    makeGuidelineRow("questions", "sub_category_name", "Use sub_category_id or sub_category_name", getSubCategoryNamesText(categories), "Use an existing Sub-category name or type a new one to create it during import."),
+    makeGuidelineRow("questions", "question_text", "Yes", "Any text", "Question prompt shown to students."),
+    makeGuidelineRow("questions", "option_a", "Yes", "Any text", "Answer option A."),
+    makeGuidelineRow("questions", "option_b", "Yes", "Any text", "Answer option B."),
+    makeGuidelineRow("questions", "option_c", "Yes", "Any text", "Answer option C."),
+    makeGuidelineRow("questions", "option_d", "Yes", "Any text", "Answer option D."),
+    makeGuidelineRow("questions", "option_e", "Only when correct_option is E", "Any text or blank", "Leave blank when this question only has A-D options."),
+    makeGuidelineRow("questions", "correct_option", "Yes", "A, B, C, D, E", "Must match one filled option column."),
+    makeGuidelineRow("questions", "explanation", "Yes", "Any text", "Shown in the review or discussion flow."),
+    makeGuidelineRow("questions", "video_url", "No", "Valid URL or blank", "Optional supporting video URL."),
+    makeGuidelineRow("questions", "access_level", "Yes", "free, premium", "Controls who can access this Question."),
+    makeGuidelineRow("questions", "status", "Yes", "draft, published, unpublished", "Published Try-outs need published Questions."),
+  ];
+}
+
+function makeCategoryGuidelineRows(categories: CategoryOption[]) {
+  if (categories.length === 0) {
+    return [
+      makeGuidelineRow("reference", "category_id", "Reference", "No existing categories loaded", "Admins can use category_name to create a Category during import."),
+    ];
+  }
+
+  return categories.flatMap((category) => {
+    const categoryRow = makeGuidelineRow("reference", "category_id", "Reference", category.id, category.name);
+    const subCategoryRows = (category.subCategories ?? []).map((subCategory) => (
+      makeGuidelineRow("reference", "sub_category_id", "Reference", subCategory.id, `${subCategory.name} under category_id ${category.id}`)
+    ));
+
+    return [categoryRow, ...subCategoryRows];
+  });
+}
+
+function makeGuidelineRow(
+  sheet: string,
+  column: string,
+  required: string,
+  possibleValues: string,
+  notes: string,
+) {
+  return {
+    sheet,
+    column,
+    required,
+    possible_values: possibleValues,
+    notes,
+  };
+}
+
+function getCategoryIdsText(categories: CategoryOption[]) {
+  if (categories.length === 0) return "Use category_name";
+
+  return categories.map((category) => category.id).join(", ");
+}
+
+function getCategoryNamesText(categories: CategoryOption[]) {
+  if (categories.length === 0) return "Any new Category name";
+
+  return `${categories.map((category) => category.name).join(", ")} or a new Category name`;
+}
+
+function getSubCategoryIdsText(categories: CategoryOption[]) {
+  const subCategoryIds = categories.flatMap((category) => (
+    (category.subCategories ?? []).map((subCategory) => subCategory.id)
+  ));
+
+  if (subCategoryIds.length === 0) return "Use sub_category_name";
+
+  return subCategoryIds.join(", ");
+}
+
+function getSubCategoryNamesText(categories: CategoryOption[]) {
+  const subCategoryNames = categories.flatMap((category) => (
+    (category.subCategories ?? []).map((subCategory) => subCategory.name)
+  ));
+
+  if (subCategoryNames.length === 0) return "Any new Sub-category name";
+
+  return `${subCategoryNames.join(", ")} or a new Sub-category name`;
+}
+
+function getColumnWidth(
+  header: string,
+  rows: Record<string, string | number | null | undefined>[],
+) {
+  const longestValueLength = rows.reduce((longestLength, row) => {
+    const valueLength = String(row[header] ?? "").length;
+
+    return Math.max(longestLength, valueLength);
+  }, header.length);
+
+  return Math.min(Math.max(longestValueLength + 2, 12), 72);
 }
 
 export function formatTimestamp(date: Date) {
