@@ -23,15 +23,17 @@ import {
   tryouts,
   user,
 } from "./db/schema";
-import { badgeCodeToId, calculateCurrentStreak } from "./domain/engagement-surface";
 import { requireAdmin, requireSuperAdmin } from "./domain/admin";
 import { normalizeTryoutAccessLevel } from "./domain/premium-access";
+import { getStudentEvaluation } from "./domain/student-evaluation";
 import {
   createTryoutContent,
   createTryoutFromWorkbook,
   importTryoutWorkbook,
   publishTryoutContent,
+  removeTryoutQuestionContent,
   unpublishTryoutContent,
+  updateTryoutQuestionContent,
   updateTryoutContent,
 } from "./domain/tryout-content-management";
 import { conflict, notFound } from "./http/errors";
@@ -393,58 +395,6 @@ async function validateQuestionTaxonomy(categoryId: string, subCategoryId: strin
   await ensureSubCategoryBelongsToCategory(categoryId, subCategoryId);
 }
 
-function sameAdminQuestionContent(
-  existingQuestion: {
-    categoryId: string;
-    subCategoryId: string;
-    questionText: string;
-    optionA: string;
-    optionB: string;
-    optionC: string;
-    optionD: string;
-    optionE: string | null;
-    correctOption: string;
-    explanation: string;
-    videoUrl: string | null;
-    pictureUrl: string | null;
-    accessLevel: string;
-    status: string;
-  },
-  nextQuestion: {
-    categoryId: string;
-    subCategoryId: string;
-    questionText: string;
-    optionA: string;
-    optionB: string;
-    optionC: string;
-    optionD: string;
-    optionE: string | null;
-    correctOption: string;
-    explanation: string;
-    videoUrl: string | null;
-    pictureUrl: string | null;
-    accessLevel: string;
-    status: string;
-  },
-) {
-  return (
-    existingQuestion.categoryId === nextQuestion.categoryId &&
-    existingQuestion.subCategoryId === nextQuestion.subCategoryId &&
-    existingQuestion.questionText === nextQuestion.questionText &&
-    existingQuestion.optionA === nextQuestion.optionA &&
-    existingQuestion.optionB === nextQuestion.optionB &&
-    existingQuestion.optionC === nextQuestion.optionC &&
-    existingQuestion.optionD === nextQuestion.optionD &&
-    existingQuestion.optionE === nextQuestion.optionE &&
-    existingQuestion.correctOption === nextQuestion.correctOption &&
-    existingQuestion.explanation === nextQuestion.explanation &&
-    existingQuestion.videoUrl === nextQuestion.videoUrl &&
-    existingQuestion.pictureUrl === nextQuestion.pictureUrl &&
-    existingQuestion.accessLevel === nextQuestion.accessLevel &&
-    existingQuestion.status === nextQuestion.status
-  );
-}
-
 export const listStudentsAdmin = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async ({ context }) => {
   const rows = await db
     .select({
@@ -517,97 +467,7 @@ export const getStudentEvaluationAdmin = createServerFn({ method: "GET" })
       throw notFound("Student was not found.");
     }
 
-    const submittedAttempts = await db
-      .select({
-        id: attempts.id,
-        tryoutTitle: tryouts.title,
-        attemptNumber: attempts.attemptNumber,
-        status: attempts.status,
-        startedAt: attempts.startedAt,
-        submittedAt: attempts.submittedAt,
-        score: attempts.score,
-        correctCount: attempts.correctCount,
-        wrongCount: attempts.wrongCount,
-        totalQuestions: attempts.totalQuestions,
-        xpEarned: attempts.xpEarned,
-      })
-      .from(attempts)
-      .innerJoin(tryouts, eq(tryouts.id, attempts.tryoutId))
-      .where(and(
-        eq(attempts.studentUserId, data.studentUserId),
-        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-      ))
-      .orderBy(desc(attempts.submittedAt));
-
-    const categoryRows = await db
-      .select({
-        categoryId: categories.id,
-        categoryName: categories.name,
-        categoryColor: categories.color,
-        total: sql<number>`count(${attemptQuestionSnapshots.id})`,
-        correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
-      })
-      .from(attemptQuestionSnapshots)
-      .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
-      .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-      .leftJoin(
-        attemptAnswers,
-        and(
-          eq(attemptAnswers.attemptId, attempts.id),
-          eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
-        ),
-      )
-      .where(and(
-        eq(attempts.studentUserId, data.studentUserId),
-        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-      ))
-      .groupBy(categories.id);
-
-    const subCategoryRows = await db
-      .select({
-        categoryId: categories.id,
-        subCategoryId: subCategories.id,
-        subCategoryName: subCategories.name,
-        total: sql<number>`count(${attemptQuestionSnapshots.id})`,
-        correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
-      })
-      .from(attemptQuestionSnapshots)
-      .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
-      .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-      .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
-      .leftJoin(
-        attemptAnswers,
-        and(
-          eq(attemptAnswers.attemptId, attempts.id),
-          eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
-        ),
-      )
-      .where(and(
-        eq(attempts.studentUserId, data.studentUserId),
-        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-      ))
-      .groupBy(categories.id, subCategories.id);
-
-    const [badgeRewardRow] = await db
-      .select({
-        xp: sql<number>`coalesce(sum(${studentExpLedger.xpAmount}), 0)`,
-      })
-      .from(studentExpLedger)
-      .where(and(
-        eq(studentExpLedger.studentUserId, data.studentUserId),
-        eq(studentExpLedger.sourceType, "badge_reward"),
-      ));
-
-    const badgeRows = await db
-      .select({ badgeCode: studentBadges.badgeCode })
-      .from(studentBadges)
-      .where(eq(studentBadges.studentUserId, data.studentUserId));
-
-    const totalQuestions = submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0);
-    const totalCorrect = submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0);
-    const attemptXp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
-    const badgeRewardXp = Number(badgeRewardRow?.xp ?? 0);
-    const xp = attemptXp + badgeRewardXp;
+    const evaluation = await getStudentEvaluation(data.studentUserId);
 
     return {
       student: {
@@ -625,47 +485,22 @@ export const getStudentEvaluationAdmin = createServerFn({ method: "GET" })
         profileCompleted: Boolean(student.profileCompletedAt),
       },
       summary: {
-        xp,
-        attemptXp,
-        badgeRewardXp,
-        streak: calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt)),
-        totalAttempts: submittedAttempts.length,
-        totalQuestions,
-        totalCorrect,
-        totalWrong: Math.max(totalQuestions - totalCorrect, 0),
-        accuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
-        awardedBadgeIds: badgeRows
-          .map((badge) => badgeCodeToId(badge.badgeCode))
-          .filter((badgeId): badgeId is number => badgeId !== null),
+        ...evaluation.summary,
       },
-      attempts: submittedAttempts.map((attempt) => ({
+      attempts: evaluation.attempts.map((attempt) => ({
         id: attempt.id,
         tryoutTitle: attempt.tryoutTitle,
         attemptNumber: attempt.attemptNumber,
-        status: attempt.status as "submitted" | "auto_submitted",
+        status: attempt.status,
         startedAt: attempt.startedAt.toISOString(),
         submittedAt: attempt.submittedAt?.toISOString() ?? null,
-        score: attempt.score ?? 0,
-        correctCount: attempt.correctCount ?? 0,
-        wrongCount: attempt.wrongCount ?? 0,
+        score: attempt.score,
+        correctCount: attempt.correctCount,
+        wrongCount: attempt.wrongCount,
         totalQuestions: attempt.totalQuestions,
         xpEarned: attempt.xpEarned,
       })),
-      categories: categoryRows.map((row) => ({
-        id: row.categoryId,
-        name: row.categoryName,
-        color: row.categoryColor ?? "#205072",
-        total: Number(row.total ?? 0),
-        correct: Number(row.correct ?? 0),
-        subCategories: subCategoryRows
-          .filter((subCategory) => subCategory.categoryId === row.categoryId)
-          .map((subCategory) => ({
-            id: subCategory.subCategoryId,
-            name: subCategory.subCategoryName,
-            total: Number(subCategory.total ?? 0),
-            correct: Number(subCategory.correct ?? 0),
-          })),
-      })),
+      categories: evaluation.categories,
     };
   });
 
@@ -1202,197 +1037,14 @@ export const updateTryoutQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(updateTryoutQuestionSchema, input))
   .handler(async ({ data }) => {
-    validateQuestionOptionE(data);
-    await validateQuestionTaxonomy(data.categoryId, data.subCategoryId);
-
-    const nextQuestion = {
-      categoryId: data.categoryId,
-      subCategoryId: data.subCategoryId,
-      questionText: data.questionText,
-      optionA: data.optionA,
-      optionB: data.optionB,
-      optionC: data.optionC,
-      optionD: data.optionD,
-      optionE: normalizeOptionalText(data.optionE),
-      correctOption: data.correctOption,
-      explanation: data.explanation,
-      videoUrl: normalizeOptionalText(data.videoUrl),
-      pictureUrl: normalizeOptionalText(data.pictureUrl),
-      accessLevel: data.accessLevel,
-      status: data.status,
-    };
-
-    await db.transaction(async (tx) => {
-      const [assignment] = await tx
-        .select({
-          id: tryoutQuestions.id,
-        })
-        .from(tryoutQuestions)
-        .where(and(
-          eq(tryoutQuestions.tryoutId, data.tryoutId),
-          eq(tryoutQuestions.questionId, data.questionId),
-        ))
-        .limit(1);
-
-      if (!assignment) {
-        throw notFound("Question was not assigned to this Try-out.");
-      }
-
-      const [existingQuestion] = await tx
-        .select({
-          id: questions.id,
-          categoryId: questions.categoryId,
-          subCategoryId: questions.subCategoryId,
-          questionText: questions.questionText,
-          optionA: questions.optionA,
-          optionB: questions.optionB,
-          optionC: questions.optionC,
-          optionD: questions.optionD,
-          optionE: questions.optionE,
-          correctOption: questions.correctOption,
-          explanation: questions.explanation,
-          videoUrl: questions.videoUrl,
-          pictureUrl: questions.pictureUrl,
-          accessLevel: questions.accessLevel,
-          status: questions.status,
-        })
-        .from(questions)
-        .where(eq(questions.id, data.questionId))
-        .limit(1);
-
-      if (!existingQuestion) {
-        throw notFound("Question was not found.");
-      }
-
-      const [tryout] = await tx
-        .select({ status: tryouts.status })
-        .from(tryouts)
-        .where(eq(tryouts.id, data.tryoutId))
-        .limit(1);
-
-      if (!tryout) {
-        throw notFound("Try-out was not found.");
-      }
-
-      if (tryout.status === "published" && nextQuestion.status !== "published") {
-        const [row] = await tx
-          .select({ count: sql<number>`count(${questions.id})` })
-          .from(tryoutQuestions)
-          .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
-          .where(and(
-            eq(tryoutQuestions.tryoutId, data.tryoutId),
-            eq(questions.status, "published"),
-            sql`${tryoutQuestions.questionId} <> ${data.questionId}`,
-          ));
-
-        if (Number(row?.count ?? 0) === 0) {
-          throw conflict("A published Try-out needs at least one published Question.");
-        }
-      }
-
-      let questionId = data.questionId;
-      const contentChanged = !sameAdminQuestionContent(existingQuestion, nextQuestion);
-
-      if (contentChanged) {
-        const otherAssignments = await tx
-          .select({ tryoutId: tryoutQuestions.tryoutId })
-          .from(tryoutQuestions)
-          .where(and(
-            eq(tryoutQuestions.questionId, data.questionId),
-            sql`${tryoutQuestions.tryoutId} <> ${data.tryoutId}`,
-          ))
-          .limit(1);
-
-        if (otherAssignments.length > 0) {
-          const [createdQuestion] = await tx
-            .insert(questions)
-            .values(nextQuestion)
-            .returning({ id: questions.id });
-
-          questionId = createdQuestion.id;
-        } else {
-          await tx
-            .update(questions)
-            .set({
-              ...nextQuestion,
-              updatedAt: new Date(),
-            })
-            .where(eq(questions.id, data.questionId));
-        }
-      }
-
-      await tx
-        .update(tryoutQuestions)
-        .set({
-          questionId,
-          sortOrder: data.sortOrder,
-        })
-        .where(eq(tryoutQuestions.id, assignment.id));
-
-      await tx
-        .update(attemptQuestionSnapshots)
-        .set({
-          videoUrl: nextQuestion.videoUrl,
-          pictureUrl: nextQuestion.pictureUrl,
-          accessLevel: nextQuestion.accessLevel,
-        })
-        .where(and(
-          eq(attemptQuestionSnapshots.questionId, data.questionId),
-          sql`${attemptQuestionSnapshots.attemptId} in (
-            select ${attempts.id}
-            from ${attempts}
-            where ${attempts.tryoutId} = ${data.tryoutId}
-          )`,
-        ));
-    });
-
-    return { ok: true };
+    return updateTryoutQuestionContent(data);
   });
 
 export const removeTryoutQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(removeTryoutQuestionSchema, input))
   .handler(async ({ data }) => {
-    const [assignment] = await db
-      .select({
-        id: tryoutQuestions.id,
-        questionStatus: questions.status,
-        tryoutStatus: tryouts.status,
-      })
-      .from(tryoutQuestions)
-      .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
-      .innerJoin(tryouts, eq(tryouts.id, tryoutQuestions.tryoutId))
-      .where(and(
-        eq(tryoutQuestions.tryoutId, data.tryoutId),
-        eq(tryoutQuestions.questionId, data.questionId),
-      ))
-      .limit(1);
-
-    if (!assignment) {
-      throw notFound("Question was not assigned to this Try-out.");
-    }
-
-    if (assignment.tryoutStatus === "published" && assignment.questionStatus === "published") {
-      const [row] = await db
-        .select({ count: sql<number>`count(${questions.id})` })
-        .from(tryoutQuestions)
-        .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
-        .where(and(
-          eq(tryoutQuestions.tryoutId, data.tryoutId),
-          eq(questions.status, "published"),
-          sql`${tryoutQuestions.questionId} <> ${data.questionId}`,
-        ));
-
-      if (Number(row?.count ?? 0) === 0) {
-        throw conflict("A published Try-out needs at least one published Question.");
-      }
-    }
-
-    await db
-      .delete(tryoutQuestions)
-      .where(eq(tryoutQuestions.id, assignment.id));
-
-    return { ok: true };
+    return removeTryoutQuestionContent(data);
   });
 
 export const createTryoutFromWorkbookAdmin = createServerFn({ method: "POST" })

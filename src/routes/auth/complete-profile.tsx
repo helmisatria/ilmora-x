@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { institutions } from "../../data/institutions";
 import { completeProfile, getCurrentViewer, getPostLoginRedirectForViewer } from "../../lib/auth-functions";
 import { analyticsSearchSchema, productAnalyticsEvents } from "../../lib/product-analytics";
@@ -128,16 +128,10 @@ function CompleteProfileComponent() {
               <p className="text-stone-400 font-medium mb-8">Pilih institusimu untuk personalisasi pengalaman</p>
 
               <label className="block mb-2 font-bold text-sm text-stone-600">Institusi *</label>
-              <select
+              <InstitutionAutocomplete
                 value={institution}
-                onChange={(e) => setInstitution(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-[var(--radius-md)] border-2 border-stone-200 font-semibold text-base bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
-              >
-                <option value="">Pilih institusi...</option>
-                {institutions.map((inst) => (
-                  <option key={inst} value={inst}>{inst}</option>
-                ))}
-              </select>
+                onChange={setInstitution}
+              />
 
               <label className="block mb-2 font-bold text-sm text-stone-600 mt-5">Nomor Telepon (opsional)</label>
               <input
@@ -174,4 +168,131 @@ function CompleteProfileComponent() {
       </div>
     </div>
   );
+}
+
+function InstitutionAutocomplete({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const matches = useMemo(() => getInstitutionMatches(value), [value]);
+  const hasMatches = matches.length > 0;
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [value]);
+
+  const closeSuggestions = () => {
+    setIsOpen(false);
+    setActiveIndex(0);
+  };
+
+  const selectInstitution = (institution: string) => {
+    onChange(institution);
+    closeSuggestions();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      closeSuggestions();
+      return;
+    }
+
+    if (!hasMatches) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setIsOpen(true);
+      setActiveIndex((index) => Math.min(index + 1, matches.length - 1));
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setIsOpen(true);
+      setActiveIndex((index) => Math.max(index - 1, 0));
+      return;
+    }
+
+    if (event.key === "Enter" && isOpen) {
+      event.preventDefault();
+      selectInstitution(matches[activeIndex]);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        onBlur={closeSuggestions}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        onKeyDown={handleKeyDown}
+        placeholder="Ketik atau pilih institusi"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="institution-options"
+        aria-expanded={isOpen}
+        className="w-full px-4 py-3.5 rounded-[var(--radius-md)] border-2 border-stone-200 font-semibold text-base bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+      />
+
+      {isOpen && hasMatches && (
+        <div
+          id="institution-options"
+          role="listbox"
+          className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-[var(--radius-md)] border-2 border-stone-200 bg-white p-2 shadow-xl"
+        >
+          {matches.map((institution, index) => (
+            <button
+              type="button"
+              key={institution}
+              role="option"
+              aria-selected={index === activeIndex}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                selectInstitution(institution);
+              }}
+              className={`block w-full rounded-[var(--radius-sm)] px-3 py-2.5 text-left text-sm font-bold transition-colors ${
+                index === activeIndex ? "bg-primary text-white" : "bg-white text-stone-700 hover:bg-primary-tint"
+              }`}
+            >
+              {institution}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getInstitutionMatches(query: string) {
+  const normalizedQuery = normalizeText(query);
+
+  if (!normalizedQuery) {
+    return institutions;
+  }
+
+  const startsWithQuery: string[] = [];
+  const containsQuery: string[] = [];
+
+  for (const institution of institutions) {
+    const normalizedInstitution = normalizeText(institution);
+
+    if (normalizedInstitution.startsWith(normalizedQuery)) {
+      startsWithQuery.push(institution);
+      continue;
+    }
+
+    if (normalizedInstitution.includes(normalizedQuery)) {
+      containsQuery.push(institution);
+    }
+  }
+
+  return [...startsWithQuery, ...containsQuery];
+}
+
+function normalizeText(value: string) {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
 }

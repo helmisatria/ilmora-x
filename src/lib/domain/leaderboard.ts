@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "../db/client";
 import {
   adminMembers,
@@ -10,6 +10,11 @@ import {
   weeklyLeaderboardEntries,
   weeklyLeaderboardSnapshots,
 } from "../db/schema";
+import {
+  rankWeeklyLeaderboardRows,
+  type WeeklyLeaderboardRankedRow,
+  type WeeklyLeaderboardRankingRow,
+} from "./weekly-leaderboard-ranking";
 
 const DEFAULT_WEEKLY_PARTICIPANT_THRESHOLD = 10;
 
@@ -20,11 +25,16 @@ const TOP_N_BADGES = [
   { badgeCode: "BADGE-013", maxRank: 10, rewardXp: 200 },
 ] as const;
 
-type RankedStudent = {
-  studentUserId: string;
-  xp: number;
-  lastXpAttemptSubmittedAt: Date;
+export type WeeklyLeaderboardProfileRow = WeeklyLeaderboardRankingRow & {
+  name: string;
+  image: string | null;
+  avatar: string | null;
+  displayName: string | null;
+  photoUrl: string | null;
 };
+
+export { rankWeeklyLeaderboardRows };
+export type { WeeklyLeaderboardRankedRow, WeeklyLeaderboardRankingRow };
 
 export function getWeeklyParticipantThreshold() {
   const configuredThreshold = Number(process.env.WEEKLY_LEADERBOARD_PARTICIPANT_THRESHOLD);
@@ -83,6 +93,52 @@ export async function finaliseWeeklyLeaderboard(weekStartDate: string) {
   return awardTopNBadgesFromSnapshot(snapshot.id, weekStartDate);
 }
 
+export async function listWeeklyLeaderboardEntriesForWeek(
+  weekStartDate: string,
+  limit = 50,
+): Promise<Array<WeeklyLeaderboardRankedRow<WeeklyLeaderboardProfileRow>>> {
+  const { startsAt, endsAt } = getJakartaWeekWindow(weekStartDate);
+
+  const rows = await db
+    .select({
+      studentUserId: attempts.studentUserId,
+      name: user.name,
+      image: user.image,
+      avatar: studentProfiles.avatar,
+      displayName: studentProfiles.displayName,
+      photoUrl: studentProfiles.photoUrl,
+      xp: sql<number>`sum(${attempts.xpEarned})`,
+      lastXpAttemptSubmittedAt: sql<Date>`max(${attempts.submittedAt})`,
+    })
+    .from(attempts)
+    .innerJoin(user, eq(user.id, attempts.studentUserId))
+    .innerJoin(studentProfiles, eq(studentProfiles.userId, user.id))
+    .where(and(
+      sql`${attempts.status} in ('submitted', 'auto_submitted')`,
+      gte(attempts.submittedAt, startsAt),
+      lt(attempts.submittedAt, endsAt),
+      sql`${attempts.xpEarned} > 0`,
+      eq(attempts.isImpersonatedSubmission, false),
+      eq(studentProfiles.status, "active"),
+      sql`not exists (
+        select 1
+        from ${adminMembers}
+        where ${adminMembers.email} = ${user.email}
+          and ${adminMembers.removedAt} is null
+      )`,
+    ))
+    .groupBy(
+      attempts.studentUserId,
+      user.name,
+      user.image,
+      studentProfiles.avatar,
+      studentProfiles.displayName,
+      studentProfiles.photoUrl,
+    );
+
+  return rankWeeklyLeaderboardRows(rows).slice(0, limit);
+}
+
 async function getWeeklyLeaderboardSnapshot(weekStartDate: string) {
   const [snapshot] = await db
     .select({ id: weeklyLeaderboardSnapshots.id })
@@ -93,7 +149,9 @@ async function getWeeklyLeaderboardSnapshot(weekStartDate: string) {
   return snapshot ?? null;
 }
 
-async function listRankedStudentsForWeek(weekStartDate: string): Promise<RankedStudent[]> {
+async function listRankedStudentsForWeek(
+  weekStartDate: string,
+): Promise<Array<WeeklyLeaderboardRankedRow<WeeklyLeaderboardRankingRow>>> {
   const { startsAt, endsAt } = getJakartaWeekWindow(weekStartDate);
 
   const rows = await db
@@ -119,18 +177,13 @@ async function listRankedStudentsForWeek(weekStartDate: string): Promise<RankedS
           and ${adminMembers.removedAt} is null
       )`,
     ))
-    .groupBy(attempts.studentUserId)
-    .orderBy(
-      desc(sql`sum(${attempts.xpEarned})`),
-      asc(sql`max(${attempts.submittedAt})`),
-      asc(attempts.studentUserId),
-    );
+    .groupBy(attempts.studentUserId);
 
-  return rows.map((row) => ({
+  return rankWeeklyLeaderboardRows(rows.map((row) => ({
     studentUserId: row.studentUserId,
     xp: Number(row.xp),
     lastXpAttemptSubmittedAt: row.lastXpAttemptSubmittedAt,
-  }));
+  })));
 }
 
 async function createWeeklyLeaderboardSnapshot({
@@ -139,7 +192,7 @@ async function createWeeklyLeaderboardSnapshot({
   participantThreshold,
 }: {
   weekStartDate: string;
-  rankedStudents: RankedStudent[];
+  rankedStudents: Array<WeeklyLeaderboardRankedRow<WeeklyLeaderboardRankingRow>>;
   participantThreshold: number;
 }) {
   return db.transaction(async (tx) => {
@@ -171,11 +224,11 @@ async function createWeeklyLeaderboardSnapshot({
     if (rankedStudents.length === 0) return snapshot;
 
     await tx.insert(weeklyLeaderboardEntries).values(
-      rankedStudents.map((student, index) => ({
+      rankedStudents.map((student) => ({
         snapshotId: snapshot.id,
         weekStartDate,
         studentUserId: student.studentUserId,
-        rank: index + 1,
+        rank: student.rank,
         xp: student.xp,
         lastXpAttemptSubmittedAt: student.lastXpAttemptSubmittedAt,
       })),

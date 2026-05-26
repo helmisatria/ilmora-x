@@ -1,6 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db/client";
 import {
+  attemptQuestionSnapshots,
+  attempts,
   categories,
   questions,
   subCategories,
@@ -49,6 +51,26 @@ export type TryoutWorkbookQuestion = {
   correctOption: QuestionOption;
   explanation: string;
   videoUrl?: string;
+  accessLevel: QuestionAccessLevel;
+  status: ContentStatus;
+};
+
+export type TryoutQuestionContentInput = {
+  tryoutId: string;
+  questionId: string;
+  sortOrder: number;
+  categoryId: string;
+  subCategoryId: string;
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  optionE?: string;
+  correctOption: QuestionOption;
+  explanation: string;
+  videoUrl?: string;
+  pictureUrl?: string;
   accessLevel: QuestionAccessLevel;
   status: ContentStatus;
 };
@@ -340,6 +362,164 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
   });
 
   return { ok: true, ...created };
+}
+
+export async function updateTryoutQuestionContent(data: TryoutQuestionContentInput) {
+  validateQuestionOptionE(data);
+  await validateQuestionTaxonomy(data.categoryId, data.subCategoryId);
+
+  const nextQuestion = toEditableQuestionValues(data);
+
+  await db.transaction(async (tx) => {
+    const [assignment] = await tx
+      .select({
+        id: tryoutQuestions.id,
+      })
+      .from(tryoutQuestions)
+      .where(and(
+        eq(tryoutQuestions.tryoutId, data.tryoutId),
+        eq(tryoutQuestions.questionId, data.questionId),
+      ))
+      .limit(1);
+
+    if (!assignment) {
+      throw notFound("Question was not assigned to this Try-out.");
+    }
+
+    const [existingQuestion] = await tx
+      .select({
+        id: questions.id,
+        categoryId: questions.categoryId,
+        subCategoryId: questions.subCategoryId,
+        questionText: questions.questionText,
+        optionA: questions.optionA,
+        optionB: questions.optionB,
+        optionC: questions.optionC,
+        optionD: questions.optionD,
+        optionE: questions.optionE,
+        correctOption: questions.correctOption,
+        explanation: questions.explanation,
+        videoUrl: questions.videoUrl,
+        pictureUrl: questions.pictureUrl,
+        accessLevel: questions.accessLevel,
+        status: questions.status,
+      })
+      .from(questions)
+      .where(eq(questions.id, data.questionId))
+      .limit(1);
+
+    if (!existingQuestion) {
+      throw notFound("Question was not found.");
+    }
+
+    const [tryout] = await tx
+      .select({ status: tryouts.status })
+      .from(tryouts)
+      .where(eq(tryouts.id, data.tryoutId))
+      .limit(1);
+
+    if (!tryout) {
+      throw notFound("Try-out was not found.");
+    }
+
+    if (tryout.status === "published" && nextQuestion.status !== "published") {
+      await ensurePublishedTryoutHasAnotherPublishedQuestion(tx, data.tryoutId, data.questionId);
+    }
+
+    let questionId = data.questionId;
+    const contentChanged = !sameEditableQuestionContent(existingQuestion, nextQuestion);
+
+    if (contentChanged) {
+      const otherAssignments = await tx
+        .select({ tryoutId: tryoutQuestions.tryoutId })
+        .from(tryoutQuestions)
+        .where(and(
+          eq(tryoutQuestions.questionId, data.questionId),
+          sql`${tryoutQuestions.tryoutId} <> ${data.tryoutId}`,
+        ))
+        .limit(1);
+
+      if (otherAssignments.length > 0) {
+        const [createdQuestion] = await tx
+          .insert(questions)
+          .values(nextQuestion)
+          .returning({ id: questions.id });
+
+        questionId = createdQuestion.id;
+      } else {
+        await tx
+          .update(questions)
+          .set({
+            ...nextQuestion,
+            updatedAt: new Date(),
+          })
+          .where(eq(questions.id, data.questionId));
+      }
+    }
+
+    await tx
+      .update(tryoutQuestions)
+      .set({
+        questionId,
+        sortOrder: data.sortOrder,
+      })
+      .where(eq(tryoutQuestions.id, assignment.id));
+
+    await tx
+      .update(attemptQuestionSnapshots)
+      .set({
+        videoUrl: nextQuestion.videoUrl,
+        pictureUrl: nextQuestion.pictureUrl,
+        accessLevel: nextQuestion.accessLevel,
+      })
+      .where(and(
+        eq(attemptQuestionSnapshots.questionId, data.questionId),
+        sql`${attemptQuestionSnapshots.attemptId} in (
+          select ${attempts.id}
+          from ${attempts}
+          where ${attempts.tryoutId} = ${data.tryoutId}
+        )`,
+      ));
+  });
+
+  return { ok: true };
+}
+
+export async function removeTryoutQuestionContent({
+  tryoutId,
+  questionId,
+}: {
+  tryoutId: string;
+  questionId: string;
+}) {
+  const [assignment] = await db
+    .select({
+      id: tryoutQuestions.id,
+      questionStatus: questions.status,
+      tryoutStatus: tryouts.status,
+    })
+    .from(tryoutQuestions)
+    .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
+    .innerJoin(tryouts, eq(tryouts.id, tryoutQuestions.tryoutId))
+    .where(and(
+      eq(tryoutQuestions.tryoutId, tryoutId),
+      eq(tryoutQuestions.questionId, questionId),
+    ))
+    .limit(1);
+
+  if (!assignment) {
+    throw notFound("Question was not assigned to this Try-out.");
+  }
+
+  if (assignment.tryoutStatus === "published" && assignment.questionStatus === "published") {
+    await ensurePublishedTryoutHasAnotherPublishedQuestion(db, tryoutId, questionId);
+  }
+
+  await db
+    .delete(tryoutQuestions)
+    .where(eq(tryoutQuestions.id, assignment.id));
+
+  return { ok: true };
 }
 
 async function validateTryoutWorkbookInput(data: TryoutWorkbookInput) {
@@ -646,6 +826,26 @@ function validateQuestionOptionE(data: Pick<TryoutWorkbookQuestion, "correctOpti
   throw conflict("Option E is required when the correct option is E.");
 }
 
+async function ensurePublishedTryoutHasAnotherPublishedQuestion(
+  tx: Pick<typeof db, "select">,
+  tryoutId: string,
+  questionId: string,
+) {
+  const [row] = await tx
+    .select({ count: sql<number>`count(${questions.id})` })
+    .from(tryoutQuestions)
+    .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
+    .where(and(
+      eq(tryoutQuestions.tryoutId, tryoutId),
+      eq(questions.status, "published"),
+      sql`${tryoutQuestions.questionId} <> ${questionId}`,
+    ));
+
+  if (Number(row?.count ?? 0) > 0) return;
+
+  throw conflict("A published Try-out needs at least one published Question.");
+}
+
 function sameQuestionContent(
   existingQuestion: {
     categoryId: string;
@@ -697,6 +897,62 @@ function toQuestionInsertValues(question: TryoutWorkbookQuestion) {
     accessLevel: question.accessLevel,
     status: question.status,
   };
+}
+
+function toEditableQuestionValues(question: TryoutQuestionContentInput) {
+  return {
+    categoryId: question.categoryId,
+    subCategoryId: question.subCategoryId,
+    questionText: question.questionText,
+    optionA: question.optionA,
+    optionB: question.optionB,
+    optionC: question.optionC,
+    optionD: question.optionD,
+    optionE: normalizeOptionalText(question.optionE),
+    correctOption: question.correctOption,
+    explanation: question.explanation,
+    videoUrl: normalizeOptionalText(question.videoUrl),
+    pictureUrl: normalizeOptionalText(question.pictureUrl),
+    accessLevel: question.accessLevel,
+    status: question.status,
+  };
+}
+
+function sameEditableQuestionContent(
+  existingQuestion: {
+    categoryId: string;
+    subCategoryId: string;
+    questionText: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    optionE: string | null;
+    correctOption: string;
+    explanation: string;
+    videoUrl: string | null;
+    pictureUrl: string | null;
+    accessLevel: string;
+    status: string;
+  },
+  nextQuestion: ReturnType<typeof toEditableQuestionValues>,
+) {
+  return (
+    existingQuestion.categoryId === nextQuestion.categoryId &&
+    existingQuestion.subCategoryId === nextQuestion.subCategoryId &&
+    existingQuestion.questionText === nextQuestion.questionText &&
+    existingQuestion.optionA === nextQuestion.optionA &&
+    existingQuestion.optionB === nextQuestion.optionB &&
+    existingQuestion.optionC === nextQuestion.optionC &&
+    existingQuestion.optionD === nextQuestion.optionD &&
+    existingQuestion.optionE === nextQuestion.optionE &&
+    existingQuestion.correctOption === nextQuestion.correctOption &&
+    existingQuestion.explanation === nextQuestion.explanation &&
+    existingQuestion.videoUrl === nextQuestion.videoUrl &&
+    existingQuestion.pictureUrl === nextQuestion.pictureUrl &&
+    existingQuestion.accessLevel === nextQuestion.accessLevel &&
+    existingQuestion.status === nextQuestion.status
+  );
 }
 
 function normalizeOptionalText(value: string | undefined) {

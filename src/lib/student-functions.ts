@@ -1,13 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolveAvatarDisplay } from "./avatar";
 import { getCurrentViewerFromHeaders } from "./auth-functions";
 import { db } from "./db/client";
 import {
   activityEvents,
-  adminMembers,
   attemptAnswers,
   attemptMarkedQuestions,
   attemptQuestionSnapshots,
@@ -36,8 +35,13 @@ import {
   toOptions,
 } from "./domain/attempt-lifecycle";
 import { badgeCodeToId, calculateCurrentStreak } from "./domain/engagement-surface";
-import { getJakartaWeekStartDateKey, getJakartaWeekWindow } from "./domain/leaderboard";
+import {
+  getJakartaWeekStartDateKey,
+  getJakartaWeekWindow,
+  listWeeklyLeaderboardEntriesForWeek,
+} from "./domain/leaderboard";
 import { normalizeTryoutAccessLevel } from "./domain/premium-access";
+import { getStudentEvaluation } from "./domain/student-evaluation";
 import { notFound } from "./http/errors";
 import { parseInput } from "./http/validation";
 
@@ -135,52 +139,9 @@ export const listLeaderboard = createServerFn({ method: "GET" }).handler(async (
   const weekStartDate = getJakartaWeekStartDateKey();
   const weekWindow = getJakartaWeekWindow(weekStartDate);
   const rewardsFinaliseAt = new Date(weekWindow.endsAt.getTime() + 5 * 60 * 1000);
+  const rows = await listWeeklyLeaderboardEntriesForWeek(weekStartDate);
 
-  const rows = await db
-    .select({
-      userId: user.id,
-      name: user.name,
-      image: user.image,
-      avatar: studentProfiles.avatar,
-      displayName: studentProfiles.displayName,
-      photoUrl: studentProfiles.photoUrl,
-      xp: sql<number>`coalesce(sum(${attempts.xpEarned}), 0)`,
-    })
-    .from(attempts)
-    .innerJoin(user, eq(user.id, attempts.studentUserId))
-    .innerJoin(studentProfiles, eq(studentProfiles.userId, user.id))
-    .where(and(
-      sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-      gte(attempts.submittedAt, weekWindow.startsAt),
-      lt(attempts.submittedAt, weekWindow.endsAt),
-      sql`${attempts.xpEarned} > 0`,
-      eq(attempts.isImpersonatedSubmission, false),
-      eq(studentProfiles.status, "active"),
-      sql`not exists (
-        select 1
-        from ${adminMembers}
-        where ${adminMembers.email} = ${user.email}
-          and ${adminMembers.removedAt} is null
-      )`,
-    ))
-    .groupBy(
-      user.id,
-      user.name,
-      user.image,
-      studentProfiles.id,
-      studentProfiles.avatar,
-      studentProfiles.displayName,
-      studentProfiles.photoUrl,
-    )
-    .orderBy(
-      desc(sql`coalesce(sum(${attempts.xpEarned}), 0)`),
-      asc(sql`max(${attempts.submittedAt})`),
-      asc(user.id),
-    )
-    .limit(50);
-
-  const entries = rows.map((row, index) => {
-    const xp = Number(row.xp ?? 0);
+  const entries = rows.map((row) => {
     const avatar = resolveAvatarDisplay({
       avatar: row.avatar,
       photoUrl: row.photoUrl,
@@ -189,13 +150,13 @@ export const listLeaderboard = createServerFn({ method: "GET" }).handler(async (
     });
 
     return {
-      rank: index + 1,
-      userId: row.userId,
+      rank: row.rank,
+      userId: row.studentUserId,
       name: row.displayName || row.name,
       avatar: avatar.avatar,
       photoUrl: avatar.photoUrl,
-      xp,
-      me: row.userId === viewer.userId,
+      xp: row.xp,
+      me: row.studentUserId === viewer.userId,
     };
   });
 
@@ -481,131 +442,27 @@ export const getAttemptResult = createServerFn({ method: "GET" })
 
 export const listProgressSummary = createServerFn({ method: "GET" }).handler(async () => {
   const viewer = await getStudentViewer();
-
-  const submittedAttempts = await db
-    .select({
-      id: attempts.id,
-      tryoutTitle: tryouts.title,
-      attemptNumber: attempts.attemptNumber,
-      submittedAt: attempts.submittedAt,
-      score: attempts.score,
-      correctCount: attempts.correctCount,
-      totalQuestions: attempts.totalQuestions,
-      xpEarned: attempts.xpEarned,
-    })
-    .from(attempts)
-    .innerJoin(tryouts, eq(tryouts.id, attempts.tryoutId))
-    .where(and(
-      eq(attempts.studentUserId, viewer.userId),
-      sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-    ))
-    .orderBy(desc(attempts.submittedAt));
-
-  const categoryRows = await db
-    .select({
-      categoryId: categories.id,
-      categoryName: categories.name,
-      categoryColor: categories.color,
-      total: sql<number>`count(${attemptQuestionSnapshots.id})`,
-      correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
-    })
-    .from(attemptQuestionSnapshots)
-    .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
-    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-    .leftJoin(
-      attemptAnswers,
-      and(
-        eq(attemptAnswers.attemptId, attempts.id),
-        eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
-      ),
-    )
-    .where(and(
-      eq(attempts.studentUserId, viewer.userId),
-      sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-    ))
-    .groupBy(categories.id);
-
-  const subCategoryRows = await db
-    .select({
-      categoryId: categories.id,
-      subCategoryId: subCategories.id,
-      subCategoryName: subCategories.name,
-      total: sql<number>`count(${attemptQuestionSnapshots.id})`,
-      correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
-    })
-    .from(attemptQuestionSnapshots)
-    .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
-    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-    .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
-    .leftJoin(
-      attemptAnswers,
-      and(
-        eq(attemptAnswers.attemptId, attempts.id),
-        eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
-      ),
-    )
-    .where(and(
-      eq(attempts.studentUserId, viewer.userId),
-      sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-    ))
-    .groupBy(categories.id, subCategories.id);
-
-  const [badgeRewardRow] = await db
-    .select({
-      xp: sql<number>`coalesce(sum(${studentExpLedger.xpAmount}), 0)`,
-    })
-    .from(studentExpLedger)
-    .where(and(
-      eq(studentExpLedger.studentUserId, viewer.userId),
-      eq(studentExpLedger.sourceType, "badge_reward"),
-    ));
-  const badgeRows = await db
-    .select({ badgeCode: studentBadges.badgeCode })
-    .from(studentBadges)
-    .where(eq(studentBadges.studentUserId, viewer.userId));
-
-  const totalQuestions = submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0);
-  const totalCorrect = submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0);
-  const attemptXp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
-  const badgeRewardXp = Number(badgeRewardRow?.xp ?? 0);
-  const xp = attemptXp + badgeRewardXp;
-  const streak = calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt));
+  const evaluation = await getStudentEvaluation(viewer.userId);
 
   return {
-    xp,
-    attemptXp,
-    badgeRewardXp,
-    streak,
-    totalQuestions,
-    totalCorrect,
-    awardedBadgeIds: badgeRows
-      .map((badge) => badgeCodeToId(badge.badgeCode))
-      .filter((badgeId): badgeId is number => badgeId !== null),
-    attempts: submittedAttempts.map((attempt) => ({
+    xp: evaluation.summary.xp,
+    attemptXp: evaluation.summary.attemptXp,
+    badgeRewardXp: evaluation.summary.badgeRewardXp,
+    streak: evaluation.summary.streak,
+    totalQuestions: evaluation.summary.totalQuestions,
+    totalCorrect: evaluation.summary.totalCorrect,
+    awardedBadgeIds: evaluation.summary.awardedBadgeIds,
+    attempts: evaluation.attempts.map((attempt) => ({
       id: attempt.id,
       tryoutTitle: attempt.tryoutTitle,
       attemptNumber: attempt.attemptNumber,
       submittedAt: attempt.submittedAt?.toISOString() ?? null,
-      score: attempt.score ?? 0,
-      correctCount: attempt.correctCount ?? 0,
+      score: attempt.score,
+      correctCount: attempt.correctCount,
       totalQuestions: attempt.totalQuestions,
       xpEarned: attempt.xpEarned,
     })),
-    categories: categoryRows.map((row) => ({
-      id: row.categoryId,
-      name: row.categoryName,
-      color: row.categoryColor ?? "#205072",
-      total: Number(row.total ?? 0),
-      correct: Number(row.correct ?? 0),
-      subCategories: subCategoryRows
-        .filter((subCategory) => subCategory.categoryId === row.categoryId)
-        .map((subCategory) => ({
-          id: subCategory.subCategoryId,
-          name: subCategory.subCategoryName,
-          total: Number(subCategory.total ?? 0),
-          correct: Number(subCategory.correct ?? 0),
-        })),
-    })),
+    categories: evaluation.categories,
   };
 });
 

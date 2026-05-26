@@ -9,6 +9,15 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import { isPaidTryout } from "../lib/domain/premium-access";
+import {
+  getUsableQueuedAttemptProgress,
+  makeAttemptProgressPayload,
+  queueAttemptProgress,
+  removeQueuedAttemptProgress,
+  removeQueuedAttemptProgressIfNotNewer,
+  restoreAttemptProgress,
+  type AttemptProgressPayload,
+} from "../lib/domain/attempt-progress-queue";
 import { getSafeErrorMessage } from "../lib/user-errors";
 import {
   getTryoutPreparation,
@@ -21,7 +30,6 @@ import {
 type TryoutPreparation = Awaited<ReturnType<typeof getTryoutPreparation>>;
 type TakeAttempt = Awaited<ReturnType<typeof startOrResumeAttempt>>;
 type TakeQuestion = TakeAttempt["questions"][number];
-type AttemptProgressPayload = ReturnType<typeof makeAttemptProgressPayload>;
 type SaveStatus = "idle" | "saving" | "saved" | "offline" | "error";
 type ReportReason = "answer_key_wrong" | "explanation_wrong" | "question_unclear" | "typo" | "other";
 
@@ -90,7 +98,7 @@ function TryoutTakeComponent() {
 
   async function saveProgress(payload: AttemptProgressPayload) {
     if (!window.navigator.onLine) {
-      queueProgress(payload);
+      queueAttemptProgress(window.localStorage, payload);
       setSaveStatus("offline");
       return;
     }
@@ -99,11 +107,15 @@ function TryoutTakeComponent() {
 
     try {
       const result = await saveAttempt({ data: payload });
-      removeQueuedProgressIfNotNewer(payload.attemptId, payload.queuedAt);
+      removeQueuedAttemptProgressIfNotNewer({
+        storage: window.localStorage,
+        attemptId: payload.attemptId,
+        queuedAt: payload.queuedAt,
+      });
       setLastSaved(formatSavedTime(result.savedAt));
       setSaveStatus("saved");
     } catch {
-      queueProgress(payload);
+      queueAttemptProgress(window.localStorage, payload);
       setSaveStatus("error");
       posthog.capture(productAnalyticsEvents.attemptAutosaveFailed, {
         attempt_id: payload.attemptId,
@@ -141,7 +153,7 @@ function TryoutTakeComponent() {
     if (submitting) return;
 
     const saveCurrentProgress = () => {
-      queueProgress(makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex));
+      queueAttemptProgress(window.localStorage, makeCurrentAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex));
     };
 
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -164,7 +176,7 @@ function TryoutTakeComponent() {
     if (!attemptData) return;
     if (submitting) return;
 
-    const payload = makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex);
+    const payload = makeCurrentAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex);
     const timer = window.setTimeout(() => {
       saveProgress(payload);
     }, 700);
@@ -176,7 +188,7 @@ function TryoutTakeComponent() {
     if (!attemptData) return;
 
     const flushQueuedProgress = () => {
-      const queuedProgress = getUsableQueuedProgress(attemptData);
+      const queuedProgress = getUsableQueuedAttemptProgress(window.localStorage, attemptData);
 
       if (!queuedProgress) return;
 
@@ -196,12 +208,12 @@ function TryoutTakeComponent() {
 
     submitAttempt({
       data: {
-        ...makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex),
+        ...makeCurrentAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex),
         autoSubmitReason: "deadline_reached",
       },
     })
       .then((result) => {
-        removeQueuedProgress(result.attemptId);
+        removeQueuedAttemptProgress(window.localStorage, result.attemptId);
         setSubmitting({ attemptId: result.attemptId });
       })
       .catch(() => {});
@@ -279,10 +291,11 @@ function TryoutTakeComponent() {
       return;
     }
 
-    const queuedProgress = getUsableQueuedProgress(nextAttemptData);
-    const nextAnswers = getRestoredAnswers(nextAttemptData, queuedProgress);
-    const markedIndexes = getRestoredMarkedIndexes(nextAttemptData, queuedProgress);
-    const nextQuestionIndex = getRestoredQuestionIndex(nextAttemptData, queuedProgress);
+    const queuedProgress = getUsableQueuedAttemptProgress(window.localStorage, nextAttemptData);
+    const restoredProgress = restoreAttemptProgress({
+      attemptData: nextAttemptData,
+      queuedProgress,
+    });
 
     const remainingSeconds = Math.max(
       0,
@@ -291,10 +304,10 @@ function TryoutTakeComponent() {
 
     setAttemptData(nextAttemptData);
     setQuestions(nextAttemptData.questions);
-    setAnswers(nextAnswers);
-    setFlagged(markedIndexes);
-    setQIndex(nextQuestionIndex);
-    setSelected(nextAnswers[nextQuestionIndex] ?? null);
+    setAnswers(restoredProgress.answers);
+    setFlagged(restoredProgress.markedQuestionIndexes);
+    setQIndex(restoredProgress.lastQuestionIndex);
+    setSelected(restoredProgress.answers[restoredProgress.lastQuestionIndex] ?? null);
     setTimeLeft(remainingSeconds);
     setConfirmStart(false);
     setPhase(withCountdown ? "countdown" : "active");
@@ -360,10 +373,10 @@ function TryoutTakeComponent() {
   };
 
   const handleSubmit = () => {
-    const payload = makeAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex);
+    const payload = makeCurrentAttemptProgressPayload(attemptData.attempt.id, questions, answers, flagged, qIndex);
 
     if (!window.navigator.onLine) {
-      queueProgress(payload);
+      queueAttemptProgress(window.localStorage, payload);
       setSaveStatus("offline");
       setSubmitError("Koneksi terputus. Sambungkan internet dulu sebelum submit.");
       return;
@@ -373,7 +386,7 @@ function TryoutTakeComponent() {
 
     submitAttempt({ data: payload })
       .then((result) => {
-        removeQueuedProgress(result.attemptId);
+        removeQueuedAttemptProgress(window.localStorage, result.attemptId);
         setShowSubmitConfirm(false);
         setSubmitting({ attemptId: result.attemptId });
       })
@@ -683,175 +696,20 @@ function getCategoryLabel(catId: string): string {
   return labels[catId] || catId.toUpperCase();
 }
 
-function makeAttemptProgressPayload(
+function makeCurrentAttemptProgressPayload(
   attemptId: string,
   questions: TakeQuestion[],
   answers: (number | undefined)[],
-  flagged: number[],
+  markedQuestionIndexes: number[],
   lastQuestionIndex: number,
 ) {
-  return {
+  return makeAttemptProgressPayload({
     attemptId,
-    queuedAt: new Date().toISOString(),
+    questions,
+    answers,
+    markedQuestionIndexes,
     lastQuestionIndex,
-    answers: questions.map((question, index) => ({
-      snapshotId: question.snapshotId,
-      selectedOption: toOptionLetter(answers[index]),
-    })),
-    markedSnapshotIds: flagged
-      .map((index) => questions[index]?.snapshotId)
-      .filter((snapshotId): snapshotId is string => Boolean(snapshotId)),
-  };
-}
-
-function getRestoredAnswers(
-  attemptData: TakeAttempt,
-  queuedProgress: AttemptProgressPayload | null,
-) {
-  const restoredAnswers = new Array<number | undefined>(attemptData.questions.length).fill(undefined);
-
-  for (const answer of attemptData.answers) {
-    const answerIndex = attemptData.questions.findIndex((question) => question.snapshotId === answer.snapshotId);
-
-    if (answerIndex >= 0 && answer.selectedIndex !== null) {
-      restoredAnswers[answerIndex] = answer.selectedIndex;
-    }
-  }
-
-  if (!queuedProgress) return restoredAnswers;
-
-  for (const answer of queuedProgress.answers) {
-    const answerIndex = attemptData.questions.findIndex((question) => question.snapshotId === answer.snapshotId);
-
-    if (answerIndex >= 0) {
-      restoredAnswers[answerIndex] = toOptionIndex(answer.selectedOption);
-    }
-  }
-
-  return restoredAnswers;
-}
-
-function getRestoredMarkedIndexes(
-  attemptData: TakeAttempt,
-  queuedProgress: AttemptProgressPayload | null,
-) {
-  const snapshotIds = queuedProgress?.markedSnapshotIds ?? attemptData.markedSnapshotIds;
-
-  return snapshotIds
-    .map((snapshotId) => attemptData.questions.findIndex((question) => question.snapshotId === snapshotId))
-    .filter((index) => index >= 0);
-}
-
-function getRestoredQuestionIndex(
-  attemptData: TakeAttempt,
-  queuedProgress: AttemptProgressPayload | null,
-) {
-  const lastQuestionIndex = queuedProgress?.lastQuestionIndex ?? attemptData.attempt.lastQuestionIndex;
-  const lastAvailableIndex = attemptData.questions.length - 1;
-
-  if (lastAvailableIndex < 0) return 0;
-  if (lastQuestionIndex < 0) return 0;
-  if (lastQuestionIndex > lastAvailableIndex) return lastAvailableIndex;
-
-  return lastQuestionIndex;
-}
-
-function toOptionLetter(index: number | undefined) {
-  if (index === undefined) return null;
-
-  const optionLetters = ["A", "B", "C", "D", "E"] as const;
-
-  return optionLetters[index] ?? null;
-}
-
-function toOptionIndex(option: "A" | "B" | "C" | "D" | "E" | null) {
-  if (!option) return undefined;
-
-  const optionLetters = ["A", "B", "C", "D", "E"] as const;
-  const optionIndex = optionLetters.findIndex((letter) => letter === option);
-
-  if (optionIndex < 0) return undefined;
-
-  return optionIndex;
-}
-
-function getProgressQueueKey(attemptId: string) {
-  return `ilmorax:attempt-progress:${attemptId}`;
-}
-
-function queueProgress(payload: AttemptProgressPayload) {
-  const queuedProgress = readQueuedProgress(payload.attemptId);
-
-  if (queuedProgress && isSameOrAfter(queuedProgress.queuedAt, payload.queuedAt)) {
-    return;
-  }
-
-  window.localStorage.setItem(getProgressQueueKey(payload.attemptId), JSON.stringify(payload));
-}
-
-function readQueuedProgress(attemptId: string) {
-  const value = window.localStorage.getItem(getProgressQueueKey(attemptId));
-
-  if (!value) return null;
-
-  try {
-    const parsed = JSON.parse(value) as AttemptProgressPayload;
-
-    if (!parsed.queuedAt || Number.isNaN(new Date(parsed.queuedAt).getTime())) {
-      removeQueuedProgress(attemptId);
-      return null;
-    }
-
-    return parsed;
-  } catch {
-    removeQueuedProgress(attemptId);
-    return null;
-  }
-}
-
-function getUsableQueuedProgress(attemptData: TakeAttempt) {
-  const queuedProgress = readQueuedProgress(attemptData.attempt.id);
-
-  if (!queuedProgress) return null;
-
-  if (!isQueuedProgressNewerThanServer(queuedProgress, attemptData)) {
-    removeQueuedProgress(attemptData.attempt.id);
-    return null;
-  }
-
-  return queuedProgress;
-}
-
-function removeQueuedProgress(attemptId: string) {
-  window.localStorage.removeItem(getProgressQueueKey(attemptId));
-}
-
-function removeQueuedProgressIfNotNewer(attemptId: string, queuedAt: string) {
-  const queuedProgress = readQueuedProgress(attemptId);
-
-  if (!queuedProgress) return;
-  if (isAfter(queuedProgress.queuedAt, queuedAt)) return;
-
-  removeQueuedProgress(attemptId);
-}
-
-function isQueuedProgressNewerThanServer(
-  queuedProgress: AttemptProgressPayload,
-  attemptData: TakeAttempt,
-) {
-  const lastServerSavedAt = attemptData.attempt.lastServerSavedAt;
-
-  if (!lastServerSavedAt) return true;
-
-  return isAfter(queuedProgress.queuedAt, lastServerSavedAt);
-}
-
-function isSameOrAfter(left: string, right: string) {
-  return new Date(left).getTime() >= new Date(right).getTime();
-}
-
-function isAfter(left: string, right: string) {
-  return new Date(left).getTime() > new Date(right).getTime();
+  });
 }
 
 function formatSavedTime(value: string) {

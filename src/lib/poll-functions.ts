@@ -13,10 +13,22 @@ import {
   pollSessions,
 } from "./db/schema";
 import { requireAdmin } from "./domain/admin";
+import {
+  buildPollSessionDetail,
+  buildPollStudentState,
+  calculatePollRoundPoints,
+  hasAnyTeacherContent,
+  isPollRoundExpiredAt,
+  pollOptionLetters,
+  rankPollParticipantScores,
+  resolvePollRoundTeacherContent,
+  toOptionalPollText,
+  type PollOption,
+} from "./domain/poll-session";
 import { badRequest, conflict, forbidden, notFound, unauthorized } from "./http/errors";
 import { parseInput } from "./http/validation";
 
-const pollOptionSchema = z.enum(["A", "B", "C", "D", "E"]);
+const pollOptionSchema = z.enum(pollOptionLetters);
 const pollAccessModeSchema = z.enum(["open_guest", "login_required"]);
 
 const createPollSessionSchema = z.object({
@@ -100,16 +112,6 @@ const submitPollAnswerSchema = z.object({
   selectedOption: pollOptionSchema,
 });
 
-type PollOption = z.infer<typeof pollOptionSchema>;
-
-type ParticipantScore = {
-  participantId: string;
-  displayName: string;
-  totalPoints: number;
-  correctAnswers: number;
-  answeredRounds: number;
-};
-
 async function requireAvailableDisplayName(sessionId: string, displayName: string, currentParticipantId?: string) {
   const nameMatches = sql`lower(${pollParticipants.displayName}) = lower(${displayName})`;
   const duplicateFilter = currentParticipantId
@@ -164,64 +166,6 @@ function toIso(value: Date | null | undefined) {
   return value?.toISOString() ?? null;
 }
 
-function toOptionalText(value: string | null | undefined) {
-  const text = value?.trim() ?? "";
-
-  if (!text) return null;
-
-  return text;
-}
-
-function hasAnyTeacherContent(data: {
-  questionText?: string;
-  optionA?: string;
-  optionB?: string;
-  optionC?: string;
-  optionD?: string;
-  optionE?: string;
-}) {
-  return Boolean(
-    toOptionalText(data.questionText)
-      || toOptionalText(data.optionA)
-      || toOptionalText(data.optionB)
-      || toOptionalText(data.optionC)
-      || toOptionalText(data.optionD)
-      || toOptionalText(data.optionE),
-  );
-}
-
-function getRoundTeacherContent(data: z.infer<typeof createPollRoundSchema>) {
-  if (!hasAnyTeacherContent(data)) {
-    return {
-      questionText: null,
-      optionA: null,
-      optionB: null,
-      optionC: null,
-      optionD: null,
-      optionE: null,
-    };
-  }
-
-  const content = {
-    questionText: toOptionalText(data.questionText),
-    optionA: toOptionalText(data.optionA),
-    optionB: toOptionalText(data.optionB),
-    optionC: toOptionalText(data.optionC),
-    optionD: toOptionalText(data.optionD),
-    optionE: toOptionalText(data.optionE),
-  };
-
-  if (!content.questionText || !content.optionA || !content.optionB || !content.optionC || !content.optionD) {
-    throw badRequest("Question text and options A-D are required for teacher-facing content.");
-  }
-
-  if (data.correctOption === "E" && !content.optionE) {
-    throw badRequest("Option E is required when the correct option is E.");
-  }
-
-  return content;
-}
-
 function makeParticipantToken() {
   return randomUUID();
 }
@@ -259,22 +203,6 @@ function getDisplayNameFromViewer(viewer: Awaited<ReturnType<typeof getViewer>>)
   if (!viewer) return "";
 
   return viewer.profile?.displayName || viewer.name || viewer.email;
-}
-
-function calculatePoints({
-  selectedOption,
-  correctOption,
-  responseMs,
-}: {
-  selectedOption: PollOption;
-  correctOption: PollOption;
-  responseMs: number;
-}) {
-  if (selectedOption !== correctOption) return 0;
-
-  const elapsedSeconds = Math.floor(responseMs / 1000);
-
-  return Math.max(500, 1000 - elapsedSeconds * 10);
 }
 
 async function getOpenSessionByCode(code: string) {
@@ -349,17 +277,6 @@ async function closeOpenRound(sessionId: string, now = new Date()) {
   return round;
 }
 
-const MILLISECONDS_IN_A_SECOND = 1000;
-
-function isRoundExpiredAt(round: typeof pollRounds.$inferSelect, now: Date) {
-  if (!round.timerSeconds) return false;
-
-  const elapsedMs = now.getTime() - round.openedAt.getTime();
-  const limitMs = round.timerSeconds * MILLISECONDS_IN_A_SECOND;
-
-  return elapsedMs >= limitMs;
-}
-
 async function closeExpiredOpenRoundBySession(sessionId: string, now = new Date()) {
   const [round] = await db
     .select()
@@ -369,7 +286,7 @@ async function closeExpiredOpenRoundBySession(sessionId: string, now = new Date(
     .limit(1);
 
   if (!round) return null;
-  if (!isRoundExpiredAt(round, now)) return null;
+  if (!isPollRoundExpiredAt(round, now)) return null;
 
   await db
     .update(pollRounds)
@@ -403,7 +320,7 @@ async function recalculateRoundAnswers(roundId: string, correctOption: PollOptio
       .update(pollAnswers)
       .set({
         isCorrect: selectedOption === correctOption,
-        points: calculatePoints({
+        points: calculatePollRoundPoints({
           selectedOption,
           correctOption,
           responseMs: answer.responseMs,
@@ -434,40 +351,7 @@ async function getParticipantScores(sessionId: string) {
     .innerJoin(pollRounds, eq(pollRounds.id, pollAnswers.roundId))
     .where(and(eq(pollRounds.sessionId, sessionId), eq(pollRounds.status, "closed")));
 
-  const scoreMap = new Map<string, ParticipantScore>();
-
-  for (const participant of participants) {
-    scoreMap.set(participant.id, {
-      participantId: participant.id,
-      displayName: participant.displayName,
-      totalPoints: 0,
-      correctAnswers: 0,
-      answeredRounds: 0,
-    });
-  }
-
-  for (const answer of answers) {
-    const score = scoreMap.get(answer.participantId);
-
-    if (!score) continue;
-
-    score.totalPoints += answer.points;
-    score.answeredRounds += 1;
-
-    if (answer.isCorrect) {
-      score.correctAnswers += 1;
-    }
-  }
-
-  return [...scoreMap.values()].sort((first, second) => {
-    if (second.totalPoints !== first.totalPoints) return second.totalPoints - first.totalPoints;
-    if (second.correctAnswers !== first.correctAnswers) return second.correctAnswers - first.correctAnswers;
-
-    return first.displayName.localeCompare(second.displayName);
-  }).map((score, index) => ({
-    ...score,
-    rank: index + 1,
-  }));
+  return rankPollParticipantScores(participants, answers);
 }
 
 async function getSessionDetail(sessionId: string) {
@@ -505,99 +389,15 @@ async function getSessionDetail(sessionId: string) {
       .where(eq(pollRounds.sessionId, sessionId)),
     getParticipantScores(sessionId),
   ]);
-  const answerCounts = new Map<string, Record<PollOption, number>>();
-  const roundAnswers = new Map<string, typeof answers>();
 
-  for (const round of rounds) {
-    answerCounts.set(round.id, { A: 0, B: 0, C: 0, D: 0, E: 0 });
-    roundAnswers.set(round.id, []);
-  }
-
-  for (const answer of answers) {
-    const counts = answerCounts.get(answer.roundId);
-    const selectedOption = answer.selectedOption as PollOption;
-
-    if (counts) {
-      counts[selectedOption] += 1;
-    }
-
-    roundAnswers.get(answer.roundId)?.push(answer);
-  }
-
-  const activeRound = rounds.find((round) => round.status === "open") ?? null;
-
-  return {
-    session: {
-      id: session.id,
-      title: session.title,
-      code: session.code,
-      status: session.status as "draft" | "open" | "closed",
-      accessMode: session.accessMode as "open_guest" | "login_required",
-      createdByAdminUserId: session.createdByAdminUserId,
-      openedAt: session.openedAt.toISOString(),
-      closedAt: toIso(session.closedAt),
-      archivedAt: toIso(session.archivedAt),
-      createdAt: session.createdAt.toISOString(),
-    },
-    participants: participants.map((participant) => ({
-      id: participant.id,
-      displayName: participant.displayName,
-      studentUserId: participant.studentUserId,
-      joinedAt: participant.joinedAt.toISOString(),
-    })),
-    rounds: rounds.map((round) => {
-      const counts = answerCounts.get(round.id) ?? { A: 0, B: 0, C: 0, D: 0, E: 0 };
-      const totalAnswers = Object.values(counts).reduce((total, value) => total + value, 0);
-
-      return {
-        id: round.id,
-        roundNumber: round.roundNumber,
-        label: round.label,
-        questionText: round.questionText,
-        optionA: round.optionA,
-        optionB: round.optionB,
-        optionC: round.optionC,
-        optionD: round.optionD,
-        optionE: round.optionE,
-        correctOption: round.correctOption as PollOption,
-        status: round.status as "open" | "closed",
-        timerSeconds: round.timerSeconds,
-        openedAt: round.openedAt.toISOString(),
-        closedAt: toIso(round.closedAt),
-        correctedAt: toIso(round.correctedAt),
-        counts,
-        totalAnswers,
-        answers: (roundAnswers.get(round.id) ?? []).map((answer) => ({
-          id: answer.id,
-          participantId: answer.participantId,
-          selectedOption: answer.selectedOption as PollOption,
-          isCorrect: answer.isCorrect,
-          points: answer.points,
-          responseMs: answer.responseMs,
-          answeredAt: answer.answeredAt.toISOString(),
-        })),
-      };
-    }),
-    planItems: planItems.map((item) => ({
-      id: item.id,
-      sortOrder: item.sortOrder,
-      status: item.status as "planned" | "started" | "skipped",
-      label: item.label,
-      questionText: item.questionText,
-      optionA: item.optionA,
-      optionB: item.optionB,
-      optionC: item.optionC,
-      optionD: item.optionD,
-      optionE: item.optionE,
-      correctOption: item.correctOption as PollOption,
-      timerSeconds: item.timerSeconds,
-      startedRoundId: item.startedRoundId,
-      startedAt: toIso(item.startedAt),
-      skippedAt: toIso(item.skippedAt),
-    })),
-    activeRoundId: activeRound?.id ?? null,
+  return buildPollSessionDetail({
+    session,
+    participants,
+    rounds,
+    planItems,
+    answers,
     scores,
-  };
+  });
 }
 
 async function publishPollSessionChanged(sessionId: string) {
@@ -694,13 +494,13 @@ export const importPollRoundPlanAdmin = createServerFn({ method: "POST" })
         sessionId: session.id,
         sortOrder: baseSortOrder + index + 1,
         status: "planned",
-        label: toOptionalText(item.label),
+        label: toOptionalPollText(item.label),
         questionText: item.questionText,
         optionA: item.optionA,
         optionB: item.optionB,
         optionC: item.optionC,
         optionD: item.optionD,
-        optionE: toOptionalText(item.optionE),
+        optionE: toOptionalPollText(item.optionE),
         correctOption: item.correctOption,
         timerSeconds: item.timerSeconds ?? null,
         createdAt: now,
@@ -798,7 +598,13 @@ export const createPollRoundAdmin = createServerFn({ method: "POST" })
           optionE: planItem.optionE ?? undefined,
         }
       : data;
-    const teacherContent = getRoundTeacherContent(contentData);
+    const teacherContentResult = resolvePollRoundTeacherContent(contentData);
+
+    if (!teacherContentResult.ok) {
+      throw badRequest(teacherContentResult.message);
+    }
+
+    const teacherContent = teacherContentResult.content;
 
     await db.transaction(async (tx) => {
       const [openRound] = await tx
@@ -1123,12 +929,17 @@ export const getPollStudentState = createServerFn({ method: "GET" })
       participantConditions.push(eq(pollParticipants.guestToken, data.participantToken));
     } else {
       return {
-        joined: false,
+        joined: false as const,
         session: {
           title: session.title,
           code: session.code,
           status: session.status as "draft" | "open" | "closed",
         },
+        round: null,
+        participantStatuses: [],
+        myAnswer: null,
+        myScore: null,
+        topScores: [],
       };
     }
 
@@ -1140,12 +951,17 @@ export const getPollStudentState = createServerFn({ method: "GET" })
 
     if (!participant) {
       return {
-        joined: false,
+        joined: false as const,
         session: {
           title: session.title,
           code: session.code,
           status: session.status as "draft" | "open" | "closed",
         },
+        round: null,
+        participantStatuses: [],
+        myAnswer: null,
+        myScore: null,
+        topScores: [],
       };
     }
 
@@ -1155,52 +971,11 @@ export const getPollStudentState = createServerFn({ method: "GET" })
       .where(eq(pollParticipants.id, participant.id));
 
     const detail = await getSessionDetail(session.id);
-    const activeRound = detail.rounds.find((round) => round.status === "open") ?? null;
-    const latestRound = [...detail.rounds].reverse()[0] ?? null;
-    const visibleRound = activeRound ?? latestRound;
-    const myAnswer = visibleRound
-      ? visibleRound.answers.find((answer) => answer.participantId === participant.id) ?? null
-      : null;
-    const myScore = detail.scores.find((score) => score.participantId === participant.id) ?? null;
 
-    return {
-      joined: true,
-      participant: {
-        id: participant.id,
-        displayName: participant.displayName,
-      },
-      session: detail.session,
-      round: visibleRound
-        ? {
-            id: visibleRound.id,
-            label: visibleRound.label,
-            roundNumber: visibleRound.roundNumber,
-            status: visibleRound.status,
-            openedAt: visibleRound.openedAt,
-            closedAt: visibleRound.closedAt,
-            timerSeconds: visibleRound.timerSeconds,
-            correctOption: visibleRound.status === "closed" ? visibleRound.correctOption : null,
-            counts: visibleRound.status === "closed" ? visibleRound.counts : null,
-            totalAnswers: visibleRound.totalAnswers,
-          }
-        : null,
-      participantStatuses: detail.participants.map((item) => ({
-        id: item.id,
-        displayName: item.displayName,
-        answered: activeRound
-          ? activeRound.answers.some((answer) => answer.participantId === item.id)
-          : false,
-      })),
-      myAnswer: myAnswer
-        ? {
-            selectedOption: myAnswer.selectedOption,
-            isCorrect: visibleRound?.status === "closed" ? myAnswer.isCorrect : null,
-            points: visibleRound?.status === "closed" ? myAnswer.points : null,
-          }
-        : null,
-      myScore,
-      topScores: detail.scores.slice(0, 5),
-    };
+    return buildPollStudentState({
+      detail,
+      participant,
+    });
   });
 
 export const submitPollAnswer = createServerFn({ method: "POST" })
