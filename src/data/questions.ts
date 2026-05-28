@@ -24,7 +24,7 @@ export interface WrongAnswer {
   user: string;
 }
 
-export type TryoutAccessLevel = "free" | "premium" | "platinum";
+export type TryoutAccessLevel = "free" | "premium";
 
 export interface Tryout {
   id: number;
@@ -61,8 +61,8 @@ export const tryouts: Tryout[] = [
   { id: 2, title: "Farmakologi Dasar", icon: "💊", color: "#58cc02", questionCount: 25, categoryId: "farmakologi", duration: 40, accessLevel: "free", description: "Soal farmakologi dasar dan khusus" },
   { id: 3, title: "Kardiovaskular", icon: "❤️", color: "#205072", questionCount: 20, categoryId: "klinis", duration: 30, accessLevel: "premium", description: "Soal khusus sistem kardiovaskular" },
   { id: 4, title: "Antibiotik & Antiinfeksi", icon: "🦠", color: "#58cc02", questionCount: 15, categoryId: "farmakologi", duration: 25, accessLevel: "free", description: "Soal antibiotik dan antiinfeksi" },
-  { id: 5, title: "Farmasi Klinik Lanjut", icon: "🏥", color: "#0ea5e9", questionCount: 30, categoryId: "farmasi-klinik", duration: 45, accessLevel: "platinum", productId: 101, description: "Soal farmasi klinik tingkat lanjut" },
-  { id: 6, title: "Perhitungan Dosis", icon: "🧮", color: "#0ea5e9", questionCount: 20, categoryId: "farmasi-klinik", duration: 35, accessLevel: "platinum", productId: 102, description: "Soal hitung dosis dan farmakokinetik" },
+  { id: 5, title: "Farmasi Klinik Lanjut", icon: "🏥", color: "#0ea5e9", questionCount: 30, categoryId: "farmasi-klinik", duration: 45, accessLevel: "premium", productId: 101, description: "Soal farmasi klinik tingkat lanjut" },
+  { id: 6, title: "Perhitungan Dosis", icon: "🧮", color: "#0ea5e9", questionCount: 20, categoryId: "farmasi-klinik", duration: 35, accessLevel: "premium", productId: 102, description: "Soal hitung dosis dan farmakokinetik" },
 ];
 
 export const questionBank: Record<number, Question[]> = {
@@ -129,32 +129,77 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "free", published: true,
     },
   ],
+  3: [
+    {
+      id: 21, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular-hipertensi",
+      question: "Terapi lini pertama hipertensi pada pasien diabetes tanpa kontraindikasi adalah:",
+      options: ["ACE Inhibitor", "Antihistamin", "Antasida", "Mukolitik"],
+      correct: 0,
+      explanation: "ACE Inhibitor sering dipilih pada pasien hipertensi dengan diabetes karena memberi manfaat proteksi ginjal, selama tidak ada kontraindikasi seperti kehamilan atau riwayat angioedema.",
+      videoUrl: "https://www.youtube.com/embed/2k3Ih_-8yHc",
+      accessLevel: "premium", published: true,
+    },
+    {
+      id: 22, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular-gagal-jantung",
+      question: "Obat yang perlu dipantau kadar kaliumnya pada pasien gagal jantung adalah:",
+      options: ["Spironolakton", "Paracetamol", "Cetirizine", "Omeprazole"],
+      correct: 0,
+      explanation: "Spironolakton adalah antagonis aldosteron yang dapat meningkatkan risiko hiperkalemia, sehingga kadar kalium dan fungsi ginjal perlu dipantau.",
+      accessLevel: "premium", published: true,
+    },
+  ],
+  4: [
+    {
+      id: 31, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
+      question: "Antibiotik beta-laktam bekerja terutama dengan cara:",
+      options: ["Menghambat sintesis dinding sel", "Menghambat reseptor histamin", "Meningkatkan sekresi insulin", "Menghambat pompa proton"],
+      correct: 0,
+      explanation: "Antibiotik beta-laktam menghambat pembentukan dinding sel bakteri melalui ikatan pada protein pengikat penisilin.",
+      accessLevel: "free", published: true,
+    },
+    {
+      id: 32, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
+      question: "Efek samping penting aminoglikosida yang perlu dimonitor adalah:",
+      options: ["Ototoksisitas", "Hipoglikemia berat", "Batuk kering", "Retensi cairan"],
+      correct: 0,
+      explanation: "Aminoglikosida berisiko menyebabkan ototoksisitas dan nefrotoksisitas, sehingga pemantauan fungsi ginjal dan gejala pendengaran penting.",
+      accessLevel: "free", published: true,
+    },
+  ],
+  5: [
+    {
+      id: 41, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-interaksi-obat",
+      question: "Kombinasi warfarin dengan NSAID terutama meningkatkan risiko:",
+      options: ["Perdarahan", "Hiperglikemia", "Bronkospasme", "Konstipasi"],
+      correct: 0,
+      explanation: "Warfarin dan NSAID sama-sama dapat meningkatkan risiko perdarahan melalui efek pada koagulasi dan mukosa gastrointestinal.",
+      accessLevel: "premium", published: true,
+    },
+    {
+      id: 42, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis",
+      question: "Jika dosis 10 mg/kg diberikan pada pasien 50 kg, dosis totalnya adalah:",
+      options: ["50 mg", "100 mg", "500 mg", "1000 mg"],
+      correct: 2,
+      explanation: "Dosis total dihitung dengan mengalikan dosis per kilogram dengan berat badan: 10 mg/kg x 50 kg = 500 mg.",
+      accessLevel: "premium", published: true,
+    },
+  ],
+  6: [
+    {
+      id: 51, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis",
+      question: "Pasien membutuhkan 750 mg obat, tersedia tablet 250 mg. Jumlah tablet yang diberikan adalah:",
+      options: ["1 tablet", "2 tablet", "3 tablet", "4 tablet"],
+      correct: 2,
+      explanation: "Jumlah tablet = 750 mg / 250 mg = 3 tablet.",
+      accessLevel: "premium", published: true,
+    },
+    {
+      id: 52, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis",
+      question: "Larutan 2% b/v berarti terdapat zat aktif sebanyak:",
+      options: ["2 g dalam 100 mL", "2 mg dalam 100 mL", "2 g dalam 1 mL", "2 mg dalam 1 L"],
+      correct: 0,
+      explanation: "Konsentrasi 2% b/v berarti 2 gram zat aktif dalam setiap 100 mL larutan.",
+      accessLevel: "premium", published: true,
+    },
+  ],
 };
-
-export const mockAttempts: Attempt[] = [
-  {
-    id: 1, userId: 1, tryoutId: 1, attemptNumber: 1,
-    status: "submitted", startedAt: "2026-04-15T10:00:00+07:00", deadlineAt: "2026-04-15T10:30:00+07:00",
-    score: 80, correct: 4, total: 5, xpEarned: 130,
-    completedAt: "2026-04-15T10:25:00+07:00",
-    answers: [
-      { questionId: 1, selected: 1, correct: true },
-      { questionId: 2, selected: 0, correct: false },
-      { questionId: 3, selected: 1, correct: true },
-      { questionId: 4, selected: 1, correct: true },
-      { questionId: 5, selected: 2, correct: true },
-    ],
-    markedQuestionIds: [2],
-  },
-  {
-    id: 2, userId: 1, tryoutId: 2, attemptNumber: 1,
-    status: "submitted", startedAt: "2026-04-16T14:00:00+07:00", deadlineAt: "2026-04-16T14:40:00+07:00",
-    score: 50, correct: 1, total: 2, xpEarned: 70,
-    completedAt: "2026-04-16T14:35:00+07:00",
-    answers: [
-      { questionId: 11, selected: 1, correct: true },
-      { questionId: 12, selected: 0, correct: false },
-    ],
-    markedQuestionIds: [],
-  },
-];

@@ -1,46 +1,109 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useApp } from "../data";
+import { getLevelForXp } from "../features/engagement-surface/level-catalog";
+import { stopStudentImpersonationAdmin } from "../features/admin/admin-user-functions";
 import { AvatarDisplay } from "./AvatarDisplay";
 
-export function TopBar() {
-  const { user } = useApp();
-  const { level, xp, streak } = user;
-  const initials = getInitials(user.name);
-  const avatar = user.avatar || initials;
+type TopBarProgress = {
+  xp: number;
+  streak: number;
+};
+
+type TopBarProfile = {
+  name?: string;
+  avatar?: string;
+  photoUrl?: string | null;
+};
+
+export function TopBar({ progress, profile }: { progress?: TopBarProgress; profile?: TopBarProfile }) {
+  const { user, impersonation } = useApp();
+  const router = useRouter();
+  const xp = progress?.xp ?? user.xp;
+  const streak = progress?.streak ?? user.streak;
+  const level = progress ? getLevelForXp(progress.xp).level : user.level;
+  const name = profile?.name ?? user.name;
+  const initials = getInitials(name);
+  const avatar = profile?.avatar ?? user.avatar ?? initials;
+  const photoUrl = avatar === "google" ? profile?.photoUrl ?? user.googlePhotoUrl : null;
+  const showAdminEntry = user.isAdmin;
+
+  const stopImpersonation = async () => {
+    const result = await stopStudentImpersonationAdmin();
+
+    await router.invalidate();
+    window.location.assign(result.redirectTo);
+  };
 
   return (
-    <div
-      className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b-2 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8"
-      style={{
-        background:
-          "linear-gradient(90deg, rgba(255,250,240,0.92) 0%, rgba(238,248,246,0.92) 58%, rgba(255,255,255,0.88) 100%)",
-        borderColor: "#d9ebe6",
-      }}
-    >
-      <Link
-        to="/profile"
-        className="flex items-center gap-2.5 shrink-0 no-underline"
-        title="Profil"
-      >
-        <span className="w-10 h-10 rounded-full flex items-center justify-center text-[21px] font-black tracking-wide shadow-sm border-2 border-amber-200 text-stone-800 bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] overflow-hidden hover:border-primary-light transition-colors">
-          <AvatarDisplay avatar={avatar} photoUrl={user.googlePhotoUrl} className="w-full h-full" />
-        </span>
-        <div className="flex flex-col leading-none">
-          <span className="text-[13px] font-bold text-stone-800 truncate max-w-[120px]">
-            {user.name}
-          </span>
-          <span className="text-[11px] font-extrabold text-[var(--brand-primary-darker)] mt-0.5">
-            Lv.{level}
-          </span>
+    <>
+      {impersonation && (
+        <div className="sticky top-0 z-30 border-b-2 border-amber-200 bg-amber-50 py-2 text-amber-900">
+          <div className="page-lane flex items-center justify-between gap-3">
+            <p className="m-0 min-w-0 text-[12px] font-bold leading-snug">
+              Impersonating {name}
+              <span className="hidden font-semibold sm:inline"> as {impersonation.adminEmail}</span>
+            </p>
+            <button
+              className="shrink-0 rounded-full border-2 border-amber-300 bg-white px-3 py-1 text-[11px] font-extrabold text-amber-900"
+              onClick={stopImpersonation}
+              type="button"
+            >
+              Stop
+            </button>
+          </div>
         </div>
-      </Link>
+      )}
 
-      <div className="flex items-center gap-2 flex-1 justify-center">
-        <TopBarPill icon={<FlameIcon />} value={String(streak)} color="amber" />
-        <TopBarPill icon={<BoltIcon />} value={xp.toLocaleString()} color="green" />
-        <TopBarPill icon={<ShieldIcon />} value={`Lv.${level}`} color="teal" />
+      <div
+        className="sticky top-0 z-20 border-b-2 py-3 backdrop-blur-xl"
+        style={{
+          background:
+            "linear-gradient(90deg, rgba(255,250,240,0.92) 0%, rgba(238,248,246,0.92) 58%, rgba(255,255,255,0.88) 100%)",
+          borderColor: "#d9ebe6",
+        }}
+      >
+        <div className="page-lane grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+          <Link
+            to="/profile"
+            className="flex min-w-0 items-center gap-2.5 justify-self-start no-underline"
+            title="Profil"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-amber-200 bg-[linear-gradient(135deg,#fff7ed_0%,#dcecf7_100%)] text-[21px] font-black tracking-wide text-stone-800 shadow-sm transition-colors hover:border-primary-light">
+              <AvatarDisplay avatar={avatar} photoUrl={photoUrl} className="h-full w-full" />
+            </span>
+            <div className="hidden min-w-0 flex-col leading-none sm:flex">
+              <span className="max-w-[120px] truncate text-[13px] font-bold text-stone-800">
+                {name}
+              </span>
+              <span className="mt-0.5 text-[11px] font-extrabold text-[var(--brand-primary-darker)]">
+                Lv.{level}
+              </span>
+            </div>
+          </Link>
+
+          <div className="flex min-w-0 items-center justify-center gap-2">
+            <TopBarPill icon={<FlameIcon />} value={String(streak)} color="amber" />
+            <TopBarPill icon={<BoltIcon />} value={xp.toLocaleString()} color="green" />
+            <TopBarPill icon={<ShieldIcon />} value={`Lv.${level}`} color="teal" />
+          </div>
+
+          <div className="flex justify-self-end">
+            {showAdminEntry ? (
+              <Link
+                to="/admin"
+                className="flex h-10 items-center gap-2 rounded-full border-2 border-primary-soft bg-white/88 px-3 text-[12px] font-extrabold text-primary-dark no-underline shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary-light hover:bg-primary-tint"
+                title="Admin dashboard"
+              >
+                <AdminDashboardIcon />
+                <span className="hidden sm:inline">Admin</span>
+              </Link>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -126,7 +189,7 @@ function TopBarPill({
 
   return (
     <div
-      className="flex items-center gap-1.5 font-extrabold text-[12px] px-3 py-2 rounded-full border-2 shadow-sm"
+      className="flex items-center gap-1.5 rounded-full border-2 px-2.5 py-2 text-[12px] font-extrabold shadow-sm sm:px-3"
       style={styles[color]}
     >
       {icon}
@@ -205,6 +268,15 @@ function ShieldIcon() {
   return (
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" aria-hidden="true">
       <path d="M12 3 19 6v5.2c0 4.4-2.8 8.3-7 9.8-4.2-1.5-7-5.4-7-9.8V6l7-3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function AdminDashboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M4 5.8A1.8 1.8 0 0 1 5.8 4h12.4A1.8 1.8 0 0 1 20 5.8v12.4a1.8 1.8 0 0 1-1.8 1.8H5.8A1.8 1.8 0 0 1 4 18.2V5.8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M8 9h8M8 13h3M14 13h2M8 17h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

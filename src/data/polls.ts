@@ -14,7 +14,7 @@ export interface Poll {
   closedAt?: string;
 }
 
-export const mockPolls: Poll[] = [
+export const seedPolls: Poll[] = [
   {
     id: 1,
     title: "Quiz Farmakologi",
