@@ -67,8 +67,8 @@ export async function ensureSessionFromHeaders(headers: Headers) {
 }
 
 export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Viewer | null> {
-  const { getActiveAdminMembership } = await import("./domain/admin");
-  const { getStudentProfile, isProfileComplete } = await import("./domain/users");
+  const { getActiveAdminMembership } = await import("../features/identity/admin-membership");
+  const { getStudentProfile, isProfileComplete } = await import("../features/identity/student-profile");
   const session = await getSessionFromHeaders(headers);
 
   if (!session) return null;
@@ -190,7 +190,7 @@ export const completeProfile = createServerFn({ method: "POST" })
         const { eq } = await import("drizzle-orm");
         const { db } = await import("./db/client");
         const { activityEvents, studentProfiles } = await import("./db/schema");
-        const { getStudentProfile } = await import("./domain/users");
+        const { getStudentProfile } = await import("../features/identity/student-profile");
         const request = getRequest();
         const session = await ensureSessionFromHeaders(request.headers);
         const now = new Date();

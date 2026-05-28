@@ -20,11 +20,11 @@ export const Route = createFileRoute("/api/admin/media/upload")({
             { getAllowedMediaType, uploadAdminMediaToS3 },
           ] = await Promise.all([
             import("../../../../lib/auth-functions"),
-            import("../../../../lib/domain/admin"),
+            import("../../../../features/identity/admin-membership"),
             import("../../../../lib/db/client"),
             import("../../../../lib/db/schema"),
-            import("../../../../lib/media-url"),
-            import("../../../../lib/s3-upload.server"),
+            import("../../../../features/media/media-asset-url"),
+            import("../../../../features/media/media-storage.server"),
           ]);
           const viewer = await getCurrentViewerFromHeaders(request.headers);
 

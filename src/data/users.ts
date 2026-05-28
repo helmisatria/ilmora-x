@@ -1,4 +1,4 @@
-import { hasPremiumMembershipEndsAt } from "../lib/domain/premium-access";
+import { hasPremiumMembershipEndsAt } from "../features/premium-access/premium-access";
 
 export interface User {
   id: number;

@@ -6,7 +6,7 @@ import type {
   TryoutWorkbookQuestion,
   WorkbookTaxonomyAction,
   WorkbookValidationIssue,
-} from "../../lib/tryout-workbook";
+} from "../../features/tryout-content/tryout-workbook";
 
 export type WorkbookPreview = {
   fileName: string;

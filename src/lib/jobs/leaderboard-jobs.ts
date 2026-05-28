@@ -1,5 +1,5 @@
 import { PgBoss } from "pg-boss";
-import { finalisePreviousWeeklyLeaderboard } from "../domain/leaderboard";
+import { finalisePreviousWeeklyLeaderboard } from "../../features/leaderboard/leaderboard";
 
 const weeklyFinalizationQueue = "weekly-leaderboard-finalization";
 const jakartaTimezone = "Asia/Jakarta";

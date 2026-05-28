@@ -928,7 +928,7 @@ src/
 
 ## 12. Level Progression Reference
 
-Included from `IlmoraX - Structured Reference.md`: 50 levels from "Pharmacy Newbie I" (0 XP) to "Pharmacy Legendary" (42,280 XP). This data will be hardcoded in `src/data/levels.ts`.
+Included from `IlmoraX - Structured Reference.md`: 50 levels from "Pharmacy Newbie I" (0 XP) to "Pharmacy Legendary" (42,280 XP). This data now lives in `src/features/engagement-surface/level-catalog.ts`.
 
 ---
 

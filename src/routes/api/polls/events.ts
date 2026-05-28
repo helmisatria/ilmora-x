@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { PollEvent } from "../../../lib/poll-events";
+import type { PollEvent } from "../../../features/poll-session/poll-live-events";
 
 export const Route = createFileRoute("/api/polls/events")({
   server: {
@@ -83,7 +83,7 @@ function createPollEventResponse(request: Request, shouldSend: (event: PollEvent
       send("retry: 5000\n\n");
 
       try {
-        const { subscribePollEvents } = await import("../../../lib/poll-events");
+        const { subscribePollEvents } = await import("../../../features/poll-session/poll-live-events");
 
         unsubscribe = await subscribePollEvents((event) => {
           if (!shouldSend(event)) return;

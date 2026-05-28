@@ -18,10 +18,10 @@ export const Route = createFileRoute("/api/admin/question-picture")({
             { makeMediaAssetUrl },
           ] = await Promise.all([
             import("../../../lib/auth-functions"),
-            import("../../../lib/domain/admin"),
+            import("../../../features/identity/admin-membership"),
             import("../../../lib/db/client"),
             import("../../../lib/db/schema"),
-            import("../../../lib/media-url"),
+            import("../../../features/media/media-asset-url"),
           ]);
           const viewer = await getCurrentViewerFromHeaders(request.headers);
 
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/api/admin/question-picture")({
             return Response.json({ message: "Image file is required." }, { status: 400 });
           }
 
-          const { isAllowedQuestionPictureType, uploadQuestionPictureToS3 } = await import("../../../lib/s3-upload.server");
+          const { isAllowedQuestionPictureType, uploadQuestionPictureToS3 } = await import("../../../features/media/media-storage.server");
 
           if (!isAllowedQuestionPictureType(file.type)) {
             return Response.json({ message: "Only JPG, PNG, WEBP, or GIF images are supported." }, { status: 400 });

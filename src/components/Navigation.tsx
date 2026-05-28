@@ -1,6 +1,7 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { getLevelForXp, useApp } from "../data";
-import { stopStudentImpersonationAdmin } from "../lib/admin-functions";
+import { useApp } from "../data";
+import { getLevelForXp } from "../features/engagement-surface/level-catalog";
+import { stopStudentImpersonationAdmin } from "../features/admin/admin-user-functions";
 import { AvatarDisplay } from "./AvatarDisplay";
 
 type TopBarProgress = {

@@ -20,18 +20,33 @@ _Avoid_: Session lifecycle
 The top level of question classification (e.g. "Klinis", "Farmakologi"). Every **Question** belongs to exactly one Category.
 
 **Sub-category**:
-The second and final level of question classification, scoped under a **Category** (e.g. "Kardiovaskular - Hipertensi" under "Klinis"). Every **Question** is tagged with exactly one `(Category, Sub-category)` pair. No deeper nesting.
+The second level of question classification, scoped under a **Category** (e.g. "Kardiovaskular" under "Klinis").
 _Avoid_: Topic, tag, sub-sub-category
+
+**Topic**:
+The third and most specific level of question classification, scoped under a **Sub-category** (e.g. "Hipertensi" under "Kardiovaskular").
+_Avoid_: Sub-sub-category, tag
 
 ## Rules (Taxonomy)
 
-- **Category/Sub-category management is additive and rename-only in M1.** Admins may create, rename, recolor, and reorder the two-level taxonomy. Delete, merge, and moving Sub-categories between Categories are deferred.
-- **Stable IDs stay visible.** Workbook imports validate against existing Category/Sub-category IDs, so the Admin taxonomy manager must show IDs and avoid changing them during rename.
-- **Workbook import may resolve taxonomy by name.** If `category_id` or `sub_category_id` is blank, the workbook may provide `category_name` or `sub_category_name`. Import reuses an existing row by case-insensitive trimmed name, or creates it during confirmed import when no match exists.
+- **Category/Sub-category/Topic management is additive and rename-only in M1.** Admins may create, rename, recolor, and reorder the three-level taxonomy. Delete, merge, and moving taxonomy nodes between parents are deferred.
+- **Questions require a complete taxonomy path.** Every **Question** belongs to exactly one **Category**, one **Sub-category**, and one **Topic**.
+- **Attempt snapshots preserve the full taxonomy path.** Each Attempt Question snapshot stores the Question's Category, Sub-category, and Topic at Attempt creation time so Student Evaluation remains stable after taxonomy renames.
+- **Stable IDs stay visible.** Workbook imports validate against existing Category/Sub-category/Topic IDs, so the Admin taxonomy manager must show IDs and avoid changing them during rename.
+- **Workbook import may resolve taxonomy by name.** If `category_id`, `sub_category_id`, or `topic_id` is blank, the workbook may provide `category_name`, `sub_category_name`, or `topic_name`. Import reuses an existing row by case-insensitive trimmed name within its parent, or creates it during confirmed import when no match exists.
+- **Try-out workbook guidelines explain Topic columns.** The generated workbook guideline and reference rows must document `topic_id`, `topic_name`, parent-child validation, and creation-by-name behavior alongside Category and Sub-category columns.
+- **Admin Question forms use dependent taxonomy selectors.** Admins choose Category, then Sub-category scoped to that Category, then Topic scoped to that Sub-category; changing a parent resets its child selections.
+- **Admin taxonomy tree manages all three levels.** Admins may create, rename, and reorder Categories, Sub-categories, and Topics in a three-level tree; the UI uses clear indentation and connector lines to distinguish child and grandchild levels.
+- **Student Evaluation surfaces Topic-level improvement guidance.** Student Evaluation shows Category, Sub-category, and Topic performance, and its learning recommendation prioritizes the weakest Topic with its parent context.
+- **Question context displays the full taxonomy path.** Attempt taking, Attempt Review, Admin Attempt Review, Question Reports, and Try-out submission analytics include Category, Sub-category, and Topic context where question taxonomy is shown or emitted.
+- **Materi uses the same taxonomy depth as Questions.** Each Materi item belongs to exactly one Category, one Sub-category, and one Topic, so Question Review backlinks can point to the most specific related Materi.
+- **Try-outs stay Category-level containers.** A Try-out belongs to one Category, while its Questions carry the more specific Sub-category and Topic paths.
+- **Existing two-level taxonomy migrates into clean three-level paths.** Existing Sub-category names containing `" - "` split into **Sub-category** and **Topic**; for example, `Kardiovaskular - Hipertensi` becomes Sub-category `Kardiovaskular` and Topic `Hipertensi`. Existing Sub-category names without that delimiter keep their current Sub-category name and receive a same-name Topic.
+- **Taxonomy migration must be data-preserving across environments.** Staging and production migrations must backfill Topics for existing Questions and Attempt snapshots before enforcing required Topic references.
 - **Merge/delete needs a history policy.** Merging or deleting taxonomy nodes needs an explicit policy for historical Attempts, Student Evaluation, Materi backlinks, and workbook imports.
 
 **Question**:
-A single item a student answers inside a **Try-out**. Carries the explanation ("pembahasan"), an access level, and one `(Category, Sub-category)` pair.
+A single item a student answers inside a **Try-out**. Carries the explanation ("pembahasan"), an access level, and one `(Category, Sub-category, Topic)` path.
 _Avoid_: Soal (Bahasa only — ok in UI), item
 
 **Question Review**:
@@ -39,7 +54,7 @@ The per-Question review content shown after an Attempt, consisting of the correc
 _Avoid_: Materi (unless referring to a standalone study-material unit)
 
 **Student Evaluation**:
-A per-Student learning-performance view computed from submitted and auto-submitted **Attempts**, covering totals, accuracy, Attempt history, and Category/Sub-category breakdowns.
+A per-Student learning-performance view computed from submitted and auto-submitted **Attempts**, covering totals, accuracy, Attempt history, and Category/Sub-category/Topic breakdowns.
 _Avoid_: Users Insights, platform analytics
 
 **Product Analytics**:
@@ -154,6 +169,7 @@ A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuse
 ## Rules (Student Evaluation)
 
 - **Admin Student Evaluation reuses the Student Evaluation model.** Admins may inspect the same per-Student learning-performance data a Student sees, scoped to a selected Student and presented inside Admin CMS with profile/status context.
+- **Admin Student Evaluation shows the full taxonomy hierarchy.** Admins see Category, Sub-category, and Topic performance with no premium blur or lock.
 - **Admin Student Evaluation is reached from Admin Users.** `/admin/users` is the entry point for finding a Student, and `/admin/users/$studentId` is the Student detail page that includes profile, status, and Student Evaluation data.
 - **Admin Attempt Review is read-only inspection.** From Admin Student Evaluation, Admins may open submitted or auto-submitted Attempt result/review for the selected Student, but cannot edit answers, rescore Attempts, or submit in-progress Attempts from that surface.
 - **Admin Student Evaluation ignores Student premium gating.** Student-facing Evaluation may lock or blur premium-only details, but Admin-facing Student Evaluation always shows the full basic evaluation because it is an operational oversight surface, not a Student entitlement.

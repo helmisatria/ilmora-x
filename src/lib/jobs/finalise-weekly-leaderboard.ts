@@ -16,7 +16,7 @@ async function main() {
   }
 
   const [{ finalisePreviousWeeklyLeaderboard, finaliseWeeklyLeaderboard }, dbClient] = await Promise.all([
-    import("../domain/leaderboard"),
+    import("../../features/leaderboard/leaderboard"),
     import("../db/client"),
   ]);
 

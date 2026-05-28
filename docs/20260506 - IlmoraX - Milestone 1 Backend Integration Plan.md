@@ -175,12 +175,12 @@ src/lib/db/client.ts
 src/lib/db/schema.ts
 src/lib/db/migrate.ts
 src/lib/db/seed.ts
-src/lib/domain/access.ts
-src/lib/domain/admin.ts
-src/lib/domain/attempts.ts
-src/lib/domain/evaluation.ts
-src/lib/domain/tryouts.ts
-src/lib/domain/users.ts
+src/features/identity/access-rules.ts
+src/features/identity/admin-membership.ts
+src/features/identity/student-profile.ts
+src/features/tryout-attempt/
+src/features/student-evaluation/
+src/features/tryout-content/
 src/lib/http/errors.ts
 src/lib/http/validation.ts
 src/routes/api/auth/$.ts
@@ -196,7 +196,7 @@ src/routes/admin/reports.tsx
 src/routes/admin/insights.tsx
 ```
 
-Create route-specific server functions near their consumers only when the logic is small. Shared domain behavior belongs in `src/lib/domain/*`.
+Create route-specific server functions near their consumers only when the logic is small. Shared domain behavior belongs in the matching `src/features/*` Module.
 
 Keep code easy to skim:
 

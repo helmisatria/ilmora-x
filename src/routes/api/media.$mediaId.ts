@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/media/$mediaId")({
           const [{ db }, { mediaAssets }, { getMediaObjectFromS3 }] = await Promise.all([
             import("../../lib/db/client"),
             import("../../lib/db/schema"),
-            import("../../lib/s3-upload.server"),
+            import("../../features/media/media-storage.server"),
           ]);
           const [media] = await db
             .select({

@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { getLifetimeProductForTryout, membershipProducts } from "../data";
+import { getLifetimeProductForTryout, membershipProducts } from "../features/premium-access/product-catalog";
 import {
   Dialog,
   DialogContent,

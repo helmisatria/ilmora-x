@@ -1,17 +1,8 @@
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { BottomNav, TopBar } from "../components/Navigation";
-import { PremiumDialog } from "../components/PremiumDialog";
-import { TryoutIcon } from "../components/TryoutIcon";
-import { useApp } from "../data";
-import { isPaidTryout, resolveTryoutAccess } from "../lib/domain/premium-access";
-import { analyticsSearchSchema, productAnalyticsEvents } from "../lib/product-analytics";
-import { useProductAnalytics } from "../lib/product-analytics-client";
-import { listProgressSummary, listPublishedTryouts } from "../lib/student-functions";
-
-type TryoutRow = Awaited<ReturnType<typeof listPublishedTryouts>>[number];
-type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
-type TryoutFilter = "all" | "free" | "premium" | "owned";
+import { createFileRoute } from "@tanstack/react-router";
+import { analyticsSearchSchema } from "../lib/product-analytics";
+import { listProgressSummary } from "../features/student/student-progress-functions";
+import { listPublishedTryouts } from "../features/tryout-content/student-tryout-catalog-functions";
+import { TryoutCatalogPage } from "../features/tryout-content/tryout-catalog-page";
 
 export const Route = createFileRoute("/tryout")({
   loader: async () => {
@@ -25,295 +16,26 @@ export const Route = createFileRoute("/tryout")({
   head: () => ({
     meta: [
       { title: "Try-out UKAI — IlmoraX" },
-      { name: "description", content: "Pilih dari 500+ soal UKAI dengan berbagai kategori. Latihan simulasi UKAI dengan timer, pembahasan lengkap, dan evaluasi detail. Gratis dan premium tersedia." },
+      {
+        name: "description",
+        content:
+          "Pilih dari 500+ soal UKAI dengan berbagai kategori. Latihan simulasi UKAI dengan timer, pembahasan lengkap, dan evaluasi detail. Gratis dan premium tersedia.",
+      },
       { property: "og:title", content: "Try-out UKAI — IlmoraX" },
-      { property: "og:description", content: "Pilih dari 500+ soal UKAI dengan berbagai kategori. Latihan simulasi UKAI dengan timer dan pembahasan lengkap." },
+      {
+        property: "og:description",
+        content:
+          "Pilih dari 500+ soal UKAI dengan berbagai kategori. Latihan simulasi UKAI dengan timer dan pembahasan lengkap.",
+      },
     ],
   }),
-  component: TryoutComponent,
+  component: TryoutRoute,
   validateSearch: analyticsSearchSchema,
 });
 
-function TryoutComponent() {
-  const { summary, tryouts } = Route.useLoaderData() as { summary: ProgressSummary; tryouts: TryoutRow[] };
+function TryoutRoute() {
+  const { summary, tryouts } = Route.useLoaderData();
   const { intent } = Route.useSearch();
-  const { hasPremiumMembership } = useApp();
-  const analytics = useProductAnalytics();
-  const location = useLocation();
-  const [showPremium, setShowPremium] = useState(false);
-  const [selectedTryout, setSelectedTryout] = useState<TryoutRow | null>(null);
-  const [filter, setFilter] = useState<TryoutFilter>("all");
 
-  useEffect(() => {
-    if (location.pathname !== "/tryout") {
-      return;
-    }
-
-    analytics.capture(productAnalyticsEvents.tryoutCatalogViewed, {
-      intent,
-      source_path: "/tryout",
-      tryout_count: tryouts.length,
-    });
-  }, [analytics, intent, location.pathname, tryouts.length]);
-
-  if (location.pathname !== "/tryout") {
-    return <Outlet />;
-  }
-
-  const filtered = tryouts.filter((t) => {
-    if (filter === "all") return true;
-    if (filter === "owned") return false;
-    if (filter === "premium") return isPaidTryout(t.accessLevel);
-    return t.accessLevel === filter;
-  });
-
-  return (
-    <>
-      <div
-        style={{
-          background:
-            "radial-gradient(1000px 300px at 50% 0%, rgba(32,80,114,0.10), transparent 70%), var(--color-bg)",
-        }}
-      >
-      <div className="app-shell page-enter" style={{ background: "transparent" }}>
-        <div className="relative overflow-hidden pb-8">
-          <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
-          <div className="page-lane pt-7 pb-5 lg:pt-10">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
-              Modul Tryout
-            </div>
-            <h1 className="mt-2 max-w-[18ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
-              Try-out UKAI
-            </h1>
-            <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-              Pilih simulasi yang sesuai ritme belajarmu, lalu lanjutkan ke persiapan sebelum timer berjalan.
-            </p>
-          </div>
-
-          <div className="page-lane flex gap-2 overflow-x-auto pb-1">
-            {(["all", "free", "premium", "owned"] as const).map((option) => (
-              <FilterButton
-                key={option}
-                filter={option}
-                isActive={filter === option}
-                onClick={() => setFilter(option)}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="page-lane relative -mt-4 pb-24">
-          <div className="grid grid-flow-dense grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((tryout) => (
-              <TryoutCard
-                key={tryout.id}
-                tryout={tryout}
-                isLocked={isTryoutLocked(tryout, hasPremiumMembership, false)}
-                isOwned={false}
-                onLockedClick={() => {
-                  setSelectedTryout(tryout);
-                  setShowPremium(true);
-                }}
-              />
-            ))}
-          </div>
-
-          {filtered.length === 0 && <EmptyState filter={filter} />}
-        </div>
-        <BottomNav active="tryout" />
-      </div>
-      </div>
-      <PremiumDialog
-        isOpen={showPremium}
-        onClose={() => setShowPremium(false)}
-        onUpgrade={() => {
-          setShowPremium(false);
-        }}
-        hasPremiumMembership={hasPremiumMembership}
-        tryout={selectedTryout}
-      />
-    </>
-  );
-}
-
-function isTryoutLocked(tryout: TryoutRow, hasPremiumMembership: boolean, isOwned: boolean) {
-  return resolveTryoutAccess({
-    accessLevel: tryout.accessLevel,
-    hasPremiumMembership,
-    hasLifetimeTryoutPurchase: isOwned,
-  }).locked;
-}
-
-function FilterButton({
-  filter,
-  isActive,
-  onClick,
-}: {
-  filter: TryoutFilter;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  const label = getFilterLabel(filter);
-
-  return (
-    <button
-      className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full border-2 transition-all duration-150 active:translate-y-[1px]"
-      style={{
-        color: isActive ? "var(--color-primary-dark)" : "var(--color-stone-500)",
-        borderColor: isActive ? "rgba(32,80,114,0.20)" : "var(--color-stone-200)",
-        background: isActive ? "rgba(32,80,114,0.06)" : "#ffffff",
-      }}
-      onClick={onClick}
-      type="button"
-    >
-      <span
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ background: isActive ? "var(--color-primary)" : "var(--color-stone-300)" }}
-      />
-      {label}
-    </button>
-  );
-}
-
-function TryoutCard({
-  tryout,
-  isLocked,
-  isOwned,
-  onLockedClick,
-}: {
-  tryout: TryoutRow;
-  isLocked: boolean;
-  isOwned: boolean;
-  onLockedClick: () => void;
-}) {
-  const categoryColor = tryout.categoryColor;
-  const accent = isLocked ? "var(--color-amber)" : categoryColor;
-  const categoryName = tryout.categoryName;
-
-  return (
-    <Link
-      to={isLocked ? "/premium" : "/tryout/$id"}
-      params={isLocked ? undefined : { id: String(tryout.id) }}
-      className="group relative flex min-h-[238px] flex-col rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-4 no-underline shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 md:min-h-[260px]"
-      onClick={(event) => {
-        if (!isLocked) return;
-
-        event.preventDefault();
-        onLockedClick();
-      }}
-    >
-      {isPaidTryout(tryout.accessLevel) && <AccessPill isOwned={isOwned} />}
-
-      <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center border-2"
-        style={{
-          color: accent,
-          background: `${normalizeCssColor(accent)}18`,
-          borderColor: `${normalizeCssColor(accent)}22`,
-        }}
-      >
-        {isLocked ? <LockIcon /> : <TryoutIcon icon={tryout.icon} tryoutId={tryout.id} />}
-      </div>
-
-      <div className="mt-4 flex-1">
-        <div className="max-w-[16ch] text-[13.5px] font-bold leading-tight text-stone-800 lg:max-w-[18ch]">
-          {tryout.title}
-        </div>
-        <p className="mt-2 max-w-[22ch] text-[12.5px] font-medium leading-relaxed text-stone-500">
-          {tryout.description}
-        </p>
-      </div>
-
-      <div className="mt-4 space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <MiniMetric label="Soal" value={String(tryout.questionCount)} />
-          <MiniMetric label="Menit" value={String(tryout.durationMinutes)} />
-        </div>
-        <span
-          className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide px-2.5 py-1.5 rounded-full border-2 max-w-full"
-          style={{
-            color: accent,
-            borderColor: `${normalizeCssColor(accent)}33`,
-            background: `${normalizeCssColor(accent)}10`,
-          }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: accent }} />
-          <span className="truncate">{categoryName}</span>
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-function AccessPill({ isOwned }: { isOwned: boolean }) {
-  const label = isOwned ? "Dimiliki" : "Premium";
-  const className = "absolute -top-2 right-3 inline-flex items-center gap-1.5 rounded-full border-2 border-white bg-amber px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm";
-
-  return (
-    <div className={className}>
-      <CrownIcon />
-      {label}
-    </div>
-  );
-}
-
-function MiniMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[var(--radius-sm)] bg-stone-50 py-2 text-center border-2 border-stone-100">
-      <div className="text-[17px] font-bold text-stone-800 leading-none tracking-tight">{value}</div>
-      <div className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-stone-400">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ filter }: { filter: TryoutFilter }) {
-  return (
-    <div className="mt-5 bg-white rounded-[var(--radius-lg)] p-5 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
-      <div className="mx-auto w-14 h-14 rounded-2xl bg-primary-tint text-primary border-2 border-primary-soft flex items-center justify-center">
-        <ArchiveIcon />
-      </div>
-      <h2 className="mt-4 text-xl font-bold tracking-tight text-stone-800">Belum ada modul</h2>
-      <p className="mt-2 mx-auto text-[14px] leading-relaxed text-stone-500 font-medium max-w-[28ch]">
-        Tidak ada tryout untuk filter {getFilterLabel(filter).toLowerCase()} saat ini.
-      </p>
-    </div>
-  );
-}
-
-function getFilterLabel(filter: TryoutFilter) {
-  if (filter === "free") return "Gratis";
-  if (filter === "premium") return "Premium";
-  if (filter === "owned") return "Dimiliki";
-  return "Semua";
-}
-
-function normalizeCssColor(color: string) {
-  if (color.startsWith("var(")) return "#f59e0b";
-  return color;
-}
-
-function LockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
-      <path d="M7 11V8a5 5 0 0 1 10 0v3M6.8 11h10.4c1 0 1.8.8 1.8 1.8v5.4c0 1-.8 1.8-1.8 1.8H6.8c-1 0-1.8-.8-1.8-1.8v-5.4c0-1 .8-1.8 1.8-1.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CrownIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" aria-hidden="true">
-      <path d="m4 8 4 3.5L12 5l4 6.5L20 8l-1.5 10h-13L4 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ArchiveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" aria-hidden="true">
-      <path d="M4 7h16M6 7v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7M9 11h6M5.8 4h12.4c.4 0 .8.4.8.8V7H5V4.8c0-.4.4-.8.8-.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <TryoutCatalogPage intent={intent} summary={summary} tryouts={tryouts} />;
 }
