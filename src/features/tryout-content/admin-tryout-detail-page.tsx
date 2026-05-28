@@ -37,6 +37,7 @@ type QuestionForm = {
   sortOrder: string;
   categoryId: string;
   subCategoryId: string;
+  topicId: string;
   questionText: string;
   optionA: string;
   optionB: string;
@@ -80,6 +81,11 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
     return categories.find((category) => category.id === questionForm.categoryId)?.subCategories ?? [];
   }, [categories, questionForm]);
+  const selectedTopics = useMemo(() => {
+    if (!questionForm) return [];
+
+    return selectedSubCategories.find((subCategory) => subCategory.id === questionForm.subCategoryId)?.topics ?? [];
+  }, [selectedSubCategories, questionForm]);
 
   const refresh = async () => {
     await router.invalidate();
@@ -145,6 +151,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
       sortOrder: String(question.sortOrder),
       categoryId: question.categoryId,
       subCategoryId: question.subCategoryId,
+      topicId: question.topicId,
       questionText: question.questionText,
       optionA: question.optionA,
       optionB: question.optionB,
@@ -164,12 +171,25 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   const updateQuestionCategory = (categoryId: string) => {
     if (!questionForm) return;
 
-    const subCategoryId = categories.find((category) => category.id === categoryId)?.subCategories[0]?.id ?? "";
+    const subCategory = categories.find((category) => category.id === categoryId)?.subCategories[0];
 
     setQuestionForm({
       ...questionForm,
       categoryId,
+      subCategoryId: subCategory?.id ?? "",
+      topicId: subCategory?.topics?.[0]?.id ?? "",
+    });
+  };
+
+  const updateQuestionSubCategory = (subCategoryId: string) => {
+    if (!questionForm) return;
+
+    const topicId = selectedSubCategories.find((subCategory) => subCategory.id === subCategoryId)?.topics?.[0]?.id ?? "";
+
+    setQuestionForm({
+      ...questionForm,
       subCategoryId,
+      topicId,
     });
   };
 
@@ -195,6 +215,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
           sortOrder,
           categoryId: questionForm.categoryId,
           subCategoryId: questionForm.subCategoryId,
+          topicId: questionForm.topicId,
           questionText: questionForm.questionText,
           optionA: questionForm.optionA,
           optionB: questionForm.optionB,
@@ -487,7 +508,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
             </div>
 
             <div className="grid gap-5 p-5 sm:p-6">
-              <div className="grid gap-5 sm:grid-cols-[120px_1fr_1fr]">
+              <div className="grid gap-5 sm:grid-cols-[120px_1fr_1fr_1fr]">
                 <Field label="Order">
                   <input
                     value={questionForm.sortOrder}
@@ -514,12 +535,26 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                 <Field label="Sub-category">
                   <select
                     value={questionForm.subCategoryId}
-                    onChange={(event) => setQuestionForm({ ...questionForm, subCategoryId: event.target.value })}
+                    onChange={(event) => updateQuestionSubCategory(event.target.value)}
                     className="admin-control"
                   >
                     {selectedSubCategories.map((subCategory) => (
                       <option key={subCategory.id} value={subCategory.id}>
                         {subCategory.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Topic">
+                  <select
+                    value={questionForm.topicId}
+                    onChange={(event) => setQuestionForm({ ...questionForm, topicId: event.target.value })}
+                    className="admin-control"
+                  >
+                    {selectedTopics.map((topic) => (
+                      <option key={topic.id} value={topic.id}>
+                        {topic.name}
                       </option>
                     ))}
                   </select>
@@ -645,6 +680,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="admin-meta-tag first:before:hidden">{question.categoryId}</span>
                     <span className="admin-meta-tag">{question.subCategoryId}</span>
+                    <span className="admin-meta-tag">{question.topicId}</span>
                     <span className="admin-meta-tag capitalize">{question.accessLevel}</span>
                     <span className="admin-meta-tag">Answer: {question.correctOption}</span>
                     <StatusPill status={question.status} />
@@ -789,8 +825,8 @@ function getQuestionValidationMessage(form: QuestionForm, sortOrder: number) {
     return "Order must be an integer from 1 to 1000.";
   }
 
-  if (!form.categoryId || !form.subCategoryId) {
-    return "Category and sub-category are required.";
+  if (!form.categoryId || !form.subCategoryId || !form.topicId) {
+    return "Category, sub-category, and topic are required.";
   }
 
   if (!form.questionText.trim() || !form.explanation.trim()) {

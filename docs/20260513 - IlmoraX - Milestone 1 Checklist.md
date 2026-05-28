@@ -11,8 +11,8 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 - Standalone Admin Questions is not an M1 demo path. Questions are managed through the Try-out workbook.
 - Standalone Admin Materi management is skipped for M1. Materi CMS/upload/publish/archive moves out of the M1 acceptance path.
 - Question difficulty is deferred to M2.
-- Category/Sub-category Admin management is in M1 as a simple two-level manager: create, rename, recolor, reorder, and show stable IDs. Merge/delete stays deferred until an analytics history policy exists.
-- Try-out workbook import may auto-create Category/Sub-category from names when IDs are blank, reusing existing names case-insensitively.
+- Category/Sub-category/Topic Admin management is in M1 as a three-level manager: create, rename, recolor, reorder, and show stable IDs. Merge/delete stays deferred until an analytics history policy exists.
+- Try-out workbook import may auto-create Category/Sub-category/Topic from names when IDs are blank, reusing existing names case-insensitively within the selected parent.
 - Student Try-out list attempt metadata is accepted as non-blocking for M1.
 
 ---
@@ -99,10 +99,10 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 
 - [x] Store categories in the database.
 - [x] Store sub-categories in the database.
-- [x] Enforce a maximum of two category levels.
-- [x] Add Category/Sub-category Admin management for create, rename, recolor, and reorder.
-- [x] Show stable Category/Sub-category IDs for workbook import use.
-- [x] Defer Category/Sub-category merge/delete until a history policy exists.
+- [x] Enforce Category -> Sub-category -> Topic as the Question taxonomy path.
+- [x] Add Category/Sub-category/Topic Admin management for create, rename, recolor, and reorder.
+- [x] Show stable Category/Sub-category/Topic IDs for workbook import use.
+- [x] Defer Category/Sub-category/Topic merge/delete until a history policy exists.
 - [x] Store questions in the database.
 - [x] Store question choices in the database.
 - [x] Store correct answer keys securely enough for M1.
@@ -134,13 +134,13 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 
 - [x] Define the final M1 Excel template.
 - [x] Validate required columns before import.
-- [x] Validate category/sub-category IDs during import.
+- [x] Validate category/sub-category/topic IDs during import.
 - [x] Validate answer options during import.
 - [x] Validate correct answer key during import.
 - [x] Validate duplicate question rows.
 - [x] Show import preview before commit.
-- [x] Preview Category/Sub-category reuse/create actions before commit.
-- [x] Auto-create Category/Sub-category from workbook names when IDs are blank.
+- [x] Preview Category/Sub-category/Topic reuse/create actions before commit.
+- [x] Auto-create Category/Sub-category/Topic from workbook names when IDs are blank.
 - [x] Commit valid import rows in a transaction.
 - [x] Report invalid rows with row numbers.
 - [x] Add an import sample file or update the existing sample file.

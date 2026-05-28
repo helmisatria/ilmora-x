@@ -460,7 +460,7 @@ export function TryoutTakePage({ tryout }: { tryout: TryoutPreparation }) {
         <div className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 mb-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
           <div className="flex justify-between items-start gap-3 mb-4">
             <span className="bg-primary text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full tracking-wide uppercase shrink-0">
-              {q.categoryName.toUpperCase()}
+              {[q.categoryName, q.subCategoryName, q.topicName].filter(Boolean).join(" / ").toUpperCase()}
             </span>
             <div className="flex gap-2 shrink-0">
               <button

@@ -136,6 +136,17 @@ export const subCategories = pgTable("sub_categories", {
   unique("sub_categories_category_slug_unique").on(table.categoryId, table.slug),
 ]);
 
+export const topics = pgTable("topics", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  subCategoryId: text("sub_category_id").notNull().references(() => subCategories.id, { onDelete: "cascade" }),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  ...timestamps,
+}, (table) => [
+  unique("topics_sub_category_slug_unique").on(table.subCategoryId, table.slug),
+]);
+
 export const tryouts = pgTable("tryouts", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
   slug: text("slug").notNull().unique(),
@@ -158,6 +169,7 @@ export const questions = pgTable("questions", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
   categoryId: text("category_id").notNull().references(() => categories.id),
   subCategoryId: text("sub_category_id").notNull().references(() => subCategories.id),
+  topicId: text("topic_id").notNull().references(() => topics.id),
   questionText: text("question_text").notNull(),
   optionA: text("option_a").notNull(),
   optionB: text("option_b").notNull(),
@@ -220,7 +232,11 @@ export const attemptQuestionSnapshots = pgTable("attempt_question_snapshots", {
   questionId: text("question_id").notNull().references(() => questions.id),
   sortOrder: integer("sort_order").notNull(),
   categoryId: text("category_id").notNull().references(() => categories.id),
-  subCategoryId: text("sub_category_id").notNull().references(() => subCategories.id),
+  categoryName: text("category_name").notNull(),
+  subCategoryId: text("sub_category_id").notNull(),
+  subCategoryName: text("sub_category_name").notNull(),
+  topicId: text("topic_id").notNull(),
+  topicName: text("topic_name").notNull(),
   questionText: text("question_text").notNull(),
   optionA: text("option_a").notNull(),
   optionB: text("option_b").notNull(),
@@ -297,6 +313,7 @@ export const materi = pgTable("materi", {
   title: text("title").notNull(),
   categoryId: text("category_id").notNull().references(() => categories.id),
   subCategoryId: text("sub_category_id").notNull().references(() => subCategories.id),
+  topicId: text("topic_id").notNull().references(() => topics.id),
   bodyMarkdown: text("body_markdown").notNull(),
   youtubeUrl: text("youtube_url"),
   pdfFileKey: text("pdf_file_key"),
@@ -510,6 +527,16 @@ export const subCategoryRelations = relations(subCategories, ({ one, many }) => 
   category: one(categories, {
     fields: [subCategories.categoryId],
     references: [categories.id],
+  }),
+  topics: many(topics),
+  questions: many(questions),
+  materi: many(materi),
+}));
+
+export const topicRelations = relations(topics, ({ one, many }) => ({
+  subCategory: one(subCategories, {
+    fields: [topics.subCategoryId],
+    references: [subCategories.id],
   }),
   questions: many(questions),
   materi: many(materi),

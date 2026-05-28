@@ -9,6 +9,13 @@ export interface SubCategory {
   id: string;
   name: string;
   categoryId: string;
+  topics: Topic[];
+}
+
+export interface Topic {
+  id: string;
+  name: string;
+  subCategoryId: string;
 }
 
 export const categories: Category[] = [
@@ -17,9 +24,23 @@ export const categories: Category[] = [
     name: "Klinis",
     color: "#205072",
     subcategories: [
-      { id: "klinis-kardiovaskular-hipertensi", name: "Kardiovaskular - Hipertensi", categoryId: "klinis" },
-      { id: "klinis-kardiovaskular-gagal-jantung", name: "Kardiovaskular - Gagal Jantung", categoryId: "klinis" },
-      { id: "klinis-respiratori-asma", name: "Respiratori - Asma", categoryId: "klinis" },
+      {
+        id: "klinis-kardiovaskular",
+        name: "Kardiovaskular",
+        categoryId: "klinis",
+        topics: [
+          { id: "klinis-kardiovaskular-hipertensi", name: "Hipertensi", subCategoryId: "klinis-kardiovaskular" },
+          { id: "klinis-kardiovaskular-gagal-jantung", name: "Gagal Jantung", subCategoryId: "klinis-kardiovaskular" },
+        ],
+      },
+      {
+        id: "klinis-respiratori",
+        name: "Respiratori",
+        categoryId: "klinis",
+        topics: [
+          { id: "klinis-respiratori-asma", name: "Asma", subCategoryId: "klinis-respiratori" },
+        ],
+      },
     ],
   },
   {
@@ -27,8 +48,22 @@ export const categories: Category[] = [
     name: "Farmakologi",
     color: "#58cc02",
     subcategories: [
-      { id: "farmakologi-antibiotik", name: "Antibiotik", categoryId: "farmakologi" },
-      { id: "farmakologi-nsaid", name: "NSAID", categoryId: "farmakologi" },
+      {
+        id: "farmakologi-antibiotik",
+        name: "Antibiotik",
+        categoryId: "farmakologi",
+        topics: [
+          { id: "farmakologi-antibiotik-antibiotik", name: "Antibiotik", subCategoryId: "farmakologi-antibiotik" },
+        ],
+      },
+      {
+        id: "farmakologi-nsaid",
+        name: "NSAID",
+        categoryId: "farmakologi",
+        topics: [
+          { id: "farmakologi-nsaid-nsaid", name: "NSAID", subCategoryId: "farmakologi-nsaid" },
+        ],
+      },
     ],
   },
   {
@@ -36,8 +71,22 @@ export const categories: Category[] = [
     name: "Farmasi Klinik",
     color: "#0ea5e9",
     subcategories: [
-      { id: "farmasi-klinik-perhitungan-dosis", name: "Perhitungan Dosis", categoryId: "farmasi-klinik" },
-      { id: "farmasi-klinik-interaksi-obat", name: "Interaksi Obat", categoryId: "farmasi-klinik" },
+      {
+        id: "farmasi-klinik-perhitungan-dosis",
+        name: "Perhitungan Dosis",
+        categoryId: "farmasi-klinik",
+        topics: [
+          { id: "farmasi-klinik-perhitungan-dosis-perhitungan-dosis", name: "Perhitungan Dosis", subCategoryId: "farmasi-klinik-perhitungan-dosis" },
+        ],
+      },
+      {
+        id: "farmasi-klinik-interaksi-obat",
+        name: "Interaksi Obat",
+        categoryId: "farmasi-klinik",
+        topics: [
+          { id: "farmasi-klinik-interaksi-obat-interaksi-obat", name: "Interaksi Obat", subCategoryId: "farmasi-klinik-interaksi-obat" },
+        ],
+      },
     ],
   },
 ];
@@ -63,4 +112,26 @@ export function getSubCategoryName(subCategoryId: string): string {
     if (sub) return sub.name;
   }
   return subCategoryId;
+}
+
+export function getTopics(subCategoryId: string): Topic[] {
+  for (const category of categories) {
+    const subCategory = category.subcategories.find((item) => item.id === subCategoryId);
+
+    if (subCategory) return subCategory.topics;
+  }
+
+  return [];
+}
+
+export function getTopicName(topicId: string): string {
+  for (const category of categories) {
+    for (const subCategory of category.subcategories) {
+      const topic = subCategory.topics.find((item) => item.id === topicId);
+
+      if (topic) return topic.name;
+    }
+  }
+
+  return topicId;
 }

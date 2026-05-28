@@ -1,0 +1,5 @@
+# Migrate Taxonomy to Topic Level
+
+IlmoraX will use a three-level learning taxonomy: **Category -> Sub-category -> Topic**. Questions, Attempt Question snapshots, and Materi require the full taxonomy path so Student Evaluation, review surfaces, reports, and Materi backlinks can point Students to the most specific improvement area; Try-outs remain Category-level containers because a Try-out can contain Questions across many Sub-categories and Topics.
+
+Existing two-level production and staging data will be migrated into clean three-level paths before required Topic references are enforced. Existing Sub-category names containing `" - "` split into Sub-category and Topic, such as `Kardiovaskular - Hipertensi` becoming `Kardiovaskular -> Hipertensi`; names without the delimiter keep their Sub-category name and receive a same-name Topic. We chose this semantic migration over preserving old combined Sub-category names because downtime is acceptable during development, the resulting Admin tree is clearer, and Student Evaluation recommendations should read naturally at Topic level.

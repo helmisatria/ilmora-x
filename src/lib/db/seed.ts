@@ -7,6 +7,7 @@ import {
   materi as materiTable,
   questions as questionsTable,
   subCategories,
+  topics,
   tryoutQuestions,
   tryouts as tryoutsTable,
 } from "./schema";
@@ -78,6 +79,24 @@ async function seedCategories() {
             updatedAt: new Date(),
           },
         });
+
+      for (const topic of subCategory.topics) {
+        await db
+          .insert(topics)
+          .values({
+            id: topic.id,
+            subCategoryId: subCategory.id,
+            slug: topic.id,
+            name: topic.name,
+          })
+          .onConflictDoUpdate({
+            target: [topics.subCategoryId, topics.slug],
+            set: {
+              name: topic.name,
+              updatedAt: new Date(),
+            },
+          });
+      }
     }
   }
 }
@@ -122,6 +141,7 @@ async function seedTryoutsAndQuestions() {
           id: String(question.id),
           categoryId: question.categoryId,
           subCategoryId: question.subCategoryId,
+          topicId: question.topicId,
           questionText: question.question,
           optionA: options[0] ?? "",
           optionB: options[1] ?? "",
@@ -139,6 +159,7 @@ async function seedTryoutsAndQuestions() {
           set: {
             categoryId: question.categoryId,
             subCategoryId: question.subCategoryId,
+            topicId: question.topicId,
             questionText: question.question,
             optionA: options[0] ?? "",
             optionB: options[1] ?? "",
@@ -175,6 +196,7 @@ async function seedMateri() {
         title: item.title,
         categoryId: item.categoryId,
         subCategoryId: item.subCategoryId,
+        topicId: item.topicId,
         bodyMarkdown: item.body,
         youtubeUrl: item.videoUrl ?? null,
         pdfFileKey: item.pdfUrl ?? null,
@@ -185,6 +207,9 @@ async function seedMateri() {
         target: materiTable.id,
         set: {
           title: item.title,
+          categoryId: item.categoryId,
+          subCategoryId: item.subCategoryId,
+          topicId: item.topicId,
           bodyMarkdown: item.body,
           youtubeUrl: item.videoUrl ?? null,
           pdfFileKey: item.pdfUrl ?? null,
@@ -210,10 +235,29 @@ async function assertSubCategoriesBelongToCategories() {
   }
 }
 
+async function assertTopicsBelongToSubCategories() {
+  for (const category of categories) {
+    for (const subCategory of category.subcategories) {
+      for (const topic of subCategory.topics) {
+        const matches = await db
+          .select({ id: topics.id })
+          .from(topics)
+          .where(and(eq(topics.id, topic.id), eq(topics.subCategoryId, subCategory.id)))
+          .limit(1);
+
+        if (matches.length === 0) {
+          throw new Error(`Invalid seed taxonomy: ${topic.id} is not under ${subCategory.id}.`);
+        }
+      }
+    }
+  }
+}
+
 async function main() {
   await seedAdmins();
   await seedCategories();
   await assertSubCategoriesBelongToCategories();
+  await assertTopicsBelongToSubCategories();
   await seedTryoutsAndQuestions();
   await seedMateri();
   console.log("Seed completed.");

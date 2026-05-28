@@ -6,9 +6,7 @@ import {
   attemptAnswers,
   attemptQuestionSnapshots,
   attempts,
-  categories,
   questionReports,
-  subCategories,
   tryouts,
   user,
 } from "../../lib/db/schema";
@@ -72,8 +70,9 @@ export const listQuestionReportsAdmin = createServerFn({ method: "GET" })
         tryoutTitle: tryouts.title,
         attemptNumber: attempts.attemptNumber,
         attemptScore: attempts.score,
-        categoryName: categories.name,
-        subCategoryName: subCategories.name,
+        categoryName: attemptQuestionSnapshots.categoryName,
+        subCategoryName: attemptQuestionSnapshots.subCategoryName,
+        topicName: attemptQuestionSnapshots.topicName,
         questionText: attemptQuestionSnapshots.questionText,
         selectedOption: attemptAnswers.selectedOption,
         correctOption: attemptQuestionSnapshots.correctOption,
@@ -84,8 +83,6 @@ export const listQuestionReportsAdmin = createServerFn({ method: "GET" })
       .innerJoin(attempts, eq(attempts.id, questionReports.attemptId))
       .innerJoin(tryouts, eq(tryouts.id, attempts.tryoutId))
       .innerJoin(attemptQuestionSnapshots, eq(attemptQuestionSnapshots.id, questionReports.snapshotId))
-      .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-      .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
       .leftJoin(
         attemptAnswers,
         and(

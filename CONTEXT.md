@@ -29,21 +29,42 @@ _Avoid_: Sub-sub-category, tag
 
 ## Rules (Taxonomy)
 
-- **Category/Sub-category/Topic management is additive and rename-only in M1.** Admins may create, rename, recolor, and reorder the three-level taxonomy. Delete, merge, and moving taxonomy nodes between parents are deferred.
+- **Category/Sub-category/Topic management was additive and rename-only in M1.** Admins may create, rename, recolor, and reorder the three-level taxonomy. Later deletion must be guarded by live-content usage checks.
 - **Questions require a complete taxonomy path.** Every **Question** belongs to exactly one **Category**, one **Sub-category**, and one **Topic**.
 - **Attempt snapshots preserve the full taxonomy path.** Each Attempt Question snapshot stores the Question's Category, Sub-category, and Topic at Attempt creation time so Student Evaluation remains stable after taxonomy renames.
 - **Stable IDs stay visible.** Workbook imports validate against existing Category/Sub-category/Topic IDs, so the Admin taxonomy manager must show IDs and avoid changing them during rename.
+- **Topic IDs are parent-prefixed and topic-specific.** Topic `id` and `slug` use the selected Sub-category ID plus the Topic slug, such as `farmakologi-antibiotik-antibiotik`; they must not reuse the parent Sub-category ID even when the Topic has the same display name.
 - **Workbook import may resolve taxonomy by name.** If `category_id`, `sub_category_id`, or `topic_id` is blank, the workbook may provide `category_name`, `sub_category_name`, or `topic_name`. Import reuses an existing row by case-insensitive trimmed name within its parent, or creates it during confirmed import when no match exists.
 - **Try-out workbook guidelines explain Topic columns.** The generated workbook guideline and reference rows must document `topic_id`, `topic_name`, parent-child validation, and creation-by-name behavior alongside Category and Sub-category columns.
 - **Admin Question forms use dependent taxonomy selectors.** Admins choose Category, then Sub-category scoped to that Category, then Topic scoped to that Sub-category; changing a parent resets its child selections.
 - **Admin taxonomy tree manages all three levels.** Admins may create, rename, and reorder Categories, Sub-categories, and Topics in a three-level tree; the UI uses clear indentation and connector lines to distinguish child and grandchild levels.
+- **Taxonomy workbook import is upsert-only.** Admins may update existing Category/Sub-category/Topic rows by ID and create new rows from workbook data, but missing rows in the uploaded workbook are left unchanged rather than deleted.
+- **Taxonomy workbook import requires a preview confirmation.** Before applying an uploaded taxonomy workbook, Admin UI must show which Category/Sub-category/Topic rows will be created or updated so the Admin explicitly confirms the upsert.
+- **Taxonomy workbook has separate hierarchy sheets.** The workbook contains `categories`, `sub_categories`, and `topics` sheets so parent references are explicit and each taxonomy level can be validated independently.
+- **Taxonomy workbook import rejects parent moves.** Existing Sub-categories must keep their current Category, and existing Topics must keep their current Sub-category; moving taxonomy nodes needs a separate policy.
+- **Taxonomy workbook creates new rows from blank IDs.** A blank `category_id`, `sub_category_id`, or `topic_id` means create a new row from the provided name and parent reference; a filled ID must reference an existing row and is never treated as a caller-chosen new ID.
+- **Taxonomy workbook reuses rows by scoped name.** When an uploaded row has a blank ID, import reuses the existing Category by case-insensitive trimmed name, Sub-category by name within its Category, or Topic by name within its Sub-category; duplicate scoped names inside the uploaded workbook reject the import.
+- **Taxonomy workbook includes a guideline sheet.** The exported workbook explains required columns, blank-ID creation, parent references, preview confirmation, and why missing rows are not deleted.
+- **Taxonomy workbook import is all-or-nothing.** If any uploaded taxonomy row is invalid, no Category/Sub-category/Topic updates are applied and Admin UI shows row-level errors for correction.
+- **Taxonomy workbook starts from the current taxonomy export.** The first Admin workflow is download current taxonomy, edit it, and re-upload; a separate blank template is deferred until Admins need bulk creation from scratch.
 - **Student Evaluation surfaces Topic-level improvement guidance.** Student Evaluation shows Category, Sub-category, and Topic performance, and its learning recommendation prioritizes the weakest Topic with its parent context.
 - **Question context displays the full taxonomy path.** Attempt taking, Attempt Review, Admin Attempt Review, Question Reports, and Try-out submission analytics include Category, Sub-category, and Topic context where question taxonomy is shown or emitted.
 - **Materi uses the same taxonomy depth as Questions.** Each Materi item belongs to exactly one Category, one Sub-category, and one Topic, so Question Review backlinks can point to the most specific related Materi.
 - **Try-outs stay Category-level containers.** A Try-out belongs to one Category, while its Questions carry the more specific Sub-category and Topic paths.
 - **Existing two-level taxonomy migrates into clean three-level paths.** Existing Sub-category names containing `" - "` split into **Sub-category** and **Topic**; for example, `Kardiovaskular - Hipertensi` becomes Sub-category `Kardiovaskular` and Topic `Hipertensi`. Existing Sub-category names without that delimiter keep their current Sub-category name and receive a same-name Topic.
 - **Taxonomy migration must be data-preserving across environments.** Staging and production migrations must backfill Topics for existing Questions and Attempt snapshots before enforcing required Topic references.
-- **Merge/delete needs a history policy.** Merging or deleting taxonomy nodes needs an explicit policy for historical Attempts, Student Evaluation, Materi backlinks, and workbook imports.
+- **Sub-category and Topic deletion is blocked while live content uses it.** Admins must reclassify affected Questions and Materi to another complete taxonomy path before removing the Sub-category or Topic.
+- **Taxonomy deletion usage checks include draft and unpublished content.** Any existing Question or Materi row blocks deletion regardless of publication status.
+- **Materi blocks taxonomy deletion even before Materi CMS reclassification exists.** Admins may see Materi usage in the blocked deletion dialog before there is a full Materi editing surface; deletion must still wait until those records are reclassified operationally.
+- **Sub-category deletion requires an empty branch.** A Sub-category can be removed only after all child Topics have already been removed.
+- **Blocked taxonomy deletion explains the live-content usage.** Admin UI shows affected Question and Materi counts plus a small preview of linked items so Admins know what must be reclassified before deletion.
+- **Question reclassification guidance follows Try-out editing workflows.** When taxonomy deletion is blocked by Questions, Admin guidance should point to editing Questions through their Try-out context or workbook flow rather than treating standalone Question admin as the default fix path.
+- **Blocked deletion previews shared Questions once with Try-out context.** If a Question using the taxonomy node is assigned to multiple Try-outs, the preview lists the Question once, shows its linked Try-outs, and labels it as shared so Admins understand that Try-out-level edits may copy rather than mutate the shared Question.
+- **Allowed taxonomy deletion uses normal confirmation.** When a Topic or empty Sub-category has no live-content usage, Admins confirm deletion in a dialog that names the exact taxonomy path; typed-name confirmation is not required.
+- **Unused Topic and empty Sub-category deletion is a hard delete.** The taxonomy row is removed instead of archived because live content is already reclassified and historical Attempt snapshots are preserved separately.
+- **Category deletion remains out of scope.** Categories may still be renamed, recolored, and reordered, but deleting a Category needs a separate Try-out reassignment policy because Try-outs belong directly to Category.
+- **Historical Attempt snapshots stay unchanged during taxonomy deletion.** Removing a Sub-category or Topic never rewrites existing Attempt Question snapshots; historical Student Evaluation remains based on the snapshot path captured at Attempt creation.
+- **Taxonomy merge and parent moves still need a policy.** Merging taxonomy nodes or moving them between parents needs an explicit policy for live content, historical Attempts, Student Evaluation, Materi backlinks, and workbook imports.
 
 **Question**:
 A single item a student answers inside a **Try-out**. Carries the explanation ("pembahasan"), an access level, and one `(Category, Sub-category, Topic)` path.
@@ -188,7 +209,7 @@ A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuse
 - **Try-out learning funnel follows acquisition.** After acquisition is instrumented, track the core learning loop from Try-out discovery through Attempt start, submission, result viewing, Question reporting, and Materi backlink usage.
 - **Try-out learning analytics captures final answers only.** The first learning-funnel implementation tracks submitted final answers and save failures, not every in-Attempt answer change.
 - **Try-out submission analytics is Attempt-level.** `tryout_submitted` carries summary counts plus a compact final `answers` array; do not emit one Product Analytics event per answered Question in the first implementation.
-- **Try-out submission answers include analysis context only.** Each submitted answer may include Question ID/text, Category/Sub-category ID/name, selected option, correct option, and correctness. Question Review content such as explanation and video URL stays out of `tryout_submitted`.
+- **Try-out submission answers include analysis context only.** Each submitted answer may include Question ID/text, Category/Sub-category/Topic ID/name, selected option, correct option, and correctness. Question Review content such as explanation and video URL stays out of `tryout_submitted`.
 - **Attempt lifecycle Product Analytics events are server facts.** Canonical `tryout_started` and `tryout_submitted` events are captured server-side from the Attempt lifecycle, not from client clicks.
 
 ## Rules (Try-out content management)

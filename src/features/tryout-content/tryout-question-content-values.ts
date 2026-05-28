@@ -7,6 +7,7 @@ export function sameWorkbookQuestionContent(
   existingQuestion: {
     categoryId: string;
     subCategoryId: string;
+    topicId: string;
     questionText: string;
     optionA: string;
     optionB: string;
@@ -24,6 +25,7 @@ export function sameWorkbookQuestionContent(
   return (
     existingQuestion.categoryId === workbookQuestion.categoryId &&
     existingQuestion.subCategoryId === workbookQuestion.subCategoryId &&
+    existingQuestion.topicId === workbookQuestion.topicId &&
     existingQuestion.questionText === workbookQuestion.questionText &&
     existingQuestion.optionA === workbookQuestion.optionA &&
     existingQuestion.optionB === workbookQuestion.optionB &&
@@ -42,6 +44,7 @@ export function toQuestionInsertValues(question: TryoutWorkbookQuestion) {
   return {
     categoryId: question.categoryId,
     subCategoryId: question.subCategoryId,
+    topicId: question.topicId,
     questionText: question.questionText,
     optionA: question.optionA,
     optionB: question.optionB,
@@ -60,6 +63,7 @@ export function toEditableQuestionValues(question: TryoutQuestionContentInput) {
   return {
     categoryId: question.categoryId,
     subCategoryId: question.subCategoryId,
+    topicId: question.topicId,
     questionText: question.questionText,
     optionA: question.optionA,
     optionB: question.optionB,
@@ -79,6 +83,7 @@ export function sameEditableQuestionContent(
   existingQuestion: {
     categoryId: string;
     subCategoryId: string;
+    topicId: string;
     questionText: string;
     optionA: string;
     optionB: string;
@@ -97,6 +102,7 @@ export function sameEditableQuestionContent(
   return (
     existingQuestion.categoryId === nextQuestion.categoryId &&
     existingQuestion.subCategoryId === nextQuestion.subCategoryId &&
+    existingQuestion.topicId === nextQuestion.topicId &&
     existingQuestion.questionText === nextQuestion.questionText &&
     existingQuestion.optionA === nextQuestion.optionA &&
     existingQuestion.optionB === nextQuestion.optionB &&

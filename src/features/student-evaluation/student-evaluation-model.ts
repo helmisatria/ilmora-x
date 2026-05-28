@@ -25,6 +25,12 @@ export type StudentEvaluationCategory = {
     name: string;
     total: number;
     correct: number;
+    topics: Array<{
+      id: string;
+      name: string;
+      total: number;
+      correct: number;
+    }>;
   }>;
 };
 
@@ -75,19 +81,31 @@ export type StudentEvaluationSubCategoryRow = {
   correct: number | string | null;
 };
 
+export type StudentEvaluationTopicRow = {
+  categoryId: string;
+  subCategoryId: string;
+  topicId: string;
+  topicName: string;
+  total: number | string | null;
+  correct: number | string | null;
+};
+
 export function buildStudentEvaluation({
   submittedAttempts,
   categoryRows,
   subCategoryRows,
+  topicRows,
   badgeRewardXp,
   badgeCodes,
 }: {
   submittedAttempts: StudentEvaluationAttemptRow[];
   categoryRows: StudentEvaluationCategoryRow[];
   subCategoryRows: StudentEvaluationSubCategoryRow[];
+  topicRows: StudentEvaluationTopicRow[];
   badgeRewardXp: number;
   badgeCodes: string[];
 }): StudentEvaluation {
+  const topicsBySubCategoryId = groupTopicsBySubCategoryId(topicRows);
   const attempts = submittedAttempts.map(toStudentEvaluationAttempt);
   const totalQuestions = attempts.reduce((total, attempt) => total + attempt.totalQuestions, 0);
   const totalCorrect = attempts.reduce((total, attempt) => total + attempt.correctCount, 0);
@@ -125,9 +143,29 @@ export function buildStudentEvaluation({
           name: subCategory.subCategoryName,
           total: toNumber(subCategory.total),
           correct: toNumber(subCategory.correct),
+          topics: topicsBySubCategoryId.get(subCategory.subCategoryId) ?? [],
         })),
     })),
   };
+}
+
+function groupTopicsBySubCategoryId(topicRows: StudentEvaluationTopicRow[]) {
+  const topicsBySubCategoryId = new Map<string, StudentEvaluationCategory["subCategories"][number]["topics"]>();
+
+  for (const topic of topicRows) {
+    const topics = topicsBySubCategoryId.get(topic.subCategoryId) ?? [];
+
+    topics.push({
+      id: topic.topicId,
+      name: topic.topicName,
+      total: toNumber(topic.total),
+      correct: toNumber(topic.correct),
+    });
+
+    topicsBySubCategoryId.set(topic.subCategoryId, topics);
+  }
+
+  return topicsBySubCategoryId;
 }
 
 function toStudentEvaluationAttempt(row: StudentEvaluationAttemptRow): StudentEvaluationAttempt {

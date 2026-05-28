@@ -6,7 +6,11 @@ export type QuestionOption = "A" | "B" | "C" | "D" | "E";
 export type CategoryOption = {
   id: string;
   name: string;
-  subCategories?: { id: string; name: string }[];
+  subCategories?: Array<{
+    id: string;
+    name: string;
+    topics?: { id: string; name: string }[];
+  }>;
 };
 
 export type TryoutContentInput = {
@@ -35,6 +39,8 @@ export type TryoutWorkbookQuestion = {
   categoryName?: string;
   subCategoryId: string;
   subCategoryName?: string;
+  topicId: string;
+  topicName?: string;
   questionText: string;
   optionA: string;
   optionB: string;
@@ -59,6 +65,7 @@ export type TryoutQuestionContentInput = {
   sortOrder: number;
   categoryId: string;
   subCategoryId: string;
+  topicId: string;
   questionText: string;
   optionA: string;
   optionB: string;

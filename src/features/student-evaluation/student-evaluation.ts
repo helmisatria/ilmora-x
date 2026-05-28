@@ -7,7 +7,6 @@ import {
   categories,
   studentBadges,
   studentExpLedger,
-  subCategories,
   tryouts,
 } from "../../lib/db/schema";
 import {
@@ -16,6 +15,7 @@ import {
   type StudentEvaluationAttemptRow,
   type StudentEvaluationCategoryRow,
   type StudentEvaluationSubCategoryRow,
+  type StudentEvaluationTopicRow,
 } from "./student-evaluation-model";
 
 export { buildStudentEvaluation };
@@ -23,9 +23,10 @@ export type { StudentEvaluation } from "./student-evaluation-model";
 
 export async function getStudentEvaluation(studentUserId: string): Promise<StudentEvaluation> {
   const submittedAttempts = await listSubmittedAttempts(studentUserId);
-  const [categoryRows, subCategoryRows, badgeRewardXp, badgeCodes] = await Promise.all([
+  const [categoryRows, subCategoryRows, topicRows, badgeRewardXp, badgeCodes] = await Promise.all([
     listCategoryBreakdownRows(studentUserId),
     listSubCategoryBreakdownRows(studentUserId),
+    listTopicBreakdownRows(studentUserId),
     getBadgeRewardXp(studentUserId),
     listAwardedBadgeCodes(studentUserId),
   ]);
@@ -34,9 +35,41 @@ export async function getStudentEvaluation(studentUserId: string): Promise<Stude
     submittedAttempts,
     categoryRows,
     subCategoryRows,
+    topicRows,
     badgeRewardXp,
     badgeCodes,
   });
+}
+
+async function listTopicBreakdownRows(studentUserId: string): Promise<StudentEvaluationTopicRow[]> {
+  return db
+    .select({
+      categoryId: attemptQuestionSnapshots.categoryId,
+      subCategoryId: attemptQuestionSnapshots.subCategoryId,
+      topicId: attemptQuestionSnapshots.topicId,
+      topicName: attemptQuestionSnapshots.topicName,
+      total: sql<number>`count(${attemptQuestionSnapshots.id})`,
+      correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
+    })
+    .from(attemptQuestionSnapshots)
+    .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
+    .leftJoin(
+      attemptAnswers,
+      and(
+        eq(attemptAnswers.attemptId, attempts.id),
+        eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id),
+      ),
+    )
+    .where(and(
+      eq(attempts.studentUserId, studentUserId),
+      sql`${attempts.status} in ('submitted', 'auto_submitted')`,
+    ))
+    .groupBy(
+      attemptQuestionSnapshots.categoryId,
+      attemptQuestionSnapshots.subCategoryId,
+      attemptQuestionSnapshots.topicId,
+      attemptQuestionSnapshots.topicName,
+    );
 }
 
 async function listSubmittedAttempts(studentUserId: string): Promise<StudentEvaluationAttemptRow[]> {
@@ -66,8 +99,8 @@ async function listSubmittedAttempts(studentUserId: string): Promise<StudentEval
 async function listCategoryBreakdownRows(studentUserId: string): Promise<StudentEvaluationCategoryRow[]> {
   return db
     .select({
-      categoryId: categories.id,
-      categoryName: categories.name,
+      categoryId: attemptQuestionSnapshots.categoryId,
+      categoryName: attemptQuestionSnapshots.categoryName,
       categoryColor: categories.color,
       total: sql<number>`count(${attemptQuestionSnapshots.id})`,
       correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
@@ -86,22 +119,20 @@ async function listCategoryBreakdownRows(studentUserId: string): Promise<Student
       eq(attempts.studentUserId, studentUserId),
       sql`${attempts.status} in ('submitted', 'auto_submitted')`,
     ))
-    .groupBy(categories.id);
+    .groupBy(attemptQuestionSnapshots.categoryId, attemptQuestionSnapshots.categoryName, categories.color);
 }
 
 async function listSubCategoryBreakdownRows(studentUserId: string): Promise<StudentEvaluationSubCategoryRow[]> {
   return db
     .select({
-      categoryId: categories.id,
-      subCategoryId: subCategories.id,
-      subCategoryName: subCategories.name,
+      categoryId: attemptQuestionSnapshots.categoryId,
+      subCategoryId: attemptQuestionSnapshots.subCategoryId,
+      subCategoryName: attemptQuestionSnapshots.subCategoryName,
       total: sql<number>`count(${attemptQuestionSnapshots.id})`,
       correct: sql<number>`sum(case when ${attemptAnswers.isCorrect} then 1 else 0 end)`,
     })
     .from(attemptQuestionSnapshots)
     .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
-    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-    .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
     .leftJoin(
       attemptAnswers,
       and(
@@ -113,7 +144,11 @@ async function listSubCategoryBreakdownRows(studentUserId: string): Promise<Stud
       eq(attempts.studentUserId, studentUserId),
       sql`${attempts.status} in ('submitted', 'auto_submitted')`,
     ))
-    .groupBy(categories.id, subCategories.id);
+    .groupBy(
+      attemptQuestionSnapshots.categoryId,
+      attemptQuestionSnapshots.subCategoryId,
+      attemptQuestionSnapshots.subCategoryName,
+    );
 }
 
 async function getBadgeRewardXp(studentUserId: string) {

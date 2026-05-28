@@ -19,6 +19,7 @@ type QuestionForm = {
   id: string;
   categoryId: string;
   subCategoryId: string;
+  topicId: string;
   questionText: string;
   optionA: string;
   optionB: string;
@@ -36,6 +37,7 @@ const emptyForm: QuestionForm = {
   id: "",
   categoryId: "",
   subCategoryId: "",
+  topicId: "",
   questionText: "",
   optionA: "",
   optionB: "",
@@ -65,6 +67,9 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
   const selectedSubCategories = useMemo(() => {
     return categories.find((category) => category.id === form.categoryId)?.subCategories ?? [];
   }, [categories, form.categoryId]);
+  const selectedTopics = useMemo(() => {
+    return selectedSubCategories.find((subCategory) => subCategory.id === form.subCategoryId)?.topics ?? [];
+  }, [selectedSubCategories, form.subCategoryId]);
 
   const isEditing = form.id.length > 0;
 
@@ -78,12 +83,23 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
   };
 
   const updateCategory = (categoryId: string) => {
-    const subCategoryId = categories.find((category) => category.id === categoryId)?.subCategories[0]?.id ?? "";
+    const subCategory = categories.find((category) => category.id === categoryId)?.subCategories[0];
 
     setForm({
       ...form,
       categoryId,
+      subCategoryId: subCategory?.id ?? "",
+      topicId: subCategory?.topics?.[0]?.id ?? "",
+    });
+  };
+
+  const updateSubCategory = (subCategoryId: string) => {
+    const topicId = selectedSubCategories.find((subCategory) => subCategory.id === subCategoryId)?.topics?.[0]?.id ?? "";
+
+    setForm({
+      ...form,
       subCategoryId,
+      topicId,
     });
   };
 
@@ -92,6 +108,7 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
       id: question.id,
       categoryId: question.categoryId,
       subCategoryId: question.subCategoryId,
+      topicId: question.topicId,
       questionText: question.questionText,
       optionA: question.optionA,
       optionB: question.optionB,
@@ -172,7 +189,7 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
           </div>
 
           <div className="grid gap-5 p-5 sm:p-6">
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-3">
               <Field label="Category">
                 <select
                   value={form.categoryId}
@@ -190,12 +207,26 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
               <Field label="Sub-category">
                 <select
                   value={form.subCategoryId}
-                  onChange={(event) => setForm({ ...form, subCategoryId: event.target.value })}
+                  onChange={(event) => updateSubCategory(event.target.value)}
                   className="admin-control"
                 >
                   {selectedSubCategories.map((subCategory) => (
                     <option key={subCategory.id} value={subCategory.id}>
                       {subCategory.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Topic">
+                <select
+                  value={form.topicId}
+                  onChange={(event) => setForm({ ...form, topicId: event.target.value })}
+                  className="admin-control"
+                >
+                  {selectedTopics.map((topic) => (
+                    <option key={topic.id} value={topic.id}>
+                      {topic.name}
                     </option>
                   ))}
                 </select>
@@ -301,6 +332,7 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
                   <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="admin-meta-tag first:before:hidden">{question.categoryName}</span>
                     <span className="admin-meta-tag">{question.subCategoryName}</span>
+                    <span className="admin-meta-tag">{question.topicName}</span>
                     <span className="admin-meta-tag">Correct {question.correctOption}</span>
                     <span className="admin-meta-tag capitalize">{question.accessLevel}</span>
                   </div>
@@ -471,17 +503,19 @@ function EyeOffIcon({ className }: { className?: string }) {
 function createInitialForm(categories: CategoryOption[]) {
   const firstCategory = categories[0];
   const firstSubCategory = firstCategory?.subCategories[0];
+  const firstTopic = firstSubCategory?.topics?.[0];
 
   return {
     ...emptyForm,
     categoryId: firstCategory?.id ?? "",
     subCategoryId: firstSubCategory?.id ?? "",
+    topicId: firstTopic?.id ?? "",
   };
 }
 
 function getQuestionValidationMessage(form: QuestionForm) {
-  if (!form.categoryId || !form.subCategoryId) {
-    return "Category and sub-category are required.";
+  if (!form.categoryId || !form.subCategoryId || !form.topicId) {
+    return "Category, sub-category, and topic are required.";
   }
 
   if (!form.questionText.trim() || !form.explanation.trim()) {
@@ -503,6 +537,7 @@ function toQuestionPayload(form: QuestionForm) {
   return {
     categoryId: form.categoryId,
     subCategoryId: form.subCategoryId,
+    topicId: form.topicId,
     questionText: form.questionText,
     optionA: form.optionA,
     optionB: form.optionB,

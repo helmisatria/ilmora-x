@@ -4,7 +4,7 @@ const adminSections = [
   { label: "Users", to: "/admin/users", description: "Student accounts, status, and profile details.", icon: UsersIcon },
   { label: "Try-outs", to: "/admin/tryouts", description: "Assessment setup, publishing, and question assignment.", icon: BookIcon },
   { label: "Media", to: "/admin/media", description: "Reusable image and video links for Question review content.", icon: MediaIcon },
-  { label: "Categories", to: "/admin/categories", description: "Two-level curriculum taxonomy for Questions and Materi links.", icon: TagsIcon },
+  { label: "Categories", to: "/admin/categories", description: "Three-level curriculum taxonomy for Questions and Materi links.", icon: TagsIcon },
   { label: "Polls", to: "/admin/polls", description: "Live classroom Poll Sessions, rounds, and history.", icon: SignalIcon },
   { label: "Reports", to: "/admin/reports", description: "Question reports from Students.", icon: FlagIcon },
   { label: "Insights", to: "/admin/insights", description: "Basic platform metrics for Milestone 1.", icon: ChartIcon },
