@@ -218,7 +218,7 @@ function ReportCard({
             <span className="admin-meta-tag first:before:hidden">{report.tryoutTitle}</span>
             <span className="admin-meta-tag">Attempt #{report.attemptNumber}</span>
             <span className="admin-meta-tag">Score {report.attemptScore}%</span>
-            <span className="admin-meta-tag">{report.categoryName} / {report.subCategoryName}</span>
+            <span className="admin-meta-tag">{report.categoryName} / {report.subCategoryName} / {report.topicName}</span>
           </div>
         </div>
 

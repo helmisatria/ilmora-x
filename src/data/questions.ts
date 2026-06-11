@@ -2,6 +2,7 @@ export interface Question {
   id: number;
   categoryId: string;
   subCategoryId: string;
+  topicId: string;
   question: string;
   options: string[];
   correct: number;
@@ -68,7 +69,7 @@ export const tryouts: Tryout[] = [
 export const questionBank: Record<number, Question[]> = {
   1: [
     {
-      id: 1, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
+      id: 1, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik", topicId: "farmakologi-antibiotik-antibiotik",
       question: "Pilih obat golongan ACE Inhibitor yang tepat:",
       options: ["Amlodipin", "Captopril", "Propranolol", "Furosemid"],
       correct: 1,
@@ -77,7 +78,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "free", published: true,
     },
     {
-      id: 2, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
+      id: 2, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik", topicId: "farmakologi-antibiotik-antibiotik",
       question: "Dosis loading digoxin untuk dewasa adalah:",
       options: ["0.25-0.5 mg", "0.75-1.5 mg", "2-3 mg", "5 mg"],
       correct: 1,
@@ -86,7 +87,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "premium", published: true,
     },
     {
-      id: 3, categoryId: "farmakologi", subCategoryId: "farmakologi-nsaid",
+      id: 3, categoryId: "farmakologi", subCategoryId: "farmakologi-nsaid", topicId: "farmakologi-nsaid-nsaid",
       question: "Antidotum untuk heparin adalah:",
       options: ["Vitamin K", "Protamin sulfat", "Naloxone", "Flumazenil"],
       correct: 1,
@@ -94,7 +95,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "free", published: true,
     },
     {
-      id: 4, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
+      id: 4, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik", topicId: "farmakologi-antibiotik-antibiotik",
       question: "Waktu paruh amoksisilin sekitar:",
       options: ["30 menit", "1-1.5 jam", "6-8 jam", "12 jam"],
       correct: 1,
@@ -102,7 +103,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "premium", published: true,
     },
     {
-      id: 5, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular-hipertensi",
+      id: 5, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular", topicId: "klinis-kardiovaskular-hipertensi",
       question: "Obat hipertensi kontraindikasi pada kehamilan:",
       options: ["Metildopa", "Nifedipin", "ACE Inhibitor", "Labetalol"],
       correct: 2,
@@ -113,7 +114,7 @@ export const questionBank: Record<number, Question[]> = {
   ],
   2: [
     {
-      id: 11, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
+      id: 11, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik", topicId: "farmakologi-antibiotik-antibiotik",
       question: "Mekanisme kerja penisilin adalah:",
       options: ["Menghambat sintesis protein", "Menghambat sintesis dinding sel", "Menghambat replikasi DNA", "Menghambat sintesis folat"],
       correct: 1,
@@ -121,7 +122,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "free", published: true,
     },
     {
-      id: 12, categoryId: "farmakologi", subCategoryId: "farmakologi-nsaid",
+      id: 12, categoryId: "farmakologi", subCategoryId: "farmakologi-nsaid", topicId: "farmakologi-nsaid-nsaid",
       question: "NSAID yang paling selektif terhadap COX-2:",
       options: ["Ibuprofen", "Celecoxib", "Aspirin", "Diklofenak"],
       correct: 1,
@@ -131,7 +132,7 @@ export const questionBank: Record<number, Question[]> = {
   ],
   3: [
     {
-      id: 21, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular-hipertensi",
+      id: 21, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular", topicId: "klinis-kardiovaskular-hipertensi",
       question: "Terapi lini pertama hipertensi pada pasien diabetes tanpa kontraindikasi adalah:",
       options: ["ACE Inhibitor", "Antihistamin", "Antasida", "Mukolitik"],
       correct: 0,
@@ -140,7 +141,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "premium", published: true,
     },
     {
-      id: 22, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular-gagal-jantung",
+      id: 22, categoryId: "klinis", subCategoryId: "klinis-kardiovaskular", topicId: "klinis-kardiovaskular-gagal-jantung",
       question: "Obat yang perlu dipantau kadar kaliumnya pada pasien gagal jantung adalah:",
       options: ["Spironolakton", "Paracetamol", "Cetirizine", "Omeprazole"],
       correct: 0,
@@ -150,7 +151,7 @@ export const questionBank: Record<number, Question[]> = {
   ],
   4: [
     {
-      id: 31, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
+      id: 31, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik", topicId: "farmakologi-antibiotik-antibiotik",
       question: "Antibiotik beta-laktam bekerja terutama dengan cara:",
       options: ["Menghambat sintesis dinding sel", "Menghambat reseptor histamin", "Meningkatkan sekresi insulin", "Menghambat pompa proton"],
       correct: 0,
@@ -158,7 +159,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "free", published: true,
     },
     {
-      id: 32, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik",
+      id: 32, categoryId: "farmakologi", subCategoryId: "farmakologi-antibiotik", topicId: "farmakologi-antibiotik-antibiotik",
       question: "Efek samping penting aminoglikosida yang perlu dimonitor adalah:",
       options: ["Ototoksisitas", "Hipoglikemia berat", "Batuk kering", "Retensi cairan"],
       correct: 0,
@@ -168,7 +169,7 @@ export const questionBank: Record<number, Question[]> = {
   ],
   5: [
     {
-      id: 41, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-interaksi-obat",
+      id: 41, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-interaksi-obat", topicId: "farmasi-klinik-interaksi-obat-interaksi-obat",
       question: "Kombinasi warfarin dengan NSAID terutama meningkatkan risiko:",
       options: ["Perdarahan", "Hiperglikemia", "Bronkospasme", "Konstipasi"],
       correct: 0,
@@ -176,7 +177,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "premium", published: true,
     },
     {
-      id: 42, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis",
+      id: 42, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis", topicId: "farmasi-klinik-perhitungan-dosis-perhitungan-dosis",
       question: "Jika dosis 10 mg/kg diberikan pada pasien 50 kg, dosis totalnya adalah:",
       options: ["50 mg", "100 mg", "500 mg", "1000 mg"],
       correct: 2,
@@ -186,7 +187,7 @@ export const questionBank: Record<number, Question[]> = {
   ],
   6: [
     {
-      id: 51, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis",
+      id: 51, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis", topicId: "farmasi-klinik-perhitungan-dosis-perhitungan-dosis",
       question: "Pasien membutuhkan 750 mg obat, tersedia tablet 250 mg. Jumlah tablet yang diberikan adalah:",
       options: ["1 tablet", "2 tablet", "3 tablet", "4 tablet"],
       correct: 2,
@@ -194,7 +195,7 @@ export const questionBank: Record<number, Question[]> = {
       accessLevel: "premium", published: true,
     },
     {
-      id: 52, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis",
+      id: 52, categoryId: "farmasi-klinik", subCategoryId: "farmasi-klinik-perhitungan-dosis", topicId: "farmasi-klinik-perhitungan-dosis-perhitungan-dosis",
       question: "Larutan 2% b/v berarti terdapat zat aktif sebanyak:",
       options: ["2 g dalam 100 mL", "2 mg dalam 100 mL", "2 g dalam 1 mL", "2 mg dalam 1 L"],
       correct: 0,

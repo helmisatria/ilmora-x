@@ -78,6 +78,20 @@
       "when": 1779799200000,
       "tag": "0010_media_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1779934942000,
+      "tag": "0011_taxonomy_topics",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779978954000,
+      "tag": "0012_snapshot_taxonomy_names",
+      "breakpoints": true
     }
   ]
 }

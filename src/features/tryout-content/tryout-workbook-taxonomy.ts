@@ -3,6 +3,7 @@ import { db } from "../../lib/db/client";
 import {
   categories,
   subCategories,
+  topics,
 } from "../../lib/db/schema";
 import { conflict, notFound } from "../../lib/http/errors";
 import type {
@@ -43,6 +44,7 @@ export async function validateTryoutWorkbookInput(data: TryoutWorkbookInput) {
     validateQuestionOptionE(question);
     validateCategoryReference(question);
     validateSubCategoryReference(question);
+    validateTopicReference(question);
   }
 }
 
@@ -56,11 +58,13 @@ export async function resolveWorkbookTaxonomy(
   for (const question of data.questions) {
     const categoryId = await resolveCategoryReference(tx, question);
     const subCategoryId = await resolveSubCategoryReference(tx, categoryId, question);
+    const topicId = await resolveTopicReference(tx, subCategoryId, question);
 
     resolvedQuestions.push({
       ...question,
       categoryId,
       subCategoryId,
+      topicId,
     });
   }
 
@@ -97,9 +101,22 @@ export async function ensureSubCategoryBelongsToCategory(categoryId: string, sub
   throw notFound("Sub-category was not found for this category.");
 }
 
-export async function validateQuestionTaxonomy(categoryId: string, subCategoryId: string) {
+export async function ensureTopicBelongsToSubCategory(subCategoryId: string, topicId: string) {
+  const [topic] = await db
+    .select({ id: topics.id })
+    .from(topics)
+    .where(and(eq(topics.id, topicId), eq(topics.subCategoryId, subCategoryId)))
+    .limit(1);
+
+  if (topic) return;
+
+  throw notFound("Topic was not found for this sub-category.");
+}
+
+export async function validateQuestionTaxonomy(categoryId: string, subCategoryId: string, topicId: string) {
   await ensureCategoryExists(categoryId);
   await ensureSubCategoryBelongsToCategory(categoryId, subCategoryId);
+  await ensureTopicBelongsToSubCategory(subCategoryId, topicId);
 }
 
 export function validateQuestionOptionE(data: Pick<TryoutWorkbookQuestion, "correctOption" | "optionE">) {
@@ -121,6 +138,13 @@ function validateSubCategoryReference(data: Pick<TryoutWorkbookQuestion, "subCat
   if (data.subCategoryName?.trim()) return;
 
   throw conflict("sub_category_id or sub_category_name is required.");
+}
+
+function validateTopicReference(data: Pick<TryoutWorkbookQuestion, "topicId" | "topicName">) {
+  if (data.topicId?.trim()) return;
+  if (data.topicName?.trim()) return;
+
+  throw conflict("topic_id or topic_name is required.");
 }
 
 async function resolveCategoryReference(
@@ -215,6 +239,56 @@ async function resolveSubCategoryReference(
   return createdSubCategory.id;
 }
 
+async function resolveTopicReference(
+  tx: TaxonomyExecutor,
+  subCategoryId: string,
+  data: Pick<TryoutWorkbookQuestion, "topicId" | "topicName">,
+) {
+  const topicId = data.topicId?.trim() ?? "";
+
+  if (topicId) {
+    await ensureTopicBelongsToSubCategoryWithExecutor(tx, subCategoryId, topicId);
+    return topicId;
+  }
+
+  const topicName = data.topicName?.trim();
+
+  if (!topicName) {
+    throw conflict("topic_id or topic_name is required.");
+  }
+
+  const [existingTopic] = await tx
+    .select({ id: topics.id })
+    .from(topics)
+    .where(and(
+      eq(topics.subCategoryId, subCategoryId),
+      sql`lower(trim(${topics.name})) = lower(trim(${topicName}))`,
+    ))
+    .limit(1);
+
+  if (existingTopic) {
+    return existingTopic.id;
+  }
+
+  const [sortOrderRow] = await tx
+    .select({ maxSortOrder: sql<number | null>`max(${topics.sortOrder})` })
+    .from(topics)
+    .where(eq(topics.subCategoryId, subCategoryId));
+  const slug = await makeUniqueTopicSlug(tx, subCategoryId, topicName);
+  const [createdTopic] = await tx
+    .insert(topics)
+    .values({
+      id: slug,
+      subCategoryId,
+      slug,
+      name: topicName,
+      sortOrder: Number(sortOrderRow?.maxSortOrder ?? 0) + 10,
+    })
+    .returning({ id: topics.id });
+
+  return createdTopic.id;
+}
+
 async function ensureCategoryExistsWithExecutor(tx: TaxonomyExecutor, categoryId: string) {
   const [category] = await tx
     .select({ id: categories.id })
@@ -243,6 +317,22 @@ async function ensureSubCategoryBelongsToCategoryWithExecutor(
   throw notFound("Sub-category was not found for this category.");
 }
 
+async function ensureTopicBelongsToSubCategoryWithExecutor(
+  tx: TaxonomyExecutor,
+  subCategoryId: string,
+  topicId: string,
+) {
+  const [topic] = await tx
+    .select({ id: topics.id })
+    .from(topics)
+    .where(and(eq(topics.id, topicId), eq(topics.subCategoryId, subCategoryId)))
+    .limit(1);
+
+  if (topic) return;
+
+  throw notFound("Topic was not found for this sub-category.");
+}
+
 async function makeUniqueCategorySlug(tx: TaxonomyExecutor, name: string) {
   return makeUniqueTaxonomySlug(makeTaxonomySlug(name), async (slug) => {
     const [category] = await tx
@@ -264,6 +354,20 @@ async function makeUniqueSubCategorySlug(tx: TaxonomyExecutor, categoryId: strin
       .limit(1);
 
     return Boolean(subCategory);
+  });
+}
+
+async function makeUniqueTopicSlug(tx: TaxonomyExecutor, subCategoryId: string, name: string) {
+  const baseSlug = `${subCategoryId}-${makeTaxonomySlug(name)}`;
+
+  return makeUniqueTaxonomySlug(baseSlug, async (slug) => {
+    const [topic] = await tx
+      .select({ id: topics.id })
+      .from(topics)
+      .where(sql`${topics.id} = ${slug} or (${topics.subCategoryId} = ${subCategoryId} and ${topics.slug} = ${slug})`)
+      .limit(1);
+
+    return Boolean(topic);
   });
 }
 

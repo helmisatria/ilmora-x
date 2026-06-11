@@ -90,7 +90,7 @@ export function AttemptResultPage({ attemptId, result, summary }: AttemptResultP
     .map((q) => {
       return {
         id: q.snapshotId,
-        subject: q.categoryName.toUpperCase(),
+        subject: [q.categoryName, q.subCategoryName, q.topicName].filter(Boolean).join(" / ").toUpperCase(),
         question: q.questionText,
         options: q.options,
         correct: q.correctIndex,

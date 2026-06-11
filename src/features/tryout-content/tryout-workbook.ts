@@ -36,7 +36,7 @@ export type WorkbookValidationIssue = {
 export type WorkbookTaxonomyAction = {
   sheet: "tryout" | "questions";
   row: number;
-  field: "category_name" | "sub_category_name";
+  field: "category_name" | "sub_category_name" | "topic_name";
   name: string;
   parentName?: string;
   mode: "reuse" | "create";
@@ -61,6 +61,8 @@ type QuestionSheetRow = {
   category_name?: string;
   sub_category_id?: string;
   sub_category_name?: string;
+  topic_id?: string;
+  topic_name?: string;
   question_text?: string;
   option_a?: string;
   option_b?: string;
@@ -109,6 +111,7 @@ const requiredQuestionSheetHeaders = [
   "sort_order",
   "category_id",
   "sub_category_id",
+  "topic_id",
   "question_text",
   "option_a",
   "option_b",
@@ -215,6 +218,8 @@ function toTryoutWorkbookQuestion(row: QuestionSheetRow, index: number): TryoutW
     categoryName: optionalTextValue(row.category_name),
     subCategoryId: textValue(row.sub_category_id),
     subCategoryName: optionalTextValue(row.sub_category_name),
+    topicId: textValue(row.topic_id),
+    topicName: optionalTextValue(row.topic_name),
     questionText: textValue(row.question_text),
     optionA: textValue(row.option_a),
     optionB: textValue(row.option_b),
@@ -304,11 +309,19 @@ function validateQuestionRows(
       issues.push({ sheet: "questions", row: rowNumber, field: "sort_order", message: "sort_order must be an integer from 1 to 1000." });
     }
 
-    resolveSubCategoryReference({
+    const subCategory = resolveSubCategoryReference({
       row: rowNumber,
       category,
       subCategoryId: question.subCategoryId,
       subCategoryName: question.subCategoryName,
+      issues,
+      taxonomyActions,
+    });
+    resolveTopicReference({
+      row: rowNumber,
+      subCategory,
+      topicId: question.topicId,
+      topicName: question.topicName,
       issues,
       taxonomyActions,
     });
@@ -424,23 +437,25 @@ function resolveSubCategoryReference({
   issues: WorkbookValidationIssue[];
   taxonomyActions: WorkbookTaxonomyAction[];
 }) {
-  if (!category) return;
+  if (!category) return null;
 
   if (subCategoryId) {
     if (!category.id) {
       issues.push({ sheet: "questions", row, field: "sub_category_id", message: "Use sub_category_name when category_name will create a new Category." });
-      return;
+      return null;
     }
 
-    if (category.subCategories?.some((item) => item.id === subCategoryId)) return;
+    const subCategory = category.subCategories?.find((item) => item.id === subCategoryId);
+
+    if (subCategory) return subCategory;
 
     issues.push({ sheet: "questions", row, field: "sub_category_id", message: "sub_category_id does not belong to category_id." });
-    return;
+    return null;
   }
 
   if (!subCategoryName) {
     issues.push({ sheet: "questions", row, field: "sub_category_name", message: "sub_category_id or sub_category_name is required." });
-    return;
+    return null;
   }
 
   const subCategory = category.subCategories?.find((item) => sameName(item.name, subCategoryName));
@@ -452,6 +467,60 @@ function resolveSubCategoryReference({
     name: subCategoryName,
     parentName: category.name,
     mode: subCategory ? "reuse" : "create",
+  });
+
+  if (subCategory) return subCategory;
+
+  return {
+    id: "",
+    name: subCategoryName,
+    topics: [],
+  };
+}
+
+function resolveTopicReference({
+  row,
+  subCategory,
+  topicId,
+  topicName,
+  issues,
+  taxonomyActions,
+}: {
+  row: number;
+  subCategory: NonNullable<CategoryOption["subCategories"]>[number] | null;
+  topicId: string;
+  topicName?: string;
+  issues: WorkbookValidationIssue[];
+  taxonomyActions: WorkbookTaxonomyAction[];
+}) {
+  if (!subCategory) return;
+
+  if (topicId) {
+    if (!subCategory.id) {
+      issues.push({ sheet: "questions", row, field: "topic_id", message: "Use topic_name when sub_category_name will create a new Sub-category." });
+      return;
+    }
+
+    if (subCategory.topics?.some((item) => item.id === topicId)) return;
+
+    issues.push({ sheet: "questions", row, field: "topic_id", message: "topic_id does not belong to sub_category_id." });
+    return;
+  }
+
+  if (!topicName) {
+    issues.push({ sheet: "questions", row, field: "topic_name", message: "topic_id or topic_name is required." });
+    return;
+  }
+
+  const topic = subCategory.topics?.find((item) => sameName(item.name, topicName));
+
+  addTaxonomyAction(taxonomyActions, {
+    sheet: "questions",
+    row,
+    field: "topic_name",
+    name: topicName,
+    parentName: subCategory.name,
+    mode: topic ? "reuse" : "create",
   });
 }
 

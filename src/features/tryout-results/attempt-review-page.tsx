@@ -346,7 +346,7 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
                           }}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                          {getCategoryLabel(q.categoryId)}
+                          {[q.categoryName, q.subCategoryName, q.topicName].filter(Boolean).join(" / ")}
                         </span>
                       </div>
 

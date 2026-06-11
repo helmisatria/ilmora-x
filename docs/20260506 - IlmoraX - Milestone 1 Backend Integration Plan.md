@@ -72,7 +72,8 @@ Use these exact domain terms in code and admin copy where possible:
 - **Attempt:** one start-to-submit or auto-submit run of a Try-out. Retake creates a new Attempt.
 - **Question:** one answerable item inside a Try-out.
 - **Category:** top-level classification.
-- **Sub-category:** second and final classification level. No deeper nesting.
+- **Sub-category:** second classification level under Category. Questions must also point to a Topic under the selected Sub-category.
+- **Topic:** third and most specific classification level used by Questions, Evaluation, reports, and Materi backlinks.
 - **Materi:** standalone study material.
 - **Question report:** Student complaint about a Question.
 
@@ -1277,7 +1278,7 @@ Milestone 1 is done when:
 12. Student can report a Question.
 13. Admin can review Question reports.
 14. My Progress shows real Attempt history.
-15. Evaluation dashboard shows real Category/Sub-category performance.
+15. Evaluation dashboard shows real Category/Sub-category/Topic performance.
 16. Admin can view an individual Student evaluation.
 17. Users Insights shows real basic metrics.
 18. `pnpm build` passes.
@@ -1297,7 +1298,7 @@ Use this flow for the client demo:
 7. Open review and report a Question.
 8. Retake the same Try-out and show Attempt 2.
 9. Open My Progress.
-10. Open Evaluation dashboard and show Category/Sub-category breakdown.
+10. Open Evaluation dashboard and show Category/Sub-category/Topic breakdown.
 11. Sign in as Admin.
 12. Show Users list and one Student evaluation.
 13. Suspend/unsuspend a Student.

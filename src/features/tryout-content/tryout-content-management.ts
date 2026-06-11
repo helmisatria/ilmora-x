@@ -154,6 +154,7 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
           id: questions.id,
           categoryId: questions.categoryId,
           subCategoryId: questions.subCategoryId,
+          topicId: questions.topicId,
           questionText: questions.questionText,
           optionA: questions.optionA,
           optionB: questions.optionB,
@@ -267,6 +268,7 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
           id: questions.id,
           categoryId: questions.categoryId,
           subCategoryId: questions.subCategoryId,
+          topicId: questions.topicId,
           questionText: questions.questionText,
           optionA: questions.optionA,
           optionB: questions.optionB,
@@ -321,7 +323,7 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
 
 export async function updateTryoutQuestionContent(data: TryoutQuestionContentInput) {
   validateQuestionOptionE(data);
-  await validateQuestionTaxonomy(data.categoryId, data.subCategoryId);
+  await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
 
   const nextQuestion = toEditableQuestionValues(data);
 
@@ -346,6 +348,7 @@ export async function updateTryoutQuestionContent(data: TryoutQuestionContentInp
         id: questions.id,
         categoryId: questions.categoryId,
         subCategoryId: questions.subCategoryId,
+        topicId: questions.topicId,
         questionText: questions.questionText,
         optionA: questions.optionA,
         optionB: questions.optionB,

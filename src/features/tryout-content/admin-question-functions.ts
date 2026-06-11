@@ -6,6 +6,7 @@ import {
   categories,
   questions,
   subCategories,
+  topics,
 } from "../../lib/db/schema";
 import { notFound } from "../../lib/http/errors";
 import { parseInput } from "../../lib/http/validation";
@@ -21,6 +22,7 @@ const questionAccessLevelSchema = z.enum(["free", "premium"]);
 const questionInputSchema = z.object({
   categoryId: z.string().trim().min(1),
   subCategoryId: z.string().trim().min(1),
+  topicId: z.string().trim().min(1),
   questionText: z.string().trim().min(1),
   optionA: z.string().trim().min(1),
   optionB: z.string().trim().min(1),
@@ -60,6 +62,8 @@ export const listQuestionsAdmin = createServerFn({ method: "GET" }).middleware([
       categoryName: categories.name,
       subCategoryId: questions.subCategoryId,
       subCategoryName: subCategories.name,
+      topicId: questions.topicId,
+      topicName: topics.name,
       questionText: questions.questionText,
       optionA: questions.optionA,
       optionB: questions.optionB,
@@ -77,6 +81,7 @@ export const listQuestionsAdmin = createServerFn({ method: "GET" }).middleware([
     .from(questions)
     .innerJoin(categories, eq(categories.id, questions.categoryId))
     .innerJoin(subCategories, eq(subCategories.id, questions.subCategoryId))
+    .innerJoin(topics, eq(topics.id, questions.topicId))
     .orderBy(desc(questions.updatedAt));
 
   return rows.map((row) => ({
@@ -93,11 +98,12 @@ export const createQuestionAdmin = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(createQuestionSchema, input))
   .handler(async ({ data }) => {
     validateQuestionOptionE(data);
-    await validateQuestionTaxonomy(data.categoryId, data.subCategoryId);
+    await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
 
     await db.insert(questions).values({
       categoryId: data.categoryId,
       subCategoryId: data.subCategoryId,
+      topicId: data.topicId,
       questionText: data.questionText,
       optionA: data.optionA,
       optionB: data.optionB,
@@ -120,7 +126,7 @@ export const updateQuestionAdmin = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(updateQuestionSchema, input))
   .handler(async ({ data }) => {
     validateQuestionOptionE(data);
-    await validateQuestionTaxonomy(data.categoryId, data.subCategoryId);
+    await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
 
     const [existingQuestion] = await db
       .select({ id: questions.id })
@@ -137,6 +143,7 @@ export const updateQuestionAdmin = createServerFn({ method: "POST" })
       .set({
         categoryId: data.categoryId,
         subCategoryId: data.subCategoryId,
+        topicId: data.topicId,
         questionText: data.questionText,
         optionA: data.optionA,
         optionB: data.optionB,

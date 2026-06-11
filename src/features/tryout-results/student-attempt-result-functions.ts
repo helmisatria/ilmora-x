@@ -7,10 +7,8 @@ import {
   attemptMarkedQuestions,
   attemptQuestionSnapshots,
   attempts,
-  categories,
   materi,
   questions,
-  subCategories,
   tryouts,
 } from "../../lib/db/schema";
 import { notFound } from "../../lib/http/errors";
@@ -90,9 +88,11 @@ async function getAttemptSnapshotRows(attemptId: string) {
       questionId: attemptQuestionSnapshots.questionId,
       sortOrder: attemptQuestionSnapshots.sortOrder,
       categoryId: attemptQuestionSnapshots.categoryId,
-      categoryName: categories.name,
+      categoryName: attemptQuestionSnapshots.categoryName,
       subCategoryId: attemptQuestionSnapshots.subCategoryId,
-      subCategoryName: subCategories.name,
+      subCategoryName: attemptQuestionSnapshots.subCategoryName,
+      topicId: attemptQuestionSnapshots.topicId,
+      topicName: attemptQuestionSnapshots.topicName,
       questionText: attemptQuestionSnapshots.questionText,
       optionA: attemptQuestionSnapshots.optionA,
       optionB: attemptQuestionSnapshots.optionB,
@@ -112,7 +112,7 @@ async function getAttemptSnapshotRows(attemptId: string) {
       relatedMateriId: sql<string | null>`(
         select ${materi.id}
         from ${materi}
-        where ${materi.subCategoryId} = ${attemptQuestionSnapshots.subCategoryId}
+        where ${materi.topicId} = ${attemptQuestionSnapshots.topicId}
           and ${materi.status} = 'published'
           and ${materi.pdfFileKey} is null
         order by ${materi.createdAt} desc
@@ -121,7 +121,7 @@ async function getAttemptSnapshotRows(attemptId: string) {
       relatedMateriTitle: sql<string | null>`(
         select ${materi.title}
         from ${materi}
-        where ${materi.subCategoryId} = ${attemptQuestionSnapshots.subCategoryId}
+        where ${materi.topicId} = ${attemptQuestionSnapshots.topicId}
           and ${materi.status} = 'published'
           and ${materi.pdfFileKey} is null
         order by ${materi.createdAt} desc
@@ -130,8 +130,6 @@ async function getAttemptSnapshotRows(attemptId: string) {
     })
     .from(attemptQuestionSnapshots)
     .innerJoin(questions, eq(questions.id, attemptQuestionSnapshots.questionId))
-    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-    .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
     .leftJoin(
       attemptAnswers,
       and(
@@ -150,6 +148,8 @@ async function getAttemptSnapshotRows(attemptId: string) {
     categoryName: row.categoryName,
     subCategoryId: row.subCategoryId,
     subCategoryName: row.subCategoryName,
+    topicId: row.topicId,
+    topicName: row.topicName,
     questionText: row.questionText,
     options: toOptions(row),
     correctOption: row.correctOption as "A" | "B" | "C" | "D" | "E",

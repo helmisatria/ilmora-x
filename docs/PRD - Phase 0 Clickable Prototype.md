@@ -471,7 +471,7 @@ Admins use the same Google sign-in as students. There is no `/admin/auth/login` 
 
 | Elemen        | Detail                                                                                                                        |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Category tree | **Two fixed levels only**: Kategori → Sub-kategori. No deeper nesting.                                                        |
+| Category tree | **Three fixed levels**: Kategori → Sub-kategori → Topic. Questions must carry the full path.                                  |
 | CRUD          | Create, edit, delete Kategori and Sub-kategori                                                                                |
 | Example       | Klinis → "Kardiovaskular - Hipertensi". The " - " separator collapses what could be a third level into the Sub-kategori name. |
 | Shared use    | This taxonomy is shared by both Questions and Materi — one tree, two consumers.                                               |
@@ -953,7 +953,7 @@ Included from `IlmoraX - Structured Reference.md`: 50 levels from "Pharmacy Newb
 | Self-hosted video for Pembahasan / Materi    | Unlisted YouTube only in M1/M2                                               |
 | Auto-renew subscriptions                     | Time-boxed Packages only; no recurring billing                               |
 | Per-Attempt re-scoring on moderation edit    | Deferred post-M1 — past Attempts remain frozen                               |
-| Deep category hierarchy (3+ levels)          | Fixed two levels (Kategori → Sub-kategori) for M1                            |
+| Free-form category hierarchy beyond Topic    | Fixed three levels (Kategori → Sub-kategori → Topic) for M1                  |
 | Badge 21 (Never Skip)                        | Requires weekly plan feature                                                 |
 | Badge 28+                                    | Out of scope                                                                 |
 

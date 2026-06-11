@@ -9,6 +9,7 @@ import {
   categories,
   questions,
   subCategories,
+  topics,
   tryoutQuestions,
   tryouts,
 } from "../../lib/db/schema";
@@ -111,7 +112,11 @@ export async function startOrResumeAttemptForStudent({
       questionId: questions.id,
       sortOrder: tryoutQuestions.sortOrder,
       categoryId: questions.categoryId,
+      categoryName: categories.name,
       subCategoryId: questions.subCategoryId,
+      subCategoryName: subCategories.name,
+      topicId: questions.topicId,
+      topicName: topics.name,
       questionText: questions.questionText,
       optionA: questions.optionA,
       optionB: questions.optionB,
@@ -126,6 +131,9 @@ export async function startOrResumeAttemptForStudent({
     })
     .from(tryoutQuestions)
     .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
+    .innerJoin(categories, eq(categories.id, questions.categoryId))
+    .innerJoin(subCategories, eq(subCategories.id, questions.subCategoryId))
+    .innerJoin(topics, eq(topics.id, questions.topicId))
     .where(and(eq(tryoutQuestions.tryoutId, tryoutId), eq(questions.status, "published")))
     .orderBy(tryoutQuestions.sortOrder);
 
@@ -163,7 +171,11 @@ export async function startOrResumeAttemptForStudent({
         questionId: question.questionId,
         sortOrder: question.sortOrder,
         categoryId: question.categoryId,
+        categoryName: question.categoryName,
         subCategoryId: question.subCategoryId,
+        subCategoryName: question.subCategoryName,
+        topicId: question.topicId,
+        topicName: question.topicName,
         questionText: question.questionText,
         optionA: question.optionA,
         optionB: question.optionB,
@@ -513,9 +525,11 @@ async function getTakeAttemptQuestionRows(attemptId: string) {
       questionId: attemptQuestionSnapshots.questionId,
       sortOrder: attemptQuestionSnapshots.sortOrder,
       categoryId: attemptQuestionSnapshots.categoryId,
-      categoryName: categories.name,
+      categoryName: attemptQuestionSnapshots.categoryName,
       subCategoryId: attemptQuestionSnapshots.subCategoryId,
-      subCategoryName: subCategories.name,
+      subCategoryName: attemptQuestionSnapshots.subCategoryName,
+      topicId: attemptQuestionSnapshots.topicId,
+      topicName: attemptQuestionSnapshots.topicName,
       questionText: attemptQuestionSnapshots.questionText,
       optionA: attemptQuestionSnapshots.optionA,
       optionB: attemptQuestionSnapshots.optionB,
@@ -525,8 +539,6 @@ async function getTakeAttemptQuestionRows(attemptId: string) {
       accessLevel: attemptQuestionSnapshots.accessLevel,
     })
     .from(attemptQuestionSnapshots)
-    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-    .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
     .where(eq(attemptQuestionSnapshots.attemptId, attemptId))
     .orderBy(attemptQuestionSnapshots.sortOrder);
 
@@ -538,6 +550,8 @@ async function getTakeAttemptQuestionRows(attemptId: string) {
     categoryName: row.categoryName,
     subCategoryId: row.subCategoryId,
     subCategoryName: row.subCategoryName,
+    topicId: row.topicId,
+    topicName: row.topicName,
     questionText: row.questionText,
     options: toOptions(row),
     accessLevel: row.accessLevel as "free" | "premium",
@@ -572,16 +586,16 @@ async function getAttemptProductAnalyticsAnswers(attemptId: string) {
       questionId: attemptQuestionSnapshots.questionId,
       questionText: attemptQuestionSnapshots.questionText,
       categoryId: attemptQuestionSnapshots.categoryId,
-      categoryName: categories.name,
+      categoryName: attemptQuestionSnapshots.categoryName,
       subCategoryId: attemptQuestionSnapshots.subCategoryId,
-      subCategoryName: subCategories.name,
+      subCategoryName: attemptQuestionSnapshots.subCategoryName,
+      topicId: attemptQuestionSnapshots.topicId,
+      topicName: attemptQuestionSnapshots.topicName,
       selectedOption: attemptAnswers.selectedOption,
       correctOption: attemptQuestionSnapshots.correctOption,
       isCorrect: attemptAnswers.isCorrect,
     })
     .from(attemptQuestionSnapshots)
-    .innerJoin(categories, eq(categories.id, attemptQuestionSnapshots.categoryId))
-    .innerJoin(subCategories, eq(subCategories.id, attemptQuestionSnapshots.subCategoryId))
     .leftJoin(
       attemptAnswers,
       and(
@@ -599,6 +613,8 @@ async function getAttemptProductAnalyticsAnswers(attemptId: string) {
     category_name: row.categoryName,
     sub_category_id: row.subCategoryId,
     sub_category_name: row.subCategoryName,
+    topic_id: row.topicId,
+    topic_name: row.topicName,
     selected_option: row.selectedOption ?? null,
     correct_option: row.correctOption,
     is_correct: row.isCorrect,

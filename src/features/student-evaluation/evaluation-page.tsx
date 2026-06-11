@@ -211,7 +211,7 @@ function SubcategoryRow({
   isBlurred,
   isLast,
 }: {
-  subcategory: { name: string; total: number; correct: number };
+  subcategory: EvaluationCategory["subCategories"][number];
   isBlurred: boolean;
   isLast: boolean;
 }) {
@@ -222,15 +222,38 @@ function SubcategoryRow({
     <div className={`relative pl-5 ${isBlurred ? "blur-[3px] opacity-70" : ""}`}>
       <span className={`absolute left-1.5 top-0 w-px rounded-full bg-stone-200 ${branchClassName}`} aria-hidden="true" />
       <span className="absolute left-1.5 top-1/2 h-px w-3 -translate-y-1/2 bg-stone-200" aria-hidden="true" />
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-[var(--radius-md)] border border-stone-100 bg-white/90 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-extrabold text-stone-700">{subcategory.name}</div>
-          <div className="mt-0.5 text-xs font-semibold text-stone-400">
-            {subcategory.correct}/{subcategory.total} soal benar
+      <div className="grid gap-2 rounded-[var(--radius-md)] border border-stone-100 bg-white/90 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-extrabold text-stone-700">{subcategory.name}</div>
+            <div className="mt-0.5 text-xs font-semibold text-stone-400">
+              {subcategory.correct}/{subcategory.total} soal benar
+            </div>
           </div>
+          <ScorePill value={pct} compact />
         </div>
-        <ScorePill value={pct} compact />
+        <div className="grid gap-1.5 border-t border-stone-100 pt-2">
+          {subcategory.topics.map((topic) => (
+            <TopicScoreRow key={topic.id} topic={topic} />
+          ))}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function TopicScoreRow({ topic }: { topic: EvaluationCategory["subCategories"][number]["topics"][number] }) {
+  const pct = topic.total > 0 ? Math.round((topic.correct / topic.total) * 100) : 0;
+
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md bg-stone-50 px-3 py-2">
+      <div className="min-w-0">
+        <div className="truncate text-xs font-extrabold text-stone-600">{topic.name}</div>
+        <div className="mt-0.5 text-[11px] font-semibold text-stone-400">
+          {topic.correct}/{topic.total} soal benar
+        </div>
+      </div>
+      <ScorePill value={pct} compact />
     </div>
   );
 }
@@ -303,6 +326,22 @@ function EmptyPanel({ message }: { message: string }) {
 function getRecommendation(summary: ProgressSummary) {
   if (summary.totalQuestions === 0) {
     return "Mulai dari Try-out gratis untuk membangun baseline performa.";
+  }
+
+  const weakestTopic = summary.categories
+    .flatMap((category) => category.subCategories.flatMap((subCategory) => (
+      subCategory.topics.map((topic) => ({
+        ...topic,
+        subCategoryName: subCategory.name,
+        categoryName: category.name,
+        accuracy: topic.total > 0 ? topic.correct / topic.total : 1,
+      }))
+    )))
+    .filter((topic) => topic.total > 0)
+    .sort((a, b) => a.accuracy - b.accuracy)[0];
+
+  if (weakestTopic) {
+    return `Prioritaskan ${weakestTopic.name} di ${weakestTopic.subCategoryName} / ${weakestTopic.categoryName}.`;
   }
 
   const weakestSubCategory = summary.categories

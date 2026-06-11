@@ -211,6 +211,24 @@ function CategoryPanel({ category }: { category: EvaluationCategory }) {
               <p className="mt-1 text-xs font-medium text-stone-400">
                 {subCategory.correct}/{subCategory.total} correct
               </p>
+              <div className="mt-2 grid gap-2 pl-4">
+                {subCategory.topics.map((topic) => {
+                  const topicPercent = getPercent(topic.correct, topic.total);
+
+                  return (
+                    <div key={topic.id} className="rounded-md bg-stone-50 px-3 py-2">
+                      <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                        <span className="min-w-0 truncate font-semibold text-stone-500">{topic.name}</span>
+                        <span className="shrink-0 font-bold text-primary">{topicPercent}%</span>
+                      </div>
+                      <ProgressBar value={topicPercent} color="#58cc02" />
+                      <p className="mt-1 text-[11px] font-medium text-stone-400">
+                        {topic.correct}/{topic.total} correct
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })}

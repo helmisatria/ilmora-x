@@ -47,7 +47,7 @@ export function WorkbookPreviewPanel({
             <div className="mt-3 grid gap-2">
               {preview.issues.map((issue, index) => (
                 <p key={`${issue.sheet}:${issue.row}:${issue.field}:${index}`} className="m-0 text-sm font-semibold text-rose-700">
-                  {issue.sheet}{issue.row ? ` row ${issue.row}` : ""}{issue.field ? ` / ${issue.field}` : ""}: {issue.message}
+                  {formatWorkbookIssue(issue)}
                 </p>
               ))}
             </div>
@@ -70,7 +70,7 @@ export function WorkbookPreviewPanel({
                 <div className="mt-3 grid gap-2">
                   {preview.taxonomyActions.map((action, index) => (
                     <p key={`${action.field}:${action.name}:${action.parentName}:${index}`} className="m-0 text-sm font-semibold text-amber-800">
-                      {action.mode === "create" ? "Create" : "Reuse"} {action.field === "category_name" ? "Category" : "Sub-category"} "{action.name}"
+                      {action.mode === "create" ? "Create" : "Reuse"} {getTaxonomyActionLabel(action.field)} "{action.name}"
                       {action.parentName ? ` under "${action.parentName}"` : ""}
                     </p>
                   ))}
@@ -89,7 +89,7 @@ export function WorkbookPreviewPanel({
                       {question.sortOrder}. {question.questionText || "Untitled Question"}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-stone-400">
-                      {getCategoryLabel(question)} / {getSubCategoryLabel(question)} · Answer {question.correctOption}
+                      {getQuestionTaxonomyPath(question)} · Answer {question.correctOption}
                     </p>
                     <div className="mt-3 grid gap-1.5">
                       {getQuestionOptions(question).map((option) => (
@@ -219,7 +219,7 @@ export function FileUpload({
       className={`admin-file-upload ${isUnavailable ? "pointer-events-none opacity-50" : ""} ${fileName ? "admin-file-upload-active" : ""} ${isDragging ? "border-primary bg-primary-tint text-primary-dark" : ""}`}
     >
       <UploadIcon className="w-4 h-4 shrink-0" />
-      <span className="truncate">{isDragging ? "Drop .xlsx here" : isUploading ? "Importing..." : fileName || placeholder}</span>
+      <span className="truncate">{getUploadLabel({ isDragging, isUploading, fileName, placeholder })}</span>
       <input
         ref={inputRef}
         onChange={handleChange}
@@ -238,6 +238,50 @@ function getCategoryLabel(item: { categoryId: string; categoryName?: string }) {
 
 function getSubCategoryLabel(item: { subCategoryId: string; subCategoryName?: string }) {
   return item.subCategoryId || item.subCategoryName || "No sub-category";
+}
+
+function getTopicLabel(item: { topicId: string; topicName?: string }) {
+  return item.topicId || item.topicName || "No topic";
+}
+
+function getQuestionTaxonomyPath(question: TryoutWorkbookQuestion) {
+  return [
+    getCategoryLabel(question),
+    getSubCategoryLabel(question),
+    getTopicLabel(question),
+  ].join(" / ");
+}
+
+function getTaxonomyActionLabel(field: WorkbookTaxonomyAction["field"]) {
+  if (field === "category_name") return "Category";
+  if (field === "sub_category_name") return "Sub-category";
+
+  return "Topic";
+}
+
+function formatWorkbookIssue(issue: WorkbookValidationIssue) {
+  const rowLabel = issue.row ? ` row ${issue.row}` : "";
+  const fieldLabel = issue.field ? ` / ${issue.field}` : "";
+
+  return `${issue.sheet}${rowLabel}${fieldLabel}: ${issue.message}`;
+}
+
+function getUploadLabel({
+  isDragging,
+  isUploading,
+  fileName,
+  placeholder,
+}: {
+  isDragging: boolean;
+  isUploading: boolean;
+  fileName: string;
+  placeholder: string;
+}) {
+  if (isDragging) return "Drop .xlsx here";
+  if (isUploading) return "Importing...";
+  if (fileName) return fileName;
+
+  return placeholder;
 }
 
 function getQuestionOptions(question: TryoutWorkbookQuestion) {

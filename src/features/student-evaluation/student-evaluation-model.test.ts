@@ -54,6 +54,16 @@ test("builds Student Evaluation totals from submitted Attempts and Badge rewards
         correct: "4",
       },
     ],
+    topicRows: [
+      {
+        categoryId: "cat-a",
+        subCategoryId: "sub-a",
+        topicId: "topic-a",
+        topicName: "Beta-laktam",
+        total: "3",
+        correct: "2",
+      },
+    ],
     badgeRewardXp: 50,
     badgeCodes: ["BADGE-001", "BADGE-XYZ", "BADGE-015"],
   });
@@ -81,6 +91,14 @@ test("builds Student Evaluation totals from submitted Attempts and Badge rewards
           name: "Antibiotik",
           total: 6,
           correct: 4,
+          topics: [
+            {
+              id: "topic-a",
+              name: "Beta-laktam",
+              total: 3,
+              correct: 2,
+            },
+          ],
         },
       ],
     },
@@ -92,6 +110,7 @@ test("builds an empty Student Evaluation without division errors", () => {
     submittedAttempts: [],
     categoryRows: [],
     subCategoryRows: [],
+    topicRows: [],
     badgeRewardXp: 0,
     badgeCodes: [],
   });

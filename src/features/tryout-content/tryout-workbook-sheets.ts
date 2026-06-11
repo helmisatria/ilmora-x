@@ -26,6 +26,8 @@ export const questionSheetHeaders = [
   "category_name",
   "sub_category_id",
   "sub_category_name",
+  "topic_id",
+  "topic_name",
   "question_text",
   "option_a",
   "option_b",
@@ -68,6 +70,8 @@ function makeSampleQuestionRows() {
       category_name: "Farmakologi",
       sub_category_id: "",
       sub_category_name: "Antibiotik",
+      topic_id: "",
+      topic_name: "Antibiotik",
       question_text: "Mekanisme kerja penisilin adalah:",
       option_a: "Menghambat sintesis protein",
       option_b: "Menghambat sintesis dinding sel",
@@ -87,6 +91,8 @@ function makeSampleQuestionRows() {
       category_name: "Farmakologi",
       sub_category_id: "",
       sub_category_name: "NSAID",
+      topic_id: "",
+      topic_name: "NSAID",
       question_text: "NSAID yang paling selektif terhadap COX-2:",
       option_a: "Ibuprofen",
       option_b: "Celecoxib",
@@ -196,6 +202,8 @@ function toQuestionSheetRow(question: TryoutWorkbookQuestion & { questionId?: st
     category_name: question.categoryName ?? "",
     sub_category_id: question.subCategoryId,
     sub_category_name: question.subCategoryName ?? "",
+    topic_id: question.topicId,
+    topic_name: question.topicName ?? "",
     question_text: question.questionText,
     option_a: question.optionA,
     option_b: question.optionB,
@@ -271,6 +279,8 @@ function makeQuestionGuidelineRows(categories: CategoryOption[]) {
     makeGuidelineRow("questions", "category_name", "Use category_id or category_name", getCategoryNamesText(categories), "Use an existing Category name or type a new one to create it during import."),
     makeGuidelineRow("questions", "sub_category_id", "Use sub_category_id or sub_category_name", getSubCategoryIdsText(categories), "Must belong to the selected category_id."),
     makeGuidelineRow("questions", "sub_category_name", "Use sub_category_id or sub_category_name", getSubCategoryNamesText(categories), "Use an existing Sub-category name or type a new one to create it during import."),
+    makeGuidelineRow("questions", "topic_id", "Use topic_id or topic_name", getTopicIdsText(categories), "Must belong to the selected sub_category_id."),
+    makeGuidelineRow("questions", "topic_name", "Use topic_id or topic_name", getTopicNamesText(categories), "Use an existing Topic name under the selected Sub-category or type a new one to create it during import."),
     makeGuidelineRow("questions", "question_text", "Yes", "Any text", "Question prompt shown to students."),
     makeGuidelineRow("questions", "option_a", "Yes", "Any text", "Answer option A."),
     makeGuidelineRow("questions", "option_b", "Yes", "Any text", "Answer option B."),
@@ -294,9 +304,14 @@ function makeCategoryGuidelineRows(categories: CategoryOption[]) {
 
   return categories.flatMap((category) => {
     const categoryRow = makeGuidelineRow("reference", "category_id", "Reference", category.id, category.name);
-    const subCategoryRows = (category.subCategories ?? []).map((subCategory) => (
-      makeGuidelineRow("reference", "sub_category_id", "Reference", subCategory.id, `${subCategory.name} under category_id ${category.id}`)
-    ));
+    const subCategoryRows = (category.subCategories ?? []).flatMap((subCategory) => {
+      const subCategoryRow = makeGuidelineRow("reference", "sub_category_id", "Reference", subCategory.id, `${subCategory.name} under category_id ${category.id}`);
+      const topicRows = (subCategory.topics ?? []).map((topic) => (
+        makeGuidelineRow("reference", "topic_id", "Reference", topic.id, `${topic.name} under sub_category_id ${subCategory.id}`)
+      ));
+
+      return [subCategoryRow, ...topicRows];
+    });
 
     return [categoryRow, ...subCategoryRows];
   });
@@ -348,6 +363,30 @@ function getSubCategoryNamesText(categories: CategoryOption[]) {
   if (subCategoryNames.length === 0) return "Any new Sub-category name";
 
   return `${subCategoryNames.join(", ")} or a new Sub-category name`;
+}
+
+function getTopicIdsText(categories: CategoryOption[]) {
+  const topicIds = categories.flatMap((category) => (
+    (category.subCategories ?? []).flatMap((subCategory) => (
+      (subCategory.topics ?? []).map((topic) => topic.id)
+    ))
+  ));
+
+  if (topicIds.length === 0) return "Use topic_name";
+
+  return topicIds.join(", ");
+}
+
+function getTopicNamesText(categories: CategoryOption[]) {
+  const topicNames = categories.flatMap((category) => (
+    (category.subCategories ?? []).flatMap((subCategory) => (
+      (subCategory.topics ?? []).map((topic) => topic.name)
+    ))
+  ));
+
+  if (topicNames.length === 0) return "Any new Topic name";
+
+  return `${topicNames.join(", ")} or a new Topic name`;
 }
 
 function getColumnWidth(
