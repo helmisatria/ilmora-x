@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { QuestionPictureField } from "../../components/admin/QuestionPictureField";
 import { TryoutIconField } from "../../components/admin/TryoutIconField";
+import { getSafeErrorMessage } from "../../lib/user-errors";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
   getTryoutWorkbookAdmin,
@@ -75,6 +76,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   const [errorMessage, setErrorMessage] = useState("");
   const [workbookPreview, setWorkbookPreview] = useState<WorkbookPreview | null>(null);
   const [questionForm, setQuestionForm] = useState<QuestionForm | null>(null);
+  const publishedQuestionCount = workbook.questions.filter((question) => question.status === "published").length;
 
   const selectedSubCategories = useMemo(() => {
     if (!questionForm) return [];
@@ -128,6 +130,11 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   };
 
   const setPublication = async (nextStatus: "published" | "unpublished") => {
+    if (nextStatus === "published" && publishedQuestionCount === 0) {
+      setErrorMessage("Publish at least one Question before publishing this Try-out.");
+      return;
+    }
+
     setBusyAction("publish");
     setErrorMessage("");
 
@@ -138,8 +145,8 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         await unpublishTryoutAdmin({ data: { tryoutId } });
       }
       await refresh();
-    } catch {
-      setErrorMessage("Publication status was not updated.");
+    } catch (error) {
+      setErrorMessage(getSafeErrorMessage(error, "Publication status was not updated."));
     } finally {
       setBusyAction("");
     }
