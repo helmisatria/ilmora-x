@@ -331,8 +331,8 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
       });
       setWorkbookPreview(null);
       await refresh();
-    } catch {
-      setErrorMessage("Try-out workbook was not imported. Check for server-side validation errors.");
+    } catch (error) {
+      setErrorMessage(getSafeErrorMessage(error, "Try-out workbook was not imported. Check for server-side validation errors."));
     } finally {
       setBusyAction("");
     }
@@ -478,6 +478,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
           <WorkbookPreviewPanel
             preview={workbookPreview}
             busy={busyAction === "import"}
+            errorMessage={errorMessage}
             confirmLabel="Import workbook"
             onCancel={() => setWorkbookPreview(null)}
             onConfirm={confirmWorkbookImport}

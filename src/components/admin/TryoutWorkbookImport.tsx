@@ -18,12 +18,14 @@ export type WorkbookPreview = {
 export function WorkbookPreviewPanel({
   preview,
   busy,
+  errorMessage = "",
   confirmLabel,
   onCancel,
   onConfirm,
 }: {
   preview: WorkbookPreview;
   busy: boolean;
+  errorMessage?: string;
   confirmLabel: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -52,6 +54,12 @@ export function WorkbookPreviewPanel({
               ))}
             </div>
           </div>
+        )}
+
+        {errorMessage && (
+          <p className="admin-alert">
+            {errorMessage}
+          </p>
         )}
 
         {preview.data && (
