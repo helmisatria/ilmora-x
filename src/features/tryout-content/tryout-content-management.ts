@@ -235,11 +235,22 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
 
   const created = await db.transaction(async (tx) => {
     const resolvedData = await resolveWorkbookTaxonomy(tx, data);
+    const slug = makeSlug(resolvedData.tryout.title);
+
+    const [existingTryout] = await tx
+      .select({ id: tryouts.id })
+      .from(tryouts)
+      .where(eq(tryouts.slug, slug))
+      .limit(1);
+
+    if (existingTryout) {
+      throw conflict("A Try-out with this title already exists.");
+    }
 
     const [createdTryout] = await tx
       .insert(tryouts)
       .values({
-        slug: makeSlug(resolvedData.tryout.title),
+        slug,
         title: resolvedData.tryout.title,
         description: resolvedData.tryout.description,
         categoryId: resolvedData.tryout.categoryId,

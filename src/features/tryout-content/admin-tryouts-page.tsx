@@ -3,6 +3,7 @@ import { useState } from "react";
 import { TryoutIcon } from "../../components/TryoutIcon";
 import { TryoutIconField } from "../../components/admin/TryoutIconField";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
+import { getSafeErrorMessage } from "../../lib/user-errors";
 import {
   createTryoutAdmin,
   createTryoutFromWorkbookAdmin,
@@ -156,8 +157,8 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
       setWorkbookPreview(null);
       resetForm();
       await refresh();
-    } catch {
-      setErrorMessage("New Try-out workbook was not imported. Check for duplicate titles or server-side validation errors.");
+    } catch (error) {
+      setErrorMessage(getSafeErrorMessage(error, "New Try-out workbook was not imported. Check for duplicate titles or server-side validation errors."));
     } finally {
       setBusyAction("");
     }
@@ -291,6 +292,7 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
           <WorkbookPreviewPanel
             preview={workbookPreview}
             busy={busyAction === "import-new"}
+            errorMessage={errorMessage}
             confirmLabel="Create Try-out"
             onCancel={() => setWorkbookPreview(null)}
             onConfirm={confirmNewWorkbookImport}
