@@ -509,7 +509,7 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
 
                   <div className="min-w-0">
                     <p className="truncate text-sm font-extrabold tracking-tight text-stone-800">{category.name}</p>
-                    <MetaLine id={category.id} slug={category.slug} />
+                    <MetaLine slug={category.slug} />
                   </div>
 
                   <span className="category-tree-count">
@@ -599,7 +599,7 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
                                 onDelete={() => previewSubCategoryDeletion(subCategory.id)}
                               />
                               <div className="category-tree-meta-cell">
-                                <MetaLine id={subCategory.id} slug={subCategory.slug} />
+                                <MetaLine slug={subCategory.slug} />
                               </div>
                             </div>
                           </div>
@@ -638,7 +638,7 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
                                       onDelete={() => previewTopicDeletion(topic.id)}
                                     />
                                     <div className="category-tree-meta-cell">
-                                      <MetaLine id={topic.id} slug={topic.slug} />
+                                      <MetaLine slug={topic.slug} />
                                     </div>
                                   </div>
                                 </div>
@@ -1138,10 +1138,9 @@ function Field({ label, compact, children }: { label: string; compact?: boolean;
   );
 }
 
-function MetaLine({ id, slug }: { id: string; slug: string }) {
+function MetaLine({ slug }: { slug: string }) {
   return (
     <div className="mt-1 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-      <span>ID: <code className="normal-case text-stone-500">{id}</code></span>
       <span>Slug: <code className="normal-case text-stone-500">{slug}</code></span>
     </div>
   );

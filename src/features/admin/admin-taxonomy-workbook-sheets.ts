@@ -1,8 +1,8 @@
 import type { TaxonomyTreeCategory } from "./admin-taxonomy-workbook";
 
-const categorySheetHeaders = ["category_id", "name", "color", "sort_order"] as const;
-const subCategorySheetHeaders = ["sub_category_id", "category_id", "name", "sort_order"] as const;
-const topicSheetHeaders = ["topic_id", "sub_category_id", "name", "sort_order"] as const;
+const categorySheetHeaders = ["category_slug", "name", "color", "sort_order"] as const;
+const subCategorySheetHeaders = ["category_slug", "sub_category_slug", "name", "sort_order"] as const;
+const topicSheetHeaders = ["category_slug", "sub_category_slug", "topic_slug", "name", "sort_order"] as const;
 const guidelineSheetHeaders = ["sheet", "column", "required", "notes"] as const;
 
 export function makeTaxonomyWorkbook(
@@ -55,7 +55,7 @@ export function saveWorkbook(XLSX: typeof import("xlsx"), workbook: import("xlsx
 
 function makeCategoryRows(categories: TaxonomyTreeCategory[]) {
   return categories.map((category) => ({
-    category_id: category.id,
+    category_slug: category.slug,
     name: category.name,
     color: category.color ?? "",
     sort_order: category.sortOrder,
@@ -65,8 +65,8 @@ function makeCategoryRows(categories: TaxonomyTreeCategory[]) {
 function makeSubCategoryRows(categories: TaxonomyTreeCategory[]) {
   return categories.flatMap((category) => (
     category.subCategories.map((subCategory) => ({
-      sub_category_id: subCategory.id,
-      category_id: category.id,
+      category_slug: category.slug,
+      sub_category_slug: subCategory.slug,
       name: subCategory.name,
       sort_order: subCategory.sortOrder,
     }))
@@ -77,8 +77,9 @@ function makeTopicRows(categories: TaxonomyTreeCategory[]) {
   return categories.flatMap((category) => (
     category.subCategories.flatMap((subCategory) => (
       subCategory.topics.map((topic) => ({
-        topic_id: topic.id,
-        sub_category_id: subCategory.id,
+        category_slug: category.slug,
+        sub_category_slug: subCategory.slug,
+        topic_slug: topic.slug,
         name: topic.name,
         sort_order: topic.sortOrder,
       }))
@@ -90,9 +91,9 @@ function makeGuidelineRows() {
   return [
     {
       sheet: "categories",
-      column: "category_id",
+      column: "category_slug",
       required: "No",
-      notes: "Keep the existing ID to update a Category. Leave blank to create or reuse by exact name.",
+      notes: "Keep the existing slug to update a Category. Leave blank to create or reuse by exact name.",
     },
     {
       sheet: "categories",
@@ -114,15 +115,15 @@ function makeGuidelineRows() {
     },
     {
       sheet: "sub_categories",
-      column: "sub_category_id",
-      required: "No",
-      notes: "Keep the existing ID to update a Sub-category. Leave blank to create or reuse by name within its Category.",
+      column: "category_slug",
+      required: "Yes",
+      notes: "Must reference an existing Category from the downloaded workbook.",
     },
     {
       sheet: "sub_categories",
-      column: "category_id",
-      required: "Yes",
-      notes: "Must reference an existing Category from the downloaded workbook. Parent moves are rejected.",
+      column: "sub_category_slug",
+      required: "No",
+      notes: "Keep the existing slug to update a Sub-category. Leave blank to create or reuse by name within its Category.",
     },
     {
       sheet: "sub_categories",
@@ -138,15 +139,21 @@ function makeGuidelineRows() {
     },
     {
       sheet: "topics",
-      column: "topic_id",
-      required: "No",
-      notes: "Keep the existing ID to update a Topic. Leave blank to create or reuse by name within its Sub-category.",
+      column: "category_slug",
+      required: "Yes",
+      notes: "Must reference the Category that owns the Sub-category.",
     },
     {
       sheet: "topics",
-      column: "sub_category_id",
+      column: "sub_category_slug",
       required: "Yes",
-      notes: "Must reference an existing Sub-category from the downloaded workbook. Parent moves are rejected.",
+      notes: "Must reference an existing Sub-category within the Category from the downloaded workbook.",
+    },
+    {
+      sheet: "topics",
+      column: "topic_slug",
+      required: "No",
+      notes: "Keep the existing slug to update a Topic. Leave blank to create or reuse by name within its Sub-category.",
     },
     {
       sheet: "topics",

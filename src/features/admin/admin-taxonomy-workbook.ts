@@ -49,15 +49,18 @@ export type TaxonomyWorkbookPreview = {
 
 export type TaxonomyTreeCategory = {
   id: string;
+  slug: string;
   name: string;
   color: string | null;
   sortOrder: number;
   subCategories: {
     id: string;
+    slug: string;
     name: string;
     sortOrder: number;
     topics: {
       id: string;
+      slug: string;
       name: string;
       sortOrder: number;
     }[];
@@ -66,7 +69,7 @@ export type TaxonomyTreeCategory = {
 
 type CategorySheetRow = {
   __rowNum__?: number;
-  category_id?: string;
+  category_slug?: string;
   name?: string;
   color?: string;
   sort_order?: number | string;
@@ -74,16 +77,17 @@ type CategorySheetRow = {
 
 type SubCategorySheetRow = {
   __rowNum__?: number;
-  sub_category_id?: string;
-  category_id?: string;
+  category_slug?: string;
+  sub_category_slug?: string;
   name?: string;
   sort_order?: number | string;
 };
 
 type TopicSheetRow = {
   __rowNum__?: number;
-  topic_id?: string;
-  sub_category_id?: string;
+  category_slug?: string;
+  sub_category_slug?: string;
+  topic_slug?: string;
   name?: string;
   sort_order?: number | string;
 };
@@ -93,9 +97,9 @@ type ChangedFieldRule = {
   changed: boolean;
 };
 
-const categoryHeaders = ["category_id", "name", "color", "sort_order"] as const;
-const subCategoryHeaders = ["sub_category_id", "category_id", "name", "sort_order"] as const;
-const topicHeaders = ["topic_id", "sub_category_id", "name", "sort_order"] as const;
+const categoryHeaders = ["category_slug", "name", "color", "sort_order"] as const;
+const subCategoryHeaders = ["category_slug", "sub_category_slug", "name", "sort_order"] as const;
+const topicHeaders = ["category_slug", "sub_category_slug", "topic_slug", "name", "sort_order"] as const;
 
 export async function readTaxonomyWorkbook(file: File, currentTaxonomy: TaxonomyTreeCategory[]) {
   const XLSX = await import("xlsx");
@@ -135,10 +139,11 @@ export async function readTaxonomyWorkbook(file: File, currentTaxonomy: Taxonomy
   const topicRows = XLSX.utils
     .sheet_to_json<TopicSheetRow>(topicSheet, { defval: "" })
     .filter((row) => !isEmptyTopicRow(row));
+  const indexes = makeTaxonomyIndexes(currentTaxonomy);
   const data = {
-    categories: categoryRows.map(toWorkbookCategory),
-    subCategories: subCategoryRows.map(toWorkbookSubCategory),
-    topics: topicRows.map(toWorkbookTopic),
+    categories: categoryRows.map((row) => toWorkbookCategory(row, indexes)),
+    subCategories: subCategoryRows.map((row) => toWorkbookSubCategory(row, indexes)),
+    topics: topicRows.map((row) => toWorkbookTopic(row, indexes)),
   };
   const preview = previewTaxonomyWorkbook(data, currentTaxonomy, issues);
 
@@ -200,28 +205,58 @@ function addMissingHeaderIssues(
   }
 }
 
-function toWorkbookCategory(row: CategorySheetRow): TaxonomyWorkbookCategory {
+function toWorkbookCategory(
+  row: CategorySheetRow,
+  indexes: ReturnType<typeof makeTaxonomyIndexes>,
+): TaxonomyWorkbookCategory {
+  const categorySlug = optionalTextValue(row.category_slug);
+  const category = categorySlug ? indexes.categoryBySlug.get(categorySlug) : null;
+
   return {
-    categoryId: optionalTextValue(row.category_id),
+    categoryId: category?.id ?? categorySlug,
     name: textValue(row.name),
     color: optionalTextValue(row.color),
     sortOrder: numberValue(row.sort_order),
   };
 }
 
-function toWorkbookSubCategory(row: SubCategorySheetRow): TaxonomyWorkbookSubCategory {
+function toWorkbookSubCategory(
+  row: SubCategorySheetRow,
+  indexes: ReturnType<typeof makeTaxonomyIndexes>,
+): TaxonomyWorkbookSubCategory {
+  const categorySlug = textValue(row.category_slug);
+  const subCategorySlug = optionalTextValue(row.sub_category_slug);
+  const category = indexes.categoryBySlug.get(categorySlug);
+  const subCategory = category && subCategorySlug
+    ? indexes.subCategoryByScopedSlug.get(makeScopedSlugKey(category.id, subCategorySlug))
+    : null;
+
   return {
-    subCategoryId: optionalTextValue(row.sub_category_id),
-    categoryId: textValue(row.category_id),
+    subCategoryId: subCategory?.id ?? subCategorySlug,
+    categoryId: category?.id ?? categorySlug,
     name: textValue(row.name),
     sortOrder: numberValue(row.sort_order),
   };
 }
 
-function toWorkbookTopic(row: TopicSheetRow): TaxonomyWorkbookTopic {
+function toWorkbookTopic(
+  row: TopicSheetRow,
+  indexes: ReturnType<typeof makeTaxonomyIndexes>,
+): TaxonomyWorkbookTopic {
+  const categorySlug = textValue(row.category_slug);
+  const subCategorySlug = textValue(row.sub_category_slug);
+  const topicSlug = optionalTextValue(row.topic_slug);
+  const category = indexes.categoryBySlug.get(categorySlug);
+  const subCategory = category
+    ? indexes.subCategoryByScopedSlug.get(makeScopedSlugKey(category.id, subCategorySlug))
+    : null;
+  const topic = subCategory && topicSlug
+    ? indexes.topicByScopedSlug.get(makeScopedSlugKey(subCategory.id, topicSlug))
+    : null;
+
   return {
-    topicId: optionalTextValue(row.topic_id),
-    subCategoryId: textValue(row.sub_category_id),
+    topicId: topic?.id ?? topicSlug,
+    subCategoryId: subCategory?.id ?? subCategorySlug,
     name: textValue(row.name),
     sortOrder: numberValue(row.sort_order),
   };
@@ -246,8 +281,8 @@ function validateCategoryRows(
       issues.push({
         sheet: "categories",
         row: rowNumber,
-        field: "category_id",
-        message: "category_id must reference an existing Category.",
+        field: "category_slug",
+        message: "category_slug must reference an existing Category.",
       });
     }
 
@@ -255,7 +290,7 @@ function validateCategoryRows(
       issues.push({
         sheet: "categories",
         row: rowNumber,
-        field: "category_id",
+        field: "category_slug",
         message: "This Category is listed more than once.",
       });
     }
@@ -313,15 +348,15 @@ function validateSubCategoryRows(
       issues.push({
         sheet: "sub_categories",
         row: rowNumber,
-        field: "category_id",
-        message: "category_id is required.",
+        field: "category_slug",
+        message: "category_slug is required.",
       });
     } else if (!parent) {
       issues.push({
         sheet: "sub_categories",
         row: rowNumber,
-        field: "category_id",
-        message: "category_id must reference an existing Category.",
+        field: "category_slug",
+        message: "category_slug must reference an existing Category.",
       });
     }
 
@@ -329,8 +364,8 @@ function validateSubCategoryRows(
       issues.push({
         sheet: "sub_categories",
         row: rowNumber,
-        field: "sub_category_id",
-        message: "sub_category_id must reference an existing Sub-category.",
+        field: "sub_category_slug",
+        message: "sub_category_slug must reference an existing Sub-category in this Category.",
       });
     }
 
@@ -338,7 +373,7 @@ function validateSubCategoryRows(
       issues.push({
         sheet: "sub_categories",
         row: rowNumber,
-        field: "category_id",
+        field: "category_slug",
         message: "Existing Sub-categories cannot move to another Category through workbook import.",
       });
     }
@@ -347,7 +382,7 @@ function validateSubCategoryRows(
       issues.push({
         sheet: "sub_categories",
         row: rowNumber,
-        field: "sub_category_id",
+        field: "sub_category_slug",
         message: "This Sub-category is listed more than once.",
       });
     }
@@ -396,15 +431,15 @@ function validateTopicRows(
       issues.push({
         sheet: "topics",
         row: rowNumber,
-        field: "sub_category_id",
-        message: "sub_category_id is required.",
+        field: "sub_category_slug",
+        message: "category_slug and sub_category_slug are required.",
       });
     } else if (!parent) {
       issues.push({
         sheet: "topics",
         row: rowNumber,
-        field: "sub_category_id",
-        message: "sub_category_id must reference an existing Sub-category.",
+        field: "sub_category_slug",
+        message: "sub_category_slug must reference an existing Sub-category in this Category.",
       });
     }
 
@@ -412,8 +447,8 @@ function validateTopicRows(
       issues.push({
         sheet: "topics",
         row: rowNumber,
-        field: "topic_id",
-        message: "topic_id must reference an existing Topic.",
+        field: "topic_slug",
+        message: "topic_slug must reference an existing Topic in this Sub-category.",
       });
     }
 
@@ -421,7 +456,7 @@ function validateTopicRows(
       issues.push({
         sheet: "topics",
         row: rowNumber,
-        field: "sub_category_id",
+        field: "sub_category_slug",
         message: "Existing Topics cannot move to another Sub-category through workbook import.",
       });
     }
@@ -430,7 +465,7 @@ function validateTopicRows(
       issues.push({
         sheet: "topics",
         row: rowNumber,
-        field: "topic_id",
+        field: "topic_slug",
         message: "This Topic is listed more than once.",
       });
     }
@@ -616,26 +651,32 @@ export function resolveTaxonomyTopic(
 
 export function makeTaxonomyIndexes(currentTaxonomy: TaxonomyTreeCategory[]) {
   const categoryById = new Map<string, TaxonomyTreeCategory>();
+  const categoryBySlug = new Map<string, TaxonomyTreeCategory>();
   const categoryByName = new Map<string, TaxonomyTreeCategory>();
   const subCategoryById = new Map<string, TaxonomyTreeCategory["subCategories"][number] & { categoryId: string }>();
+  const subCategoryByScopedSlug = new Map<string, TaxonomyTreeCategory["subCategories"][number] & { categoryId: string }>();
   const subCategoryByScopedName = new Map<string, TaxonomyTreeCategory["subCategories"][number] & { categoryId: string }>();
   const topicById = new Map<string, TaxonomyTreeCategory["subCategories"][number]["topics"][number] & { subCategoryId: string }>();
+  const topicByScopedSlug = new Map<string, TaxonomyTreeCategory["subCategories"][number]["topics"][number] & { subCategoryId: string }>();
   const topicByScopedName = new Map<string, TaxonomyTreeCategory["subCategories"][number]["topics"][number] & { subCategoryId: string }>();
 
   for (const category of currentTaxonomy) {
     categoryById.set(category.id, category);
+    categoryBySlug.set(category.slug, category);
     categoryByName.set(makeNameKey(category.name), category);
 
     for (const subCategory of category.subCategories) {
       const indexedSubCategory = { ...subCategory, categoryId: category.id };
 
       subCategoryById.set(subCategory.id, indexedSubCategory);
+      subCategoryByScopedSlug.set(makeScopedSlugKey(category.id, subCategory.slug), indexedSubCategory);
       subCategoryByScopedName.set(makeScopedNameKey(category.id, subCategory.name), indexedSubCategory);
 
       for (const topic of subCategory.topics) {
         const indexedTopic = { ...topic, subCategoryId: subCategory.id };
 
         topicById.set(topic.id, indexedTopic);
+        topicByScopedSlug.set(makeScopedSlugKey(subCategory.id, topic.slug), indexedTopic);
         topicByScopedName.set(makeScopedNameKey(subCategory.id, topic.name), indexedTopic);
       }
     }
@@ -643,24 +684,27 @@ export function makeTaxonomyIndexes(currentTaxonomy: TaxonomyTreeCategory[]) {
 
   return {
     categoryById,
+    categoryBySlug,
     categoryByName,
     subCategoryById,
+    subCategoryByScopedSlug,
     subCategoryByScopedName,
     topicById,
+    topicByScopedSlug,
     topicByScopedName,
   };
 }
 
 function isEmptyCategoryRow(row: CategorySheetRow) {
-  return !textValue(row.category_id) && !textValue(row.name) && !textValue(row.color) && !textValue(row.sort_order);
+  return !textValue(row.category_slug) && !textValue(row.name) && !textValue(row.color) && !textValue(row.sort_order);
 }
 
 function isEmptySubCategoryRow(row: SubCategorySheetRow) {
-  return !textValue(row.sub_category_id) && !textValue(row.category_id) && !textValue(row.name) && !textValue(row.sort_order);
+  return !textValue(row.category_slug) && !textValue(row.sub_category_slug) && !textValue(row.name) && !textValue(row.sort_order);
 }
 
 function isEmptyTopicRow(row: TopicSheetRow) {
-  return !textValue(row.topic_id) && !textValue(row.sub_category_id) && !textValue(row.name) && !textValue(row.sort_order);
+  return !textValue(row.category_slug) && !textValue(row.sub_category_slug) && !textValue(row.topic_slug) && !textValue(row.name) && !textValue(row.sort_order);
 }
 
 function numberValue(value: unknown) {
@@ -697,4 +741,12 @@ function makeScopedNameKey(parentId: string, name: string) {
   if (!parentId || !nameKey) return "";
 
   return `${parentId}::${nameKey}`;
+}
+
+function makeScopedSlugKey(parentId: string, slug: string) {
+  const slugKey = slug.trim();
+
+  if (!parentId || !slugKey) return "";
+
+  return `${parentId}::${slugKey}`;
 }
