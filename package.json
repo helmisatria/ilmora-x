@@ -35,6 +35,7 @@
     "posthog-node": "^5.34.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"

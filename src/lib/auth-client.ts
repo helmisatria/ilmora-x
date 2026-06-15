@@ -38,6 +38,10 @@ export async function signInWithGoogle(callbackURL: string): Promise<AuthFetchRe
 export async function signOut(): Promise<AuthFetchResult> {
   const response = await fetch("/api/auth/sign-out", {
     method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({}),
   });
 
   return {

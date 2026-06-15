@@ -15,6 +15,7 @@ import { notFound } from "../../lib/http/errors";
 import { parseInput } from "../../lib/http/validation";
 import { assertAttemptOwner } from "../identity/access-rules";
 import { normalizeTryoutAccessLevel } from "../premium-access/premium-access";
+import { getTryoutEntitlementAccess } from "../premium-access/payment-service";
 import { getStudentViewer } from "../student/student-viewer.server";
 import {
   getAttemptForStudent,
@@ -52,6 +53,7 @@ export const getAttemptResult = createServerFn({ method: "GET" })
     }
 
     const snapshotRows = await getAttemptSnapshotRows(data.attemptId);
+    const entitlementAccess = await getTryoutEntitlementAccess(viewer.userId, attempt.tryoutId);
     const markedRows = await db
       .select({ snapshotId: attemptMarkedQuestions.snapshotId })
       .from(attemptMarkedQuestions)
@@ -76,6 +78,8 @@ export const getAttemptResult = createServerFn({ method: "GET" })
       tryout: {
         ...tryout,
         accessLevel: normalizeTryoutAccessLevel(tryout.accessLevel),
+        hasPremiumMembership: entitlementAccess.hasPremiumMembership,
+        hasLifetimeTryoutPurchase: entitlementAccess.hasLifetimeTryoutPurchase,
       },
       questions: snapshotRows,
     };

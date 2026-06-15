@@ -10,7 +10,7 @@ type OperationContext = {
   requestId?: string;
 };
 
-type OperationLog = Pick<RequestLogger, "set" | "info" | "warn" | "error">;
+export type OperationLog = Pick<RequestLogger, "set" | "info" | "warn" | "error">;
 
 let loggerInitialized = false;
 

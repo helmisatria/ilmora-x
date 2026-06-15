@@ -558,9 +558,9 @@ function SubscriptionCard({
   startsAt: string | null | undefined;
   endsAt: string | null;
 }) {
-  if (isPremium && startsAt && endsAt) {
+  if (isPremium) {
     const daysLeft = Math.ceil(
-      (new Date(endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      ((endsAt ? new Date(endsAt).getTime() : Date.now()) - Date.now()) / (1000 * 60 * 60 * 24)
     );
 
     return (
@@ -590,32 +590,38 @@ function SubscriptionCard({
             )}
           </div>
         </div>
-        <div className="border-t border-amber-100">
-          <div className="flex items-center justify-between gap-4 px-4 py-3">
-            <span className="text-xs font-bold tracking-wide text-amber-700/70">
-              Berlangganan sejak
-            </span>
-            <span className="text-sm font-bold text-amber-900">
-              {new Date(startsAt).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
+        {(startsAt || endsAt) && (
+          <div className="border-t border-amber-100">
+            {startsAt && (
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <span className="text-xs font-bold tracking-wide text-amber-700/70">
+                  Berlangganan sejak
+                </span>
+                <span className="text-sm font-bold text-amber-900">
+                  {new Date(startsAt).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+            )}
+            {endsAt && (
+              <div className="flex items-center justify-between gap-4 border-t border-amber-50 px-4 py-3">
+                <span className="text-xs font-bold tracking-wide text-amber-700/70">
+                  Berakhir pada
+                </span>
+                <span className="text-sm font-bold text-amber-900">
+                  {new Date(endsAt).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center justify-between gap-4 border-t border-amber-50 px-4 py-3">
-            <span className="text-xs font-bold tracking-wide text-amber-700/70">
-              Berakhir pada
-            </span>
-            <span className="text-sm font-bold text-amber-900">
-              {new Date(endsAt).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
     );
   }
