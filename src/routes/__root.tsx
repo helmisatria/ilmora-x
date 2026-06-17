@@ -1,5 +1,6 @@
 import { createRootRoute, HeadContent, Outlet, Scripts, redirect } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { Toaster } from "sonner";
 import { AppProvider } from "../data/provider";
 import { getCurrentViewer } from "../lib/auth-functions";
 import { getAcquisitionIntent } from "../lib/product-analytics";
@@ -144,11 +145,6 @@ function RootComponent() {
   return (
     <html lang="id">
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: 'document.documentElement.dataset.js = "ready";',
-          }}
-        />
         <HeadContent />
       </head>
       <body className="antialiased">
@@ -158,6 +154,7 @@ function RootComponent() {
             <div id="app" className="view">
               <Outlet />
             </div>
+            <Toaster richColors position="top-right" />
           </AppProvider>
         </ProductAnalyticsProvider>
         <Scripts />

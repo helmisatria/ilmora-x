@@ -102,6 +102,28 @@ _Avoid_: Banner, notice, popup
 - **Referral discounts are out of scope for now.** Students may still have referral codes in profile for future use, but checkout does not validate or advertise referral discounts.
 - **Checkout accepts at most one Coupon.** Single input field labeled "Kode Kupon". Stacking is explicitly disallowed.
 - **Coupon scope is product-aware.** Admin chooses whether a Coupon applies to Premium Membership, Lifetime Try-out Purchase, Materi, or all paid products.
+- **MVP checkout uses Xendit-hosted payment.** IlmoraX calculates the final amount, creates one Xendit Payment Link, and redirects the Student to Xendit's hosted checkout page; IlmoraX does not show an in-app payment-method selector in the MVP.
+- **Products are admin-managed.** Admins can create, update, activate, and deactivate Products from Admin CMS so prices and sellable access can change without a code deploy.
+- **A Checkout snapshots the commercial terms.** Product edits never change an existing Checkout; each Checkout keeps the Product name/type, base amount, discount amount, final amount, and access target used when it was created.
+- **Zero-total Checkout skips Xendit.** If a Coupon reduces the final amount to Rp0, IlmoraX records a paid Checkout and grants the Entitlement server-side without creating a Xendit payment.
+- **Limited Coupon use is reserved at Checkout creation.** A Coupon redemption is reserved while payment is pending, finalized when the Checkout is paid, and released when the Checkout expires.
+- **Checkout lifecycle is simple in MVP.** A Checkout starts as pending and ends as paid, expired, or cancelled; normal failed payment attempts inside Xendit's hosted page do not create a separate IlmoraX failed state.
+- **Entitlements are granted from verified server-side completion.** Browser redirects never grant access by themselves; the Student-facing return page may poll Checkout status while the server waits for a verified webhook or trusted server-side sync.
+- **Pending Checkouts are reused for the same purchase.** If the same Student tries to buy the same Product with the same Coupon while a payable Checkout is still pending, IlmoraX sends them back to the existing Payment Link instead of creating a duplicate Checkout.
+- **MVP Payment Links expire after 24 hours.** Expiry releases any reserved Coupon use and prevents old unpaid invoices from lingering indefinitely.
+- **Coupon admin is part of the MVP.** Admins can create, update, activate, and disable Coupons with code, discount type/value, product scope, validity window, and optional max total use.
+- **Percentage Coupons are uncapped in MVP.** A percentage discount reduces the Product price by that percentage with no maximum discount cap; fixed-amount Coupons cover campaigns that need a known rupiah discount.
+- **Coupon codes are case-insensitive.** IlmoraX trims and uppercases Coupon codes, then enforces uniqueness on the normalized code.
+- **Admin manual grants are explicit support actions.** Admins may grant Premium Membership or Lifetime Try-out Purchase Entitlements outside Xendit checkout for support, offline payment, giveaways, or payment repair.
+- **Xendit external IDs use the Checkout ID.** IlmoraX sends the Checkout identity as Xendit's `external_id` so webhooks can be matched directly to the local Checkout.
+- **Xendit webhooks require callback-token verification.** IlmoraX rejects webhook requests unless the `x-callback-token` header matches the configured Xendit webhook token.
+- **Xendit webhooks are idempotent.** Duplicate webhooks are accepted for delivery reliability, but Checkout transitions and Entitlement grants happen at most once.
+- **MVP handles paid and expired Xendit invoices.** `PAID` marks a matching Checkout paid after amount validation; `EXPIRED` marks a still-pending Checkout expired. Unknown provider statuses are stored for support review without changing Checkout access.
+- **Paid amount must match the Checkout final amount.** A paid provider event with a mismatched amount does not grant access automatically and must be reviewed by Admin.
+- **Checkout redirects land on a status page.** Xendit success and failure redirects both return to one IlmoraX Checkout status page; that page polls server status and never grants access by itself.
+- **Admin payment repair uses the same transition rules.** Admin-triggered Xendit status sync can repair delayed webhooks, but it must verify provider status and amount before changing Checkout or granting access.
+- **Provider payloads are retained for support.** IlmoraX stores Xendit invoice responses and webhook payloads as operational evidence, without storing API keys or secrets.
+- **Checkout status polling is short and visible.** The Student status page polls every 3 seconds for a short window, then shows a still-waiting state with manual refresh.
 
 ## Rules (Dashboard Announcement)
 
@@ -248,7 +270,7 @@ An Admin with the power to add/remove other Admins via the CMS. Seeded via env v
 ## Language (Premium access)
 
 **Product**:
-A sellable item in checkout. Product types include **Premium Membership** packages, **Lifetime Try-out Purchase** products, and later Materi purchases. Checkout has one payment flow for all Product types.
+A sellable item managed by Admin and bought through checkout. Product types include **Premium Membership** packages, **Lifetime Try-out Purchase** products, and later Materi purchases. Checkout has one payment flow for all Product types.
 
 **Premium Membership**:
 A time-boxed Product that grants global full-feature access while active. It unlocks paid Try-outs while active, premium explanations/videos, full evaluation dashboard, premium Materi, and future premium features. It is a one-time payment package, not auto-renew.
@@ -263,9 +285,13 @@ A record that grants a **Student** access to a Product or content target. A Prem
 
 ## Rules (Premium access)
 
+- **MVP Product management covers Premium Membership and Lifetime Try-out Purchase only.** Materi purchases remain out of scope until paid Materi access exists.
+- **A Lifetime Try-out Purchase Product targets exactly one Try-out.** MVP does not sell Try-out bundles.
+- **A Premium Membership Product has a required duration in days.** The duration determines the Entitlement expiry created after purchase.
 - **Premium Membership is time-boxed, not recurring.** Students buy a Product as a one-time charge; Entitlement expires; renewal requires another purchase. No auto-renew in M2.
 - **Effective Premium Membership = any non-expired membership Entitlement** for this Student. It is one global access check across all premium surfaces.
 - **Lifetime Try-out ownership = any non-expired or lifetime content Entitlement** for the specific Try-out. It survives Premium Membership expiry.
+- **Paid access is enforced server-side.** Student UI locks are only hints; Attempt start, paid review access, premium evaluation, and paid Materi access must check Entitlements on the server.
 - **Try-out access levels are explicit:** `free` or `paid`. Do not model this as `isPremium`, and do not use `platinum` as a content tier.
 - **"Premium" may be used as the student-facing badge for paid Try-outs.** In domain language, the Try-out is paid; in UI copy, "Premium" signals a higher-value locked module but must still offer both unlock paths.
 - **Admin Try-out access selection is Free or Premium.** The Premium admin label maps to a paid Try-out; Platinum is not an admin-selectable Try-out access level.
@@ -275,6 +301,7 @@ A record that grants a **Student** access to a Product or content target. A Prem
 - **Single premium tier in M2** — no "Premium Plus." Multi-tier is post-M2.
 - **Hard expiry cut**, with proactive email warnings at T-7d and T-1d before `ends_at`. No grace period.
 - **Admin-granted Premium Membership must specify a duration.** Admin-granted Lifetime Try-out Purchase access is a separate action and is lifetime by default.
+- **Admin manual grants must preserve an audit trail.** A manual Entitlement grant records the granting Admin, Student, Product/access target, grant reason, and grant time.
 - **Lifetime access means no expiry while the content remains available.** Admin may retire/unpublish a purchased Try-out. If a replacement Try-out is explicitly linked, owners get access to the replacement.
 - **Catalog cards have one primary action.** Locked paid cards open a context-aware upgrade dialog. The dialog offers Premium Membership or buying that one Try-out only, then routes to the same checkout.
 - **Active Premium members open paid Try-outs directly.** Paid Try-outs appear accessible/included while membership is active, and the lifetime purchase option is not shown for now.

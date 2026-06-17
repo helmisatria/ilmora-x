@@ -46,7 +46,8 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
   const { attempt, tryout, questions } = result;
   const hasFullTryoutAccess = hasFullTryoutReviewAccess({
     accessLevel: tryout.accessLevel,
-    hasPremiumMembership,
+    hasPremiumMembership: hasPremiumMembership || tryout.hasPremiumMembership,
+    hasLifetimeTryoutPurchase: tryout.hasLifetimeTryoutPurchase,
   });
 
   const [showPremium, setShowPremium] = useState(false);
@@ -89,7 +90,8 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
       if (isPremiumQuestionLocked({
         questionAccessLevel: q.accessLevel,
         tryoutAccessLevel: tryout.accessLevel,
-        hasPremiumMembership,
+        hasPremiumMembership: hasPremiumMembership || tryout.hasPremiumMembership,
+        hasLifetimeTryoutPurchase: tryout.hasLifetimeTryoutPurchase,
       })) {
         locked.add(q.snapshotId);
         continue;
@@ -102,7 +104,7 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
       }
     }
     return locked;
-  }, [questions, tryout.accessLevel, hasPremiumMembership, hasFullTryoutAccess]);
+  }, [questions, tryout.accessLevel, tryout.hasPremiumMembership, tryout.hasLifetimeTryoutPurchase, hasPremiumMembership, hasFullTryoutAccess]);
 
   const filteredQuestions = questions.filter((q) => {
     if (filter === "wrong") return q.selectedIndex !== null && q.isCorrect === false;

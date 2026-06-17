@@ -1,13 +1,20 @@
 // @ts-nocheck
-import { StrictMode, startTransition } from "react";
-import { hydrateRoot } from "react-dom/client";
-import { StartClient } from "@tanstack/react-start/client";
+if (import.meta.env.DEV) {
+  const { scan } = await import("react-scan");
 
-startTransition(() => {
+  scan({
+    enabled: true,
+    trackUnnecessaryRenders: true,
+  });
+}
+
+const React = await import("react");
+const { hydrateRoot } = await import("react-dom/client");
+const { StartClient } = await import("@tanstack/react-start/client");
+
+React.startTransition(() => {
   hydrateRoot(
     document,
-    <StrictMode>
-      <StartClient />
-    </StrictMode>
+    React.createElement(React.StrictMode, null, React.createElement(StartClient)),
   );
 });

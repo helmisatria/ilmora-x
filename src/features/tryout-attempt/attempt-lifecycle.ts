@@ -17,7 +17,8 @@ import { conflict, notFound } from "../../lib/http/errors";
 import { type Viewer } from "../../lib/auth-functions";
 import { getDailyAttemptWindow } from "./daily-attempt-window";
 import { awardDailyBadges } from "../engagement-surface/engagement-surface";
-import { isPaidTryout } from "../premium-access/premium-access";
+import { isPaidTryout, resolveTryoutAccess } from "../premium-access/premium-access";
+import { getTryoutEntitlementAccess } from "../premium-access/payment-service";
 
 export const attemptOptionLetters = ["A", "B", "C", "D", "E"] as const;
 
@@ -51,13 +52,23 @@ export async function getAttemptStartState({
 }) {
   const dailyAttemptLimit = getDailyTryoutAttemptLimit();
   const attemptsToday = await countTodayTryoutAttempts(studentUserId, tryoutId);
-  const hasExtendedPractice = hasExtendedPracticeAccess(accessLevel);
+  const entitlementAccess = await getTryoutEntitlementAccess(studentUserId, tryoutId);
+  const access = resolveTryoutAccess({
+    accessLevel,
+    hasPremiumMembership: entitlementAccess.hasPremiumMembership,
+    hasLifetimeTryoutPurchase: entitlementAccess.hasLifetimeTryoutPurchase,
+  });
+  const hasExtendedPractice = access.hasExtendedPracticeAccess;
 
   return {
     attemptsToday,
     dailyAttemptLimit: getVisibleDailyAttemptLimit(hasExtendedPractice, dailyAttemptLimit),
     normalDailyAttemptLimit: dailyAttemptLimit,
     hasExtendedPractice,
+    hasPremiumMembership: entitlementAccess.hasPremiumMembership,
+    hasLifetimeTryoutPurchase: entitlementAccess.hasLifetimeTryoutPurchase,
+    accessible: access.accessible,
+    locked: access.locked,
   };
 }
 
@@ -102,6 +113,10 @@ export async function startOrResumeAttemptForStudent({
     tryoutId,
     accessLevel: tryout.accessLevel,
   });
+
+  if (startState.locked) {
+    throw conflict("Try-out ini membutuhkan Premium Membership atau Lifetime Try-out Purchase.");
+  }
 
   if (!startState.hasExtendedPractice && startState.attemptsToday >= startState.normalDailyAttemptLimit) {
     throw conflict(`Batas pengerjaan harian tercapai. Try-out yang sama hanya bisa dikerjakan ${startState.normalDailyAttemptLimit} kali per hari.`);

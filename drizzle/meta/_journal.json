@@ -92,6 +92,13 @@
       "when": 1779978954000,
       "tag": "0012_snapshot_taxonomy_names",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1781510400000,
+      "tag": "0013_xendit_checkout",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import {
   adminMembers,
   categories as categoriesTable,
   materi as materiTable,
+  products,
   questions as questionsTable,
   subCategories,
   topics,
@@ -219,6 +220,65 @@ async function seedMateri() {
   }
 }
 
+async function seedProducts() {
+  await db
+    .insert(products)
+    .values([
+      {
+        id: "premium-30-days",
+        name: "Premium 1 Bulan",
+        type: "premium_membership",
+        durationDays: 30,
+        price: 49000,
+        description: "Akses penuh selama 1 bulan",
+        active: true,
+      },
+      {
+        id: "premium-180-days",
+        name: "Premium 6 Bulan",
+        type: "premium_membership",
+        durationDays: 180,
+        price: 249000,
+        description: "Akses penuh selama 6 bulan",
+        active: true,
+      },
+      {
+        id: "premium-365-days",
+        name: "Premium 1 Tahun",
+        type: "premium_membership",
+        durationDays: 365,
+        price: 399000,
+        description: "Akses penuh selama 1 tahun",
+        active: true,
+      },
+    ])
+    .onConflictDoNothing();
+
+  const paidTryouts = await db
+    .select({
+      id: tryoutsTable.id,
+      title: tryoutsTable.title,
+    })
+    .from(tryoutsTable)
+    .where(eq(tryoutsTable.accessLevel, "premium"));
+
+  for (const tryout of paidTryouts) {
+    await db
+      .insert(products)
+      .values({
+        id: `lifetime-tryout-${tryout.id}`,
+        name: `Try-out ${tryout.title}`,
+        type: "lifetime_tryout",
+        price: 19000,
+        description: `Akses lifetime untuk ${tryout.title}`,
+        active: true,
+        contentType: "tryout",
+        contentId: tryout.id,
+      })
+      .onConflictDoNothing();
+  }
+}
+
 async function assertSubCategoriesBelongToCategories() {
   for (const category of categories) {
     for (const subCategory of category.subcategories) {
@@ -260,6 +320,7 @@ async function main() {
   await assertTopicsBelongToSubCategories();
   await seedTryoutsAndQuestions();
   await seedMateri();
+  await seedProducts();
   console.log("Seed completed.");
 }
 

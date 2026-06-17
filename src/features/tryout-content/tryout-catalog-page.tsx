@@ -23,7 +23,8 @@ export function TryoutCatalogPage({
   summary: ProgressSummary;
   tryouts: TryoutRow[];
 }) {
-  const { hasPremiumMembership } = useApp();
+  const { hasPremiumMembership: devHasPremiumMembership } = useApp();
+  const hasPremiumMembership = devHasPremiumMembership || tryouts.some((tryout) => tryout.hasPremiumMembership);
   const analytics = useProductAnalytics();
   const location = useLocation();
   const [showPremium, setShowPremium] = useState(false);
@@ -48,7 +49,7 @@ export function TryoutCatalogPage({
 
   const filtered = tryouts.filter((t) => {
     if (filter === "all") return true;
-    if (filter === "owned") return false;
+    if (filter === "owned") return t.hasLifetimeTryoutPurchase;
     if (filter === "premium") return isPaidTryout(t.accessLevel);
     return t.accessLevel === filter;
   });
@@ -94,8 +95,8 @@ export function TryoutCatalogPage({
               <TryoutCard
                 key={tryout.id}
                 tryout={tryout}
-                isLocked={isTryoutLocked(tryout, hasPremiumMembership, false)}
-                isOwned={false}
+                isLocked={isTryoutLocked(tryout, hasPremiumMembership, tryout.hasLifetimeTryoutPurchase)}
+                isOwned={tryout.hasLifetimeTryoutPurchase}
                 onLockedClick={() => {
                   setSelectedTryout(tryout);
                   setShowPremium(true);

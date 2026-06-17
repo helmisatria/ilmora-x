@@ -28,6 +28,8 @@ export type Viewer = {
   admin: {
     role: "admin" | "super_admin";
   } | null;
+  premiumMembershipStartsAt: string | null;
+  premiumMembershipEndsAt: string | null;
   impersonation: {
     adminUserId: string;
     adminEmail: string;
@@ -69,6 +71,7 @@ export async function ensureSessionFromHeaders(headers: Headers) {
 export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Viewer | null> {
   const { getActiveAdminMembership } = await import("../features/identity/admin-membership");
   const { getStudentProfile, isProfileComplete } = await import("../features/identity/student-profile");
+  const { getEffectivePremiumMembership } = await import("../features/premium-access/payment-service");
   const session = await getSessionFromHeaders(headers);
 
   if (!session) return null;
@@ -91,6 +94,7 @@ export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Vie
     .limit(1);
   const effectiveSessionUser = effectiveUser ?? session.user;
   const profile = await getStudentProfile(effectiveSessionUser.id);
+  const premiumMembership = await getEffectivePremiumMembership(effectiveSessionUser.id);
 
   return {
     userId: effectiveSessionUser.id,
@@ -111,6 +115,8 @@ export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Vie
         }
       : null,
     admin,
+    premiumMembershipStartsAt: premiumMembership?.startsAt?.toISOString() ?? null,
+    premiumMembershipEndsAt: premiumMembership?.endsAt?.toISOString() ?? null,
     impersonation: canImpersonate && effectiveUser
       ? {
           adminUserId: session.user.id,

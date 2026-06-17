@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useProductAnalytics } from "../../lib/product-analytics-client";
 import gsap from "gsap";
 import { TopBar } from "../../components/Navigation";
-import { membershipProducts, type Product } from "./product-catalog";
+import type { listMembershipProducts } from "./checkout-functions";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
 const premiumAccent = "#f5b544";
@@ -16,11 +16,19 @@ const features = [
   "Rekomendasi",
 ] as const;
 
-export function PremiumPage({ summary }: { summary: Awaited<ReturnType<typeof listProgressSummary>> }) {
+type Product = Awaited<ReturnType<typeof listMembershipProducts>>[number];
+
+export function PremiumPage({
+  summary,
+  products,
+}: {
+  summary: Awaited<ReturnType<typeof listProgressSummary>>;
+  products: Product[];
+}) {
   const posthog = useProductAnalytics();
-  const [selectedProductId, setSelectedProductId] = useState(membershipProducts.find((product) => product.active)?.id ?? 1);
-  const selectedProduct = membershipProducts.find((product) => product.id === selectedProductId) ?? membershipProducts[0];
-  const activeProducts = membershipProducts.filter((product) => product.active);
+  const [selectedProductId, setSelectedProductId] = useState(products.find((product) => product.active)?.id ?? products[0]?.id ?? "");
+  const selectedProduct = products.find((product) => product.id === selectedProductId) ?? products[0];
+  const activeProducts = products.filter((product) => product.active);
 
   const heroRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -161,28 +169,34 @@ export function PremiumPage({ summary }: { summary: Awaited<ReturnType<typeof li
             </div>
 
             <div style={{ opacity: 0 }}>
-              <Link
-                to="/checkout"
-                search={{ productId: selectedProduct.id }}
-                className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
-                style={{
-                  background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
-                  borderBottomWidth: 5,
-                  borderBottomColor: "#b45309",
-                }}
-                onClick={() => posthog.capture("premium_checkout_clicked", {
-                  product_id: selectedProduct.id,
-                  product_name: selectedProduct.name,
-                  price: selectedProduct.price,
-                  duration_days: selectedProduct.durationDays,
-                })}
-              >
-                <span>Lanjut bayar</span>
-                <span className="flex items-center gap-2">
-                  Rp{selectedProduct.price.toLocaleString("id-ID")}
-                  <ArrowRightIcon />
-                </span>
-              </Link>
+              {selectedProduct ? (
+                <Link
+                  to="/checkout"
+                  search={{ productId: selectedProduct.id }}
+                  className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
+                  style={{
+                    background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
+                    borderBottomWidth: 5,
+                    borderBottomColor: "#b45309",
+                  }}
+                  onClick={() => posthog.capture("premium_checkout_clicked", {
+                    product_id: selectedProduct.id,
+                    product_name: selectedProduct.name,
+                    price: selectedProduct.price,
+                    duration_days: selectedProduct.durationDays,
+                  })}
+                >
+                  <span>Lanjut bayar</span>
+                  <span className="flex items-center gap-2">
+                    Rp{selectedProduct.price.toLocaleString("id-ID")}
+                    <ArrowRightIcon />
+                  </span>
+                </Link>
+              ) : (
+                <div className="mt-5 rounded-[var(--radius-lg)] border-2 border-stone-100 bg-white p-4 text-sm font-bold text-stone-400">
+                  Belum ada Product Premium aktif.
+                </div>
+              )}
             </div>
           </aside>
         </div>
@@ -242,7 +256,7 @@ function PackageCard({
   onSelect: () => void;
 }) {
   const savingPercent = getSavingPercent(product);
-  const isPopular = product.id === 2;
+  const isPopular = product.durationDays === 180;
 
   return (
     <button
@@ -301,8 +315,8 @@ function PackageCard({
 }
 
 function getSavingPercent(product: Product) {
-  if (product.id === 2) return 15;
-  if (product.id === 3) return 32;
+  if (product.durationDays === 180) return 15;
+  if (product.durationDays === 365) return 32;
 
   return 0;
 }

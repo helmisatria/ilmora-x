@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PremiumPage } from "../features/premium-access/premium-page";
+import { listMembershipProducts } from "../features/premium-access/checkout-functions";
 import { listProgressSummary } from "../features/student/student-progress-functions";
 
 export const Route = createFileRoute("/premium")({
   loader: async () => {
-    const summary = await listProgressSummary();
+    const [summary, products] = await Promise.all([
+      listProgressSummary(),
+      listMembershipProducts(),
+    ]);
 
-    return { summary };
+    return { summary, products };
   },
   head: () => ({
     meta: [
@@ -28,6 +32,6 @@ export const Route = createFileRoute("/premium")({
 });
 
 function PremiumRoute() {
-  const { summary } = Route.useLoaderData();
-  return <PremiumPage summary={summary} />;
+  const { summary, products } = Route.useLoaderData();
+  return <PremiumPage summary={summary} products={products} />;
 }

@@ -65,6 +65,8 @@ function getUserFromViewer(viewer: Viewer | null): User {
     googlePhotoUrl: avatar.photoUrl,
     isAdmin: Boolean(viewer.admin),
     adminTier: viewer.admin?.role ?? null,
+    entitlementStartsAt: viewer.premiumMembershipStartsAt,
+    entitlementEndsAt: viewer.premiumMembershipEndsAt,
     completedProfile: Boolean(viewer.admin || profile?.completed),
   };
 }

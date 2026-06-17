@@ -4,54 +4,74 @@ import { useProductAnalytics } from "../../lib/product-analytics-client";
 import { z } from "zod";
 import gsap from "gsap";
 import { TopBar } from "../../components/Navigation";
-import { getProductById, type Product } from "./product-catalog";
+import {
+  getCheckoutProduct,
+  previewCheckoutCoupon,
+  startCheckout,
+} from "./checkout-functions";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
 export const checkoutSearchSchema = z.object({
-  productId: z.number().optional(),
+  productId: z.string().optional(),
 });
+
+type Product = Awaited<ReturnType<typeof getCheckoutProduct>>;
 
 type DiscountState =
   | { type: "none" }
   | { type: "coupon"; code: string; amount: number; label: string }
   | { type: "invalid"; reason: string };
 
-type PaymentMethod = "xendit" | "midtrans" | "transfer";
-
 const premiumAccent = "#f5b544";
-
-const paymentMethods: Array<{
-  key: PaymentMethod;
-  label: string;
-  description: string;
-  icon: ReactNode;
-}> = [
-  { key: "xendit", label: "Xendit", description: "VA, e-wallet, QRIS", icon: <CardIcon /> },
-  { key: "midtrans", label: "Midtrans", description: "Transfer dan kartu kredit", icon: <WalletIcon /> },
-  { key: "transfer", label: "Transfer Bank", description: "BCA, Mandiri, BNI", icon: <BankIcon /> },
-];
 
 export function CheckoutPage({
   productId,
   summary,
 }: {
-  productId?: number;
+  productId?: string;
   summary: Awaited<ReturnType<typeof listProgressSummary>>;
 }) {
   const posthog = useProductAnalytics();
-  const product = getProductById(productId);
+  const [product, setProduct] = useState<Product | null>(null);
   const [code, setCode] = useState("");
   const [discount, setDiscount] = useState<DiscountState>({ type: "none" });
-  const [method, setMethod] = useState<PaymentMethod>("xendit");
+  const [loadingMessage, setLoadingMessage] = useState(productId ? "Memuat Product..." : "Product belum dipilih.");
+  const [busy, setBusy] = useState(false);
 
-  const subtotal = product.price;
+  const subtotal = product?.price ?? 0;
   const discountAmount = discount.type === "coupon" ? discount.amount : 0;
   const total = Math.max(0, subtotal - discountAmount);
 
   const heroRef = useRef<HTMLDivElement>(null);
   const couponRef = useRef<HTMLDivElement>(null);
-  const methodsRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProduct() {
+      if (!productId) return;
+
+      try {
+        const nextProduct = await getCheckoutProduct({ data: { productId } });
+
+        if (cancelled) return;
+
+        setProduct(nextProduct);
+        setLoadingMessage("");
+      } catch {
+        if (cancelled) return;
+
+        setLoadingMessage("Product tidak ditemukan atau sedang tidak aktif.");
+      }
+    }
+
+    loadProduct();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -60,34 +80,36 @@ export function CheckoutPage({
         { y: 30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.65, ease: "power3.out" }
       );
-
-      gsap.fromTo(
-        couponRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: "power3.out", delay: 0.12 }
-      );
-
-      if (methodsRef.current) {
-        gsap.fromTo(
-          methodsRef.current.children,
-          { y: 15, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.55, ease: "power3.out", stagger: 0.06, delay: 0.22 }
-        );
-      }
-
-      if (sidebarRef.current) {
-        gsap.fromTo(
-          sidebarRef.current.children,
-          { x: 30, opacity: 0 },
-          { x: 0, opacity: 1, duration: 0.6, ease: "power3.out", stagger: 0.1, delay: 0.28 }
-        );
-      }
     });
 
     return () => ctx.revert();
   }, []);
 
-  const handleApplyCode = () => {
+  useEffect(() => {
+    if (!product) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        couponRef.current,
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }
+      );
+
+      if (sidebarRef.current) {
+        gsap.fromTo(
+          sidebarRef.current.children,
+          { x: 30, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.6, ease: "power3.out", stagger: 0.1, delay: 0.12 }
+        );
+      }
+    });
+
+    return () => ctx.revert();
+  }, [product]);
+
+  const handleApplyCode = async () => {
+    if (!product) return;
+
     const trimmedCode = code.trim().toUpperCase();
 
     if (!trimmedCode) {
@@ -101,7 +123,29 @@ export function CheckoutPage({
       product_name: product.name,
     });
 
-    setDiscount({ type: "invalid", reason: "Kupon belum terhubung ke backend." });
+    setBusy(true);
+
+    try {
+      const result = await previewCheckoutCoupon({
+        data: {
+          productId: product.id,
+          couponCode: trimmedCode,
+        },
+      });
+
+      if (result.type === "coupon") {
+        setDiscount({
+          type: "coupon",
+          code: result.code,
+          amount: result.discountAmount,
+          label: `Kupon ${result.label}`,
+        });
+      }
+    } catch {
+      setDiscount({ type: "invalid", reason: "Kupon tidak valid untuk Product ini." });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const clearDiscount = () => {
@@ -109,16 +153,32 @@ export function CheckoutPage({
     setDiscount({ type: "none" });
   };
 
-  const handlePay = () => {
+  const handlePay = async () => {
+    if (!product) return;
+
     posthog.capture("checkout_pay_clicked", {
       product_id: product.id,
       product_name: product.name,
-      payment_method: method,
+      payment_method: "xendit",
       total,
       has_coupon: discount.type === "coupon",
     });
 
-    setDiscount({ type: "invalid", reason: "Pembayaran belum terhubung ke backend." });
+    setBusy(true);
+
+    try {
+      const result = await startCheckout({
+        data: {
+          productId: product.id,
+          couponCode: discount.type === "coupon" ? discount.code : undefined,
+        },
+      });
+
+      window.location.assign(result.redirectUrl);
+    } catch {
+      setDiscount({ type: "invalid", reason: "Checkout belum bisa dibuat. Cek konfigurasi Xendit atau coba lagi." });
+      setBusy(false);
+    }
   };
 
   return (
@@ -152,13 +212,19 @@ export function CheckoutPage({
               Selesaikan pembayaran
             </h1>
             <p className="m-0 mt-3 max-w-[34ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-              Pilih metode bayar, pakai kupon bila ada, lalu akses langsung aktif.
+              Pakai kupon bila ada, lalu lanjut ke halaman pembayaran Xendit.
             </p>
           </div>
         </div>
       </div>
 
       <div className="premium-lane relative -mt-2 pb-20">
+        {!product && (
+          <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 bg-white p-5 text-sm font-bold text-stone-500 shadow-sm">
+            {loadingMessage}
+          </div>
+        )}
+        {product && (
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           <div>
             <div ref={couponRef} className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm" style={{ opacity: 0 }}>
@@ -180,7 +246,7 @@ export function CheckoutPage({
                   placeholder="Kode kupon"
                   className="min-w-0 flex-1 rounded-[var(--radius-md)] border-2 border-stone-200 px-4 py-3 text-sm font-semibold uppercase outline-none transition-colors focus:border-primary"
                 />
-                <button className="btn btn-white px-4 text-sm" disabled={!code.trim()} type="submit">
+                <button className="btn btn-white px-4 text-sm" disabled={!code.trim() || busy} type="submit">
                   Pakai
                 </button>
               </form>
@@ -188,28 +254,20 @@ export function CheckoutPage({
               <DiscountMessage discount={discount} onClear={clearDiscount} />
 
               <p className="mt-3 text-[11px] font-medium leading-relaxed text-stone-400">
-                Kupon akan aktif setelah backend kupon tersedia.
+                Satu Checkout hanya bisa memakai satu Kupon.
               </p>
             </div>
 
             <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 shadow-sm">
-              <SectionHeader title="Metode Pembayaran" />
-              <div ref={methodsRef} className="grid gap-2">
-                {paymentMethods.map((paymentMethod) => (
-                  <div key={paymentMethod.key} style={{ opacity: 0 }}>
-                    <PaymentMethodButton
-                      paymentMethod={paymentMethod}
-                      isSelected={method === paymentMethod.key}
-                      onSelect={() => {
-                        setMethod(paymentMethod.key);
-                        posthog.capture("payment_method_selected", {
-                          payment_method: paymentMethod.key,
-                          product_id: product.id,
-                        });
-                      }}
-                    />
-                  </div>
-                ))}
+              <SectionHeader title="Pembayaran" />
+              <div className="flex items-start gap-3 rounded-[var(--radius-md)] border-2 border-primary-soft bg-primary-tint p-4">
+                <IconTile icon={<CardIcon />} accent="#205072" />
+                <div>
+                  <b className="block text-sm font-bold text-stone-800">Xendit Checkout</b>
+                  <p className="m-0 mt-1 text-xs font-semibold leading-relaxed text-stone-500">
+                    Virtual Account, e-wallet, QRIS, dan metode lain tersedia di halaman Xendit.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -230,6 +288,7 @@ export function CheckoutPage({
                   borderBottomColor: "#b45309",
                 }}
                 onClick={handlePay}
+                disabled={busy}
                 type="button"
               >
                 <span>Bayar sekarang</span>
@@ -241,11 +300,12 @@ export function CheckoutPage({
             </div>
             <div style={{ opacity: 0 }}>
               <p className="mx-auto mt-3 max-w-[34ch] text-center text-[11px] font-medium leading-relaxed text-stone-400">
-                Pembayaran belum aktif sampai gateway dan entitlement backend tersedia.
+                Akses aktif setelah pembayaran diverifikasi server.
               </p>
             </div>
           </aside>
         </div>
+        )}
       </div>
     </main>
   );
@@ -303,54 +363,6 @@ function DiscountMessage({ discount, onClear }: { discount: DiscountState; onCle
         Hapus
       </button>
     </div>
-  );
-}
-
-function PaymentMethodButton({
-  paymentMethod,
-  isSelected,
-  onSelect,
-}: {
-  paymentMethod: (typeof paymentMethods)[number];
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      className="group flex w-full items-center gap-3 rounded-[var(--radius-lg)] border-2 border-b-4 p-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:translate-y-[1px]"
-      style={{
-        borderColor: isSelected ? "#205072" : "#f5f5f4",
-        borderBottomColor: isSelected ? "#153d5c" : "#d6d3d1",
-        background: isSelected ? "linear-gradient(180deg, #f1f7fb 0%, rgba(255,255,255,0.96) 76%)" : "#ffffff",
-      }}
-      onClick={onSelect}
-      type="button"
-    >
-      <span
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-transform duration-700 ease-out group-hover:scale-105"
-        style={{
-          color: isSelected ? "#205072" : "#78716c",
-          background: isSelected ? "#dcecf7" : "#f5f5f4",
-          borderColor: isSelected ? "#79b7d9" : "#e7e5e4",
-        }}
-      >
-        {paymentMethod.icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <b className="block text-sm font-bold text-stone-800">{paymentMethod.label}</b>
-        <span className="mt-0.5 block text-[11px] font-semibold text-stone-400">{paymentMethod.description}</span>
-      </div>
-      <span
-        className="flex h-7 w-7 items-center justify-center rounded-full border-2"
-        style={{
-          background: isSelected ? "#205072" : "#ffffff",
-          borderColor: isSelected ? "#205072" : "#d6d3d1",
-          color: "#ffffff",
-        }}
-      >
-        {isSelected && <CheckIcon />}
-      </span>
-    </button>
   );
 }
 

@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { getLifetimeProductForTryout, membershipProducts } from "../features/premium-access/product-catalog";
 import {
   Dialog,
   DialogContent,
@@ -18,13 +17,13 @@ interface PremiumDialogProps {
 interface PremiumDialogTryout {
   id: number | string;
   title: string;
+  lifetimeProductId?: string | null;
+  lifetimeProductPrice?: number | null;
 }
 
 export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership = false, tryout = null }: PremiumDialogProps) {
   const navigate = useNavigate();
-  const monthlyProduct = membershipProducts[0];
-  const tryoutProduct = tryout ? getLifetimeProductForTryout(tryout.id) : null;
-  const showTryoutPurchase = Boolean(tryoutProduct && !hasPremiumMembership);
+  const showTryoutPurchase = Boolean(tryout?.lifetimeProductId && !hasPremiumMembership);
   const showMembershipPrice = !hasPremiumMembership;
   const hasStickyMobilePrice = showMembershipPrice || showTryoutPurchase;
 
@@ -87,16 +86,15 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership
               {showMembershipPrice && (
                 <PriceOption
                   title="Premium"
-                  price={`Rp${(monthlyProduct?.price ?? 49000).toLocaleString("id-ID")}`}
-                  suffix="/bulan"
+                  price="Pilih paket"
                   description="Rekomendasi. Buka semua try-out premium dan fitur belajar."
                   tone="premium"
                 />
               )}
-              {showTryoutPurchase && tryoutProduct && (
+              {showTryoutPurchase && tryout && (
                 <PriceOption
                   title="Try-out ini"
-                  price={`Rp${tryoutProduct.price.toLocaleString("id-ID")}`}
+                  price={tryout.lifetimeProductPrice ? `Rp${tryout.lifetimeProductPrice.toLocaleString("id-ID")}` : "Tersedia"}
                   description={`Akses lifetime untuk ${tryout?.title}`}
                   tone="tryout"
                 />
@@ -110,15 +108,14 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership
                 {showMembershipPrice && (
                   <StickyPrice
                     label="Premium"
-                    price={`Rp${(monthlyProduct?.price ?? 49000).toLocaleString("id-ID")}`}
-                    suffix="/bulan"
+                    price="Pilih paket"
                     tone="premium"
                   />
                 )}
-                {showTryoutPurchase && tryoutProduct && (
+                {showTryoutPurchase && tryout && (
                   <StickyPrice
                     label="Try-out ini"
-                    price={`Rp${tryoutProduct.price.toLocaleString("id-ID")}`}
+                    price={tryout.lifetimeProductPrice ? `Rp${tryout.lifetimeProductPrice.toLocaleString("id-ID")}` : "Tersedia"}
                     tone="tryout"
                   />
                 )}
@@ -129,12 +126,12 @@ export function PremiumDialog({ isOpen, onClose, onUpgrade, hasPremiumMembership
               <button className="btn btn-white min-h-13 w-full whitespace-nowrap px-4 text-sm md:min-h-14" onClick={onClose} type="button">
                 Nanti
               </button>
-              {showTryoutPurchase && tryoutProduct && (
+              {showTryoutPurchase && tryout?.lifetimeProductId && (
                 <button
                   className="btn btn-white min-h-13 w-full whitespace-nowrap px-4 text-sm md:min-h-14"
                   onClick={() => {
                     onClose();
-                    navigate({ to: "/checkout", search: { productId: tryoutProduct.id } });
+                    navigate({ to: "/checkout", search: { productId: tryout.lifetimeProductId } });
                   }}
                   type="button"
                 >

@@ -19,7 +19,7 @@ export type DashboardPageData = {
 };
 
 export function DashboardPage({ summary, tryouts }: DashboardPageData) {
-  const { user, hasPremiumMembership } = useApp();
+  const { user, hasPremiumMembership: devHasPremiumMembership } = useApp();
   const navigate = useNavigate();
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [selectedTryout, setSelectedTryout] = useState<DashboardTryout | null>(null);
@@ -29,6 +29,7 @@ export function DashboardPage({ summary, tryouts }: DashboardPageData) {
   const nextLevel = getNextLevel(summary.xp);
   const xpProgress = getXpProgress(summary.xp);
   const accuracy = getDashboardAccuracy(summary);
+  const hasPremiumMembership = devHasPremiumMembership || tryouts.some((tryout) => tryout.hasPremiumMembership);
 
   return (
     <>
@@ -117,6 +118,7 @@ export function DashboardPage({ summary, tryouts }: DashboardPageData) {
                     isLocked={resolveTryoutAccess({
                       accessLevel: tryout.accessLevel,
                       hasPremiumMembership,
+                      hasLifetimeTryoutPurchase: tryout.hasLifetimeTryoutPurchase,
                     }).locked}
                     onLockedClick={() => {
                       setSelectedTryout(tryout);
