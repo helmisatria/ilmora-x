@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../lib/db/client";
 import {
@@ -64,12 +64,35 @@ const checkoutIdSchema = z.object({
   checkoutId: z.string().trim().min(1),
 });
 
+type CouponUsageSummary = {
+  reservedUses: number;
+  finalizedUses: number;
+  releasedUses: number;
+  activeUses: number;
+};
+
+const emptyCouponUsageSummary: CouponUsageSummary = {
+  reservedUses: 0,
+  finalizedUses: 0,
+  releasedUses: 0,
+  activeUses: 0,
+};
+
 export const getPaymentAdminData = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .handler(async () => {
-    const [productRows, couponRows, studentRows, tryoutRows, checkoutRows, entitlementRows] = await Promise.all([
+    const [productRows, couponRows, couponUsageRows, studentRows, tryoutRows, checkoutRows, entitlementRows] = await Promise.all([
       db.select().from(products).orderBy(products.type, products.price, products.name),
       db.select().from(coupons).orderBy(desc(coupons.createdAt)),
+      db
+        .select({
+          couponId: couponRedemptions.couponId,
+          reservedUses: sql<number>`count(*) filter (where ${couponRedemptions.status} = 'reserved')`,
+          finalizedUses: sql<number>`count(*) filter (where ${couponRedemptions.status} = 'finalized')`,
+          releasedUses: sql<number>`count(*) filter (where ${couponRedemptions.status} = 'released')`,
+        })
+        .from(couponRedemptions)
+        .groupBy(couponRedemptions.couponId),
       db
         .select({
           userId: user.id,
@@ -89,13 +112,37 @@ export const getPaymentAdminData = createServerFn({ method: "GET" })
         })
         .from(tryouts)
         .orderBy(tryouts.title),
-      db.select().from(checkouts).orderBy(desc(checkouts.createdAt)).limit(30),
-      db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(30),
+      db
+        .select({
+          checkout: checkouts,
+          studentEmail: user.email,
+          studentName: user.name,
+          studentDisplayName: studentProfiles.displayName,
+        })
+        .from(checkouts)
+        .leftJoin(user, eq(user.id, checkouts.studentUserId))
+        .leftJoin(studentProfiles, eq(studentProfiles.userId, checkouts.studentUserId))
+        .orderBy(desc(checkouts.createdAt))
+        .limit(30),
+      db
+        .select({
+          entitlement: entitlements,
+          studentEmail: user.email,
+          studentName: user.name,
+          studentDisplayName: studentProfiles.displayName,
+        })
+        .from(entitlements)
+        .leftJoin(user, eq(user.id, entitlements.studentUserId))
+        .leftJoin(studentProfiles, eq(studentProfiles.userId, entitlements.studentUserId))
+        .orderBy(desc(entitlements.createdAt))
+        .limit(30),
     ]);
+
+    const couponUsageById = makeCouponUsageById(couponUsageRows);
 
     return {
       products: productRows.map(toProductDto),
-      coupons: couponRows.map(toCouponDto),
+      coupons: couponRows.map((coupon) => toCouponDto(coupon, couponUsageById.get(coupon.id))),
       students: studentRows.map((student) => ({
         userId: student.userId,
         email: student.email,
@@ -332,7 +379,33 @@ function toProductDto(product: typeof products.$inferSelect) {
   };
 }
 
-function toCouponDto(coupon: typeof coupons.$inferSelect) {
+function makeCouponUsageById(
+  rows: Array<{
+    couponId: string;
+    reservedUses: number;
+    finalizedUses: number;
+    releasedUses: number;
+  }>,
+) {
+  const usageById = new Map<string, CouponUsageSummary>();
+
+  for (const row of rows) {
+    const reservedUses = Number(row.reservedUses);
+    const finalizedUses = Number(row.finalizedUses);
+    const releasedUses = Number(row.releasedUses);
+
+    usageById.set(row.couponId, {
+      reservedUses,
+      finalizedUses,
+      releasedUses,
+      activeUses: reservedUses + finalizedUses,
+    });
+  }
+
+  return usageById;
+}
+
+function toCouponDto(coupon: typeof coupons.$inferSelect, usage = emptyCouponUsageSummary) {
   return {
     id: coupon.id,
     code: coupon.code,
@@ -343,13 +416,32 @@ function toCouponDto(coupon: typeof coupons.$inferSelect) {
     endsAt: coupon.endsAt.toISOString(),
     maxTotalUses: coupon.maxTotalUses,
     active: coupon.active,
+    reservedUses: usage.reservedUses,
+    finalizedUses: usage.finalizedUses,
+    releasedUses: usage.releasedUses,
+    activeUses: usage.activeUses,
   };
 }
 
-function toCheckoutDto(checkout: typeof checkouts.$inferSelect) {
+function toCheckoutDto(row: {
+  checkout: typeof checkouts.$inferSelect;
+  studentEmail: string | null;
+  studentName: string | null;
+  studentDisplayName: string | null;
+}) {
+  const checkout = row.checkout;
+  const student = makeStudentIdentity({
+    userId: checkout.studentUserId,
+    email: row.studentEmail,
+    name: row.studentName,
+    displayName: row.studentDisplayName,
+  });
+
   return {
     id: checkout.id,
     studentUserId: checkout.studentUserId,
+    studentName: student.name,
+    studentEmail: student.email,
     productName: checkout.productName,
     productType: checkout.productType,
     couponCode: checkout.couponCode,
@@ -363,10 +455,25 @@ function toCheckoutDto(checkout: typeof checkouts.$inferSelect) {
   };
 }
 
-function toEntitlementDto(entitlement: typeof entitlements.$inferSelect) {
+function toEntitlementDto(row: {
+  entitlement: typeof entitlements.$inferSelect;
+  studentEmail: string | null;
+  studentName: string | null;
+  studentDisplayName: string | null;
+}) {
+  const entitlement = row.entitlement;
+  const student = makeStudentIdentity({
+    userId: entitlement.studentUserId,
+    email: row.studentEmail,
+    name: row.studentName,
+    displayName: row.studentDisplayName,
+  });
+
   return {
     id: entitlement.id,
     studentUserId: entitlement.studentUserId,
+    studentName: student.name,
+    studentEmail: student.email,
     source: entitlement.source,
     productType: entitlement.productType,
     contentType: entitlement.contentType,
@@ -375,5 +482,24 @@ function toEntitlementDto(entitlement: typeof entitlements.$inferSelect) {
     endsAt: entitlement.endsAt?.toISOString() ?? null,
     grantedByAdminUserId: entitlement.grantedByAdminUserId,
     grantReason: entitlement.grantReason,
+  };
+}
+
+function makeStudentIdentity({
+  userId,
+  email,
+  name,
+  displayName,
+}: {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  displayName: string | null;
+}) {
+  const fallbackEmail = email ?? userId;
+
+  return {
+    email: fallbackEmail,
+    name: displayName || name || fallbackEmail,
   };
 }

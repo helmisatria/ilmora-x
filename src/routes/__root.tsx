@@ -145,11 +145,6 @@ function RootComponent() {
   return (
     <html lang="id">
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: 'document.documentElement.dataset.js = "ready";',
-          }}
-        />
         <HeadContent />
       </head>
       <body className="antialiased">

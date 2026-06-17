@@ -1,6 +1,16 @@
 import { useRouter } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useForm, type FieldValues, type Path, type UseFormSetError } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import {
   deleteCouponAdmin,
   getPaymentAdminData,
@@ -11,52 +21,146 @@ import {
   setProductActiveAdmin,
   syncCheckoutWithXenditAdmin,
 } from "./admin-payment-functions";
+import {
+  makeCouponFormDefaults,
+  makeCouponSaveInput,
+  makeProductFormDefaults,
+  makeProductSaveInput,
+  type CouponFormValues,
+  type ProductFormValues,
+} from "./admin-payment-form-values";
+import { CheckoutTable, CouponTable, EntitlementTable, ProductTable } from "./admin-payment-tables";
 
 type PaymentAdminData = Awaited<ReturnType<typeof getPaymentAdminData>>;
 type ProductRow = PaymentAdminData["products"][number];
 type CouponRow = PaymentAdminData["coupons"][number];
-
-type ProductForm = {
-  id: string;
-  name: string;
-  description: string;
-  type: "premium_membership" | "lifetime_tryout";
-  price: string;
-  active: boolean;
-  durationDays: string;
-  contentId: string;
+type GrantFormValues = {
+  studentUserId: string;
+  productId: string;
+  reason: string;
 };
+type ProductFormErrors = Partial<Record<keyof ProductFormValues | "root", string>>;
 
-type CouponForm = {
-  id: string;
-  code: string;
-  discountType: "percentage" | "fixed";
-  discountValue: string;
-  productScope: "all" | "premium_membership" | "lifetime_tryout" | "material";
-  startsAt: string;
-  endsAt: string;
-  maxTotalUses: string;
-  active: boolean;
-};
+const productFormSchema = z.object({
+  id: z.string(),
+  name: z.string().trim().min(1, "Name is required.").max(180, "Name must be 180 characters or fewer."),
+  description: z.string().trim().max(500, "Description must be 500 characters or fewer."),
+  type: z.enum(["premium_membership", "lifetime_tryout"]),
+  price: z.string().trim().min(1, "Price is required."),
+  active: z.boolean(),
+  durationDays: z.string().trim(),
+  contentId: z.string().trim(),
+}).superRefine((values, context) => {
+  if (!isIntegerText(values.price) || Number(values.price) < 0) {
+    context.addIssue({
+      code: "custom",
+      message: "Price must be a whole number.",
+      path: ["price"],
+    });
+  }
 
-const emptyProductForm: ProductForm = {
-  id: "",
-  name: "",
-  description: "",
-  type: "premium_membership",
-  price: "49000",
-  active: true,
-  durationDays: "30",
-  contentId: "",
-};
+  if (values.type === "premium_membership" && (!isIntegerText(values.durationDays) || Number(values.durationDays) < 1)) {
+    context.addIssue({
+      code: "custom",
+      message: "Duration must be at least 1 day.",
+      path: ["durationDays"],
+    });
+  }
+
+  if (values.type === "lifetime_tryout" && !values.contentId) {
+    context.addIssue({
+      code: "custom",
+      message: "Choose the Try-out this Product unlocks.",
+      path: ["contentId"],
+    });
+  }
+});
+
+const couponFormSchema = z.object({
+  id: z.string(),
+  code: z.string().trim().min(1, "Code is required.").max(80, "Code must be 80 characters or fewer."),
+  discountType: z.enum(["percentage", "fixed"]),
+  discountValue: z.string().trim().min(1, "Discount value is required."),
+  productScope: z.enum(["all", "premium_membership", "lifetime_tryout", "material"]),
+  startsAt: z.string().trim().min(1, "Start time is required."),
+  endsAt: z.string().trim().min(1, "End time is required."),
+  maxTotalUses: z.string().trim(),
+  active: z.boolean(),
+}).superRefine((values, context) => {
+  const discountValue = Number(values.discountValue);
+
+  if (!isIntegerText(values.discountValue)) {
+    context.addIssue({
+      code: "custom",
+      message: "Discount value must be a whole number.",
+      path: ["discountValue"],
+    });
+  } else if (values.discountType === "percentage" && (discountValue < 1 || discountValue > 100)) {
+    context.addIssue({
+      code: "custom",
+      message: "Percentage must be from 1 to 100.",
+      path: ["discountValue"],
+    });
+  } else if (values.discountType === "fixed" && discountValue < 1) {
+    context.addIssue({
+      code: "custom",
+      message: "Fixed discount must be at least 1.",
+      path: ["discountValue"],
+    });
+  }
+
+  if (!isValidDateTimeText(values.startsAt)) {
+    context.addIssue({
+      code: "custom",
+      message: "Start time must be valid.",
+      path: ["startsAt"],
+    });
+  }
+
+  if (!isValidDateTimeText(values.endsAt)) {
+    context.addIssue({
+      code: "custom",
+      message: "End time must be valid.",
+      path: ["endsAt"],
+    });
+  }
+
+  if (isValidDateTimeText(values.startsAt) && isValidDateTimeText(values.endsAt)) {
+    const startsAt = new Date(values.startsAt);
+    const endsAt = new Date(values.endsAt);
+
+    if (endsAt <= startsAt) {
+      context.addIssue({
+        code: "custom",
+        message: "End time must be after start time.",
+        path: ["endsAt"],
+      });
+    }
+  }
+
+  if (values.maxTotalUses && (!isIntegerText(values.maxTotalUses) || Number(values.maxTotalUses) < 1)) {
+    context.addIssue({
+      code: "custom",
+      message: "Max total uses must be empty or at least 1.",
+      path: ["maxTotalUses"],
+    });
+  }
+});
+
+const grantFormSchema = z.object({
+  studentUserId: z.string().trim().min(1, "Student is required."),
+  productId: z.string().trim().min(1, "Product is required."),
+  reason: z.string().trim().min(1, "Reason is required.").max(500, "Reason must be 500 characters or fewer."),
+});
 
 export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
   const router = useRouter();
-  const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
-  const [couponForm, setCouponForm] = useState<CouponForm>(() => makeEmptyCouponForm());
-  const [grantStudentId, setGrantStudentId] = useState(data.students[0]?.userId ?? "");
-  const [grantProductId, setGrantProductId] = useState(data.products[0]?.id ?? "");
-  const [grantReason, setGrantReason] = useState("");
+  const routerRef = useRef(router);
+  const [productDialogProduct, setProductDialogProduct] = useState<ProductRow | null>(null);
+  const [isProductDialogOpen, setProductDialogOpen] = useState(false);
+  const [couponDialogCoupon, setCouponDialogCoupon] = useState<CouponRow | null>(null);
+  const [isCouponDialogOpen, setCouponDialogOpen] = useState(false);
+  const [isGrantDialogOpen, setGrantDialogOpen] = useState(false);
   const [busyAction, setBusyAction] = useState("");
 
   const paidTryouts = useMemo(
@@ -64,87 +168,93 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
     [data.tryouts],
   );
 
-  const refresh = async () => {
-    await router.invalidate();
-  };
+  routerRef.current = router;
 
-  const saveProduct = async () => {
+  const refresh = useCallback(async () => {
+    await routerRef.current.invalidate();
+  }, []);
+
+  const openProductDialog = useCallback((product: ProductRow | null) => {
+    setProductDialogProduct(product);
+    setProductDialogOpen(true);
+  }, []);
+
+  const openCouponDialog = useCallback((coupon: CouponRow | null) => {
+    setCouponDialogCoupon(coupon);
+    setCouponDialogOpen(true);
+  }, []);
+
+  const closeProductDialog = useCallback(() => {
+    setProductDialogOpen(false);
+    setProductDialogProduct(null);
+  }, []);
+
+  const closeCouponDialog = useCallback(() => {
+    setCouponDialogOpen(false);
+    setCouponDialogCoupon(null);
+  }, []);
+
+  const saveProduct = useCallback(async (values: ProductFormValues) => {
     setBusyAction("product");
 
     try {
       await saveProductAdmin({
-        data: {
-          id: productForm.id || undefined,
-          name: productForm.name,
-          description: productForm.description,
-          type: productForm.type,
-          price: Number(productForm.price),
-          active: productForm.active,
-          durationDays: productForm.type === "premium_membership" ? Number(productForm.durationDays) : null,
-          contentId: productForm.type === "lifetime_tryout" ? productForm.contentId : null,
-        },
+        data: makeProductSaveInput(values),
       });
-      setProductForm(emptyProductForm);
       toast.success("Product saved.");
-      await refresh();
+      void refresh().catch(() => {
+        toast.error("Product saved, but the table was not refreshed.");
+      });
+      return true;
     } catch {
       toast.error("Product was not saved. Check the required fields.");
+      return false;
     } finally {
       setBusyAction("");
     }
-  };
+  }, [refresh]);
 
-  const saveCoupon = async () => {
+  const saveCoupon = useCallback(async (values: CouponFormValues) => {
     setBusyAction("coupon");
 
     try {
       await saveCouponAdmin({
-        data: {
-          id: couponForm.id || undefined,
-          code: couponForm.code,
-          discountType: couponForm.discountType,
-          discountValue: Number(couponForm.discountValue),
-          productScope: couponForm.productScope,
-          startsAt: new Date(couponForm.startsAt).toISOString(),
-          endsAt: new Date(couponForm.endsAt).toISOString(),
-          maxTotalUses: couponForm.maxTotalUses ? Number(couponForm.maxTotalUses) : null,
-          active: couponForm.active,
-        },
+        data: makeCouponSaveInput(values),
       });
-      setCouponForm(makeEmptyCouponForm());
       toast.success("Coupon saved.");
       await refresh();
+      return true;
     } catch {
       toast.error("Coupon was not saved. Check code, value, and validity window.");
+      return false;
     } finally {
       setBusyAction("");
     }
-  };
+  }, [refresh]);
 
-  const grantAccess = async () => {
-    if (!grantStudentId || !grantProductId || !grantReason.trim()) return;
-
+  const grantAccess = useCallback(async (values: GrantFormValues) => {
     setBusyAction("grant");
 
     try {
       await grantEntitlementAdmin({
         data: {
-          studentUserId: grantStudentId,
-          productId: grantProductId,
-          reason: grantReason,
+          studentUserId: values.studentUserId,
+          productId: values.productId,
+          reason: values.reason,
         },
       });
-      setGrantReason("");
       toast.success("Access granted.");
       await refresh();
+      return true;
     } catch {
       toast.error("Access was not granted.");
+      return false;
     } finally {
       setBusyAction("");
     }
-  };
+  }, [refresh]);
 
-  const syncCheckout = async (checkoutId: string) => {
+  const syncCheckout = useCallback(async (checkoutId: string) => {
     setBusyAction(`sync:${checkoutId}`);
 
     try {
@@ -157,9 +267,9 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
     } finally {
       setBusyAction("");
     }
-  };
+  }, [refresh]);
 
-  const deleteCoupon = async (coupon: CouponRow) => {
+  const deleteCoupon = useCallback(async (coupon: CouponRow) => {
     if (!window.confirm(`Remove coupon ${coupon.code}? This only works when the coupon has no checkout history.`)) {
       return;
     }
@@ -168,9 +278,7 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
 
     try {
       await deleteCouponAdmin({ data: { couponId: coupon.id } });
-      if (couponForm.id === coupon.id) {
-        setCouponForm(makeEmptyCouponForm());
-      }
+      closeCouponDialog();
       toast.success("Coupon removed.");
       await refresh();
     } catch {
@@ -178,7 +286,38 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
     } finally {
       setBusyAction("");
     }
-  };
+  }, [closeCouponDialog, refresh]);
+
+  const toggleProduct = useCallback(async (product: ProductRow) => {
+    await setProductActiveAdmin({ data: { productId: product.id, active: !product.active } });
+    await refresh();
+  }, [refresh]);
+
+  const toggleCoupon = useCallback(async (coupon: CouponRow) => {
+    await setCouponActiveAdmin({ data: { couponId: coupon.id, active: !coupon.active } });
+    await refresh();
+  }, [refresh]);
+
+  const handleProductOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      setProductDialogOpen(true);
+      return;
+    }
+
+    closeProductDialog();
+  }, [closeProductDialog]);
+
+  const handleCouponOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      setCouponDialogOpen(true);
+      return;
+    }
+
+    closeCouponDialog();
+  }, [closeCouponDialog]);
+
+  const couponTableBusyAction = busyAction.startsWith("delete-coupon:") ? busyAction : "";
+  const checkoutTableBusyAction = busyAction.startsWith("sync:") ? busyAction : "";
 
   return (
     <main className="admin-shell page-enter">
@@ -194,150 +333,46 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
             <h2 className="admin-panel-title">Product</h2>
+            <button
+              className="admin-button-primary"
+              onClick={() => openProductDialog(null)}
+              type="button"
+            >
+              Create Product
+            </button>
           </div>
-          <div className="grid gap-5 p-5 sm:p-6">
-            <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Name">
-                <input className="admin-control" value={productForm.name} onChange={(event) => setProductForm({ ...productForm, name: event.target.value })} />
-              </Field>
-              <Field label="Type">
-                <select className="admin-control" value={productForm.type} onChange={(event) => setProductForm({ ...productForm, type: event.target.value as ProductForm["type"] })}>
-                  <option value="premium_membership">Premium Membership</option>
-                  <option value="lifetime_tryout">Lifetime Try-out Purchase</option>
-                </select>
-              </Field>
-            </div>
-            <Field label="Description">
-              <textarea className="admin-control min-h-20" value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} />
-            </Field>
-            <div className="grid gap-5 md:grid-cols-3">
-              <Field label="Price">
-                <input className="admin-control" inputMode="numeric" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} />
-              </Field>
-              {productForm.type === "premium_membership" ? (
-                <Field label="Duration days">
-                  <input className="admin-control" inputMode="numeric" value={productForm.durationDays} onChange={(event) => setProductForm({ ...productForm, durationDays: event.target.value })} />
-                </Field>
-              ) : (
-                <Field label="Try-out target">
-                  <select className="admin-control" value={productForm.contentId} onChange={(event) => setProductForm({ ...productForm, contentId: event.target.value })}>
-                    <option value="">Select Try-out</option>
-                    {paidTryouts.map((tryout) => (
-                      <option key={tryout.id} value={tryout.id}>{tryout.title}</option>
-                    ))}
-                  </select>
-                </Field>
-              )}
-              <Field label="Status">
-                <label className="flex h-12 items-center gap-2 rounded-[var(--radius-md)] border-2 border-stone-100 px-3 text-sm font-bold text-stone-600">
-                  <input checked={productForm.active} onChange={(event) => setProductForm({ ...productForm, active: event.target.checked })} type="checkbox" />
-                  Active
-                </label>
-              </Field>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button className="admin-button-primary" disabled={busyAction === "product"} onClick={saveProduct} type="button">
-                {productForm.id ? "Update Product" : "Create Product"}
-              </button>
-              {productForm.id && (
-                <button className="admin-button-secondary" onClick={() => setProductForm(emptyProductForm)} type="button">
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
-          <ProductList products={data.products} onEdit={setProductForm} onToggle={async (product) => {
-            await setProductActiveAdmin({ data: { productId: product.id, active: !product.active } });
-            await refresh();
-          }} />
+          <ProductTable products={data.products} tryouts={data.tryouts} onEdit={openProductDialog} onToggle={toggleProduct} />
         </section>
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
             <h2 className="admin-panel-title">Coupon</h2>
+            <button
+              className="admin-button-primary"
+              onClick={() => openCouponDialog(null)}
+              type="button"
+            >
+              Create Coupon
+            </button>
           </div>
-          <div className="grid gap-5 p-5 sm:p-6">
-            <div className="grid gap-5 md:grid-cols-4">
-              <Field label="Code">
-                <input className="admin-control uppercase" value={couponForm.code} onChange={(event) => setCouponForm({ ...couponForm, code: event.target.value })} />
-              </Field>
-              <Field label="Discount type">
-                <select className="admin-control" value={couponForm.discountType} onChange={(event) => setCouponForm({ ...couponForm, discountType: event.target.value as CouponForm["discountType"] })}>
-                  <option value="fixed">Fixed</option>
-                  <option value="percentage">Percentage</option>
-                </select>
-              </Field>
-              <Field label="Discount value">
-                <input className="admin-control" inputMode="numeric" value={couponForm.discountValue} onChange={(event) => setCouponForm({ ...couponForm, discountValue: event.target.value })} />
-              </Field>
-              <Field label="Product scope">
-                <select className="admin-control" value={couponForm.productScope} onChange={(event) => setCouponForm({ ...couponForm, productScope: event.target.value as CouponForm["productScope"] })}>
-                  <option value="all">All paid products</option>
-                  <option value="premium_membership">Premium Membership</option>
-                  <option value="lifetime_tryout">Lifetime Try-out Purchase</option>
-                  <option value="material">Materi</option>
-                </select>
-              </Field>
-            </div>
-            <div className="grid gap-5 md:grid-cols-4">
-              <Field label="Starts at">
-                <input className="admin-control" type="datetime-local" value={couponForm.startsAt} onChange={(event) => setCouponForm({ ...couponForm, startsAt: event.target.value })} />
-              </Field>
-              <Field label="Ends at">
-                <input className="admin-control" type="datetime-local" value={couponForm.endsAt} onChange={(event) => setCouponForm({ ...couponForm, endsAt: event.target.value })} />
-              </Field>
-              <Field label="Max total uses">
-                <input className="admin-control" inputMode="numeric" placeholder="Unlimited" value={couponForm.maxTotalUses} onChange={(event) => setCouponForm({ ...couponForm, maxTotalUses: event.target.value })} />
-              </Field>
-              <Field label="Status">
-                <label className="flex h-12 items-center gap-2 rounded-[var(--radius-md)] border-2 border-stone-100 px-3 text-sm font-bold text-stone-600">
-                  <input checked={couponForm.active} onChange={(event) => setCouponForm({ ...couponForm, active: event.target.checked })} type="checkbox" />
-                  Active
-                </label>
-              </Field>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button className="admin-button-primary" disabled={busyAction === "coupon"} onClick={saveCoupon} type="button">
-                {couponForm.id ? "Update Coupon" : "Create Coupon"}
-              </button>
-              {couponForm.id && (
-                <button className="admin-button-secondary" onClick={() => setCouponForm(makeEmptyCouponForm())} type="button">
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
-          <CouponList coupons={data.coupons} onEdit={(coupon) => setCouponForm(couponToForm(coupon))} onToggle={async (coupon) => {
-            await setCouponActiveAdmin({ data: { couponId: coupon.id, active: !coupon.active } });
-            await refresh();
-          }} onDelete={deleteCoupon} busyAction={busyAction} />
+          <CouponTable
+            busyAction={couponTableBusyAction}
+            coupons={data.coupons}
+            onDelete={deleteCoupon}
+            onEdit={openCouponDialog}
+            onToggle={toggleCoupon}
+          />
         </section>
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
             <h2 className="admin-panel-title">Manual Grant</h2>
-          </div>
-          <div className="grid gap-5 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto] md:items-end">
-            <Field label="Student">
-              <select className="admin-control" value={grantStudentId} onChange={(event) => setGrantStudentId(event.target.value)}>
-                {data.students.map((student) => (
-                  <option key={student.userId} value={student.userId}>{student.name} ({student.email})</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Product">
-              <select className="admin-control" value={grantProductId} onChange={(event) => setGrantProductId(event.target.value)}>
-                {data.products.map((product) => (
-                  <option key={product.id} value={product.id}>{product.name}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Reason">
-              <input className="admin-control" value={grantReason} onChange={(event) => setGrantReason(event.target.value)} placeholder="Offline payment confirmed" />
-            </Field>
-            <button className="admin-button-primary h-12" disabled={busyAction === "grant"} onClick={grantAccess} type="button">
-              Grant
+            <button className="admin-button-primary" onClick={() => setGrantDialogOpen(true)} type="button">
+              Grant Access
             </button>
+          </div>
+          <div className="p-5 text-sm font-semibold text-stone-500 sm:p-6">
+            Use Manual Grant for explicit support actions with an audit reason.
           </div>
         </section>
 
@@ -345,214 +380,509 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
           <div className="admin-panel-header">
             <h2 className="admin-panel-title">Recent Checkouts</h2>
           </div>
-          <div>
-            {data.checkouts.map((checkout) => (
-              <div key={checkout.id} className="admin-list-row">
-                <div className="admin-list-content">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <h3 className="text-[15px] font-bold text-stone-800">{checkout.productName}</h3>
-                    <StatusPill label={checkout.status} />
-                  </div>
-                  <p className="mt-1 text-sm text-stone-500">Rp{checkout.total.toLocaleString("id-ID")} · {checkout.couponCode || "No coupon"}</p>
-                  <p className="mt-1 text-xs font-semibold text-stone-400">{checkout.id}</p>
-                </div>
-                <div className="admin-list-actions">
-                  <span className="admin-meta-tag">{formatDateTime(checkout.createdAt)}</span>
-                  <button className="admin-button-ghost text-primary hover:bg-primary-tint" disabled={!checkout.xenditInvoiceId || busyAction === `sync:${checkout.id}`} onClick={() => syncCheckout(checkout.id)} type="button">
-                    Sync Xendit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <CheckoutTable checkouts={data.checkouts} busyAction={checkoutTableBusyAction} onSync={syncCheckout} />
         </section>
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
             <h2 className="admin-panel-title">Recent Entitlements</h2>
           </div>
-          <div>
-            {data.entitlements.map((entitlement) => (
-              <div key={entitlement.id} className="admin-list-row">
-                <div className="admin-list-content">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <h3 className="text-[15px] font-bold text-stone-800">{entitlement.productType}</h3>
-                    <StatusPill label={entitlement.source} />
-                  </div>
-                  <p className="mt-1 text-sm text-stone-500">
-                    {entitlement.contentType ? `${entitlement.contentType}:${entitlement.contentId}` : "Global access"}
-                  </p>
-                  {entitlement.grantReason && <p className="mt-1 text-xs font-semibold text-stone-400">{entitlement.grantReason}</p>}
-                </div>
-                <div className="admin-list-actions">
-                  <span className="admin-meta-tag">{formatDateTime(entitlement.startsAt)}</span>
-                  <span className="admin-meta-tag">{entitlement.endsAt ? `Until ${formatDateTime(entitlement.endsAt)}` : "Lifetime"}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <EntitlementTable entitlements={data.entitlements} />
         </section>
+
+        <ProductDialog
+          busy={busyAction === "product"}
+          open={isProductDialogOpen}
+          product={productDialogProduct}
+          paidTryouts={paidTryouts}
+          onOpenChange={handleProductOpenChange}
+          onSave={saveProduct}
+        />
+
+        <CouponDialog
+          busy={busyAction === "coupon"}
+          coupon={couponDialogCoupon}
+          open={isCouponDialogOpen}
+          onOpenChange={handleCouponOpenChange}
+          onSave={saveCoupon}
+        />
+
+        <GrantAccessDialog
+          busy={busyAction === "grant"}
+          open={isGrantDialogOpen}
+          products={data.products}
+          students={data.students}
+          onOpenChange={setGrantDialogOpen}
+          onGrant={grantAccess}
+        />
       </div>
     </main>
   );
 }
 
-function ProductList({
-  products,
-  onEdit,
-  onToggle,
+function ProductDialog({
+  busy,
+  open,
+  product,
+  paidTryouts,
+  onOpenChange,
+  onSave,
 }: {
-  products: ProductRow[];
-  onEdit: (form: ProductForm) => void;
-  onToggle: (product: ProductRow) => void;
+  busy: boolean;
+  open: boolean;
+  product: ProductRow | null;
+  paidTryouts: PaymentAdminData["tryouts"];
+  onOpenChange: (open: boolean) => void;
+  onSave: (values: ProductFormValues) => Promise<boolean>;
 }) {
-  return (
-    <div>
-      {products.map((product) => (
-        <div key={product.id} className="admin-list-row">
-          <div className="admin-list-content">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h3 className="text-[15px] font-bold text-stone-800">{product.name}</h3>
-              <StatusPill label={product.active ? "active" : "inactive"} />
-              <StatusPill label={product.type} />
-            </div>
-            <p className="mt-1 text-sm text-stone-500">Rp{product.price.toLocaleString("id-ID")} · {product.description}</p>
-          </div>
-          <div className="admin-list-actions">
-            <button className="admin-button-ghost text-primary hover:bg-primary-tint" onClick={() => onEdit(productToForm(product))} type="button">Edit</button>
-            <button className="admin-button-ghost text-amber-600 hover:bg-amber-50" onClick={() => onToggle(product)} type="button">
-              {product.active ? "Deactivate" : "Activate"}
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+  const defaultValues = useMemo(() => makeProductFormDefaults(product), [product]);
+  const [values, setValues] = useState<ProductFormValues>(defaultValues);
+  const [errors, setErrors] = useState<ProductFormErrors>({});
+  const productType = values.type;
 
-function CouponList({
-  coupons,
-  onEdit,
-  onToggle,
-  onDelete,
-  busyAction,
-}: {
-  coupons: CouponRow[];
-  onEdit: (coupon: CouponRow) => void;
-  onToggle: (coupon: CouponRow) => void;
-  onDelete: (coupon: CouponRow) => void;
-  busyAction: string;
-}) {
+  useEffect(() => {
+    if (!open) return;
+
+    setValues(defaultValues);
+    setErrors({});
+  }, [defaultValues, open]);
+
+  const updateField = <TField extends keyof ProductFormValues>(
+    field: TField,
+    value: ProductFormValues[TField],
+  ) => {
+    setValues((currentValues) => ({
+      ...currentValues,
+      [field]: value,
+    }));
+    setErrors((currentErrors) => clearProductFieldError(currentErrors, field));
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (busy) return;
+
+    const result = productFormSchema.safeParse(values);
+
+    if (!result.success) {
+      setErrors(makeProductFormErrors(result.error.issues));
+      return;
+    }
+
+    const saved = await onSave(result.data);
+
+    if (saved) {
+      onOpenChange(false);
+      return;
+    }
+
+    setErrors({
+      root: "Product was not saved. Check the fields and try again.",
+    });
+  };
+
   return (
-    <div>
-      {coupons.map((coupon) => (
-        <div key={coupon.id} className="admin-list-row">
-          <div className="admin-list-content">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h3 className="text-[15px] font-bold text-stone-800">{coupon.code}</h3>
-              <StatusPill label={coupon.active ? "active" : "inactive"} />
-              <StatusPill label={coupon.productScope} />
-            </div>
-            <p className="mt-1 text-sm text-stone-500">
-              {coupon.discountType === "percentage" ? `${coupon.discountValue}%` : `Rp${coupon.discountValue.toLocaleString("id-ID")}`} · {formatDateTime(coupon.startsAt)} - {formatDateTime(coupon.endsAt)}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(94vw,760px)] max-w-[min(94vw,760px)]">
+        <form className="flex min-h-0 flex-col" onSubmit={submit}>
+          <DialogHeader className="border-b-2 border-stone-100 px-5 py-4 sm:px-6">
+            <DialogTitle>{product ? "Edit Product" : "Create Product"}</DialogTitle>
+            <DialogDescription>
+              Configure the paid access Product shown to Students.
+            </DialogDescription>
+          </DialogHeader>
+
+        <div className="grid min-h-0 gap-5 overflow-y-auto p-5 sm:p-6">
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field label="Name" error={errors.name}>
+              <input
+                className="admin-control"
+                value={values.name}
+                onChange={(event) => updateField("name", event.target.value)}
+              />
+            </Field>
+            <Field label="Type" error={errors.type}>
+              <select
+                className="admin-control"
+                value={values.type}
+                onChange={(event) => updateField("type", event.target.value as ProductFormValues["type"])}
+              >
+                <option value="premium_membership">Premium Membership</option>
+                <option value="lifetime_tryout">Lifetime Try-out Purchase</option>
+              </select>
+            </Field>
+          </div>
+
+          <Field label="Description" error={errors.description}>
+            <textarea
+              className="admin-control min-h-20"
+              value={values.description}
+              onChange={(event) => updateField("description", event.target.value)}
+            />
+          </Field>
+
+          <div className="grid gap-5 md:grid-cols-3">
+            <Field label="Price" error={errors.price}>
+              <input
+                className="admin-control"
+                inputMode="numeric"
+                value={values.price}
+                onChange={(event) => updateField("price", event.target.value)}
+              />
+            </Field>
+
+            {productType === "premium_membership" ? (
+              <Field label="Duration days" error={errors.durationDays}>
+                <input
+                  className="admin-control"
+                  inputMode="numeric"
+                  value={values.durationDays}
+                  onChange={(event) => updateField("durationDays", event.target.value)}
+                />
+              </Field>
+            ) : (
+              <Field label="Try-out target" error={errors.contentId}>
+                <select
+                  className="admin-control"
+                  value={values.contentId}
+                  onChange={(event) => updateField("contentId", event.target.value)}
+                >
+                  <option value="">Select Try-out</option>
+                  {paidTryouts.map((tryout) => (
+                    <option key={tryout.id} value={tryout.id}>{tryout.title}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+
+            <Field label="Status">
+              <label className="flex h-12 items-center gap-2 rounded-[var(--radius-md)] border-2 border-stone-100 px-3 text-sm font-bold text-stone-600">
+                <input
+                  checked={values.active}
+                  onChange={(event) => updateField("active", event.target.checked)}
+                  type="checkbox"
+                />
+                Active
+              </label>
+            </Field>
+          </div>
+
+          {errors.root && (
+            <p className="rounded-[var(--radius-md)] bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+              {errors.root}
             </p>
-          </div>
-          <div className="admin-list-actions">
-            <button className="admin-button-ghost text-primary hover:bg-primary-tint" onClick={() => onEdit(coupon)} type="button">Edit</button>
-            <button className="admin-button-ghost text-amber-600 hover:bg-amber-50" onClick={() => onToggle(coupon)} type="button">
-              {coupon.active ? "Disable" : "Enable"}
-            </button>
-            <button
-              className="admin-button-ghost text-rose-600 hover:bg-rose-50"
-              disabled={busyAction === `delete-coupon:${coupon.id}`}
-              onClick={() => onDelete(coupon)}
-              type="button"
-            >
-              Remove
-            </button>
-          </div>
+          )}
         </div>
-      ))}
-    </div>
+
+          <DialogFooter className="border-t-2 border-stone-100 px-5 py-4 sm:px-6">
+          <button className="admin-button-secondary" onClick={() => onOpenChange(false)} type="button">
+            Cancel
+          </button>
+          <button className="admin-button-primary" disabled={busy} type="submit">
+            {product ? "Update Product" : "Create Product"}
+          </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function CouponDialog({
+  busy,
+  coupon,
+  open,
+  onOpenChange,
+  onSave,
+}: {
+  busy: boolean;
+  coupon: CouponRow | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (values: CouponFormValues) => Promise<boolean>;
+}) {
+  const defaultValues = useMemo(() => makeCouponFormDefaults(coupon), [coupon]);
+  const form = useForm<CouponFormValues>({
+    defaultValues,
+  });
+  const resetRef = useRef(form.reset);
+
+  resetRef.current = form.reset;
+
+  useEffect(() => {
+    if (!open) return;
+
+    resetRef.current(defaultValues);
+  }, [defaultValues, open]);
+
+  const submit = form.handleSubmit(async (values) => {
+    const result = couponFormSchema.safeParse(values);
+
+    if (!result.success) {
+      applyFormErrors(form.setError, result.error.issues);
+      return;
+    }
+
+    const saved = await onSave(result.data);
+
+    if (saved) {
+      onOpenChange(false);
+      return;
+    }
+
+    form.setError("root", {
+      message: "Coupon was not saved. Check the fields and try again.",
+    });
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(94vw,840px)] max-w-[min(94vw,840px)]">
+        <form className="flex min-h-0 flex-col" onSubmit={submit}>
+          <DialogHeader className="border-b-2 border-stone-100 px-5 py-4 sm:px-6">
+            <DialogTitle>{coupon ? "Edit Coupon" : "Create Coupon"}</DialogTitle>
+            <DialogDescription>
+              Configure Coupon eligibility, value, usage cap, and validity window.
+            </DialogDescription>
+          </DialogHeader>
+
+        <div className="grid min-h-0 gap-5 overflow-y-auto p-5 sm:p-6">
+          <div className="grid gap-5 md:grid-cols-4">
+            <Field label="Code" error={form.formState.errors.code?.message}>
+              <input className="admin-control uppercase" {...form.register("code")} />
+            </Field>
+            <Field label="Discount type" error={form.formState.errors.discountType?.message}>
+              <select className="admin-control" {...form.register("discountType")}>
+                <option value="fixed">Fixed</option>
+                <option value="percentage">Percentage</option>
+              </select>
+            </Field>
+            <Field label="Discount value" error={form.formState.errors.discountValue?.message}>
+              <input className="admin-control" inputMode="numeric" {...form.register("discountValue")} />
+            </Field>
+            <Field label="Product scope" error={form.formState.errors.productScope?.message}>
+              <select className="admin-control" {...form.register("productScope")}>
+                <option value="all">All paid products</option>
+                <option value="premium_membership">Premium Membership</option>
+                <option value="lifetime_tryout">Lifetime Try-out Purchase</option>
+                <option value="material">Materi</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-4">
+            <Field label="Starts at" error={form.formState.errors.startsAt?.message}>
+              <input className="admin-control" type="datetime-local" {...form.register("startsAt")} />
+            </Field>
+            <Field label="Ends at" error={form.formState.errors.endsAt?.message}>
+              <input className="admin-control" type="datetime-local" {...form.register("endsAt")} />
+            </Field>
+            <Field label="Max total uses" error={form.formState.errors.maxTotalUses?.message}>
+              <input className="admin-control" inputMode="numeric" placeholder="Unlimited" {...form.register("maxTotalUses")} />
+            </Field>
+            <Field label="Status">
+              <label className="flex h-12 items-center gap-2 rounded-[var(--radius-md)] border-2 border-stone-100 px-3 text-sm font-bold text-stone-600">
+                <input type="checkbox" {...form.register("active")} />
+                Active
+              </label>
+            </Field>
+          </div>
+
+          {form.formState.errors.root?.message && (
+            <p className="rounded-[var(--radius-md)] bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+              {form.formState.errors.root.message}
+            </p>
+          )}
+        </div>
+
+          <DialogFooter className="border-t-2 border-stone-100 px-5 py-4 sm:px-6">
+          <button className="admin-button-secondary" onClick={() => onOpenChange(false)} type="button">
+            Cancel
+          </button>
+          <button className="admin-button-primary" disabled={busy || form.formState.isSubmitting} type="submit">
+            {coupon ? "Update Coupon" : "Create Coupon"}
+          </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function GrantAccessDialog({
+  busy,
+  open,
+  products,
+  students,
+  onOpenChange,
+  onGrant,
+}: {
+  busy: boolean;
+  open: boolean;
+  products: PaymentAdminData["products"];
+  students: PaymentAdminData["students"];
+  onOpenChange: (open: boolean) => void;
+  onGrant: (values: GrantFormValues) => Promise<boolean>;
+}) {
+  const defaultValues = useMemo(
+    () => ({
+      studentUserId: students[0]?.userId ?? "",
+      productId: products[0]?.id ?? "",
+      reason: "",
+    }),
+    [products, students],
+  );
+  const form = useForm<GrantFormValues>({
+    defaultValues,
+  });
+  const resetRef = useRef(form.reset);
+
+  resetRef.current = form.reset;
+
+  useEffect(() => {
+    if (!open) return;
+
+    resetRef.current(defaultValues);
+  }, [defaultValues, open]);
+
+  const submit = form.handleSubmit(async (values) => {
+    const result = grantFormSchema.safeParse(values);
+
+    if (!result.success) {
+      applyFormErrors(form.setError, result.error.issues);
+      return;
+    }
+
+    const granted = await onGrant(result.data);
+
+    if (granted) {
+      onOpenChange(false);
+      resetRef.current(defaultValues);
+      return;
+    }
+
+    form.setError("root", {
+      message: "Access was not granted. Check the fields and try again.",
+    });
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(94vw,720px)] max-w-[min(94vw,720px)]">
+        <form className="flex min-h-0 flex-col" onSubmit={submit}>
+          <DialogHeader className="border-b-2 border-stone-100 px-5 py-4 sm:px-6">
+            <DialogTitle>Grant Access</DialogTitle>
+            <DialogDescription>
+              Create an explicit manual Entitlement with an audit reason.
+            </DialogDescription>
+          </DialogHeader>
+
+        <div className="grid min-h-0 gap-5 overflow-y-auto p-5 sm:p-6">
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field label="Student" error={form.formState.errors.studentUserId?.message}>
+              <select className="admin-control" {...form.register("studentUserId")}>
+                {students.map((student) => (
+                  <option key={student.userId} value={student.userId}>{student.name} ({student.email})</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Product" error={form.formState.errors.productId?.message}>
+              <select className="admin-control" {...form.register("productId")}>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>{product.name}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <Field label="Reason" error={form.formState.errors.reason?.message}>
+            <textarea
+              className="admin-control min-h-24"
+              placeholder="Offline payment confirmed"
+              {...form.register("reason")}
+            />
+          </Field>
+
+          {form.formState.errors.root?.message && (
+            <p className="rounded-[var(--radius-md)] bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+              {form.formState.errors.root.message}
+            </p>
+          )}
+        </div>
+
+          <DialogFooter className="border-t-2 border-stone-100 px-5 py-4 sm:px-6">
+          <button className="admin-button-secondary" onClick={() => onOpenChange(false)} type="button">
+            Cancel
+          </button>
+          <button className="admin-button-primary" disabled={busy || form.formState.isSubmitting} type="submit">
+            Grant Access
+          </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   return (
     <label className="block">
       <span className="mb-2 block text-[11px] font-bold uppercase tracking-wide text-stone-400">{label}</span>
       {children}
+      {error && <span className="mt-2 block text-xs font-semibold text-rose-600">{error}</span>}
     </label>
   );
 }
 
-function StatusPill({ label }: { label: string }) {
-  return (
-    <span className="admin-status-pill border-stone-200 bg-stone-100 text-stone-600">
-      {label.replaceAll("_", " ")}
-    </span>
-  );
+function isIntegerText(value: string) {
+  const parsedValue = Number(value.trim());
+
+  return Number.isInteger(parsedValue);
 }
 
-function productToForm(product: ProductRow): ProductForm {
-  return {
-    id: product.id,
-    name: product.name,
-    description: product.description,
-    type: product.type as ProductForm["type"],
-    price: String(product.price),
-    active: product.active,
-    durationDays: product.durationDays ? String(product.durationDays) : "30",
-    contentId: product.contentId ?? "",
-  };
+function isValidDateTimeText(value: string) {
+  return !Number.isNaN(new Date(value).getTime());
 }
 
-function couponToForm(coupon: CouponRow): CouponForm {
-  return {
-    id: coupon.id,
-    code: coupon.code,
-    discountType: coupon.discountType as CouponForm["discountType"],
-    discountValue: String(coupon.discountValue),
-    productScope: coupon.productScope as CouponForm["productScope"],
-    startsAt: toDateTimeLocal(coupon.startsAt),
-    endsAt: toDateTimeLocal(coupon.endsAt),
-    maxTotalUses: coupon.maxTotalUses ? String(coupon.maxTotalUses) : "",
-    active: coupon.active,
-  };
+function makeProductFormErrors(issues: z.ZodIssue[]) {
+  const errors: ProductFormErrors = {};
+
+  for (const issue of issues) {
+    const field = issue.path[0];
+
+    if (typeof field !== "string") continue;
+
+    errors[field as keyof ProductFormValues] = issue.message;
+  }
+
+  return errors;
 }
 
-function makeEmptyCouponForm(): CouponForm {
-  const now = new Date();
-  const nextMonth = new Date(now);
+function clearProductFieldError(errors: ProductFormErrors, field: keyof ProductFormValues) {
+  if (!errors[field] && !errors.root) {
+    return errors;
+  }
 
-  nextMonth.setDate(nextMonth.getDate() + 30);
+  const nextErrors = { ...errors };
 
-  return {
-    id: "",
-    code: "",
-    discountType: "fixed",
-    discountValue: "10000",
-    productScope: "all",
-    startsAt: toDateTimeLocal(now.toISOString()),
-    endsAt: toDateTimeLocal(nextMonth.toISOString()),
-    maxTotalUses: "",
-    active: true,
-  };
+  delete nextErrors[field];
+  delete nextErrors.root;
+
+  return nextErrors;
 }
 
-function toDateTimeLocal(value: string) {
-  const date = new Date(value);
-  const offsetMs = date.getTimezoneOffset() * 60_000;
+function applyFormErrors<TFieldValues extends FieldValues>(
+  setError: UseFormSetError<TFieldValues>,
+  issues: z.ZodIssue[],
+) {
+  for (const issue of issues) {
+    const field = issue.path[0];
 
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
-}
+    if (typeof field !== "string") continue;
 
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+    setError(field as Path<TFieldValues>, {
+      message: issue.message,
+    });
+  }
 }
