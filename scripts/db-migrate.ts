@@ -70,11 +70,29 @@ function getErrorField(error: unknown, field: string) {
   return value;
 }
 
-function formatMigrationError(error: unknown) {
+function getErrorCause(error: unknown) {
   if (!(error instanceof Error)) {
-    return `Unknown migration error: ${String(error)}`;
+    return undefined;
   }
 
+  return (error as Error & { cause?: unknown }).cause;
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof Error)) {
+    return undefined;
+  }
+
+  const directCode = getErrorField(error, "code");
+
+  if (directCode) {
+    return directCode;
+  }
+
+  return getErrorCode(getErrorCause(error));
+}
+
+function formatSingleError(error: Error) {
   const lines = [`${error.name}: ${error.message}`];
 
   for (const field of ["code", "severity", "detail", "hint", "where", "schema_name", "table_name", "column_name"]) {
@@ -85,11 +103,47 @@ function formatMigrationError(error: unknown) {
     }
   }
 
-  if (error.stack) {
+  return lines;
+}
+
+function formatMigrationError(error: unknown, depth = 0): string {
+  if (!(error instanceof Error)) {
+    return `Unknown migration error: ${String(error)}`;
+  }
+
+  const prefix = depth === 0 ? "" : "Caused by: ";
+  const lines = formatSingleError(error);
+  lines[0] = `${prefix}${lines[0]}`;
+
+  const cause = getErrorCause(error);
+
+  if (cause) {
+    lines.push(formatMigrationError(cause, depth + 1));
+  }
+
+  if (depth === 0 && error.stack) {
     lines.push(error.stack);
   }
 
   return lines.join("\n");
+}
+
+function isRetryableMigrationError(error: unknown) {
+  const code = getErrorCode(error);
+
+  if (!code) {
+    return true;
+  }
+
+  if (code === "40001" || code === "40P01" || code === "55P03") {
+    return true;
+  }
+
+  if (code.startsWith("08")) {
+    return true;
+  }
+
+  return false;
 }
 
 async function runDrizzleMigration() {
@@ -108,6 +162,7 @@ async function runDrizzleMigration() {
   const queryClient = postgres(databaseUrl, {
     connect_timeout: parsePositiveInteger(process.env.DB_MIGRATE_CONNECT_TIMEOUT_SECONDS, 30),
     max: 1,
+    onnotice: () => undefined,
   });
 
   try {
@@ -134,7 +189,7 @@ async function runWithRetry() {
       console.error("Migration attempt failed:");
       console.error(formatMigrationError(error));
 
-      if (error instanceof MigrationConfigurationError || isLastAttempt) {
+      if (error instanceof MigrationConfigurationError || !isRetryableMigrationError(error) || isLastAttempt) {
         console.error(`Migration failed after ${attempt} attempts.`);
         process.exit(1);
       }

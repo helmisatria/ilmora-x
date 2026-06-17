@@ -1,1 +1,1 @@
-ALTER TABLE "student_profiles" ADD COLUMN "avatar" text;
+ALTER TABLE "student_profiles" ADD COLUMN IF NOT EXISTS "avatar" text;
