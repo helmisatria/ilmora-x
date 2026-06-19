@@ -160,6 +160,13 @@ html.js-enabled #app main:not([data-landing-ready="true"]) .landing-reveal {
   transform: translate3d(0, 20px, 0);
 }
 
+html.js-enabled:not(.landing-reveal-timeout)
+  #app
+  main[data-landing-ready="true"]
+  .landing-reveal {
+  animation: landing-reveal-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 html.js-enabled.landing-reveal-timeout
   #app
   main:not([data-landing-ready="true"])
@@ -181,6 +188,28 @@ html.js-enabled.landing-reveal-timeout
 }
 
 /* .landing-panel is an animation hook; component classes own panel visuals. */
+.landing-panel {
+  transition:
+    opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.js-enabled
+  #app
+  main[data-panel-reveal-ready="true"]
+  .landing-panel:not([data-panel-visible="true"]) {
+  opacity: 0;
+  transform: translate3d(0, 48px, 0);
+  will-change: opacity, transform;
+}
+
+html.js-enabled
+  #app
+  main[data-panel-reveal-ready="true"]
+  .landing-panel[data-panel-visible="true"] {
+  opacity: 1;
+  transform: none;
+}
 
 @keyframes landing-reveal-in {
   from {
@@ -224,5 +253,19 @@ html.js-enabled.landing-reveal-timeout
     .landing-reveal {
     opacity: 1;
     transform: none;
+  }
+
+  .landing-panel {
+    transition: none;
+    will-change: auto;
+  }
+
+  html.js-enabled
+    #app
+    main[data-panel-reveal-ready="true"]
+    .landing-panel:not([data-panel-visible="true"]) {
+    opacity: 1;
+    transform: none;
+    will-change: auto;
   }
 }

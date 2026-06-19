@@ -1,8 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   brandColors,
   finalCalloutCards,
@@ -54,84 +52,86 @@ import {
 } from "./landing-icons";
 import { useLandingLinkAnalytics } from "./landing-link-analytics";
 
-gsap.registerPlugin(ScrollTrigger);
-
 const useSafeLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 const defaultActiveNavHref = heroNavItems[0].href;
 type JourneyStepNumber = (typeof journeySteps)[number];
 
+function showLandingPanels(panels: HTMLElement[]) {
+  panels.forEach((panel) => {
+    panel.dataset.panelVisible = "true";
+  });
+}
+
+function clearLandingAnimationState(
+  page: HTMLElement,
+  panels: HTMLElement[],
+) {
+  delete page.dataset.landingReady;
+  delete page.dataset.panelRevealReady;
+  panels.forEach((panel) => {
+    delete panel.dataset.panelVisible;
+  });
+}
+
 export function LandingPage() {
   const pageRef = useRef<HTMLElement>(null);
 
-  useSafeLayoutEffect(() => {
+  useEffect(() => {
     const page = pageRef.current;
 
     if (!page) {
       return;
     }
 
+    const panels = Array.from(
+      page.querySelectorAll<HTMLElement>(".landing-panel"),
+    );
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
-    if (prefersReducedMotion) {
-      page.dataset.landingReady = "true";
-      return;
+    page.dataset.landingReady = "true";
+
+    if (
+      prefersReducedMotion ||
+      panels.length === 0 ||
+      !("IntersectionObserver" in window)
+    ) {
+      page.dataset.panelRevealReady = "true";
+      showLandingPanels(panels);
+
+      return () => clearLandingAnimationState(page, panels);
     }
 
-    const ctx = gsap.context(() => {
-      const firstPaintItems = gsap.utils.toArray<HTMLElement>(".landing-reveal");
-      const panels = gsap.utils.toArray<HTMLElement>(".landing-panel");
-      const firstViewportLimit = window.innerHeight * 1.1;
-      const revealFallbackPlayed = document.documentElement.classList.contains(
-        "landing-reveal-timeout",
-      );
-      let animatedPanelIndex = 0;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
 
-      page.dataset.landingReady = "true";
+          const panel = entry.target as HTMLElement;
 
-      if (!revealFallbackPlayed) {
-        gsap.set(firstPaintItems, { autoAlpha: 0, y: 20 });
-        gsap.to(firstPaintItems, {
-          autoAlpha: 1,
-          y: 0,
-          clearProps: "opacity,transform,visibility",
-          duration: 0.78,
-          ease: "power3.out",
-          stagger: 0.08,
+          panel.dataset.panelVisible = "true";
+          observer.unobserve(panel);
         });
-      }
 
-      panels.forEach((panel) => {
-        if (panel.getBoundingClientRect().top < firstViewportLimit) {
-          return;
-        }
+        page.dataset.panelRevealReady = "true";
+      },
+      {
+        rootMargin: "0px 0px -16% 0px",
+        threshold: 0.01,
+      },
+    );
 
-        gsap.fromTo(
-          panel,
-          { y: 48, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.85,
-            delay: animatedPanelIndex * 0.04,
-            ease: "power3.out",
-            clearProps: "opacity,transform",
-            scrollTrigger: {
-              trigger: panel,
-              start: "top 84%",
-            },
-          },
-        );
-
-        animatedPanelIndex += 1;
-      });
-    }, pageRef);
+    panels.forEach((panel) => {
+      observer.observe(panel);
+    });
 
     return () => {
-      ctx.revert();
-      delete page.dataset.landingReady;
+      observer.disconnect();
+      clearLandingAnimationState(page, panels);
     };
   }, []);
 
