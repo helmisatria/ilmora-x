@@ -69,31 +69,24 @@ export function LandingPage() {
       return;
     }
 
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (prefersReducedMotion) {
+      return;
+    }
+
     const ctx = gsap.context(() => {
-      const revealItems = gsap.utils.toArray<HTMLElement>(".landing-reveal");
+      const panels = gsap.utils.toArray<HTMLElement>(".landing-panel");
+      const firstViewportLimit = window.innerHeight * 1.1;
+      let animatedPanelIndex = 0;
 
-      gsap.set(revealItems, {
-        y: 40,
-        opacity: 0,
-        filter: "blur(10px)",
-      });
+      panels.forEach((panel) => {
+        if (panel.getBoundingClientRect().top < firstViewportLimit) {
+          return;
+        }
 
-      document.documentElement.removeAttribute("data-js");
-
-      gsap.to(
-        revealItems,
-        {
-          y: 0,
-          opacity: 1,
-          filter: "blur(0px)",
-          duration: 0.9,
-          stagger: 0.07,
-          ease: "power3.out",
-          clearProps: "opacity,transform,filter",
-        },
-      );
-
-      gsap.utils.toArray<HTMLElement>(".landing-panel").forEach((panel, index) => {
         gsap.fromTo(
           panel,
           { y: 48, opacity: 0 },
@@ -101,14 +94,17 @@ export function LandingPage() {
             y: 0,
             opacity: 1,
             duration: 0.85,
-            delay: index * 0.04,
+            delay: animatedPanelIndex * 0.04,
             ease: "power3.out",
+            clearProps: "opacity,transform",
             scrollTrigger: {
               trigger: panel,
               start: "top 84%",
             },
           },
         );
+
+        animatedPanelIndex += 1;
       });
     }, pageRef);
 
