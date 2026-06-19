@@ -149,8 +149,7 @@ function RootComponent() {
         <HeadContent />
         <script
           dangerouslySetInnerHTML={{
-            __html:
-              "document.documentElement.classList.add('js-enabled');setTimeout(function(){document.documentElement.classList.add('landing-reveal-timeout')},1000)",
+            __html: "document.documentElement.classList.add('js-enabled')",
           }}
         />
       </head>

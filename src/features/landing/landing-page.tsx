@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   brandColors,
   finalCalloutCards,
@@ -57,87 +58,101 @@ const useSafeLayoutEffect =
 const defaultActiveNavHref = heroNavItems[0].href;
 type JourneyStepNumber = (typeof journeySteps)[number];
 
-function showLandingPanels(panels: HTMLElement[]) {
-  panels.forEach((panel) => {
-    panel.dataset.panelVisible = "true";
-  });
+const landingEase = [0.16, 1, 0.3, 1] as const;
+const landingRevealTransition = { duration: 0.8, ease: landingEase };
+const landingPanelTransition = { duration: 0.85, ease: landingEase };
+const landingPanelViewport = {
+  amount: 0.01,
+  margin: "0px 0px -16% 0px",
+  once: true,
+} as const;
+
+type LandingMotionProps = {
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+};
+
+function getLandingClassName(baseClassName: string, className?: string) {
+  if (!className) return baseClassName;
+
+  return `${baseClassName} ${className}`;
 }
 
-function clearLandingAnimationState(
-  page: HTMLElement,
-  panels: HTMLElement[],
-) {
-  delete page.dataset.landingReady;
-  delete page.dataset.panelRevealReady;
-  panels.forEach((panel) => {
-    delete panel.dataset.panelVisible;
-  });
+function getHiddenState(shouldReduceMotion: boolean | null) {
+  if (shouldReduceMotion) return { opacity: 0 };
+
+  return { opacity: 0, y: 20 };
+}
+
+function getPanelHiddenState(shouldReduceMotion: boolean | null) {
+  if (shouldReduceMotion) return { opacity: 0 };
+
+  return { opacity: 0, y: 48 };
+}
+
+function getVisibleState(shouldReduceMotion: boolean | null) {
+  if (shouldReduceMotion) return { opacity: 1 };
+
+  return { opacity: 1, y: 0 };
+}
+
+function LandingReveal({ children, className }: LandingMotionProps) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      animate={getVisibleState(shouldReduceMotion)}
+      className={getLandingClassName("landing-reveal", className)}
+      initial={getHiddenState(shouldReduceMotion)}
+      transition={landingRevealTransition}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function LandingPanel({ children, className, style }: LandingMotionProps) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      className={getLandingClassName("landing-panel", className)}
+      initial={getPanelHiddenState(shouldReduceMotion)}
+      style={style}
+      transition={landingPanelTransition}
+      viewport={landingPanelViewport}
+      whileInView={getVisibleState(shouldReduceMotion)}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function LandingPanelArticle({
+  children,
+  className,
+  style,
+}: LandingMotionProps) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.article
+      className={getLandingClassName("landing-panel", className)}
+      initial={getPanelHiddenState(shouldReduceMotion)}
+      style={style}
+      transition={landingPanelTransition}
+      viewport={landingPanelViewport}
+      whileInView={getVisibleState(shouldReduceMotion)}
+    >
+      {children}
+    </motion.article>
+  );
 }
 
 export function LandingPage() {
-  const pageRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const page = pageRef.current;
-
-    if (!page) {
-      return;
-    }
-
-    const panels = Array.from(
-      page.querySelectorAll<HTMLElement>(".landing-panel"),
-    );
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    page.dataset.landingReady = "true";
-
-    if (
-      prefersReducedMotion ||
-      panels.length === 0 ||
-      !("IntersectionObserver" in window)
-    ) {
-      page.dataset.panelRevealReady = "true";
-      showLandingPanels(panels);
-
-      return () => clearLandingAnimationState(page, panels);
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
-            return;
-          }
-
-          const panel = entry.target as HTMLElement;
-
-          panel.dataset.panelVisible = "true";
-          observer.unobserve(panel);
-        });
-
-        page.dataset.panelRevealReady = "true";
-      },
-      {
-        rootMargin: "0px 0px -16% 0px",
-        threshold: 0.01,
-      },
-    );
-
-    panels.forEach((panel) => {
-      observer.observe(panel);
-    });
-
-    return () => {
-      observer.disconnect();
-      clearLandingAnimationState(page, panels);
-    };
-  }, []);
-
   return (
     <main
-      ref={pageRef}
       className="w-full max-w-full overflow-x-hidden text-stone-900"
       style={{
         background:
@@ -173,10 +188,16 @@ function FixedGrain() {
 function LandingNav() {
   const loginAnalytics = useLandingLinkAnalytics("/auth/login", "landing_nav_login");
   const tryoutAnalytics = useLandingLinkAnalytics("/tryout", "landing_nav_signup");
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <header className="fixed inset-x-0 top-0 z-30 px-4 pt-5">
-      <nav className="landing-reveal mx-auto flex w-full max-w-[1240px] items-center justify-between rounded-full border border-[rgba(214,234,228,0.95)] bg-[rgba(255,255,255,0.92)] px-3 py-3 shadow-[0_16px_42px_rgba(144,181,170,0.18)] backdrop-blur-2xl sm:px-4">
+      <motion.nav
+        animate={getVisibleState(shouldReduceMotion)}
+        className="landing-reveal mx-auto flex w-full max-w-[1240px] items-center justify-between rounded-full border border-[rgba(214,234,228,0.95)] bg-[rgba(255,255,255,0.92)] px-3 py-3 shadow-[0_16px_42px_rgba(144,181,170,0.18)] backdrop-blur-2xl sm:px-4"
+        initial={getHiddenState(shouldReduceMotion)}
+        transition={landingRevealTransition}
+      >
         <Link to="/" className="flex min-w-0 shrink items-center gap-3 no-underline">
           <BrandMark />
           <span className="whitespace-nowrap text-[17px] font-black tracking-tight text-[#1f2937]">
@@ -204,7 +225,7 @@ function LandingNav() {
             Daftar Gratis
           </Link>
         </div>
-      </nav>
+      </motion.nav>
     </header>
   );
 }
@@ -410,7 +431,7 @@ function HeroSection() {
       </div>
 
       <div className="mx-auto grid w-full max-w-[1240px] items-start gap-14 lg:grid-cols-[1.04fr_0.96fr]">
-        <div className="landing-reveal">
+        <LandingReveal>
           <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-[var(--brand-primary-dark)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
             <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
             Platform latihan UKAI
@@ -460,11 +481,11 @@ function HeroSection() {
               </div>
             ))}
           </div>
-        </div>
+        </LandingReveal>
 
-        <div className="landing-reveal lg:pl-2">
+        <LandingReveal className="lg:pl-2">
           <HeroProductFrame />
-        </div>
+        </LandingReveal>
       </div>
     </section>
   );
@@ -472,7 +493,7 @@ function HeroSection() {
 
 function HeroProductFrame() {
   return (
-    <div className="landing-panel rounded-[2rem] border border-[#d7ece6] bg-[rgba(255,255,255,0.72)] p-3 shadow-[0_26px_80px_rgba(127,170,155,0.2)] backdrop-blur-xl">
+    <div className="rounded-[2rem] border border-[#d7ece6] bg-[rgba(255,255,255,0.72)] p-3 shadow-[0_26px_80px_rgba(127,170,155,0.2)] backdrop-blur-xl">
       <div className="rounded-[1.8rem] border border-[#dcefeb] bg-[#fcfefd] p-4 text-stone-900 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9)]">
         <div className="rounded-[1.6rem] border border-[#e6f2ee] bg-white p-5 shadow-[0_16px_32px_rgba(116,160,145,0.08)]">
           <div className="flex items-center justify-between gap-4 border-b border-[#edf4f1] pb-4">
@@ -695,7 +716,7 @@ function JourneySection() {
       </div>
 
       <div className="relative mx-auto grid w-full max-w-[1240px] gap-12 lg:grid-cols-[1fr_1.16fr] lg:items-start">
-        <div className="landing-panel pt-6 lg:sticky lg:top-28 lg:self-start">
+        <LandingPanel className="pt-6 lg:sticky lg:top-28 lg:self-start">
           <div className="flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.18em] text-[var(--brand-primary)]">
             <span className="h-3.5 w-3.5 rounded-full bg-[var(--brand-primary)]" />
             Cara belajar
@@ -757,7 +778,7 @@ function JourneySection() {
               <TrendingUpIcon />
             </div>
           </div>
-        </div>
+        </LandingPanel>
 
         <div className="grid gap-5">
           {journeySteps.map((stepNumber) => (
@@ -781,7 +802,7 @@ function ProofSection() {
       </div>
 
       <div className="relative mx-auto w-full max-w-[1240px]">
-        <div className="landing-panel">
+        <LandingPanel>
           <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[12px] font-black uppercase tracking-[0.16em] text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
             <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
             Hasil belajar
@@ -795,7 +816,7 @@ function ProofSection() {
             IlmoraX memberikan analisis yang lengkap dan mudah dipahami agar
             setiap latihan jadi langkah nyata menuju kelulusan UKAI.
           </p>
-        </div>
+        </LandingPanel>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-[1.55fr_1fr]">
           <ResultAnalyticsCard />
@@ -805,14 +826,14 @@ function ProofSection() {
               <ResultFeatureCard key={card.title} card={card} />
             ))}
 
-            <div className="landing-panel flex items-center gap-4 rounded-[1.6rem] border border-[#cceee7] bg-[linear-gradient(180deg,#f7fffd_0%,#f2fdfb_100%)] px-5 py-4 shadow-[0_14px_30px_rgba(112,174,160,0.08)]">
+            <LandingPanel className="flex items-center gap-4 rounded-[1.6rem] border border-[#cceee7] bg-[linear-gradient(180deg,#f7fffd_0%,#f2fdfb_100%)] px-5 py-4 shadow-[0_14px_30px_rgba(112,174,160,0.08)]">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--brand-primary-tint)] text-[var(--brand-primary)]">
                 <ShieldBadgeIcon />
               </div>
               <p className="text-[16px] leading-relaxed text-stone-500">
                 Semua hasil disimpan aman di akunmu dan bisa diakses kapan saja.
               </p>
-            </div>
+            </LandingPanel>
           </div>
         </div>
       </div>
@@ -822,7 +843,7 @@ function ProofSection() {
 
 function ResultAnalyticsCard() {
   return (
-    <article className="landing-panel rounded-[2.1rem] border border-[#dcefeb] bg-white p-6 shadow-[0_18px_46px_rgba(120,165,152,0.1)]">
+    <LandingPanelArticle className="rounded-[2.1rem] border border-[#dcefeb] bg-white p-6 shadow-[0_18px_46px_rgba(120,165,152,0.1)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-[1.2rem] bg-[var(--brand-primary-tint)] text-[var(--brand-primary)]">
@@ -891,7 +912,7 @@ function ResultAnalyticsCard() {
         <MiniResultStat icon={<BoltBadgeIcon />} tone="#69cf31" label="XP DIDAPATKAN" value="+860" suffix="XP" />
         <MiniResultStat icon={<ClockIcon />} tone="#2892f5" label="AKURASI" value="86%" suffix="Benar" />
       </div>
-    </article>
+    </LandingPanelArticle>
   );
 }
 
@@ -901,7 +922,7 @@ function ResultFeatureCard({
   card: (typeof focusCards)[number];
 }) {
   return (
-    <article className="landing-panel rounded-[1.9rem] border border-[#e5ece9] bg-white p-6 shadow-[0_16px_38px_rgba(120,165,152,0.08)]">
+    <LandingPanelArticle className="rounded-[1.9rem] border border-[#e5ece9] bg-white p-6 shadow-[0_16px_38px_rgba(120,165,152,0.08)]">
       <div className="flex flex-col items-start gap-5 sm:flex-row">
         <div
           className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.4rem] border sm:h-24 sm:w-24 sm:rounded-[1.6rem]"
@@ -940,7 +961,7 @@ function ResultFeatureCard({
           </div>
         </div>
       </div>
-    </article>
+    </LandingPanelArticle>
   );
 }
 
@@ -1072,8 +1093,8 @@ function JourneyStepCard({
   const cardTone = getJourneyStepTone(stepNumber);
 
   return (
-    <article
-      className="landing-panel overflow-hidden rounded-[2rem] border bg-white p-6 shadow-[0_16px_42px_rgba(110,156,143,0.08)]"
+    <LandingPanelArticle
+      className="overflow-hidden rounded-[2rem] border bg-white p-6 shadow-[0_16px_42px_rgba(110,156,143,0.08)]"
       style={{
         borderColor: cardTone.border,
         boxShadow: `0 16px 42px rgba(110,156,143,0.08), inset 0 -3px 0 ${cardTone.glow}`,
@@ -1104,7 +1125,7 @@ function JourneyStepCard({
 
         <div className="min-w-0">{renderJourneyStepPreview(stepNumber)}</div>
       </div>
-    </article>
+    </LandingPanelArticle>
   );
 }
 
@@ -1345,7 +1366,7 @@ function PricingSection() {
       </div>
 
       <div className="relative mx-auto w-full max-w-[1240px]">
-        <div className="landing-panel">
+        <LandingPanel>
           <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[12px] font-black uppercase tracking-[0.16em] text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
             <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
             Paket belajar
@@ -1359,7 +1380,7 @@ function PricingSection() {
             Semua fitur dirancang untuk membantumu siap UKAI dengan cara yang
             terarah, terukur, dan menyenangkan.
           </p>
-        </div>
+        </LandingPanel>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           <FreePricingCard />
@@ -1380,7 +1401,7 @@ function FreePricingCard() {
   const plan = plans[0];
 
   return (
-    <article className="landing-panel rounded-[2.1rem] border border-[#cfeee8] bg-white p-5 shadow-[0_20px_44px_rgba(116,168,154,0.1)]">
+    <LandingPanelArticle className="rounded-[2.1rem] border border-[#cfeee8] bg-white p-5 shadow-[0_20px_44px_rgba(116,168,154,0.1)]">
       <div className="rounded-[1.7rem] bg-white p-4">
         <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-4">
@@ -1454,7 +1475,7 @@ function FreePricingCard() {
           </PricingPrimaryButton>
         </div>
       </div>
-    </article>
+    </LandingPanelArticle>
   );
 }
 
@@ -1462,7 +1483,7 @@ function PremiumPricingCard() {
   const plan = plans[1];
 
   return (
-    <article className="landing-panel relative overflow-hidden rounded-[2.1rem] border border-[#f2a60f] bg-[linear-gradient(180deg,#33281d_0%,#241c14_100%)] p-5 text-white shadow-[0_24px_60px_rgba(242,166,15,0.22)]">
+    <LandingPanelArticle className="relative overflow-hidden rounded-[2.1rem] border border-[#f2a60f] bg-[linear-gradient(180deg,#33281d_0%,#241c14_100%)] p-5 text-white shadow-[0_24px_60px_rgba(242,166,15,0.22)]">
       <div
         className="pointer-events-none absolute inset-0 opacity-20"
         style={{ backgroundImage: "radial-gradient(rgba(242,177,46,0.55) 1px, transparent 1px)", backgroundSize: "14px 14px" }}
@@ -1534,7 +1555,7 @@ function PremiumPricingCard() {
           Bisa dibatalkan kapan saja
         </div>
       </div>
-    </article>
+    </LandingPanelArticle>
   );
 }
 
@@ -1769,7 +1790,7 @@ function SectionIntro({
   body: string;
 }) {
   return (
-    <div className="landing-panel">
+    <LandingPanel>
       <div className="text-[11px] font-black uppercase tracking-[0.22em] text-[#1e63ff]">
         {kicker}
       </div>
@@ -1779,7 +1800,7 @@ function SectionIntro({
       <p className="mt-5 max-w-[38ch] text-[15px] font-semibold leading-relaxed text-stone-600">
         {body}
       </p>
-    </div>
+    </LandingPanel>
   );
 }
 
