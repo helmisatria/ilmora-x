@@ -585,7 +585,14 @@ function TimerRing() {
   return (
     <div className="flex flex-col items-center">
       <div className="relative h-40 w-40">
-        <svg viewBox="0 0 160 160" className="h-full w-full -rotate-90">
+        <svg
+          viewBox="0 0 160 160"
+          className="h-full w-full -rotate-90"
+          width="160"
+          height="160"
+          aria-hidden="true"
+          style={{ display: "block", height: 160, width: 160 }}
+        >
           <circle
             cx="80"
             cy="80"
