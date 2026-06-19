@@ -150,7 +150,7 @@ function RootComponent() {
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "document.documentElement.classList.add('js-enabled');setTimeout(function(){document.documentElement.classList.add('landing-reveal-timeout')},2200)",
+              "document.documentElement.classList.add('js-enabled');setTimeout(function(){document.documentElement.classList.add('landing-reveal-timeout')},1000)",
           }}
         />
       </head>
