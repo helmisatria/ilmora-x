@@ -11,10 +11,21 @@ type RetryOptions = {
   maxDelayMs: number;
 };
 
-const DEFAULT_MAX_ATTEMPTS = 5;
+const DEFAULT_MAX_ATTEMPTS = 4;
 const DEFAULT_BASE_DELAY_MS = 1000;
 const DEFAULT_MAX_DELAY_MS = 8000;
 const MIGRATIONS_FOLDER = process.env.DB_MIGRATIONS_FOLDER ?? "./drizzle";
+const RETRYABLE_ERROR_CODES = new Set([
+  "40001",
+  "40P01",
+  "55P03",
+  "EAI_AGAIN",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "ETIMEDOUT",
+]);
 
 class MigrationConfigurationError extends Error {
   constructor(message: string) {
@@ -135,7 +146,7 @@ function isRetryableMigrationError(error: unknown) {
     return true;
   }
 
-  if (code === "40001" || code === "40P01" || code === "55P03") {
+  if (RETRYABLE_ERROR_CODES.has(code)) {
     return true;
   }
 
