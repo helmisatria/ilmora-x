@@ -65,7 +65,9 @@ export function LandingPage() {
   const pageRef = useRef<HTMLElement>(null);
 
   useSafeLayoutEffect(() => {
-    if (!pageRef.current) {
+    const page = pageRef.current;
+
+    if (!page) {
       return;
     }
 
@@ -74,13 +76,32 @@ export function LandingPage() {
     ).matches;
 
     if (prefersReducedMotion) {
+      page.dataset.landingReady = "true";
       return;
     }
 
     const ctx = gsap.context(() => {
+      const firstPaintItems = gsap.utils.toArray<HTMLElement>(".landing-reveal");
       const panels = gsap.utils.toArray<HTMLElement>(".landing-panel");
       const firstViewportLimit = window.innerHeight * 1.1;
+      const revealFallbackPlayed = document.documentElement.classList.contains(
+        "landing-reveal-timeout",
+      );
       let animatedPanelIndex = 0;
+
+      page.dataset.landingReady = "true";
+
+      if (!revealFallbackPlayed) {
+        gsap.set(firstPaintItems, { autoAlpha: 0, y: 20 });
+        gsap.to(firstPaintItems, {
+          autoAlpha: 1,
+          y: 0,
+          clearProps: "opacity,transform,visibility",
+          duration: 0.78,
+          ease: "power3.out",
+          stagger: 0.08,
+        });
+      }
 
       panels.forEach((panel) => {
         if (panel.getBoundingClientRect().top < firstViewportLimit) {
@@ -108,7 +129,10 @@ export function LandingPage() {
       });
     }, pageRef);
 
-    return () => ctx.revert();
+    return () => {
+      ctx.revert();
+      delete page.dataset.landingReady;
+    };
   }, []);
 
   return (

@@ -151,6 +151,23 @@ body {
   will-change: opacity, transform;
 }
 
+html.js-enabled #app main .landing-reveal {
+  animation: none;
+}
+
+html.js-enabled #app main:not([data-landing-ready="true"]) .landing-reveal {
+  opacity: 0;
+  transform: translate3d(0, 20px, 0);
+}
+
+html.js-enabled.landing-reveal-timeout
+  #app
+  main:not([data-landing-ready="true"])
+  .landing-reveal {
+  animation: landing-reveal-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
 #app main > header .landing-reveal {
   animation-delay: 0.04s;
 }
@@ -163,13 +180,7 @@ body {
   animation-delay: 0.2s;
 }
 
-.landing-panel {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid #d7ece6;
-  border-radius: 32px;
-  box-shadow: 0 26px 80px rgba(127, 170, 155, 0.2);
-  padding: 12px;
-}
+/* .landing-panel is an animation hook; component classes own panel visuals. */
 
 @keyframes landing-reveal-in {
   from {
@@ -205,5 +216,13 @@ body {
   .landing-reveal {
     animation: none;
     will-change: auto;
+  }
+
+  html.js-enabled.landing-reveal-timeout
+    #app
+    main:not([data-landing-ready="true"])
+    .landing-reveal {
+    opacity: 1;
+    transform: none;
   }
 }

@@ -147,6 +147,12 @@ function RootComponent() {
     <html lang="id">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "document.documentElement.classList.add('js-enabled');setTimeout(function(){document.documentElement.classList.add('landing-reveal-timeout')},2200)",
+          }}
+        />
       </head>
       <body className="antialiased">
         <ProductAnalyticsProvider>
