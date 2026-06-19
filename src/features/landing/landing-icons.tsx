@@ -2,8 +2,28 @@ import type { ReactNode } from "react";
 
 export function BrandMark() {
   return (
-    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#fef3df_0%,var(--brand-primary-soft)_100%)] shadow-[0_10px_24px_rgba(51,100,89,0.12)] ring-1 ring-[#d9ebe4]">
-      <svg viewBox="0 0 28 28" className="h-7 w-7" aria-hidden="true">
+    <span
+      className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#fef3df_0%,var(--brand-primary-soft)_100%)] shadow-[0_10px_24px_rgba(51,100,89,0.12)] ring-1 ring-[#d9ebe4]"
+      style={{
+        alignItems: "center",
+        borderRadius: "9999px",
+        display: "inline-flex",
+        flexShrink: 0,
+        height: 44,
+        justifyContent: "center",
+        minHeight: 44,
+        minWidth: 44,
+        width: 44,
+      }}
+    >
+      <svg
+        viewBox="0 0 28 28"
+        className="h-7 w-7"
+        width="28"
+        height="28"
+        aria-hidden="true"
+        style={{ display: "block", flexShrink: 0, height: 28, width: 28 }}
+      >
         <path
           d="M14 5c-4.8 0-8.5 3.8-8.5 8.7 0 2.8 1.2 5.2 3.2 6.8v1.8c0 .9.7 1.5 1.5 1.5h7.6c.9 0 1.5-.7 1.5-1.5V20.5c2-1.6 3.2-4 3.2-6.8C22.5 8.8 18.8 5 14 5Z"
           fill="#7f6142"
