@@ -19,6 +19,7 @@ const RETRYABLE_ERROR_CODES = new Set([
   "40001",
   "40P01",
   "55P03",
+  "57P03",
   "EAI_AGAIN",
   "ECONNREFUSED",
   "ECONNRESET",
