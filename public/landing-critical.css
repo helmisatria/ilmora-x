@@ -1,0 +1,207 @@
+/* First-paint fallback for SSR/no-JS before the app CSS bundle is available. */
+:root {
+  --brand-primary: #205072;
+  --brand-primary-dark: #153d5c;
+  --brand-primary-soft: #dcecf7;
+  --brand-primary-tint: #f1f7fb;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: #fafaf9;
+  color: #292524;
+  font-family: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app main {
+  max-width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#app main > header {
+  box-sizing: border-box;
+  left: 0;
+  padding: 20px 16px 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 30;
+}
+
+#app main > header nav {
+  align-items: center;
+  backdrop-filter: blur(40px);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(214, 234, 228, 0.95);
+  border-radius: 9999px;
+  box-shadow: 0 16px 42px rgba(144, 181, 170, 0.18);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: 1240px;
+  padding: 12px;
+  width: 100%;
+}
+
+#app main > header a {
+  align-items: center;
+  color: inherit;
+  display: inline-flex;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+#app main > header nav > div:first-of-type {
+  display: none;
+}
+
+#app main > header nav > div:last-child {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+#app main > header nav > div:last-child a {
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  justify-content: center;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
+#app main > header nav > div:last-child a:first-child {
+  background: #ffffff;
+  border: 1px solid #dce9e4;
+  color: #1c1917;
+}
+
+#app main > header nav > div:last-child a:last-child {
+  background: var(--brand-primary);
+  color: #ffffff;
+}
+
+#beranda {
+  overflow: hidden;
+  padding: 128px 16px 96px;
+  position: relative;
+  scroll-margin-top: 128px;
+}
+
+#beranda > div:first-child {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+#beranda > div:nth-child(2) {
+  align-items: start;
+  display: grid;
+  gap: 56px;
+  margin: 0 auto;
+  max-width: 1240px;
+  width: 100%;
+}
+
+#beranda h1 {
+  color: #202124;
+  font-size: clamp(2.9rem, 5.3vw, 4.95rem);
+  font-weight: 780;
+  letter-spacing: -0.05em;
+  line-height: 0.93;
+  margin: 28px 0 0;
+  max-width: 12ch;
+}
+
+#beranda p {
+  color: #57534e;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.65;
+  margin: 20px 0 0;
+  max-width: 40ch;
+}
+
+#beranda a {
+  text-decoration: none;
+}
+
+#beranda svg {
+  flex-shrink: 0;
+}
+
+.landing-reveal {
+  animation: landing-reveal-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
+html.js-enabled #app main .landing-reveal {
+  animation: none;
+}
+
+#app main > header .landing-reveal {
+  animation-delay: 0.04s;
+}
+
+#beranda .landing-reveal {
+  animation-delay: 0.12s;
+}
+
+#beranda .landing-reveal + .landing-reveal {
+  animation-delay: 0.2s;
+}
+
+/* .landing-panel is an animation hook; component classes own panel visuals. */
+
+@keyframes landing-reveal-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (min-width: 768px) {
+  #app main > header nav > div:first-of-type {
+    align-items: center;
+    display: flex;
+    gap: 4px;
+  }
+}
+
+@media (min-width: 1024px) {
+  #beranda {
+    padding-top: 160px;
+  }
+
+  #beranda > div:nth-child(2) {
+    grid-template-columns: 1.04fr 0.96fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-reveal {
+    animation: none;
+    will-change: auto;
+  }
+}

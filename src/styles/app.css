@@ -99,10 +99,33 @@
     letter-spacing: -0.015em;
   }
 
-  html[data-js="ready"] .landing-reveal {
-    opacity: 0;
-    transform: translateY(40px);
-    filter: blur(10px);
+  .landing-reveal {
+    animation: landing-reveal-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: opacity, transform;
+  }
+
+  header .landing-reveal {
+    animation-delay: 0.04s;
+  }
+
+  #beranda .landing-reveal {
+    animation-delay: 0.12s;
+  }
+
+  #beranda .landing-reveal + .landing-reveal {
+    animation-delay: 0.2s;
+  }
+
+  @keyframes landing-reveal-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 20px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 
   @keyframes page-enter {
@@ -124,6 +147,11 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .landing-reveal {
+      animation: none;
+      will-change: auto;
+    }
+
     .page-enter,
     .page-enter > *:not(nav) { animation: none; }
   }
