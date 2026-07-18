@@ -1,13 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import { useEffect } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   brandColors,
+  businessDetails,
   finalCalloutCards,
   focusCards,
   heroMetrics,
-  heroNavItems,
   journeySteps,
   learningBadges,
   plans,
@@ -25,7 +25,6 @@ import {
   BoltBadgeIcon,
   BookFrameIcon,
   BookOpenIcon,
-  BrandMark,
   CheckCircleIcon,
   ChevronRightIcon,
   ClockIcon,
@@ -52,11 +51,11 @@ import {
   UserLineIcon,
 } from "./landing-icons";
 import { useLandingLinkAnalytics } from "./landing-link-analytics";
+import { PublicNavigation } from "./public-navigation";
+import type { listMembershipProducts } from "../premium-access/checkout-functions";
 
-const useSafeLayoutEffect =
-  typeof window === "undefined" ? useEffect : useLayoutEffect;
-const defaultActiveNavHref = heroNavItems[0].href;
 type JourneyStepNumber = (typeof journeySteps)[number];
+type MembershipProduct = Awaited<ReturnType<typeof listMembershipProducts>>[number];
 
 const landingEase = [0.16, 1, 0.3, 1] as const;
 const landingRevealTransition = { duration: 0.8, ease: landingEase };
@@ -150,7 +149,7 @@ function LandingPanelArticle({
   );
 }
 
-export function LandingPage() {
+export function LandingPage({ products }: { products: MembershipProduct[] }) {
   return (
     <main
       className="w-full max-w-full overflow-x-hidden text-stone-900"
@@ -161,14 +160,64 @@ export function LandingPage() {
           "'Geist', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
       }}
     >
+      <BusinessStructuredData products={products} />
       <FixedGrain />
-      <LandingNav />
+      <PublicNavigation isHomePage />
       <HeroSection />
       <JourneySection />
       <ProofSection />
-      <PricingSection />
+      <PricingSection products={products} />
       <FooterCta />
     </main>
+  );
+}
+
+function BusinessStructuredData({ products }: { products: MembershipProduct[] }) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    name: businessDetails.name,
+    alternateName: "IlmoraX",
+    url: "https://ilmorax.com",
+    email: businessDetails.email,
+    telephone: businessDetails.contacts[0].internationalPhone,
+    contactPoint: businessDetails.contacts.map((contact) => ({
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      name: contact.label,
+      telephone: contact.internationalPhone,
+      availableLanguage: ["Indonesian"],
+    })),
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "Jl. Nakula No.26",
+      addressLocality: "Denpasar Utara",
+      addressRegion: "Bali",
+      postalCode: "80231",
+      addressCountry: "ID",
+    },
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "Paket IlmoraX Premium",
+      itemListElement: products.map((product) => ({
+        "@type": "Offer",
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        priceCurrency: "IDR",
+        availability: "https://schema.org/InStock",
+        url: "https://ilmorax.com/premium",
+      })),
+    },
+  };
+
+  const safeStructuredData = JSON.stringify(structuredData).replaceAll("<", "\\u003c");
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: safeStructuredData }}
+    />
   );
 }
 
@@ -182,237 +231,6 @@ function FixedGrain() {
         backgroundSize: "20px 20px",
       }}
     />
-  );
-}
-
-function LandingNav() {
-  const loginAnalytics = useLandingLinkAnalytics("/auth/login", "landing_nav_login");
-  const tryoutAnalytics = useLandingLinkAnalytics("/tryout", "landing_nav_signup");
-  const shouldReduceMotion = useReducedMotion();
-
-  return (
-    <header className="fixed inset-x-0 top-0 z-30 px-4 pt-5">
-      <motion.nav
-        animate={getVisibleState(shouldReduceMotion)}
-        className="landing-reveal mx-auto flex w-full max-w-[1240px] items-center justify-between rounded-full border border-[rgba(214,234,228,0.95)] bg-[rgba(255,255,255,0.92)] px-3 py-3 shadow-[0_16px_42px_rgba(144,181,170,0.18)] backdrop-blur-2xl sm:px-4"
-        initial={getHiddenState(shouldReduceMotion)}
-        transition={landingRevealTransition}
-      >
-        <Link to="/" className="flex min-w-0 shrink items-center gap-3 no-underline">
-          <BrandMark />
-          <span className="whitespace-nowrap text-[17px] font-black tracking-tight text-[#1f2937]">
-            Ilmora<span className="text-[var(--brand-primary)]">X</span>
-          </span>
-        </Link>
-
-        <LandingNavMenu />
-
-        <div className="flex shrink-0 items-center gap-2">
-          <Link
-            to="/auth/login"
-            search={{ intent: loginAnalytics.intent }}
-            onClick={loginAnalytics.trackLandingLinkClick}
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#dce9e4] bg-white px-3.5 py-2 text-[13px] font-semibold text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
-          >
-            Masuk
-          </Link>
-          <Link
-            to="/tryout"
-            search={{ intent: tryoutAnalytics.intent }}
-            onClick={tryoutAnalytics.trackLandingLinkClick}
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[var(--brand-primary)] px-3.5 py-2 text-[13px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
-          >
-            Daftar Gratis
-          </Link>
-        </div>
-      </motion.nav>
-    </header>
-  );
-}
-
-function LandingNavMenu() {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [activeHref, setActiveHref] = useState<
-    (typeof heroNavItems)[number]["href"]
-  >(defaultActiveNavHref);
-  const [indicator, setIndicator] = useState({
-    left: 0,
-    width: 0,
-    opacity: 0,
-  });
-
-  function updateIndicator(nextHref: string) {
-    const menu = menuRef.current;
-
-    if (!menu) {
-      return;
-    }
-
-    const activeLink = menu.querySelector<HTMLAnchorElement>(
-      `[data-nav-href="${nextHref}"]`,
-    );
-
-    if (!activeLink) {
-      setIndicator((current) => ({ ...current, opacity: 0 }));
-      return;
-    }
-
-    const menuBounds = menu.getBoundingClientRect();
-    const linkBounds = activeLink.getBoundingClientRect();
-
-    setIndicator({
-      left: linkBounds.left - menuBounds.left,
-      width: linkBounds.width,
-      opacity: 1,
-    });
-  }
-
-  function syncActiveHref() {
-    const nextHref = window.location.hash || defaultActiveNavHref;
-    const hasMatch = heroNavItems.some((item) => item.href === nextHref);
-
-    if (!hasMatch) {
-      setActiveHref(defaultActiveNavHref);
-      return;
-    }
-
-    setActiveHref(nextHref as (typeof heroNavItems)[number]["href"]);
-  }
-
-  function getActiveHrefFromScroll() {
-    const scanLine = window.innerHeight * 0.36;
-    let nextHref: (typeof heroNavItems)[number]["href"] = defaultActiveNavHref;
-
-    for (const item of heroNavItems) {
-      const section = document.getElementById(item.href.replace("#", ""));
-
-      if (!section) {
-        continue;
-      }
-
-      const bounds = section.getBoundingClientRect();
-
-      if (bounds.top <= scanLine && bounds.bottom > scanLine) {
-        return item.href;
-      }
-
-      if (bounds.top <= scanLine) {
-        nextHref = item.href;
-      }
-    }
-
-    return nextHref;
-  }
-
-  function syncActiveHrefFromScroll() {
-    setActiveHref(getActiveHrefFromScroll());
-  }
-
-  function handleNavClick(
-    event: MouseEvent<HTMLAnchorElement>,
-    href: (typeof heroNavItems)[number]["href"],
-  ) {
-    const targetId = href.replace("#", "");
-    const target = document.getElementById(targetId);
-
-    setActiveHref(href);
-
-    if (!target) {
-      return;
-    }
-
-    event.preventDefault();
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.history.replaceState(null, "", href);
-  }
-
-  useEffect(() => {
-    syncActiveHref();
-
-    window.addEventListener("hashchange", syncActiveHref);
-
-    return () => {
-      window.removeEventListener("hashchange", syncActiveHref);
-    };
-  }, []);
-
-  useEffect(() => {
-    let animationFrame = 0;
-
-    function requestActiveSync() {
-      if (animationFrame) {
-        return;
-      }
-
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = 0;
-        syncActiveHrefFromScroll();
-      });
-    }
-
-    syncActiveHrefFromScroll();
-
-    window.addEventListener("scroll", requestActiveSync, { passive: true });
-    window.addEventListener("resize", requestActiveSync);
-
-    return () => {
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
-      }
-
-      window.removeEventListener("scroll", requestActiveSync);
-      window.removeEventListener("resize", requestActiveSync);
-    };
-  }, []);
-
-  useSafeLayoutEffect(() => {
-    updateIndicator(activeHref);
-  }, [activeHref]);
-
-  useEffect(() => {
-    function handleResize() {
-      updateIndicator(activeHref);
-    }
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [activeHref]);
-
-  return (
-    <div ref={menuRef} className="relative hidden items-center gap-1 md:flex">
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 h-[3px] rounded-full bg-[var(--brand-primary)] transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-        style={{
-          width: `${indicator.width}px`,
-          opacity: indicator.opacity,
-          transform: `translateX(${indicator.left}px)`,
-        }}
-      />
-
-      {heroNavItems.map((item) => {
-        const isActive = item.href === activeHref;
-
-        return (
-          <a
-            key={item.label}
-            data-nav-href={item.href}
-            href={item.href}
-            onClick={(event) => handleNavClick(event, item.href)}
-            className={`relative rounded-full px-4 py-3 text-[13px] font-semibold no-underline transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              isActive
-                ? "text-[var(--brand-primary)]"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            {item.label}
-          </a>
-        );
-      })}
-    </div>
   );
 }
 
@@ -1349,7 +1167,7 @@ function RecommendationPreview() {
   );
 }
 
-function PricingSection() {
+function PricingSection({ products }: { products: MembershipProduct[] }) {
   return (
     <section
       id="paket"
@@ -1384,7 +1202,7 @@ function PricingSection() {
 
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           <FreePricingCard />
-          <PremiumPricingCard />
+          <PremiumPricingCard products={products} />
         </div>
 
         <div className="mt-6 grid gap-3 rounded-[1.8rem] border border-[#edf0ef] bg-white p-5 shadow-[0_16px_36px_rgba(122,164,151,0.08)] md:grid-cols-4">
@@ -1479,7 +1297,7 @@ function FreePricingCard() {
   );
 }
 
-function PremiumPricingCard() {
+function PremiumPricingCard({ products }: { products: MembershipProduct[] }) {
   const plan = plans[1];
 
   return (
@@ -1524,6 +1342,35 @@ function PremiumPricingCard() {
             </li>
           ))}
         </ul>
+
+        <div className="mt-6 rounded-[1.4rem] border border-[rgba(242,177,46,0.2)] bg-[rgba(255,255,255,0.06)] p-4">
+          <div className="text-[15px] font-bold text-[#f4bf4b]">
+            Pilihan paket & harga
+          </div>
+          <div className="mt-3 grid gap-2.5">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="flex items-center justify-between gap-4 rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-[14px] font-bold text-white/90">
+                    {product.name}
+                  </div>
+                  <div className="mt-1 text-[12px] text-white/55">
+                    {product.description}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-[17px] font-black text-[#ffd36d]">
+                    Rp{product.price.toLocaleString("id-ID")}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-white/45">sekali bayar</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="mt-6">
           <div className="text-[15px] font-bold text-[#f4bf4b]">Keunggulan Premium</div>
@@ -1615,7 +1462,7 @@ const footerLeaderboardRows = [
 
 function FooterCta() {
   return (
-    <footer id="tentang" className="scroll-mt-32 px-4 pb-14 sm:px-6">
+    <footer className="px-4 pb-14 sm:px-6">
       <div className="mx-auto max-w-[1240px] rounded-[2.8rem] border border-[#d7ece6] bg-[linear-gradient(180deg,#f8fbf8_0%,#eef8f5_100%)] p-4 shadow-[0_24px_54px_rgba(127,169,155,0.12)]">
         <div className="relative overflow-hidden rounded-[2.5rem] border border-[#bfe9de] bg-[linear-gradient(135deg,#ffd782_0%,#7bd6cf_44%,#5ca9ea_100%)] px-6 py-12 sm:px-8 md:px-12 md:py-16">
           <div

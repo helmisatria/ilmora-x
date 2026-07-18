@@ -9,7 +9,7 @@ import { getProtectedRedirect, needsProtectedViewer } from "../lib/route-protect
 import { getSafeErrorMessage } from "../lib/user-errors";
 import "../styles/app.css";
 
-const SITE_URL = "https://ilmorax.id";
+const SITE_URL = "https://ilmorax.com";
 const SITE_NAME = "IlmoraX";
 const DEFAULT_TITLE = "IlmoraX — Belajar Farmasi Jadi Seru!";
 const DEFAULT_DESCRIPTION = "Platform latihan UKAI terbaik untuk calon apoteker. Kumpulkan XP, jaga streak harian, dan taklukkan tryout dengan cara yang menyenangkan. 500+ soal UKAI, leaderboard, dan materi lengkap.";
