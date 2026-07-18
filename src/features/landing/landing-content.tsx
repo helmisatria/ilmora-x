@@ -28,6 +28,29 @@ export const brandColors = {
   primaryTint: "#f1f7fb",
 } as const;
 
+export const businessDetails = {
+  name: "Ilmora Academy",
+  email: "dave@ilmorax.com",
+  contacts: [
+    {
+      label: "WhatsApp Ilmora",
+      phone: "0877-7828-0750",
+      internationalPhone: "+6287778280750",
+      whatsappUrl: "https://wa.me/6287778280750",
+    },
+    {
+      label: "WhatsApp Dave",
+      phone: "08381782500",
+      internationalPhone: "+628381782500",
+      whatsappUrl: "https://wa.me/628381782500",
+    },
+  ],
+  address:
+    "Jl. Nakula No.26, Dangin Puri Kauh, Kec. Denpasar Utara, Kota Denpasar, Bali 80231",
+  mapsUrl:
+    "https://www.google.com/maps/search/?api=1&query=Jl.%20Nakula%20No.26%2C%20Dangin%20Puri%20Kauh%2C%20Kec.%20Denpasar%20Utara%2C%20Kota%20Denpasar%2C%20Bali%2080231",
+} as const;
+
 export const heroMetrics = [
   {
     label: "Soal UKAI",
@@ -57,7 +80,6 @@ export const heroNavItems = [
   { label: "Try-out", href: "#cara-kerja" },
   { label: "Peringkat", href: "#hasil" },
   { label: "Harga", href: "#paket" },
-  { label: "Tentang", href: "#tentang" },
 ] as const;
 
 export const popularTryouts = [
