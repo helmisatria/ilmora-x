@@ -52,11 +52,23 @@ import {
   UserLineIcon,
 } from "./landing-icons";
 import { useLandingLinkAnalytics } from "./landing-link-analytics";
+import type { listMembershipProducts } from "../premium-access/checkout-functions";
 
 const useSafeLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 const defaultActiveNavHref = heroNavItems[0].href;
 type JourneyStepNumber = (typeof journeySteps)[number];
+type MembershipProduct = Awaited<ReturnType<typeof listMembershipProducts>>[number];
+
+const businessDetails = {
+  name: "Ilmora Academy",
+  phone: "08381782500",
+  internationalPhone: "+628381782500",
+  address:
+    "Jl. Nakula No.26, Dangin Puri Kauh, Kec. Denpasar Utara, Kota Denpasar, Bali 80231",
+  mapsUrl:
+    "https://www.google.com/maps/search/?api=1&query=Jl.%20Nakula%20No.26%2C%20Dangin%20Puri%20Kauh%2C%20Kec.%20Denpasar%20Utara%2C%20Kota%20Denpasar%2C%20Bali%2080231",
+} as const;
 
 const landingEase = [0.16, 1, 0.3, 1] as const;
 const landingRevealTransition = { duration: 0.8, ease: landingEase };
@@ -150,7 +162,7 @@ function LandingPanelArticle({
   );
 }
 
-export function LandingPage() {
+export function LandingPage({ products }: { products: MembershipProduct[] }) {
   return (
     <main
       className="w-full max-w-full overflow-x-hidden text-stone-900"
@@ -161,14 +173,57 @@ export function LandingPage() {
           "'Geist', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
       }}
     >
+      <BusinessStructuredData products={products} />
       <FixedGrain />
       <LandingNav />
       <HeroSection />
       <JourneySection />
       <ProofSection />
-      <PricingSection />
+      <PricingSection products={products} />
+      <BusinessDetailsSection />
       <FooterCta />
     </main>
+  );
+}
+
+function BusinessStructuredData({ products }: { products: MembershipProduct[] }) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    name: businessDetails.name,
+    alternateName: "IlmoraX",
+    url: "https://ilmorax.com",
+    telephone: businessDetails.internationalPhone,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "Jl. Nakula No.26",
+      addressLocality: "Denpasar Utara",
+      addressRegion: "Bali",
+      postalCode: "80231",
+      addressCountry: "ID",
+    },
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "Paket IlmoraX Premium",
+      itemListElement: products.map((product) => ({
+        "@type": "Offer",
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        priceCurrency: "IDR",
+        availability: "https://schema.org/InStock",
+        url: "https://ilmorax.com/premium",
+      })),
+    },
+  };
+
+  const safeStructuredData = JSON.stringify(structuredData).replaceAll("<", "\\u003c");
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: safeStructuredData }}
+    />
   );
 }
 
@@ -1349,7 +1404,7 @@ function RecommendationPreview() {
   );
 }
 
-function PricingSection() {
+function PricingSection({ products }: { products: MembershipProduct[] }) {
   return (
     <section
       id="paket"
@@ -1384,7 +1439,7 @@ function PricingSection() {
 
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           <FreePricingCard />
-          <PremiumPricingCard />
+          <PremiumPricingCard products={products} />
         </div>
 
         <div className="mt-6 grid gap-3 rounded-[1.8rem] border border-[#edf0ef] bg-white p-5 shadow-[0_16px_36px_rgba(122,164,151,0.08)] md:grid-cols-4">
@@ -1479,7 +1534,7 @@ function FreePricingCard() {
   );
 }
 
-function PremiumPricingCard() {
+function PremiumPricingCard({ products }: { products: MembershipProduct[] }) {
   const plan = plans[1];
 
   return (
@@ -1524,6 +1579,35 @@ function PremiumPricingCard() {
             </li>
           ))}
         </ul>
+
+        <div className="mt-6 rounded-[1.4rem] border border-[rgba(242,177,46,0.2)] bg-[rgba(255,255,255,0.06)] p-4">
+          <div className="text-[15px] font-bold text-[#f4bf4b]">
+            Pilihan paket & harga
+          </div>
+          <div className="mt-3 grid gap-2.5">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="flex items-center justify-between gap-4 rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-[14px] font-bold text-white/90">
+                    {product.name}
+                  </div>
+                  <div className="mt-1 text-[12px] text-white/55">
+                    {product.description}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-[17px] font-black text-[#ffd36d]">
+                    Rp{product.price.toLocaleString("id-ID")}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-white/45">sekali bayar</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="mt-6">
           <div className="text-[15px] font-bold text-[#f4bf4b]">Keunggulan Premium</div>
@@ -1613,9 +1697,92 @@ const footerLeaderboardRows = [
   { rank: "#3", name: "Rani Susanti", xp: "4,960 XP", avatar: "👱" },
 ] as const;
 
+function BusinessDetailsSection() {
+  return (
+    <section
+      id="tentang"
+      className="relative scroll-mt-32 px-4 pb-20 text-stone-900 sm:px-6 md:pb-24"
+    >
+      <div className="mx-auto grid w-full max-w-[1240px] gap-8 rounded-[2rem] border border-[#d7ece6] bg-white p-6 shadow-[0_18px_42px_-22px_rgba(63,112,99,0.28)] md:p-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12">
+        <LandingPanel>
+          <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--brand-primary)]">
+            Tentang IlmoraX
+          </div>
+          <h2 className="mt-3 max-w-[18ch] text-[clamp(2rem,3vw,2.8rem)] font-[720] leading-[1.04] tracking-[-0.035em] text-[#202124]">
+            Layanan belajar digital dari Ilmora Academy
+          </h2>
+          <p className="mt-4 max-w-[48ch] text-[15px] leading-[1.7] text-stone-500">
+            IlmoraX menyediakan try-out UKAI, pembahasan soal, analisis hasil,
+            rekomendasi latihan, serta paket Premium untuk calon apoteker di
+            seluruh Indonesia.
+          </p>
+
+          <Link
+            to="/premium"
+            className="mt-6 inline-flex items-center justify-center gap-2.5 rounded-[1rem] bg-[var(--brand-primary)] px-5 py-3.5 text-[14px] font-black text-white no-underline shadow-[0_12px_22px_-14px_rgba(32,80,114,0.65)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-px"
+          >
+            <CrownIcon />
+            Pilih paket & lanjut ke checkout
+          </Link>
+        </LandingPanel>
+
+        <LandingPanel className="rounded-[1.5rem] bg-[#f7faf9] px-5 py-5 md:px-6">
+          <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[#c58319]">
+            Informasi bisnis
+          </div>
+          <h3 className="mt-2 text-[22px] font-bold tracking-tight text-stone-800">
+            {businessDetails.name}
+          </h3>
+          <p className="mt-1 text-[13px] leading-relaxed text-stone-500">
+            Dukungan dan operasional IlmoraX di Denpasar, Bali.
+          </p>
+
+          <div className="mt-4 divide-y divide-[#dfe9e6] border-y border-[#dfe9e6]">
+            <a
+              href={businessDetails.mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="group grid gap-2 py-4 text-stone-800 no-underline sm:grid-cols-[120px_1fr] sm:gap-4"
+            >
+              <span className="text-[11px] font-black uppercase tracking-[0.08em] text-stone-400">
+                Alamat
+              </span>
+              <span>
+                <address className="max-w-[44ch] text-[14px] not-italic leading-[1.65] text-stone-700">
+                  {businessDetails.address}
+                </address>
+                <span className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-bold text-[var(--brand-primary)] transition-transform duration-200 group-hover:translate-x-0.5">
+                  Buka di Google Maps <ArrowUpRightIcon />
+                </span>
+              </span>
+            </a>
+
+            <a
+              href={`tel:${businessDetails.internationalPhone}`}
+              className="group grid gap-2 py-4 text-stone-800 no-underline sm:grid-cols-[120px_1fr] sm:items-center sm:gap-4"
+            >
+              <span className="text-[11px] font-black uppercase tracking-[0.08em] text-stone-400">
+                Telepon / WhatsApp
+              </span>
+              <span>
+                <span className="block text-[16px] font-bold tracking-tight text-stone-800 transition-colors group-hover:text-[var(--brand-primary)]">
+                  {businessDetails.phone}
+                </span>
+                <span className="mt-1 block text-[12px] leading-relaxed text-stone-500">
+                  Bantuan produk dan pembayaran
+                </span>
+              </span>
+            </a>
+          </div>
+        </LandingPanel>
+      </div>
+    </section>
+  );
+}
+
 function FooterCta() {
   return (
-    <footer id="tentang" className="scroll-mt-32 px-4 pb-14 sm:px-6">
+    <footer className="px-4 pb-14 sm:px-6">
       <div className="mx-auto max-w-[1240px] rounded-[2.8rem] border border-[#d7ece6] bg-[linear-gradient(180deg,#f8fbf8_0%,#eef8f5_100%)] p-4 shadow-[0_24px_54px_rgba(127,169,155,0.12)]">
         <div className="relative overflow-hidden rounded-[2.5rem] border border-[#bfe9de] bg-[linear-gradient(135deg,#ffd782_0%,#7bd6cf_44%,#5ca9ea_100%)] px-6 py-12 sm:px-8 md:px-12 md:py-16">
           <div
