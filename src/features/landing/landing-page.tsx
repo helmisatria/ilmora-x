@@ -62,8 +62,21 @@ type MembershipProduct = Awaited<ReturnType<typeof listMembershipProducts>>[numb
 
 const businessDetails = {
   name: "Ilmora Academy",
-  phone: "08381782500",
-  internationalPhone: "+628381782500",
+  email: "dave@ilmorax.com",
+  contacts: [
+    {
+      label: "WhatsApp Ilmora",
+      phone: "0877-7828-0750",
+      internationalPhone: "+6287778280750",
+      whatsappUrl: "https://wa.me/6287778280750",
+    },
+    {
+      label: "WhatsApp Dave",
+      phone: "08381782500",
+      internationalPhone: "+628381782500",
+      whatsappUrl: "https://wa.me/628381782500",
+    },
+  ],
   address:
     "Jl. Nakula No.26, Dangin Puri Kauh, Kec. Denpasar Utara, Kota Denpasar, Bali 80231",
   mapsUrl:
@@ -193,7 +206,15 @@ function BusinessStructuredData({ products }: { products: MembershipProduct[] })
     name: businessDetails.name,
     alternateName: "IlmoraX",
     url: "https://ilmorax.com",
-    telephone: businessDetails.internationalPhone,
+    email: businessDetails.email,
+    telephone: businessDetails.contacts[0].internationalPhone,
+    contactPoint: businessDetails.contacts.map((contact) => ({
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      name: contact.label,
+      telephone: contact.internationalPhone,
+      availableLanguage: ["Indonesian"],
+    })),
     address: {
       "@type": "PostalAddress",
       streetAddress: "Jl. Nakula No.26",
@@ -1757,22 +1778,38 @@ function BusinessDetailsSection() {
               </span>
             </a>
 
-            <a
-              href={`tel:${businessDetails.internationalPhone}`}
-              className="group grid gap-2 py-4 text-stone-800 no-underline sm:grid-cols-[120px_1fr] sm:items-center sm:gap-4"
-            >
+            <div className="grid gap-2 py-4 text-stone-800 sm:grid-cols-[120px_1fr] sm:gap-4">
               <span className="text-[11px] font-black uppercase tracking-[0.08em] text-stone-400">
-                Telepon / WhatsApp
+                Kontak
               </span>
-              <span>
-                <span className="block text-[16px] font-bold tracking-tight text-stone-800 transition-colors group-hover:text-[var(--brand-primary)]">
-                  {businessDetails.phone}
-                </span>
-                <span className="mt-1 block text-[12px] leading-relaxed text-stone-500">
-                  Bantuan produk dan pembayaran
-                </span>
+              <span className="grid gap-2.5">
+                {businessDetails.contacts.map((contact) => (
+                  <a
+                    key={contact.label}
+                    href={contact.whatsappUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-stone-800 no-underline"
+                  >
+                    <span className="text-[12px] font-semibold text-stone-500">
+                      {contact.label}
+                    </span>
+                    <span className="text-[14px] font-bold tracking-tight transition-colors group-hover:text-[var(--brand-primary)]">
+                      {contact.phone}
+                    </span>
+                  </a>
+                ))}
+                <a
+                  href={`mailto:${businessDetails.email}`}
+                  className="group flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-stone-800 no-underline"
+                >
+                  <span className="text-[12px] font-semibold text-stone-500">Email</span>
+                  <span className="text-[14px] font-bold tracking-tight transition-colors group-hover:text-[var(--brand-primary)]">
+                    {businessDetails.email}
+                  </span>
+                </a>
               </span>
-            </a>
+            </div>
           </div>
         </LandingPanel>
       </div>
