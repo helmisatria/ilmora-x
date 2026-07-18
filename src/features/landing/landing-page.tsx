@@ -1,13 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import { useEffect } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   brandColors,
+  businessDetails,
   finalCalloutCards,
   focusCards,
   heroMetrics,
-  heroNavItems,
   journeySteps,
   learningBadges,
   plans,
@@ -25,7 +25,6 @@ import {
   BoltBadgeIcon,
   BookFrameIcon,
   BookOpenIcon,
-  BrandMark,
   CheckCircleIcon,
   ChevronRightIcon,
   ClockIcon,
@@ -52,36 +51,11 @@ import {
   UserLineIcon,
 } from "./landing-icons";
 import { useLandingLinkAnalytics } from "./landing-link-analytics";
+import { PublicNavigation } from "./public-navigation";
 import type { listMembershipProducts } from "../premium-access/checkout-functions";
 
-const useSafeLayoutEffect =
-  typeof window === "undefined" ? useEffect : useLayoutEffect;
-const defaultActiveNavHref = heroNavItems[0].href;
 type JourneyStepNumber = (typeof journeySteps)[number];
 type MembershipProduct = Awaited<ReturnType<typeof listMembershipProducts>>[number];
-
-const businessDetails = {
-  name: "Ilmora Academy",
-  email: "dave@ilmorax.com",
-  contacts: [
-    {
-      label: "WhatsApp Ilmora",
-      phone: "0877-7828-0750",
-      internationalPhone: "+6287778280750",
-      whatsappUrl: "https://wa.me/6287778280750",
-    },
-    {
-      label: "WhatsApp Dave",
-      phone: "08381782500",
-      internationalPhone: "+628381782500",
-      whatsappUrl: "https://wa.me/628381782500",
-    },
-  ],
-  address:
-    "Jl. Nakula No.26, Dangin Puri Kauh, Kec. Denpasar Utara, Kota Denpasar, Bali 80231",
-  mapsUrl:
-    "https://www.google.com/maps/search/?api=1&query=Jl.%20Nakula%20No.26%2C%20Dangin%20Puri%20Kauh%2C%20Kec.%20Denpasar%20Utara%2C%20Kota%20Denpasar%2C%20Bali%2080231",
-} as const;
 
 const landingEase = [0.16, 1, 0.3, 1] as const;
 const landingRevealTransition = { duration: 0.8, ease: landingEase };
@@ -188,12 +162,11 @@ export function LandingPage({ products }: { products: MembershipProduct[] }) {
     >
       <BusinessStructuredData products={products} />
       <FixedGrain />
-      <LandingNav />
+      <PublicNavigation isHomePage />
       <HeroSection />
       <JourneySection />
       <ProofSection />
       <PricingSection products={products} />
-      <BusinessDetailsSection />
       <FooterCta />
     </main>
   );
@@ -258,237 +231,6 @@ function FixedGrain() {
         backgroundSize: "20px 20px",
       }}
     />
-  );
-}
-
-function LandingNav() {
-  const loginAnalytics = useLandingLinkAnalytics("/auth/login", "landing_nav_login");
-  const tryoutAnalytics = useLandingLinkAnalytics("/tryout", "landing_nav_signup");
-  const shouldReduceMotion = useReducedMotion();
-
-  return (
-    <header className="fixed inset-x-0 top-0 z-30 px-4 pt-5">
-      <motion.nav
-        animate={getVisibleState(shouldReduceMotion)}
-        className="landing-reveal mx-auto flex w-full max-w-[1240px] items-center justify-between rounded-full border border-[rgba(214,234,228,0.95)] bg-[rgba(255,255,255,0.92)] px-3 py-3 shadow-[0_16px_42px_rgba(144,181,170,0.18)] backdrop-blur-2xl sm:px-4"
-        initial={getHiddenState(shouldReduceMotion)}
-        transition={landingRevealTransition}
-      >
-        <Link to="/" className="flex min-w-0 shrink items-center gap-3 no-underline">
-          <BrandMark />
-          <span className="whitespace-nowrap text-[17px] font-black tracking-tight text-[#1f2937]">
-            Ilmora<span className="text-[var(--brand-primary)]">X</span>
-          </span>
-        </Link>
-
-        <LandingNavMenu />
-
-        <div className="flex shrink-0 items-center gap-2">
-          <Link
-            to="/auth/login"
-            search={{ intent: loginAnalytics.intent }}
-            onClick={loginAnalytics.trackLandingLinkClick}
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#dce9e4] bg-white px-3.5 py-2 text-[13px] font-semibold text-stone-900 no-underline shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
-          >
-            Masuk
-          </Link>
-          <Link
-            to="/tryout"
-            search={{ intent: tryoutAnalytics.intent }}
-            onClick={tryoutAnalytics.trackLandingLinkClick}
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-[var(--brand-primary)] px-3.5 py-2 text-[13px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.26)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-5 sm:py-2.5"
-          >
-            Daftar Gratis
-          </Link>
-        </div>
-      </motion.nav>
-    </header>
-  );
-}
-
-function LandingNavMenu() {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [activeHref, setActiveHref] = useState<
-    (typeof heroNavItems)[number]["href"]
-  >(defaultActiveNavHref);
-  const [indicator, setIndicator] = useState({
-    left: 0,
-    width: 0,
-    opacity: 0,
-  });
-
-  function updateIndicator(nextHref: string) {
-    const menu = menuRef.current;
-
-    if (!menu) {
-      return;
-    }
-
-    const activeLink = menu.querySelector<HTMLAnchorElement>(
-      `[data-nav-href="${nextHref}"]`,
-    );
-
-    if (!activeLink) {
-      setIndicator((current) => ({ ...current, opacity: 0 }));
-      return;
-    }
-
-    const menuBounds = menu.getBoundingClientRect();
-    const linkBounds = activeLink.getBoundingClientRect();
-
-    setIndicator({
-      left: linkBounds.left - menuBounds.left,
-      width: linkBounds.width,
-      opacity: 1,
-    });
-  }
-
-  function syncActiveHref() {
-    const nextHref = window.location.hash || defaultActiveNavHref;
-    const hasMatch = heroNavItems.some((item) => item.href === nextHref);
-
-    if (!hasMatch) {
-      setActiveHref(defaultActiveNavHref);
-      return;
-    }
-
-    setActiveHref(nextHref as (typeof heroNavItems)[number]["href"]);
-  }
-
-  function getActiveHrefFromScroll() {
-    const scanLine = window.innerHeight * 0.36;
-    let nextHref: (typeof heroNavItems)[number]["href"] = defaultActiveNavHref;
-
-    for (const item of heroNavItems) {
-      const section = document.getElementById(item.href.replace("#", ""));
-
-      if (!section) {
-        continue;
-      }
-
-      const bounds = section.getBoundingClientRect();
-
-      if (bounds.top <= scanLine && bounds.bottom > scanLine) {
-        return item.href;
-      }
-
-      if (bounds.top <= scanLine) {
-        nextHref = item.href;
-      }
-    }
-
-    return nextHref;
-  }
-
-  function syncActiveHrefFromScroll() {
-    setActiveHref(getActiveHrefFromScroll());
-  }
-
-  function handleNavClick(
-    event: MouseEvent<HTMLAnchorElement>,
-    href: (typeof heroNavItems)[number]["href"],
-  ) {
-    const targetId = href.replace("#", "");
-    const target = document.getElementById(targetId);
-
-    setActiveHref(href);
-
-    if (!target) {
-      return;
-    }
-
-    event.preventDefault();
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.history.replaceState(null, "", href);
-  }
-
-  useEffect(() => {
-    syncActiveHref();
-
-    window.addEventListener("hashchange", syncActiveHref);
-
-    return () => {
-      window.removeEventListener("hashchange", syncActiveHref);
-    };
-  }, []);
-
-  useEffect(() => {
-    let animationFrame = 0;
-
-    function requestActiveSync() {
-      if (animationFrame) {
-        return;
-      }
-
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = 0;
-        syncActiveHrefFromScroll();
-      });
-    }
-
-    syncActiveHrefFromScroll();
-
-    window.addEventListener("scroll", requestActiveSync, { passive: true });
-    window.addEventListener("resize", requestActiveSync);
-
-    return () => {
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
-      }
-
-      window.removeEventListener("scroll", requestActiveSync);
-      window.removeEventListener("resize", requestActiveSync);
-    };
-  }, []);
-
-  useSafeLayoutEffect(() => {
-    updateIndicator(activeHref);
-  }, [activeHref]);
-
-  useEffect(() => {
-    function handleResize() {
-      updateIndicator(activeHref);
-    }
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [activeHref]);
-
-  return (
-    <div ref={menuRef} className="relative hidden items-center gap-1 md:flex">
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 h-[3px] rounded-full bg-[var(--brand-primary)] transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-        style={{
-          width: `${indicator.width}px`,
-          opacity: indicator.opacity,
-          transform: `translateX(${indicator.left}px)`,
-        }}
-      />
-
-      {heroNavItems.map((item) => {
-        const isActive = item.href === activeHref;
-
-        return (
-          <a
-            key={item.label}
-            data-nav-href={item.href}
-            href={item.href}
-            onClick={(event) => handleNavClick(event, item.href)}
-            className={`relative rounded-full px-4 py-3 text-[13px] font-semibold no-underline transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              isActive
-                ? "text-[var(--brand-primary)]"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            {item.label}
-          </a>
-        );
-      })}
-    </div>
   );
 }
 
@@ -1717,105 +1459,6 @@ const footerLeaderboardRows = [
   { rank: "#2", name: "Budi Santoso", xp: "5,180 XP", avatar: "🧑" },
   { rank: "#3", name: "Rani Susanti", xp: "4,960 XP", avatar: "👱" },
 ] as const;
-
-function BusinessDetailsSection() {
-  return (
-    <section
-      id="tentang"
-      className="relative scroll-mt-32 px-4 pb-20 text-stone-900 sm:px-6 md:pb-24"
-    >
-      <div className="mx-auto grid w-full max-w-[1240px] gap-8 rounded-[2rem] border border-[#d7ece6] bg-white p-6 shadow-[0_18px_42px_-22px_rgba(63,112,99,0.28)] md:p-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12">
-        <LandingPanel>
-          <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--brand-primary)]">
-            Tentang IlmoraX
-          </div>
-          <h2 className="mt-3 max-w-[18ch] text-[clamp(2rem,3vw,2.8rem)] font-[720] leading-[1.04] tracking-[-0.035em] text-[#202124]">
-            Layanan belajar digital dari Ilmora Academy
-          </h2>
-          <p className="mt-4 max-w-[48ch] text-[15px] leading-[1.7] text-stone-500">
-            IlmoraX menyediakan try-out UKAI, pembahasan soal, analisis hasil,
-            rekomendasi latihan, serta paket Premium untuk calon apoteker di
-            seluruh Indonesia.
-          </p>
-
-          <Link
-            to="/premium"
-            className="mt-6 inline-flex items-center justify-center gap-2.5 rounded-[1rem] bg-[var(--brand-primary)] px-5 py-3.5 text-[14px] font-black text-white no-underline shadow-[0_12px_22px_-14px_rgba(32,80,114,0.65)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-px"
-          >
-            <CrownIcon />
-            Pilih paket & lanjut ke checkout
-          </Link>
-        </LandingPanel>
-
-        <LandingPanel className="rounded-[1.5rem] bg-[#f7faf9] px-5 py-5 md:px-6">
-          <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[#c58319]">
-            Informasi bisnis
-          </div>
-          <h3 className="mt-2 text-[22px] font-bold tracking-tight text-stone-800">
-            {businessDetails.name}
-          </h3>
-          <p className="mt-1 text-[13px] leading-relaxed text-stone-500">
-            Dukungan dan operasional IlmoraX di Denpasar, Bali.
-          </p>
-
-          <div className="mt-4 divide-y divide-[#dfe9e6] border-y border-[#dfe9e6]">
-            <a
-              href={businessDetails.mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="group grid gap-2 py-4 text-stone-800 no-underline sm:grid-cols-[120px_1fr] sm:gap-4"
-            >
-              <span className="text-[11px] font-black uppercase tracking-[0.08em] text-stone-400">
-                Alamat
-              </span>
-              <span>
-                <address className="max-w-[44ch] text-[14px] not-italic leading-[1.65] text-stone-700">
-                  {businessDetails.address}
-                </address>
-                <span className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-bold text-[var(--brand-primary)] transition-transform duration-200 group-hover:translate-x-0.5">
-                  Buka di Google Maps <ArrowUpRightIcon />
-                </span>
-              </span>
-            </a>
-
-            <div className="grid gap-2 py-4 text-stone-800 sm:grid-cols-[120px_1fr] sm:gap-4">
-              <span className="text-[11px] font-black uppercase tracking-[0.08em] text-stone-400">
-                Kontak
-              </span>
-              <span className="grid gap-2.5">
-                {businessDetails.contacts.map((contact) => (
-                  <a
-                    key={contact.label}
-                    href={contact.whatsappUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-stone-800 no-underline"
-                  >
-                    <span className="text-[12px] font-semibold text-stone-500">
-                      {contact.label}
-                    </span>
-                    <span className="text-[14px] font-bold tracking-tight transition-colors group-hover:text-[var(--brand-primary)]">
-                      {contact.phone}
-                    </span>
-                  </a>
-                ))}
-                <a
-                  href={`mailto:${businessDetails.email}`}
-                  className="group flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-stone-800 no-underline"
-                >
-                  <span className="text-[12px] font-semibold text-stone-500">Email</span>
-                  <span className="text-[14px] font-bold tracking-tight transition-colors group-hover:text-[var(--brand-primary)]">
-                    {businessDetails.email}
-                  </span>
-                </a>
-              </span>
-            </div>
-          </div>
-        </LandingPanel>
-      </div>
-    </section>
-  );
-}
 
 function FooterCta() {
   return (

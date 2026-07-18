@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TryoutRouteImport } from './routes/tryout'
+import { Route as TentangKamiRouteImport } from './routes/tentang-kami'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PremiumRouteImport } from './routes/premium'
@@ -57,6 +58,11 @@ import { Route as ApiAdminMediaUploadRouteImport } from './routes/api/admin/medi
 const TryoutRoute = TryoutRouteImport.update({
   id: '/tryout',
   path: '/tryout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TentangKamiRoute = TentangKamiRouteImport.update({
+  id: '/tentang-kami',
+  path: '/tentang-kami',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgressRoute = ProgressRouteImport.update({
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/premium': typeof PremiumRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
+  '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
@@ -333,6 +340,7 @@ export interface FileRoutesByTo {
   '/premium': typeof PremiumRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
+  '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
@@ -380,6 +388,7 @@ export interface FileRoutesById {
   '/premium': typeof PremiumRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
+  '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
@@ -428,6 +437,7 @@ export interface FileRouteTypes {
     | '/premium'
     | '/profile'
     | '/progress'
+    | '/tentang-kami'
     | '/tryout'
     | '/admin/categories'
     | '/admin/insights'
@@ -473,6 +483,7 @@ export interface FileRouteTypes {
     | '/premium'
     | '/profile'
     | '/progress'
+    | '/tentang-kami'
     | '/tryout'
     | '/admin/categories'
     | '/admin/insights'
@@ -519,6 +530,7 @@ export interface FileRouteTypes {
     | '/premium'
     | '/profile'
     | '/progress'
+    | '/tentang-kami'
     | '/tryout'
     | '/admin/categories'
     | '/admin/insights'
@@ -566,6 +578,7 @@ export interface RootRouteChildren {
   PremiumRoute: typeof PremiumRoute
   ProfileRoute: typeof ProfileRouteWithChildren
   ProgressRoute: typeof ProgressRoute
+  TentangKamiRoute: typeof TentangKamiRoute
   TryoutRoute: typeof TryoutRouteWithChildren
   ApiHealthzRoute: typeof ApiHealthzRoute
   AuthCompleteProfileRoute: typeof AuthCompleteProfileRoute
@@ -588,6 +601,13 @@ declare module '@tanstack/react-router' {
       path: '/tryout'
       fullPath: '/tryout'
       preLoaderRoute: typeof TryoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tentang-kami': {
+      id: '/tentang-kami'
+      path: '/tentang-kami'
+      fullPath: '/tentang-kami'
+      preLoaderRoute: typeof TentangKamiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/progress': {
@@ -1020,6 +1040,7 @@ const rootRouteChildren: RootRouteChildren = {
   PremiumRoute: PremiumRoute,
   ProfileRoute: ProfileRouteWithChildren,
   ProgressRoute: ProgressRoute,
+  TentangKamiRoute: TentangKamiRoute,
   TryoutRoute: TryoutRouteWithChildren,
   ApiHealthzRoute: ApiHealthzRoute,
   AuthCompleteProfileRoute: AuthCompleteProfileRoute,
