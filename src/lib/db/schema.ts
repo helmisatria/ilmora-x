@@ -9,6 +9,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 const timestamps = {
@@ -385,10 +386,10 @@ export const checkouts = pgTable("checkouts", {
   discountAmount: integer("discount_amount").notNull().default(0),
   finalAmount: integer("final_amount").notNull(),
   paymentProvider: text("payment_provider").notNull(),
-  xenditExternalId: text("xendit_external_id").unique(),
-  xenditInvoiceId: text("xendit_invoice_id").unique(),
-  xenditInvoiceUrl: text("xendit_invoice_url"),
-  xenditStatus: text("xendit_status"),
+  providerOrderId: text("provider_order_id").unique(),
+  providerTransactionId: text("provider_transaction_id").unique(),
+  providerCheckoutUrl: text("provider_checkout_url"),
+  providerStatus: text("provider_status"),
   providerPayload: jsonb("provider_payload").notNull().default({}),
   amountMismatchPayload: jsonb("amount_mismatch_payload"),
   paidAt: timestamp("paid_at", { withTimezone: true }),
@@ -402,7 +403,7 @@ export const checkouts = pgTable("checkouts", {
   check("checkouts_product_type_check", sql`${table.productType} in ('premium_membership', 'lifetime_tryout', 'material')`),
   check("checkouts_content_type_check", sql`${table.contentType} is null or ${table.contentType} in ('tryout', 'material')`),
   check("checkouts_amounts_check", sql`${table.baseAmount} >= 0 and ${table.discountAmount} >= 0 and ${table.finalAmount} >= 0`),
-  check("checkouts_provider_check", sql`${table.paymentProvider} in ('xendit', 'manual_zero_amount')`),
+  check("checkouts_provider_check", sql`${table.paymentProvider} in ('xendit', 'midtrans', 'manual_zero_amount')`),
 ]);
 
 export const couponRedemptions = pgTable("coupon_redemptions", {
@@ -418,6 +419,9 @@ export const couponRedemptions = pgTable("coupon_redemptions", {
   ...timestamps,
 }, (table) => [
   unique("coupon_redemptions_checkout_unique").on(table.checkoutId),
+  uniqueIndex("coupon_redemptions_student_coupon_active_unique")
+    .on(table.studentUserId, table.couponId)
+    .where(sql`${table.status} in ('reserved', 'finalized')`),
   index("coupon_redemptions_student_coupon_idx").on(table.studentUserId, table.couponId),
   index("coupon_redemptions_coupon_status_idx").on(table.couponId, table.status),
   check("coupon_redemptions_status_check", sql`${table.status} in ('reserved', 'finalized', 'released')`),
@@ -449,21 +453,21 @@ export const entitlements = pgTable("entitlements", {
   check("entitlements_window_check", sql`${table.endsAt} is null or ${table.endsAt} > ${table.startsAt}`),
 ]);
 
-export const xenditWebhookEvents = pgTable("xendit_webhook_events", {
+export const paymentWebhookEvents = pgTable("payment_webhook_events", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
   checkoutId: text("checkout_id").references(() => checkouts.id, { onDelete: "set null" }),
-  xenditInvoiceId: text("xendit_invoice_id"),
-  xenditExternalId: text("xendit_external_id"),
-  xenditPaymentId: text("xendit_payment_id"),
-  xenditStatus: text("xendit_status"),
+  paymentProvider: text("payment_provider").notNull(),
+  providerOrderId: text("provider_order_id"),
+  providerTransactionId: text("provider_transaction_id"),
+  providerStatus: text("provider_status"),
   payload: jsonb("payload").notNull(),
   processedAt: timestamp("processed_at", { withTimezone: true }),
   processingResult: text("processing_result").notNull().default("stored"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-  index("xendit_webhook_events_checkout_idx").on(table.checkoutId),
-  index("xendit_webhook_events_invoice_idx").on(table.xenditInvoiceId),
-  index("xendit_webhook_events_payment_idx").on(table.xenditPaymentId),
+  index("payment_webhook_events_checkout_idx").on(table.checkoutId),
+  index("payment_webhook_events_order_idx").on(table.providerOrderId),
+  index("payment_webhook_events_transaction_idx").on(table.providerTransactionId),
 ]);
 
 export const studentBadges = pgTable("student_badges", {

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCheckoutStatus } from "./checkout-functions";
+import { getCheckoutStatusDisplayState } from "./checkout-status-display";
 
 type CheckoutStatus = Awaited<ReturnType<typeof getCheckoutStatus>>;
 
@@ -74,7 +75,10 @@ export function CheckoutStatusPage({ checkoutId }: { checkoutId: string }) {
     };
   }, [checkoutId, loadStatus, stopPolling]);
 
-  const state = getDisplayState(status?.status ?? "pending");
+  const state = getCheckoutStatusDisplayState(
+    status?.status ?? "pending",
+    status?.providerStatus ?? null,
+  );
 
   return (
     <main className="premium-shell min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff8eb_0%,#fbfaf7_44%,#eef8f6_100%)]">
@@ -88,7 +92,7 @@ export function CheckoutStatusPage({ checkoutId }: { checkoutId: string }) {
               borderColor: `${state.accent}35`,
             }}
           >
-            <StatusIcon />
+            <StatusIcon type={state.icon} />
           </div>
           <div className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-stone-400">
             Checkout
@@ -125,8 +129,12 @@ export function CheckoutStatusPage({ checkoutId }: { checkoutId: string }) {
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {status?.status === "pending" && status.invoiceUrl ? (
               <a className="btn btn-primary" href={status.invoiceUrl}>
-                Buka Xendit
+                Buka Midtrans
               </a>
+            ) : status?.status === "cancelled" || status?.status === "expired" ? (
+              <Link className="btn btn-primary no-underline" to="/premium">
+                Coba Lagi
+              </Link>
             ) : (
               <Link className="btn btn-primary no-underline" to="/dashboard">
                 Dashboard
@@ -142,47 +150,32 @@ export function CheckoutStatusPage({ checkoutId }: { checkoutId: string }) {
   );
 }
 
-function getDisplayState(status: string) {
-  if (status === "paid") {
-    return {
-      title: "Pembayaran berhasil",
-      description: "Akses sudah aktif. Kamu bisa kembali ke Dashboard dan mulai belajar.",
-      accent: "#16a34a",
-    };
+function StatusIcon({ type }: { type: "success" | "error" | "warning" | "pending" }) {
+  if (type === "error") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+        <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      </svg>
+    );
   }
 
-  if (status === "expired") {
-    return {
-      title: "Checkout kedaluwarsa",
-      description: "Link pembayaran sudah tidak aktif. Buat Checkout baru untuk melanjutkan.",
-      accent: "#f59e0b",
-    };
+  if (type === "warning") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+        <path d="M12 8v5m0 3.5v.1M4.7 19h14.6a1.5 1.5 0 0 0 1.3-2.25L13.3 4.2a1.5 1.5 0 0 0-2.6 0L3.4 16.75A1.5 1.5 0 0 0 4.7 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
   }
 
-  if (status === "review_required") {
-    return {
-      title: "Perlu dicek Admin",
-      description: "Pembayaran diterima dengan data yang perlu diverifikasi sebelum akses dibuka.",
-      accent: "#f97316",
-    };
+  if (type === "pending") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2.2" />
+        <path d="M12 7.5V12l3 2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
   }
 
-  if (status === "cancelled") {
-    return {
-      title: "Checkout dibatalkan",
-      description: "Checkout ini tidak aktif. Buat Checkout baru untuk mencoba lagi.",
-      accent: "#ef4444",
-    };
-  }
-
-  return {
-    title: "Menunggu konfirmasi",
-    description: "Kami sedang mengecek status pembayaran dari Xendit. Halaman ini akan memperbarui otomatis.",
-    accent: "#205072",
-  };
-}
-
-function StatusIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
       <path d="M20 7 10 17l-5-5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />

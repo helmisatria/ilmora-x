@@ -159,7 +159,7 @@ export function CheckoutPage({
     posthog.capture("checkout_pay_clicked", {
       product_id: product.id,
       product_name: product.name,
-      payment_method: "xendit",
+      payment_method: "midtrans",
       total,
       has_coupon: discount.type === "coupon",
     });
@@ -176,7 +176,10 @@ export function CheckoutPage({
 
       window.location.assign(result.redirectUrl);
     } catch {
-      setDiscount({ type: "invalid", reason: "Checkout belum bisa dibuat. Cek konfigurasi Xendit atau coba lagi." });
+      setDiscount({
+        type: "invalid",
+        reason: "Pembayaran belum bisa diproses. Silakan coba lagi atau hubungi Admin.",
+      });
       setBusy(false);
     }
   };
@@ -212,7 +215,7 @@ export function CheckoutPage({
               Selesaikan pembayaran
             </h1>
             <p className="m-0 mt-3 max-w-[34ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-              Pakai kupon bila ada, lalu lanjut ke halaman pembayaran Xendit.
+              Pakai kupon bila ada, lalu lanjut ke halaman pembayaran Midtrans.
             </p>
           </div>
         </div>
@@ -263,9 +266,9 @@ export function CheckoutPage({
               <div className="flex items-start gap-3 rounded-[var(--radius-md)] border-2 border-primary-soft bg-primary-tint p-4">
                 <IconTile icon={<CardIcon />} accent="#205072" />
                 <div>
-                  <b className="block text-sm font-bold text-stone-800">Xendit Checkout</b>
+                  <b className="block text-sm font-bold text-stone-800">Midtrans Checkout</b>
                   <p className="m-0 mt-1 text-xs font-semibold leading-relaxed text-stone-500">
-                    Virtual Account, e-wallet, QRIS, dan metode lain tersedia di halaman Xendit.
+                    Virtual Account, e-wallet, QRIS, dan metode lain tersedia di halaman Midtrans.
                   </p>
                 </div>
               </div>

@@ -14,6 +14,32 @@ pnpm build
 
 The Vite dev server uses port `8090`.
 
+## Midtrans payments
+
+Paid Checkouts use Midtrans Snap hosted checkout. Configure these server-side variables:
+
+```sh
+MIDTRANS_SERVER_KEY="SB-Mid-server-..."
+MIDTRANS_IS_PRODUCTION=false
+MIDTRANS_TRANSACTION_DURATION_SECONDS=86400
+APP_URL="https://your-public-app.example"
+```
+
+In the Midtrans dashboard, set the Payment Notification URL to:
+
+```text
+https://your-public-app.example/api/midtrans/webhook
+```
+
+Set the Snap redirection URLs to:
+
+```text
+Finish Redirect URL: https://your-public-app.example/payment/finish
+Error Payment URL:  https://your-public-app.example/payment/error
+```
+
+Use sandbox credentials with `MIDTRANS_IS_PRODUCTION=false`. Switch it to `true` only with a production Server Key and production dashboard configuration.
+
 ## Code Map
 
 - `src/routes/`: TanStack file routes only. Keep route files focused on `createFileRoute`, loader/head setup, and rendering feature views.

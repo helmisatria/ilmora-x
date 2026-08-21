@@ -10,6 +10,7 @@ import {
 } from "../../lib/db/schema";
 import { badRequest, conflict, forbidden, notFound } from "../../lib/http/errors";
 import { parseInput } from "../../lib/http/validation";
+import type { OperationLog } from "../../lib/observability";
 import { getStudentViewer } from "../student/student-viewer.server";
 import {
   addSeconds,
@@ -18,7 +19,7 @@ import {
   calculateDiscountAmount,
   countActiveCouponReservations,
   expireCheckoutIfNeeded,
-  getInvoiceDurationSeconds,
+  getPaymentDurationSeconds,
   makePaymentId,
   getProductForCheckout,
   getValidCouponForProduct,
@@ -26,9 +27,11 @@ import {
   listActiveProductsByType,
   makeCheckoutExternalId,
   normalizeCouponCode,
+  type CouponReservationReader,
   type ProductType,
 } from "./payment-service";
-import { createXenditInvoice } from "./xendit-client.server";
+import { createMidtransSnapTransaction } from "./midtrans-client.server";
+import { makePaymentReturnUrl } from "./payment-return";
 
 const productIdSchema = z.object({
   productId: z.string().trim().min(1),
@@ -47,6 +50,8 @@ const startCheckoutSchema = z.object({
 const checkoutIdSchema = z.object({
   checkoutId: z.string().trim().min(1),
 });
+
+type CheckoutTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export const listMembershipProducts = createServerFn({ method: "GET" }).handler(async () => {
   const rows = await listActiveProductsByType("premium_membership");
@@ -107,150 +112,188 @@ export const previewCheckoutCoupon = createServerFn({ method: "POST" })
 export const startCheckout = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(startCheckoutSchema, input))
   .handler(async ({ data }) => {
-    const viewer = await getStudentViewer();
-    const product = await getProductForCheckout(data.productId);
+    const { observeServerOperation } = await import("../../lib/observability");
 
-    assertSupportedMvpProduct(product);
-    assertProductShape(product);
+    return observeServerOperation(
+      {
+        operation: "payment.start_checkout",
+        kind: "server_function",
+        method: "POST",
+      },
+      async (logger) => startCheckoutWithMidtrans(data, logger),
+    );
+  });
 
-    const coupon = data.couponCode
-      ? await getValidCouponForProduct({
-          code: data.couponCode,
-          productType: product.type as ProductType,
-        })
-      : null;
-    const reusableCheckout = await findReusableCheckout({
-      studentUserId: viewer.userId,
-      productId: product.id,
-      couponId: coupon?.id ?? null,
+async function startCheckoutWithMidtrans(
+  data: z.infer<typeof startCheckoutSchema>,
+  logger: OperationLog,
+) {
+  logger.set({
+    product: { id: data.productId },
+    couponProvided: Boolean(data.couponCode),
+    paymentProvider: "midtrans",
+  });
+
+  const viewer = await getStudentViewer();
+  const product = await getProductForCheckout(data.productId);
+
+  logger.set({ student: { id: viewer.userId } });
+
+  assertSupportedMvpProduct(product);
+  assertProductShape(product);
+
+  const coupon = data.couponCode
+    ? await getValidCouponForProduct({
+        code: data.couponCode,
+        productType: product.type as ProductType,
+      })
+    : null;
+  const reusableCheckout = await findReusableCheckout({
+    studentUserId: viewer.userId,
+    productId: product.id,
+    couponId: coupon?.id ?? null,
+  });
+
+  if (reusableCheckout) {
+    logger.set({
+      checkout: {
+        id: reusableCheckout.id,
+        status: reusableCheckout.status,
+        reused: true,
+      },
     });
+    return makeCheckoutResult(reusableCheckout);
+  }
 
-    if (reusableCheckout) {
-      return makeCheckoutResult(reusableCheckout);
+  const now = new Date();
+  const paymentDuration = getPaymentDurationSeconds();
+  const expiresAt = addSeconds(now, paymentDuration);
+  const checkoutId = makePaymentId();
+  const externalId = makeCheckoutExternalId(checkoutId);
+
+  const checkout = await db.transaction(async (tx) => {
+    const lockedCoupon = coupon
+      ? await lockCouponForCheckout(tx, coupon.id, product.type as ProductType, now)
+      : null;
+
+    if (lockedCoupon) {
+      await assertCouponUseAvailable({
+        coupon: lockedCoupon,
+        studentUserId: viewer.userId,
+        reader: tx,
+      });
     }
 
-    const discountAmount = coupon
+    const discountAmount = lockedCoupon
       ? calculateDiscountAmount({
           price: product.price,
-          discountType: coupon.discountType as "percentage" | "fixed",
-          discountValue: coupon.discountValue,
+          discountType: lockedCoupon.discountType as "percentage" | "fixed",
+          discountValue: lockedCoupon.discountValue,
         })
       : 0;
     const finalAmount = Math.max(0, product.price - discountAmount);
-    const now = new Date();
-    const invoiceDuration = getInvoiceDurationSeconds();
-    const expiresAt = addSeconds(now, invoiceDuration);
-    const checkoutId = makePaymentId();
-    const externalId = makeCheckoutExternalId(checkoutId);
 
-    const checkout = await db.transaction(async (tx) => {
-      if (coupon) {
-        await assertCouponUseAvailable({
-          coupon,
-          studentUserId: viewer.userId,
-        });
-      }
+    const [createdCheckout] = await tx
+      .insert(checkouts)
+      .values({
+        id: checkoutId,
+        studentUserId: viewer.userId,
+        productId: product.id,
+        couponId: lockedCoupon?.id ?? null,
+        status: finalAmount === 0 ? "paid" : "pending",
+        productName: product.name,
+        productType: product.type,
+        productDescription: product.description,
+        durationDays: product.durationDays,
+        contentType: product.contentType,
+        contentId: product.contentId,
+        couponCode: lockedCoupon?.code ?? null,
+        baseAmount: product.price,
+        discountAmount,
+        finalAmount,
+        paymentProvider: finalAmount === 0 ? "manual_zero_amount" : "midtrans",
+        providerOrderId: finalAmount === 0 ? null : externalId,
+        paidAt: finalAmount === 0 ? now : null,
+        expiresAt: finalAmount === 0 ? null : expiresAt,
+      })
+      .returning();
 
-      const [createdCheckout] = await tx
-        .insert(checkouts)
-        .values({
-          id: checkoutId,
-          studentUserId: viewer.userId,
-          productId: product.id,
-          couponId: coupon?.id ?? null,
-          status: finalAmount === 0 ? "paid" : "pending",
-          productName: product.name,
-          productType: product.type,
-          productDescription: product.description,
-          durationDays: product.durationDays,
-          contentType: product.contentType,
-          contentId: product.contentId,
-          couponCode: coupon?.code ?? null,
-          baseAmount: product.price,
-          discountAmount,
-          finalAmount,
-          paymentProvider: finalAmount === 0 ? "manual_zero_amount" : "xendit",
-          xenditExternalId: finalAmount === 0 ? null : externalId,
-          paidAt: finalAmount === 0 ? now : null,
-          expiresAt: finalAmount === 0 ? null : expiresAt,
-        })
-        .returning();
+    if (!createdCheckout) {
+      throw new Error("Checkout was not created.");
+    }
 
-      if (!createdCheckout) {
-        throw new Error("Checkout was not created.");
-      }
-
-      if (coupon) {
-        await tx.insert(couponRedemptions).values({
-          couponId: coupon.id,
-          studentUserId: viewer.userId,
-          checkoutId: createdCheckout.id,
-          status: finalAmount === 0 ? "finalized" : "reserved",
-          discountAmount,
-          finalizedAt: finalAmount === 0 ? now : null,
-        });
-      }
-
-      if (finalAmount === 0) {
-        await grantEntitlementForPaidCheckout(tx, createdCheckout, now);
-      }
-
-      return createdCheckout;
-    });
+    if (lockedCoupon) {
+      await tx.insert(couponRedemptions).values({
+        couponId: lockedCoupon.id,
+        studentUserId: viewer.userId,
+        checkoutId: createdCheckout.id,
+        status: finalAmount === 0 ? "finalized" : "reserved",
+        discountAmount,
+        finalizedAt: finalAmount === 0 ? now : null,
+      });
+    }
 
     if (finalAmount === 0) {
-      return makeCheckoutResult(checkout);
+      await grantEntitlementForPaidCheckout(tx, createdCheckout, now);
     }
 
-    try {
-      const invoice = await createXenditInvoice({
-        externalId,
-        amount: finalAmount,
-        description: checkout.productName,
-        invoiceDuration,
-        customer: {
-          given_names: viewer.profile?.displayName || viewer.name || "Student IlmoraX",
-          email: viewer.email,
-          ...(viewer.profile?.phone ? { mobile_number: viewer.profile.phone } : {}),
-        },
-        successRedirectUrl: makeCheckoutStatusUrl(checkout.id),
-        failureRedirectUrl: makeCheckoutStatusUrl(checkout.id),
-        items: [
-          {
-            name: checkout.productName,
-            quantity: 1,
-            price: finalAmount,
-            category: checkout.productType,
-          },
-        ],
-        metadata: {
-          checkout_id: checkout.id,
-          student_user_id: viewer.userId,
-          product_id: product.id,
-          product_type: product.type,
-          coupon_code: coupon?.code ?? null,
-        },
-      });
-
-      const [updatedCheckout] = await db
-        .update(checkouts)
-        .set({
-          xenditInvoiceId: invoice.id,
-          xenditInvoiceUrl: invoice.invoice_url ?? null,
-          xenditStatus: invoice.status,
-          providerPayload: invoice,
-          updatedAt: new Date(),
-        })
-        .where(eq(checkouts.id, checkout.id))
-        .returning();
-
-      return makeCheckoutResult(updatedCheckout ?? checkout);
-    } catch (error) {
-      await cancelCheckoutAfterProviderFailure(checkout.id);
-
-      throw error;
-    }
+    return createdCheckout;
   });
+
+  logger.set({
+    checkout: {
+      id: checkout.id,
+      status: checkout.status,
+      total: checkout.finalAmount,
+      reused: false,
+    },
+  });
+
+  if (checkout.finalAmount === 0) {
+    return makeCheckoutResult(checkout);
+  }
+
+  try {
+    const transaction = await createMidtransSnapTransaction({
+      orderId: externalId,
+      amount: checkout.finalAmount,
+      paymentDuration,
+      customer: {
+        firstName: viewer.profile?.displayName || viewer.name || "Student IlmoraX",
+        email: viewer.email,
+        ...(viewer.profile?.phone ? { phone: viewer.profile.phone } : {}),
+      },
+      finishRedirectUrl: makePaymentReturnUrl("finish"),
+      errorRedirectUrl: makePaymentReturnUrl("error"),
+      items: [
+        {
+          id: product.id,
+          name: checkout.productName,
+          quantity: 1,
+          price: checkout.finalAmount,
+          category: checkout.productType,
+        },
+      ],
+    });
+
+    const [updatedCheckout] = await db
+      .update(checkouts)
+      .set({
+        providerCheckoutUrl: transaction.redirect_url,
+        providerStatus: "pending",
+        providerPayload: transaction,
+        updatedAt: new Date(),
+      })
+      .where(eq(checkouts.id, checkout.id))
+      .returning();
+
+    return makeCheckoutResult(updatedCheckout ?? checkout);
+  } catch (error) {
+    await cancelCheckoutAfterProviderFailure(checkout.id);
+
+    throw error;
+  }
+}
 
 export const getCheckoutStatus = createServerFn({ method: "GET" })
   .inputValidator((input) => parseInput(checkoutIdSchema, input))
@@ -278,6 +321,7 @@ async function findReusableCheckout({
       eq(checkouts.studentUserId, studentUserId),
       eq(checkouts.productId, productId),
       couponId ? eq(checkouts.couponId, couponId) : isNull(checkouts.couponId),
+      eq(checkouts.paymentProvider, "midtrans"),
       eq(checkouts.status, "pending"),
     ))
     .orderBy(sql`${checkouts.createdAt} desc`)
@@ -295,11 +339,13 @@ async function findReusableCheckout({
 async function assertCouponUseAvailable({
   coupon,
   studentUserId,
+  reader = db,
 }: {
   coupon: typeof coupons.$inferSelect;
   studentUserId: string;
-}) {
-  const [studentUse] = await db
+  reader?: CouponReservationReader;
+}): Promise<void> {
+  const [studentUse] = await reader
     .select({ status: couponRedemptions.status })
     .from(couponRedemptions)
     .where(and(
@@ -319,11 +365,38 @@ async function assertCouponUseAvailable({
 
   if (!coupon.maxTotalUses) return;
 
-  const activeUses = await countActiveCouponReservations(coupon.id);
+  const activeUses = await countActiveCouponReservations(coupon.id, reader);
 
   if (activeUses >= coupon.maxTotalUses) {
     throw conflict("Coupon usage limit has been reached.");
   }
+}
+
+async function lockCouponForCheckout(
+  tx: CheckoutTransaction,
+  couponId: string,
+  productType: ProductType,
+  now: Date,
+): Promise<typeof coupons.$inferSelect> {
+  const [coupon] = await tx
+    .select()
+    .from(coupons)
+    .where(eq(coupons.id, couponId))
+    .for("update")
+    .limit(1);
+
+  if (!coupon) {
+    throw badRequest("Coupon is invalid or not active for this Product.");
+  }
+
+  const appliesToProduct = coupon.productScope === "all" || coupon.productScope === productType;
+  const isWithinActiveWindow = coupon.startsAt <= now && coupon.endsAt > now;
+
+  if (!coupon.active || !appliesToProduct || !isWithinActiveWindow) {
+    throw badRequest("Coupon is invalid or not active for this Product.");
+  }
+
+  return coupon;
 }
 
 async function getCheckoutForStudent(checkoutId: string, studentUserId: string) {
@@ -373,8 +446,8 @@ function makeCheckoutResult(checkout: typeof checkouts.$inferSelect) {
     checkoutId: checkout.id,
     status: checkout.status,
     paymentProvider: checkout.paymentProvider,
-    invoiceUrl: checkout.xenditInvoiceUrl,
-    redirectUrl: checkout.xenditInvoiceUrl ?? makeCheckoutStatusUrl(checkout.id),
+    invoiceUrl: checkout.providerCheckoutUrl,
+    redirectUrl: checkout.providerCheckoutUrl ?? makeCheckoutStatusUrl(checkout.id),
     statusUrl: makeCheckoutStatusUrl(checkout.id),
   };
 }
@@ -416,9 +489,10 @@ function toCheckoutStatusDto(checkout: typeof checkouts.$inferSelect) {
     subtotal: checkout.baseAmount,
     discountAmount: checkout.discountAmount,
     total: checkout.finalAmount,
-    invoiceUrl: checkout.xenditInvoiceUrl,
+    invoiceUrl: checkout.providerCheckoutUrl,
     paidAt: checkout.paidAt?.toISOString() ?? null,
     expiresAt: checkout.expiresAt?.toISOString() ?? null,
     paymentProvider: checkout.paymentProvider,
+    providerStatus: checkout.providerStatus,
   };
 }
