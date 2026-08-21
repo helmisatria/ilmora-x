@@ -7,18 +7,24 @@ import {
   getCurrentViewer,
   getPostLoginRedirectForViewer,
 } from "../../lib/auth-functions";
-import { analyticsSearchSchema } from "../../lib/product-analytics";
+import { authSearchSchema } from "../../lib/post-login-redirect";
 
 export const Route = createFileRoute("/auth/complete-profile")({
-  loader: async () => {
+  loaderDeps: ({ search }) => ({ redirectTo: search.redirectTo }),
+  loader: async ({ deps }) => {
     const viewer = await getCurrentViewer();
 
     if (!viewer) {
-      throw redirect({ to: "/auth/login" });
+      throw redirect({
+        to: "/auth/login",
+        search: deps.redirectTo ? { redirectTo: deps.redirectTo } : undefined,
+      });
     }
 
     if (viewer.admin || viewer.profile?.completed) {
-      throw redirect({ to: getPostLoginRedirectForViewer(viewer) });
+      throw redirect({
+        to: getPostLoginRedirectForViewer(viewer, deps.redirectTo),
+      });
     }
 
     return { viewer };
@@ -40,14 +46,20 @@ export const Route = createFileRoute("/auth/complete-profile")({
     ],
   }),
   component: CompleteProfileRoute,
-  validateSearch: analyticsSearchSchema,
+  validateSearch: authSearchSchema,
 });
 
 function CompleteProfileRoute() {
   const { viewer } = Route.useLoaderData() as {
     viewer: CompleteProfileViewer;
   };
-  const { intent } = Route.useSearch();
+  const { intent, redirectTo } = Route.useSearch();
 
-  return <CompleteProfilePage viewer={viewer} intent={intent} />;
+  return (
+    <CompleteProfilePage
+      viewer={viewer}
+      intent={intent}
+      redirectTo={redirectTo}
+    />
+  );
 }

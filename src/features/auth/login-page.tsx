@@ -7,6 +7,7 @@ import {
   type AcquisitionIntent,
 } from "../../lib/product-analytics";
 import { useProductAnalytics } from "../../lib/product-analytics-client";
+import type { PostLoginRedirect } from "../../lib/post-login-redirect";
 
 const trustPills = [
   {
@@ -32,7 +33,13 @@ const trustPills = [
   },
 ] as const;
 
-export function LoginPage({ intent }: { intent?: AcquisitionIntent }) {
+export function LoginPage({
+  intent,
+  redirectTo,
+}: {
+  intent?: AcquisitionIntent;
+  redirectTo?: PostLoginRedirect;
+}) {
   const analytics = useProductAnalytics();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -55,7 +62,9 @@ export function LoginPage({ intent }: { intent?: AcquisitionIntent }) {
       provider: "google",
     });
 
-    const result = await signInWithGoogle(getLoginCallbackUrl(intent));
+    const result = await signInWithGoogle(
+      getLoginCallbackUrl(intent, redirectTo),
+    );
 
     if (result.ok && result.redirectTo) {
       window.location.href = result.redirectTo;

@@ -7,15 +7,18 @@ import {
   type AcquisitionIntent,
 } from "../../lib/product-analytics";
 import { useProductAnalytics } from "../../lib/product-analytics-client";
+import type { PostLoginRedirect } from "../../lib/post-login-redirect";
 
 export type CompleteProfileViewer = NonNullable<Awaited<ReturnType<typeof getCurrentViewer>>>;
 
 export function CompleteProfilePage({
   viewer,
   intent,
+  redirectTo,
 }: {
   viewer: CompleteProfileViewer;
   intent?: AcquisitionIntent;
+  redirectTo?: PostLoginRedirect;
 }) {
   const navigate = useNavigate();
   const analytics = useProductAnalytics();
@@ -46,7 +49,7 @@ export function CompleteProfilePage({
         },
       });
 
-      navigate({ to: result.redirectTo });
+      navigate({ to: redirectTo ?? result.redirectTo });
     } catch {
       setErrorMessage("Profil belum tersimpan. Coba lagi sebentar.");
       setSaving(false);

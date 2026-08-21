@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { AppProvider } from "../data/provider";
 import { getCurrentViewer } from "../lib/auth-functions";
 import { getAcquisitionIntent } from "../lib/product-analytics";
+import { getPostLoginRedirectForPath } from "../lib/post-login-redirect";
 import { ProductAnalyticsIdentity, ProductAnalyticsProvider } from "../lib/product-analytics-client";
 import { getProtectedRedirect, needsProtectedViewer } from "../lib/route-protection";
 import { getSafeErrorMessage } from "../lib/user-errors";
@@ -39,10 +40,14 @@ export const Route = createRootRoute({
         const search = location.search as { intent?: unknown };
         const searchIntent = getAcquisitionIntent(search.intent);
         const intent = searchIntent ?? (location.pathname.startsWith("/tryout") ? "tryout_catalog_signup" : undefined);
+        const postLoginRedirect = getPostLoginRedirectForPath(location.pathname);
 
         throw redirect({
           to: redirectTo,
-          search: intent ? { intent } : undefined,
+          search:
+            intent || postLoginRedirect
+              ? { intent, redirectTo: postLoginRedirect }
+              : undefined,
         });
       }
 
