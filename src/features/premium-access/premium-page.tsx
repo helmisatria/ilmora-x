@@ -1,19 +1,23 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProductAnalytics } from "../../lib/product-analytics-client";
 import gsap from "gsap";
 import { TopBar } from "../../components/Navigation";
 import type { listMembershipProducts } from "./checkout-functions";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
-const premiumAccent = "#f5b544";
-const premiumDark = "#2f281c";
-
 const features = [
   "Tryout premium",
-  "Video",
-  "Evaluasi",
-  "Rekomendasi",
+  "Pembahasan video",
+  "Evaluasi per materi",
+  "Rekomendasi latihan",
+] as const;
+
+const premiumStudyFlow = [
+  "Kerjakan tryout premium",
+  "Lihat materi yang masih lemah",
+  "Tonton pembahasan yang dibutuhkan",
+  "Lanjutkan dengan latihan yang disarankan",
 ] as const;
 
 type Product = Awaited<ReturnType<typeof listMembershipProducts>>[number];
@@ -37,6 +41,19 @@ export function PremiumPage({
   const sidebarRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const animatedElements = [
+        heroRef.current,
+        panelRef.current,
+        comparisonRef.current,
+        ...(cardsRef.current ? Array.from(cardsRef.current.children) : []),
+        ...(sidebarRef.current ? Array.from(sidebarRef.current.children) : []),
+      ].filter(Boolean);
+
+      gsap.set(animatedElements, { opacity: 1, clearProps: "transform" });
+      return;
+    }
+
     const ctx = gsap.context(() => {
       gsap.fromTo(
         heroRef.current,
@@ -77,53 +94,45 @@ export function PremiumPage({
   }, []);
 
   return (
-    <main
-      className="premium-shell overflow-x-hidden"
-      style={{
-        background:
-          "linear-gradient(180deg, #fff8eb 0%, #fbfaf7 42%, #eef8f6 100%)",
-      }}
-    >
-      <div
-        className="relative overflow-hidden pb-8"
-        style={{
-          background:
-            "radial-gradient(900px 340px at 10% -18%, #f59e0b38, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
-        }}
-      >
+    <main className="premium-shell overflow-x-hidden bg-[#f7f7f3]">
+      <div className="relative border-b border-stone-200 bg-[#fbfaf6] pb-10">
         <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
 
-        <div className="premium-lane pt-7 lg:pt-9">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:items-end">
+        <div className="premium-lane pt-8 lg:pt-12">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:items-center lg:gap-16">
             <div ref={heroRef} style={{ opacity: 0 }}>
-              <Link to="/dashboard" className="mb-5 inline-flex items-center gap-2 text-[12px] font-bold text-stone-500 no-underline">
+              <Link to="/dashboard" className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-lg pr-3 text-[12px] font-bold text-stone-500 no-underline outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                 <ArrowLeftIcon />
                 Kembali
               </Link>
 
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
-                IlmoraX Premium
+              <div className="flex items-center gap-3 text-[12px] font-semibold text-stone-600">
+                <span className="h-0.5 w-8 bg-amber-500" aria-hidden="true" />
+                Belajar setelah tryout
               </div>
-              <h1 className="mt-2 max-w-[22ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px]">
-                Upgrade latihan dengan evaluasi yang lebih tajam
+              <h1 className="mt-4 max-w-[16ch] text-balance text-[36px] font-extrabold leading-[1.08] tracking-[-0.045em] text-stone-900 sm:text-[48px]">
+                Jangan berhenti di skor akhir.
               </h1>
-              <p className="m-0 mt-3 max-w-[34ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-                Buka tryout premium, pembahasan video, dan dashboard evaluasi lengkap dalam satu paket belajar.
+              <p className="m-0 mt-5 max-w-[52ch] text-pretty text-[15px] font-medium leading-7 text-stone-600 sm:text-base">
+                Premium menunjukkan materi yang masih lemah, lalu mengarahkanmu ke pembahasan video dan latihan berikutnya.
               </p>
             </div>
 
             <div ref={panelRef} style={{ opacity: 0 }}>
-              <PremiumHeroPanel className="lg:mt-0" />
+              <PremiumStudyFlow />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="premium-lane relative -mt-2 pb-24">
+      <div className="premium-lane relative py-10 pb-24 lg:py-14 lg:pb-24">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
-          <div>
-            <SectionHeader title="Pilih Paket" />
-            <div ref={cardsRef} className="grid gap-3">
+          <div className="min-w-0">
+            <SectionHeader
+              title="Pilih durasi akses"
+              description="Semua paket membuka fitur yang sama. Pilih durasi yang sesuai dengan jadwal belajarmu."
+            />
+            <div ref={cardsRef} className="grid gap-3" role="group" aria-label="Pilih paket premium">
               {activeProducts.map((product) => (
                 <div key={product.id} style={{ opacity: 0 }}>
                   <PackageCard
@@ -148,20 +157,22 @@ export function PremiumPage({
             </div>
           </div>
 
-          <aside ref={sidebarRef} className="xl:sticky xl:top-24">
+          <aside ref={sidebarRef} className="min-w-0 xl:sticky xl:top-24">
             <div style={{ opacity: 0 }}>
-              <div className="mt-6 rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm xl:mt-0">
+              <div className="mt-6 rounded-2xl border border-amber-200 border-l-4 border-l-amber-500 bg-[#fff9e8] p-5 text-stone-800 xl:mt-0">
                 <div className="flex items-start gap-3">
-                  <IconTile icon={<ReceiptIcon />} accent={premiumAccent} />
+                  <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                    <ReceiptIcon />
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
-                      Sekali Bayar
+                    <div className="text-[12px] font-semibold text-amber-800">
+                      Pembayaran satu kali
                     </div>
-                    <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
-                      Tidak auto-renew
+                    <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-stone-900">
+                      Tidak diperpanjang otomatis
                     </h2>
-                    <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
-                      Durasi paket akan ditambahkan ke tanggal aktif yang sudah ada, lalu kembali ke akses gratis saat selesai.
+                    <p className="m-0 mt-2 max-w-[34ch] text-[13.5px] font-medium leading-relaxed text-stone-600">
+                      Jika Premium masih aktif, durasi baru ditambahkan setelah masa aktifmu berakhir.
                     </p>
                   </div>
                 </div>
@@ -173,12 +184,7 @@ export function PremiumPage({
                 <Link
                   to="/checkout"
                   search={{ productId: selectedProduct.id }}
-                  className="group mt-5 flex w-full items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-300 px-6 py-4 text-base font-extrabold tracking-wide text-stone-900 no-underline shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5"
-                  style={{
-                    background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
-                    borderBottomWidth: 5,
-                    borderBottomColor: "#b45309",
-                  }}
+                  className="group mt-5 flex min-h-14 w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl bg-primary px-5 py-3.5 text-base font-extrabold tracking-wide text-white no-underline outline-none shadow-[0_12px_26px_-16px_rgba(21,61,92,0.8)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-light focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-0.5 sm:flex-nowrap sm:px-6 sm:py-4"
                   onClick={() => posthog.capture("premium_checkout_clicked", {
                     product_id: selectedProduct.id,
                     product_name: selectedProduct.name,
@@ -194,7 +200,7 @@ export function PremiumPage({
                 </Link>
               ) : (
                 <div className="mt-5 rounded-[var(--radius-lg)] border-2 border-stone-100 bg-white p-4 text-sm font-bold text-stone-400">
-                  Belum ada Product Premium aktif.
+                  Belum ada paket Premium yang aktif.
                 </div>
               )}
             </div>
@@ -205,44 +211,26 @@ export function PremiumPage({
   );
 }
 
-function PremiumHeroPanel({ className = "" }: { className?: string }) {
+function PremiumStudyFlow() {
   return (
-    <div className={`relative mt-6 overflow-hidden rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm sm:p-6 ${className}`}>
-      <div
-        className="absolute inset-0 opacity-90"
-        style={{
-          background:
-            "radial-gradient(360px 200px at 88% 0%, rgba(245,158,11,0.32), transparent 70%), radial-gradient(280px 190px at 0% 100%, rgba(20,184,166,0.2), transparent 72%)",
-        }}
-      />
-      <div
-        className="absolute inset-0 opacity-[0.08]"
-        style={{
-          backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)",
-          backgroundSize: "14px 14px",
-        }}
-      />
+    <section className="relative mt-2 overflow-hidden rounded-[22px] border border-stone-200 bg-white px-5 py-6 shadow-[0_24px_60px_-42px_rgba(41,37,36,0.5)] sm:px-7 sm:py-7 lg:mt-0" aria-labelledby="premium-flow-title">
+      <div className="absolute bottom-0 left-0 top-0 w-1 bg-amber-400" aria-hidden="true" />
+      <p className="text-[12px] font-semibold text-stone-500">Alur belajar Premium</p>
+      <h2 id="premium-flow-title" className="mt-1 text-[22px] font-bold tracking-tight text-stone-900">
+        Satu hasil, langkah berikutnya jelas
+      </h2>
 
-      <div className="relative">
-        <div className="flex items-center gap-4">
-          <IconTile icon={<CrownIcon />} accent={premiumAccent} />
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
-              Paket Premium
-            </div>
-            <b className="mt-1 block text-[22px] font-bold leading-tight text-amber-50">
-              Latihan lebih terarah
-            </b>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          <PremiumBenefitPill icon={<VideoIcon />} label="Video" />
-          <PremiumBenefitPill icon={<DocumentIcon />} label="Review" />
-          <PremiumBenefitPill icon={<TargetIcon />} label="Latihan" />
-        </div>
-      </div>
-    </div>
+      <ol className="mt-6 grid gap-0">
+        {premiumStudyFlow.map((step, index) => (
+          <li key={step} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 border-t border-stone-100 py-3.5 first:border-t-0 first:pt-0 last:pb-0">
+            <span className="font-mono text-[12px] font-semibold tabular-nums text-primary" aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span className="text-[14px] font-semibold leading-snug text-stone-700">{step}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -260,20 +248,19 @@ function PackageCard({
 
   return (
     <button
-      className="group w-full rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md active:translate-y-[1px] active:border-b-2 sm:px-5 sm:py-5"
+      className="group w-full rounded-2xl border bg-white px-4 py-4 text-left outline-none transition-all duration-200 hover:border-stone-300 hover:shadow-[0_18px_34px_-30px_rgba(41,37,36,0.7)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-px sm:px-5 sm:py-5"
       style={{
-        borderColor: isSelected ? "#205072" : "#f5f5f4",
-        borderBottomColor: isSelected ? "#153d5c" : "#e7e5e4",
-        background: isSelected
-          ? "linear-gradient(180deg, #f1f7fb 0%, rgba(255,255,255,0.96) 76%)"
-          : "#ffffff",
+        borderColor: isSelected ? "#205072" : "#e7e5e4",
+        background: isSelected ? "#f1f7fb" : "#ffffff",
+        boxShadow: isSelected ? "0 0 0 1px #205072" : undefined,
       }}
       onClick={onSelect}
       type="button"
+      aria-pressed={isSelected}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-5">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5">
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border"
           style={{
             background: isSelected ? "#dcecf7" : "#ffffff",
             borderColor: isSelected ? "#205072" : "#d6d3d1",
@@ -283,15 +270,15 @@ function PackageCard({
           {isSelected && <span className="h-3.5 w-3.5 rounded-full bg-primary" />}
         </span>
 
-        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3">
           <b className="text-base font-bold leading-tight text-stone-800 sm:text-lg">{product.name}</b>
           <DurationPill days={product.durationDays ?? 0} />
-          {isPopular && <StatusPill label="Populer" accent={premiumAccent} />}
+          {isPopular && <StatusPill label="Populer" />}
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-4">
-          <div className="text-right">
-            <div className="text-lg font-bold leading-none tracking-tight text-stone-900 sm:text-xl">
+        <div className="col-start-2 flex min-w-0 items-center justify-between gap-3 sm:col-start-auto sm:justify-end sm:gap-4">
+          <div className="min-w-0 text-left sm:text-right">
+            <div className="font-mono text-lg font-bold leading-none tracking-tight tabular-nums text-stone-900 sm:text-xl">
               Rp{product.price.toLocaleString("id-ID")}
             </div>
           </div>
@@ -299,7 +286,7 @@ function PackageCard({
           {savingPercent > 0 && <SavingPill value={savingPercent} />}
 
           <span
-            className="hidden h-9 w-9 items-center justify-center rounded-full border-2 sm:flex"
+            className="hidden h-9 w-9 items-center justify-center rounded-full border sm:flex"
             style={{
               background: isSelected ? "#205072" : "#ffffff",
               borderColor: isSelected ? "#205072" : "#d6d3d1",
@@ -323,110 +310,95 @@ function getSavingPercent(product: Product) {
 
 function FeatureComparison() {
   return (
-    <div className="mt-6 overflow-x-auto rounded-[var(--radius-lg)] border-2 border-amber-100 border-b-4 border-b-amber-100 bg-[#fffaf0]/72 px-4 py-4 shadow-sm sm:px-5">
-      <div className="min-w-[620px]">
-        <div className="grid grid-cols-[1fr_repeat(4,minmax(90px,1fr))] items-center gap-3 border-b border-amber-100 py-3">
-          <span className="text-[13px] font-semibold text-stone-700">Fitur</span>
-          {features.map((feature) => (
-            <span key={feature} className="text-center text-[13px] font-semibold leading-tight text-stone-800">
-              {feature}
-            </span>
-          ))}
-        </div>
-
-        <ComparisonRow label="Gratis" isPremium={false} />
-        <ComparisonRow label="Premium" isPremium />
+    <section className="mt-10" aria-labelledby="feature-comparison-title">
+      <h2 id="feature-comparison-title" className="text-xl font-bold tracking-tight text-stone-900">
+        Akses yang kamu dapat
+      </h2>
+      <p className="mt-1 max-w-[54ch] text-[13.5px] font-medium leading-relaxed text-stone-500">
+        Akun gratis tetap bisa belajar. Premium menambahkan evaluasi dan arahan setelah tryout.
+      </p>
+      <div className="mt-4 overflow-hidden border-y border-stone-200 bg-white px-1 sm:px-3">
+        <table className="w-full table-fixed border-collapse">
+          <caption className="sr-only">Perbandingan fitur paket gratis dan premium</caption>
+          <thead>
+            <tr className="border-b border-stone-200">
+              <th scope="col" className="w-1/2 px-2 py-3 text-left text-[12px] font-semibold text-stone-700 sm:text-[13px]">
+                Fitur
+              </th>
+              <th scope="col" className="w-1/4 px-1 py-3 text-center text-[12px] font-semibold text-stone-700 sm:text-[13px]">
+                Gratis
+              </th>
+              <th scope="col" className="w-1/4 px-1 py-3 text-center text-[12px] font-semibold text-stone-800 sm:text-[13px]">
+                Premium
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {features.map((feature) => (
+              <ComparisonRow key={feature} feature={feature} />
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+    </section>
   );
 }
 
-function ComparisonRow({ label, isPremium }: { label: string; isPremium: boolean }) {
+function ComparisonRow({ feature }: { feature: (typeof features)[number] }) {
   return (
-    <div className="grid grid-cols-[1fr_repeat(4,minmax(90px,1fr))] items-center gap-3 border-b border-amber-100 py-3 last:border-b-0">
-      <span className="text-[13px] font-semibold text-stone-600">{label}</span>
-      {features.map((feature) => (
-        <FeatureValue key={`${label}-${feature}`} isPremium={isPremium} />
-      ))}
-    </div>
+    <tr className="border-b border-stone-100 last:border-b-0">
+      <th scope="row" className="px-2 py-3 text-left text-[12px] font-semibold leading-snug text-stone-700 sm:text-[13px]">
+        {feature}
+      </th>
+      <td className="px-1 py-3 text-center">
+        <FeatureValue isPremium={false} label={`${feature} tidak tersedia di paket gratis`} />
+      </td>
+      <td className="px-1 py-3 text-center">
+        <FeatureValue isPremium label={`${feature} tersedia di paket premium`} />
+      </td>
+    </tr>
   );
 }
 
-function FeatureValue({ isPremium }: { isPremium: boolean }) {
-  if (!isPremium) return <MinusIcon />;
+function FeatureValue({ isPremium, label }: { isPremium: boolean; label: string }) {
+  if (!isPremium) return <MinusIcon label={label} />;
 
-  return <CheckBadgeIcon />;
+  return <CheckBadgeIcon label={label} />;
 }
 
 function DurationPill({ days }: { days: number }) {
-  const isAmber = days === 180;
-
   return (
-    <span
-      className="rounded-full border-2 px-3 py-1 text-[12px] font-semibold leading-none"
-      style={{
-        color: isAmber ? "#b45309" : "#0b2135",
-        borderColor: isAmber ? "#fed7aa" : "#dcecf7",
-        background: isAmber ? "#fff7ed" : "#f1f7fb",
-      }}
-    >
-      {days} hari
+    <span className="text-[12px] font-semibold leading-none text-stone-500">
+      · {days} hari
     </span>
   );
 }
 
 function SavingPill({ value }: { value: number }) {
   return (
-    <span className="hidden rounded-full border-2 border-green-100 bg-green-50 px-3 py-1 text-[12px] font-semibold leading-none text-green-700 md:inline-flex">
+    <span className="hidden text-[12px] font-semibold leading-none text-emerald-700 md:inline-flex">
       Hemat {value}%
     </span>
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
-    <div className="mb-3 flex items-center gap-2">
-      <span className="text-[13px] font-semibold uppercase tracking-wide text-stone-500">{title}</span>
-      <div className="h-px flex-1 bg-stone-200" />
+    <div className="mb-5">
+      <h2 className="text-[26px] font-bold tracking-tight text-stone-900">{title}</h2>
+      <p className="mt-1 max-w-[58ch] text-pretty text-[13.5px] font-medium leading-relaxed text-stone-500">
+        {description}
+      </p>
     </div>
   );
 }
 
-function StatusPill({ label, accent }: { label: string; accent: string }) {
+function StatusPill({ label }: { label: string }) {
   return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide"
-      style={{ color: "#92400e", borderColor: `${accent}44`, background: `${accent}18` }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
       {label}
     </span>
-  );
-}
-
-function PremiumBenefitPill({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border-2 border-amber-200/16 bg-white/8 px-3 py-2.5 text-amber-50">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-300/12 text-amber-300">
-        {icon}
-      </span>
-      <span className="text-sm font-bold leading-none">{label}</span>
-    </div>
-  );
-}
-
-function IconTile({ icon, accent }: { icon: ReactNode; accent: string }) {
-  return (
-    <div
-      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
-      style={{
-        color: accent,
-        background: `${accent}18`,
-        borderColor: `${accent}45`,
-      }}
-    >
-      {icon}
-    </div>
   );
 }
 
@@ -454,30 +426,21 @@ function CheckIcon() {
   );
 }
 
-function CheckBadgeIcon() {
+function CheckBadgeIcon({ label }: { label: string }) {
   return (
-    <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white">
+    <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white" role="img" aria-label={label}>
       <CheckIcon />
     </span>
   );
 }
 
-function MinusIcon() {
+function MinusIcon({ label }: { label: string }) {
   return (
-    <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-stone-300 text-white">
+    <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-stone-300 text-white" role="img" aria-label={label}>
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
         <path d="M7 12h10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
       </svg>
     </span>
-  );
-}
-
-function CrownIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
-      <path d="m4 8 4.2 3.4L12 5l3.8 6.4L20 8l-1.8 10H5.8L4 8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M6.5 21h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
   );
 }
 
@@ -486,33 +449,6 @@ function ReceiptIcon() {
     <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
       <path d="M7 3h10a2 2 0 0 1 2 2v16l-3-1.8-2 1.8-2-1.8-2 1.8-2-1.8L5 21V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function VideoIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path d="M4 7.8C4 6.8 4.8 6 5.8 6h8.4c1 0 1.8.8 1.8 1.8v8.4c0 1-.8 1.8-1.8 1.8H5.8c-1 0-1.8-.8-1.8-1.8V7.8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="m16 10 4-2.5v9L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function DocumentIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M14 3v5h5M8 13h8M8 17h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function TargetIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10ZM12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }

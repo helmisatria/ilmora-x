@@ -14,17 +14,17 @@ export const Route = createFileRoute("/premium")({
   },
   head: () => ({
     meta: [
-      { title: "Upgrade Premium — IlmoraX" },
+      { title: "IlmoraX Premium | Evaluasi dan pembahasan UKAI" },
       {
         name: "description",
         content:
-          "Buka semua tryout premium, video pembahasan lengkap, dan evaluation dashboard. Paket mulai dari Rp49rb/bulan. Tidak auto-renew.",
+          "Temukan materi UKAI yang masih lemah, tonton pembahasan video, dan lanjutkan latihan dengan rekomendasi dari hasil tryout.",
       },
-      { property: "og:title", content: "Upgrade Premium — IlmoraX" },
+      { property: "og:title", content: "IlmoraX Premium | Belajar dari hasil tryout" },
       {
         property: "og:description",
         content:
-          "Buka semua tryout premium, video pembahasan lengkap, dan evaluation dashboard. Paket mulai dari Rp49rb/bulan.",
+          "Lihat materi yang masih lemah, tonton pembahasannya, lalu lanjutkan dengan latihan yang disarankan.",
       },
     ],
   }),
