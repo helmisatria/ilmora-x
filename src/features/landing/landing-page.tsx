@@ -166,7 +166,7 @@ export function LandingPage({ products }: { products: MembershipProduct[] }) {
       <HeroSection />
       <JourneySection />
       <ProofSection />
-      <PricingSection products={products} />
+      <PricingSection />
       <FooterCta />
     </main>
   );
@@ -256,18 +256,17 @@ function HeroSection() {
           </span>
 
           <h1 className="mt-7 max-w-[12ch] text-[clamp(2.9rem,5.3vw,4.95rem)] font-[780] leading-[0.93] tracking-[-0.05em] text-[#202124]">
-            Simulasi UKAI yang terasa seperti{" "}
-            <span className="text-[var(--brand-primary-dark)]">ujian asli</span>
+            Uji kesiapanmu sebelum hari{" "}
+            <span className="text-[var(--brand-primary-dark)]">UKAI</span>
           </h1>
 
           <p className="mt-5 max-w-[40ch] text-[16px] font-medium leading-relaxed text-stone-600 sm:text-[17px]">
-            Latihan dengan ribuan soal berkualitas, timer realistis,
-            pembahasan mendalam, dan evaluasi pintar untuk persiapan UKAI
-            terbaikmu.
+            Kerjakan try-out dengan timer, lihat topik yang masih lemah, lalu
+            baca pembahasan untuk tahu kenapa jawabanmu benar atau salah.
           </p>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <HeroPrimaryLink to="/tryout">Lihat Try-out</HeroPrimaryLink>
+            <HeroPrimaryLink to="/tryout">Mulai Try-out</HeroPrimaryLink>
             <HeroSecondaryLink to="/auth/login">Masuk</HeroSecondaryLink>
           </div>
 
@@ -316,7 +315,7 @@ function HeroProductFrame() {
         <div className="rounded-[1.6rem] border border-[#e6f2ee] bg-white p-5 shadow-[0_16px_32px_rgba(116,160,145,0.08)]">
           <div className="flex items-center justify-between gap-4 border-b border-[#edf4f1] pb-4">
             <div className="text-[13px] font-bold uppercase tracking-[0.08em] text-stone-500">
-              Try-out terpopuler
+              Daftar try-out
             </div>
             <a href="#cara-kerja" className="text-[13px] font-bold text-[var(--brand-primary-dark)] no-underline">
               Lihat semua
@@ -340,7 +339,7 @@ function HeroProductFrame() {
           </DashboardMiniCard>
 
           <DashboardMiniCard
-            title="Topik perlu ditingkatkan"
+            title="Topik yang perlu diulang"
             icon={<TargetIcon />}
             iconColor="#ff5d6f"
           >
@@ -366,10 +365,10 @@ function HeroProductFrame() {
             </div>
             <div>
               <div className="text-[15px] font-bold text-[var(--brand-primary-dark)]">
-                Evaluasi cerdas, rekomendasi personal
+                Tahu langkah berikutnya
               </div>
               <p className="mt-1 text-[15px] text-stone-600">
-                Fokus pada materi yang perlu kamu kuasai.
+                Setelah selesai, kamu langsung tahu apa yang perlu diulang.
               </p>
             </div>
           </div>
@@ -541,13 +540,12 @@ function JourneySection() {
           </div>
 
           <h2 className="mt-7 max-w-[12.5ch] text-[clamp(2.6rem,4.3vw,4.35rem)] font-[720] leading-[0.98] tracking-[-0.045em] text-[#202124]">
-            Try-out dulu. Tahu yang kurang. Isi dari pembahasan.
+            Kerjakan try-out. Lihat yang belum dikuasai. Ulangi.
           </h2>
 
           <p className="mt-6 max-w-[34ch] text-[17px] leading-[1.8] text-stone-500">
-            IlmoraX membantu kamu belajar lebih efektif dengan alur yang terbukti:
-            uji kemampuan, temukan titik lemah, dan perbaiki dengan pembahasan
-            yang lengkap.
+            Setelah try-out, lihat akurasi tiap topik. Gunakan hasilnya untuk
+            menentukan latihan berikutnya.
           </p>
 
           <div id="lencana" className="mt-10 grid scroll-mt-32 gap-1 sm:grid-cols-3">
@@ -586,10 +584,10 @@ function JourneySection() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[16px] text-stone-600">
-                Ribuan calon apoteker sudah merasakan bedanya.
+                Hasil try-outmu tersimpan di satu tempat.
               </div>
               <div className="mt-1 text-[16px] font-bold text-[var(--brand-primary-dark)]">
-                Sekarang giliranmu!
+                Pakai untuk menentukan latihan berikutnya.
               </div>
             </div>
             <div className="hidden text-[#8cd9cb] sm:block">
@@ -627,12 +625,12 @@ function ProofSection() {
           </span>
 
           <h2 className="mt-7 max-w-[11ch] text-[clamp(2.9rem,5vw,5rem)] font-[740] leading-[0.98] tracking-[-0.05em] text-[#202124]">
-            Hasil try-out tidak berhenti di angka skor
+            Skor hanyalah awal.
           </h2>
 
           <p className="mt-6 max-w-[36ch] text-[18px] leading-[1.75] text-stone-500">
-            IlmoraX memberikan analisis yang lengkap dan mudah dipahami agar
-            setiap latihan jadi langkah nyata menuju kelulusan UKAI.
+            Lihat akurasi per topik, periksa jawabanmu, lalu pilih materi yang
+            perlu kamu ulangi.
           </p>
         </LandingPanel>
 
@@ -696,7 +694,7 @@ function ResultAnalyticsCard() {
       <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[1.6rem] border border-[#edf0ef] bg-white p-5">
           <div className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-stone-500">
-            Topik perlu ditingkatkan
+            Akurasi per topik
             <InfoIcon />
           </div>
 
@@ -714,7 +712,7 @@ function ResultAnalyticsCard() {
 
         <div className="rounded-[1.6rem] border border-[#edf0ef] bg-white p-5">
           <div className="text-[13px] font-bold uppercase tracking-[0.04em] text-stone-500">
-            Rekomendasi untukmu
+            Latihan berikutnya
           </div>
 
           <div className="mt-4 grid gap-3">
@@ -975,22 +973,22 @@ function getJourneyStepTone(stepNumber: JourneyStepNumber) {
 }
 
 function getJourneyStepTitle(stepNumber: JourneyStepNumber) {
-  if (stepNumber === "02") return "Lihat titik lemah";
-  if (stepNumber === "03") return "Belajar lebih terarah";
+  if (stepNumber === "02") return "Lihat topik yang perlu diulang";
+  if (stepNumber === "03") return "Pilih latihan berikutnya";
 
-  return "Mulai simulasi";
+  return "Kerjakan try-out";
 }
 
 function getJourneyStepBody(stepNumber: JourneyStepNumber) {
   if (stepNumber === "01") {
-    return "Kerjakan try-out dengan timer dan suasana ujian yang mirip asli. Fokus, tenang, dan beri yang terbaik!";
+    return "Kerjakan try-out dengan timer. Tandai soal yang masih meragukan dan selesaikan sesuai waktumu.";
   }
 
   if (stepNumber === "02") {
-    return "Hasil langsung menunjukkan topik yang masih lemah agar kamu tahu bagian mana yang perlu diprioritaskan.";
+    return "Begitu selesai, hasilmu menunjukkan topik dengan akurasi terendah dan bagian yang perlu kamu ulangi.";
   }
 
-  return "Baca pembahasan lengkap dan ikuti rekomendasi materi untuk memperbaiki pemahaman dan naik level lebih cepat.";
+  return "Buka pembahasan, pahami konsepnya, lalu lanjutkan dengan latihan yang sesuai hasilmu.";
 }
 
 function renderJourneyStepPreview(stepNumber: JourneyStepNumber) {
@@ -1088,7 +1086,7 @@ function WeakTopicPreview() {
   return (
     <div className="rounded-[1.55rem] border border-[#ffe3e6] bg-[linear-gradient(180deg,#fffefe_0%,#fffaf9_100%)] p-4 shadow-[0_10px_24px_rgba(255,135,145,0.08)]">
       <div className="flex items-center justify-between gap-4">
-        <div className="text-[16px] font-bold text-stone-800">Topik Terlemah</div>
+        <div className="text-[16px] font-bold text-stone-800">Topik terlemah</div>
         <div className="max-w-[150px] truncate rounded-full border border-[#f3ece8] bg-white px-3 py-1 text-[11px] text-stone-400">
           Berdasarkan akurasi
         </div>
@@ -1150,7 +1148,7 @@ function RecommendationPreview() {
       </div>
 
       <div className="mt-4 rounded-[1.1rem] border border-[#efe8f9] bg-white px-4 py-4">
-        <div className="text-[14px] font-bold text-stone-700">Rekomendasi untukmu</div>
+        <div className="text-[14px] font-bold text-stone-700">Latihan berikutnya</div>
         <div className="mt-3 flex flex-wrap gap-2">
           {chips.map((chip) => (
             <span
@@ -1167,7 +1165,7 @@ function RecommendationPreview() {
   );
 }
 
-function PricingSection({ products }: { products: MembershipProduct[] }) {
+function PricingSection() {
   return (
     <section
       id="paket"
@@ -1191,18 +1189,18 @@ function PricingSection({ products }: { products: MembershipProduct[] }) {
           </span>
 
           <h2 className="mt-7 max-w-[14ch] text-[clamp(2.8rem,4.8vw,4.7rem)] font-[740] leading-[0.98] tracking-[-0.05em] text-[#202124]">
-            Mulai gratis, lanjut fokus ke bagian yang paling butuh dikejar
+            Gratis.
           </h2>
 
           <p className="mt-6 max-w-[42ch] text-[18px] leading-[1.75] text-stone-500">
-            Semua fitur dirancang untuk membantumu siap UKAI dengan cara yang
-            terarah, terukur, dan menyenangkan.
+            Coba try-out dasar tanpa biaya. Upgrade saat kamu ingin melihat
+            pola jawaban, pembahasan lengkap, dan latihan Premium.
           </p>
         </LandingPanel>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           <FreePricingCard />
-          <PremiumPricingCard products={products} />
+          <PremiumPricingCard />
         </div>
 
         <div className="mt-6 grid gap-3 rounded-[1.8rem] border border-[#edf0ef] bg-white p-5 shadow-[0_16px_36px_rgba(122,164,151,0.08)] md:grid-cols-4">
@@ -1297,7 +1295,7 @@ function FreePricingCard() {
   );
 }
 
-function PremiumPricingCard({ products }: { products: MembershipProduct[] }) {
+function PremiumPricingCard() {
   const plan = plans[1];
 
   return (
@@ -1343,37 +1341,8 @@ function PremiumPricingCard({ products }: { products: MembershipProduct[] }) {
           ))}
         </ul>
 
-        <div className="mt-6 rounded-[1.4rem] border border-[rgba(242,177,46,0.2)] bg-[rgba(255,255,255,0.06)] p-4">
-          <div className="text-[15px] font-bold text-[#f4bf4b]">
-            Pilihan paket & harga
-          </div>
-          <div className="mt-3 grid gap-2.5">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="flex items-center justify-between gap-4 rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <div className="text-[14px] font-bold text-white/90">
-                    {product.name}
-                  </div>
-                  <div className="mt-1 text-[12px] text-white/55">
-                    {product.description}
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[17px] font-black text-[#ffd36d]">
-                    Rp{product.price.toLocaleString("id-ID")}
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-white/45">sekali bayar</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="mt-6">
-          <div className="text-[15px] font-bold text-[#f4bf4b]">Keunggulan Premium</div>
+          <div className="text-[15px] font-bold text-[#f4bf4b]">Yang kamu dapatkan</div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {premiumBenefits.map((benefit) => (
               <div
@@ -1399,7 +1368,7 @@ function PremiumPricingCard({ products }: { products: MembershipProduct[] }) {
 
         <div className="mt-4 flex items-center justify-center gap-2 text-[14px] text-white/68">
           <LockBadgeIcon />
-          Bisa dibatalkan kapan saja
+          Sekali bayar, akses sesuai paket
         </div>
       </div>
     </LandingPanelArticle>
@@ -1486,7 +1455,7 @@ function FooterCta() {
 
           <div className="absolute bottom-[12%] left-4 z-10 hidden w-[240px] rotate-[-4deg] rounded-[1.8rem] border border-[#d9e8ea] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(110,149,174,0.18)] lg:block xl:left-10">
             <div className="flex items-center justify-between gap-3 text-[12px] font-black uppercase tracking-[0.08em] text-stone-500">
-              Pemimpin mingguan
+              Peringkat mingguan
               <span className="text-[#f4a620]">
                 <TrophyLineIcon />
               </span>
@@ -1529,7 +1498,7 @@ function FooterCta() {
 
           <div className="relative z-20 mx-auto max-w-[840px] rounded-[3rem] border border-[#c9ece6] bg-white px-6 py-12 text-center shadow-[0_24px_60px_rgba(111,160,173,0.18)] sm:px-10 md:px-14 md:py-16">
             <div className="text-[12px] font-black uppercase tracking-[0.2em] text-[var(--brand-primary)]">
-              Langkah berikutnya
+              Mulai di sini
             </div>
             <h2
               className="mx-auto mt-5 max-w-[12ch] text-[clamp(2.35rem,4.4vw,4.1rem)] font-[680] leading-[1.02] tracking-[-0.04em] text-[#202124]"
@@ -1538,17 +1507,17 @@ function FooterCta() {
                   "'Plus Jakarta Sans', 'Geist', ui-sans-serif, system-ui, sans-serif",
               }}
             >
-              Mulai dari try-out, lalu belajar dari yang masih kurang.
+              Uji dirimu. Pelajari hasilnya. Ulangi.
             </h2>
             <p className="mx-auto mt-6 max-w-[28ch] text-[18px] leading-[1.72] text-stone-500">
-              Setiap latihan membawamu selangkah lebih dekat menuju UKAI. Terus
-              konsisten, raih hasil terbaikmu!
+              Mulai dengan satu try-out. Setelah selesai, lihat topik yang perlu
+              kamu ulangi dan pilih latihan berikutnya.
             </p>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <FooterActionButton to="/tryout" variant="primary">
                 <BookOpenIcon />
-                Lihat Try-out
+                Mulai Try-out
               </FooterActionButton>
               <FooterActionButton to="/auth/login" variant="secondary">
                 <UserLineIcon />
@@ -1563,7 +1532,7 @@ function FooterCta() {
                 <HeartLineIcon />
               </div>
               <p className="text-[17px] leading-relaxed text-stone-500">
-                Bergabung bersama <span className="font-bold text-[var(--brand-primary)]">25.000+</span> apoteker muda yang sedang berjuang meraih mimpi.
+                Latihan pertama tidak perlu menunggu. Mulai gratis hari ini.
               </p>
             </div>
           </div>
