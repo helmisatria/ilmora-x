@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { acquisitionIntentSchema } from "./product-analytics";
 
-export const postLoginRedirectSchema = z.enum(["/premium"]);
+export const postLoginRedirectSchema = z.enum(["/premium", "/tryout"]);
 
 export const authSearchSchema = z.object({
   intent: acquisitionIntentSchema.optional(),

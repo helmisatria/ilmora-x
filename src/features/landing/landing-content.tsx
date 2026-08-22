@@ -78,7 +78,7 @@ export const heroMetrics = [
 export const heroNavItems = [
   { label: "Beranda", href: "#beranda" },
   { label: "Try-out", href: "#cara-kerja" },
-  { label: "Peringkat", href: "#hasil" },
+  { label: "Hasil", href: "#hasil" },
   { label: "Harga", href: "#paket" },
 ] as const;
 

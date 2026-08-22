@@ -1,173 +1,50 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect } from "react";
-import type { CSSProperties, ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import {
-  brandColors,
-  businessDetails,
-  finalCalloutCards,
-  focusCards,
-  heroMetrics,
-  journeySteps,
-  learningBadges,
-  plans,
-  popularTryouts,
-  premiumBenefits,
-  pricingPreviewTryouts,
-  pricingTrustItems,
-  recommendedActions,
-  resultTopics,
-  weakTopics,
-} from "./landing-content";
+import type { CSSProperties, ReactNode } from "react";
+import { TryoutIcon } from "../../components/TryoutIcon";
+import type { listMembershipProducts } from "../premium-access/checkout-functions";
+import type { listPublicPublishedTryouts } from "../tryout-content/student-tryout-catalog-functions";
+import { businessDetails, plans } from "./landing-content";
 import {
   ArrowUpRightIcon,
   BarChartIcon,
-  BoltBadgeIcon,
-  BookFrameIcon,
   BookOpenIcon,
   CheckCircleIcon,
-  ChevronRightIcon,
   ClockIcon,
-  CrownIcon,
-  FlameIcon,
-  FlaskIcon,
-  HeartLineIcon,
-  InfoIcon,
-  LargeStepIcon,
-  LegendItem,
-  LockBadgeIcon,
-  LoginArrowIcon,
-  MenuGridIcon,
-  NoteIcon,
-  PillBottleIcon,
-  ShieldBadgeIcon,
-  ShieldCheckIcon,
-  SparkBadgeIcon,
   SparkIcon,
-  StarBadgeIcon,
   TargetIcon,
-  TrendingUpIcon,
-  TrophyLineIcon,
-  UserLineIcon,
 } from "./landing-icons";
 import { useLandingLinkAnalytics } from "./landing-link-analytics";
 import { PublicNavigation } from "./public-navigation";
-import type { listMembershipProducts } from "../premium-access/checkout-functions";
 
-type JourneyStepNumber = (typeof journeySteps)[number];
 type MembershipProduct = Awaited<ReturnType<typeof listMembershipProducts>>[number];
+type PublicTryout = Awaited<ReturnType<typeof listPublicPublishedTryouts>>[number];
 
-const landingEase = [0.16, 1, 0.3, 1] as const;
-const landingRevealTransition = { duration: 0.8, ease: landingEase };
-const landingPanelTransition = { duration: 0.85, ease: landingEase };
-const landingPanelViewport = {
-  amount: 0.01,
-  margin: "0px 0px -16% 0px",
-  once: true,
+const revealTransition = {
+  duration: 0.7,
+  ease: [0.16, 1, 0.3, 1],
 } as const;
 
-type LandingMotionProps = {
-  children: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-};
-
-function getLandingClassName(baseClassName: string, className?: string) {
-  if (!className) return baseClassName;
-
-  return `${baseClassName} ${className}`;
-}
-
-function getHiddenState(shouldReduceMotion: boolean | null) {
-  if (shouldReduceMotion) return { opacity: 0 };
-
-  return { opacity: 0, y: 20 };
-}
-
-function getPanelHiddenState(shouldReduceMotion: boolean | null) {
-  if (shouldReduceMotion) return { opacity: 0 };
-
-  return { opacity: 0, y: 48 };
-}
-
-function getVisibleState(shouldReduceMotion: boolean | null) {
-  if (shouldReduceMotion) return { opacity: 1 };
-
-  return { opacity: 1, y: 0 };
-}
-
-function LandingReveal({ children, className }: LandingMotionProps) {
-  const shouldReduceMotion = useReducedMotion();
-
-  return (
-    <motion.div
-      animate={getVisibleState(shouldReduceMotion)}
-      className={getLandingClassName("landing-reveal", className)}
-      initial={getHiddenState(shouldReduceMotion)}
-      transition={landingRevealTransition}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function LandingPanel({ children, className, style }: LandingMotionProps) {
-  const shouldReduceMotion = useReducedMotion();
-
-  return (
-    <motion.div
-      className={getLandingClassName("landing-panel", className)}
-      initial={getPanelHiddenState(shouldReduceMotion)}
-      style={style}
-      transition={landingPanelTransition}
-      viewport={landingPanelViewport}
-      whileInView={getVisibleState(shouldReduceMotion)}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function LandingPanelArticle({
-  children,
-  className,
-  style,
-}: LandingMotionProps) {
-  const shouldReduceMotion = useReducedMotion();
-
-  return (
-    <motion.article
-      className={getLandingClassName("landing-panel", className)}
-      initial={getPanelHiddenState(shouldReduceMotion)}
-      style={style}
-      transition={landingPanelTransition}
-      viewport={landingPanelViewport}
-      whileInView={getVisibleState(shouldReduceMotion)}
-    >
-      {children}
-    </motion.article>
-  );
-}
-
-export function LandingPage({ products }: { products: MembershipProduct[] }) {
+export function LandingPage({
+  products,
+  tryouts,
+}: {
+  products: MembershipProduct[];
+  tryouts: PublicTryout[];
+}) {
   return (
     <main
-      className="w-full max-w-full overflow-x-hidden text-stone-900"
-      style={{
-        background:
-          "radial-gradient(900px 460px at 0% 0%, rgba(155,228,222,0.55), transparent 54%), radial-gradient(780px 420px at 100% 2%, rgba(255,231,186,0.58), transparent 55%), linear-gradient(180deg, #fffdf9 0%, #f7fbf8 34%, #edf5ff 62%, #f7fbff 100%)",
-        fontFamily:
-          "'Geist', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
-      }}
+      className="min-h-[100dvh] overflow-x-hidden bg-[#f7faf9] text-[#202124]"
+      style={{ fontFamily: "'Geist', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif" }}
     >
       <BusinessStructuredData products={products} />
-      <FixedGrain />
       <PublicNavigation isHomePage />
       <HeroSection />
-      <JourneySection />
-      <ProofSection />
+      <TryoutSection tryouts={tryouts} />
+      <LearningLoopSection />
       <PricingSection />
       <FooterCta />
+      <SiteFooter />
     </main>
   );
 }
@@ -210,7 +87,6 @@ function BusinessStructuredData({ products }: { products: MembershipProduct[] })
       })),
     },
   };
-
   const safeStructuredData = JSON.stringify(structuredData).replaceAll("<", "\\u003c");
 
   return (
@@ -221,1541 +97,575 @@ function BusinessStructuredData({ products }: { products: MembershipProduct[] })
   );
 }
 
-function FixedGrain() {
-  return (
-    <div
-      className="pointer-events-none fixed inset-0 z-40 opacity-[0.05]"
-      style={{
-        backgroundImage:
-          "radial-gradient(rgba(23,44,52,0.16) 0.8px, transparent 0.8px)",
-        backgroundSize: "20px 20px",
-      }}
-    />
-  );
-}
-
 function HeroSection() {
   return (
     <section
       id="beranda"
-      className="relative scroll-mt-32 overflow-hidden px-4 pb-24 pt-32 sm:px-6 md:pb-28 md:pt-40"
+      className="relative scroll-mt-24 overflow-hidden px-5 pb-20 pt-24 sm:px-6 lg:pb-24"
     >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-32 top-6 h-[360px] w-[360px] rounded-full border border-white/70" />
-        <div className="absolute right-[-140px] top-8 h-[620px] w-[620px] rounded-full border border-white/70" />
-        <div className="absolute left-[12%] top-[126px] h-[96px] w-[96px] rounded-full bg-[radial-gradient(circle,_rgba(146,211,201,0.28)_0%,_transparent_72%)]" />
-        <div className="absolute left-[11%] top-[146px] h-[86px] w-[86px] opacity-40" style={{ backgroundImage: "radial-gradient(#9ccfc5 1px, transparent 1px)", backgroundSize: "12px 12px" }} />
-        <div className="absolute bottom-[-120px] left-[-120px] h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle,_rgba(255,222,169,0.55)_0%,_transparent_70%)]" />
-      </div>
-
-      <div className="mx-auto grid w-full max-w-[1240px] items-start gap-14 lg:grid-cols-[1.04fr_0.96fr]">
-        <LandingReveal>
-          <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-[var(--brand-primary-dark)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
-            Platform latihan UKAI
-          </span>
-
-          <h1 className="mt-7 max-w-[12ch] text-[clamp(2.9rem,5.3vw,4.95rem)] font-[780] leading-[0.93] tracking-[-0.05em] text-[#202124]">
-            Uji kesiapanmu sebelum hari{" "}
-            <span className="text-[var(--brand-primary-dark)]">UKAI</span>
-          </h1>
-
-          <p className="mt-5 max-w-[40ch] text-[16px] font-medium leading-relaxed text-stone-600 sm:text-[17px]">
-            Kerjakan try-out dengan timer, lihat topik yang masih lemah, lalu
-            baca pembahasan untuk tahu kenapa jawabanmu benar atau salah.
-          </p>
-
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <HeroPrimaryLink to="/tryout">Mulai Try-out</HeroPrimaryLink>
-            <HeroSecondaryLink to="/auth/login">Masuk</HeroSecondaryLink>
-          </div>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {heroMetrics.map((metric) => (
-              <div
-                key={metric.label}
-                className="rounded-[1.4rem] border border-[#dcece6] bg-white px-4 py-4 shadow-[0_14px_30px_rgba(34,67,55,0.08)]"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                    style={{ background: metric.tone, color: metric.accent }}
-                  >
-                    {metric.icon}
-                  </div>
-                  <div>
-                    <div
-                      className="text-[34px] font-black leading-none tracking-tight"
-                      style={{ color: metric.accent }}
-                    >
-                      {metric.value}
-                    </div>
-                    <div className="mt-1 text-[13px] font-semibold text-stone-600">
-                      {metric.label}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </LandingReveal>
-
-        <LandingReveal className="lg:pl-2">
-          <HeroProductFrame />
-        </LandingReveal>
-      </div>
-    </section>
-  );
-}
-
-function HeroProductFrame() {
-  return (
-    <div className="rounded-[2rem] border border-[#d7ece6] bg-[rgba(255,255,255,0.72)] p-3 shadow-[0_26px_80px_rgba(127,170,155,0.2)] backdrop-blur-xl">
-      <div className="rounded-[1.8rem] border border-[#dcefeb] bg-[#fcfefd] p-4 text-stone-900 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9)]">
-        <div className="rounded-[1.6rem] border border-[#e6f2ee] bg-white p-5 shadow-[0_16px_32px_rgba(116,160,145,0.08)]">
-          <div className="flex items-center justify-between gap-4 border-b border-[#edf4f1] pb-4">
-            <div className="text-[13px] font-bold uppercase tracking-[0.08em] text-stone-500">
-              Daftar try-out
-            </div>
-            <a href="#cara-kerja" className="text-[13px] font-bold text-[var(--brand-primary-dark)] no-underline">
-              Lihat semua
-            </a>
-          </div>
-
-          <div className="mt-4 grid gap-3">
-            {popularTryouts.map((item) => (
-              <DashboardTryoutCard key={item.title} item={item} />
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
-          <DashboardMiniCard
-            title="Timer realistis"
-            icon={<ClockIcon />}
-            iconColor="#2bc2b0"
-          >
-            <TimerRing />
-          </DashboardMiniCard>
-
-          <DashboardMiniCard
-            title="Topik yang perlu diulang"
-            icon={<TargetIcon />}
-            iconColor="#ff5d6f"
-          >
-            <div className="mt-1 space-y-4">
-              {weakTopics.map((topic) => (
-                <TopicProgress key={topic.label} topic={topic} />
-              ))}
-            </div>
-
-            <a
-              href="#hasil"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[var(--brand-primary-tint)] px-4 py-3 text-[14px] font-bold text-[var(--brand-primary-dark)] no-underline"
-            >
-              Lihat analisis lengkap
-            </a>
-          </DashboardMiniCard>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-4 rounded-[1.5rem] border border-[#d7ece6] bg-[linear-gradient(180deg,#fbfffe_0%,#f6fffd_100%)] px-5 py-4 shadow-[0_10px_24px_rgba(130,174,160,0.08)] md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand-primary-tint)] text-[var(--brand-primary)]">
-              <SparkIcon />
-            </div>
-            <div>
-              <div className="text-[15px] font-bold text-[var(--brand-primary-dark)]">
-                Tahu langkah berikutnya
-              </div>
-              <p className="mt-1 text-[15px] text-stone-600">
-                Setelah selesai, kamu langsung tahu apa yang perlu diulang.
-              </p>
-            </div>
-          </div>
-
-          <a
-            href="#cara-kerja"
-            className="inline-flex items-center justify-center rounded-full border border-[#95d8ce] px-5 py-3 text-[14px] font-bold text-[var(--brand-primary-dark)] no-underline"
-          >
-            Pelajari cara kerja
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DashboardTryoutCard({
-  item,
-}: {
-  item: (typeof popularTryouts)[number];
-}) {
-  return (
-    <div className="flex items-center gap-4 rounded-[1.25rem] border border-[#e8f2ee] bg-white px-4 py-3.5 shadow-[0_10px_22px_rgba(138,178,164,0.08)]">
       <div
-        className="flex h-14 w-14 items-center justify-center rounded-[1rem]"
-        style={{ background: item.tone, color: item.accent }}
-      >
-        {item.icon}
-      </div>
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(720px 430px at 0% 0%, rgba(103,216,194,0.5), transparent 68%), radial-gradient(700px 440px at 100% 0%, rgba(255,213,118,0.48), transparent 70%), linear-gradient(180deg,#f8fffd 0%,#f3faf8 100%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.28]"
+        style={{
+          backgroundImage: "radial-gradient(#73b9ad 1.2px, transparent 1.2px)",
+          backgroundSize: "24px 24px",
+          maskImage: "linear-gradient(to bottom, black, transparent 78%)",
+        }}
+      />
+      <div className="pointer-events-none absolute -left-20 top-28 h-48 w-48 rounded-full border-[28px] border-white/45" />
+      <div className="pointer-events-none absolute -right-14 bottom-10 h-36 w-36 rotate-12 rounded-[36px] bg-[#ff8c87]/15" />
 
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-[15px] font-bold tracking-tight text-stone-800">
-            {item.title}
+      <div className="relative mx-auto grid w-full max-w-[1180px] items-center gap-12 lg:grid-cols-[1.04fr_0.96fr] lg:gap-16">
+        <Reveal>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#acdcd2] bg-white/80 px-3.5 py-2 text-[12px] font-black text-[var(--brand-primary)] shadow-[0_5px_0_#cdece5] backdrop-blur-sm">
+            <span className="text-[#18aa8e]"><SparkIcon /></span>
+            Latihan UKAI untuk calon apoteker
           </div>
-          <span
-            className="rounded-full px-2.5 py-1 text-[11px] font-black tracking-[0.06em]"
-            style={{ background: item.tone, color: item.accent }}
-          >
-            {item.pill}
-          </span>
-        </div>
-        <div className="mt-1 text-[14px] text-stone-500">{item.meta}</div>
-      </div>
+          <h1 className="mt-5 max-w-[12ch] text-[clamp(3rem,6vw,5.4rem)] font-[780] leading-[0.92] tracking-[-0.055em]">
+            Makin siap hadapi UKAI.
+          </h1>
+          <p className="mt-6 max-w-[34ch] text-[17px] leading-[1.7] text-stone-600 sm:text-[18px]">
+            Kerjakan try-out, temukan topik lemah, lalu pilih latihan berikutnya.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <TryoutLink entryPoint="hero_primary">Lihat try-out</TryoutLink>
+            <LoginLink>Masuk</LoginLink>
+          </div>
+        </Reveal>
 
-      <div className="text-stone-300">
-        <ChevronRightIcon />
+        <Reveal className="relative lg:justify-self-end">
+          <div className="relative mx-auto w-full max-w-[540px] px-1 py-10 sm:px-8 sm:py-12">
+            <FloatingBadge className="left-0 top-8 -rotate-3" tone="amber" icon={<ClockIcon />}>
+              Timer ujian
+            </FloatingBadge>
+            <FloatingBadge className="right-0 top-16 rotate-3" tone="mint" icon={<TargetIcon />}>
+              Topik lemah terlihat
+            </FloatingBadge>
+            <MascotHeroVisual />
+            <FloatingBadge className="bottom-5 right-4 -rotate-2" tone="coral" icon={<BookOpenIcon />}>
+              Pembahasan jelas
+            </FloatingBadge>
+          </div>
+        </Reveal>
       </div>
-    </div>
+    </section>
   );
 }
 
-function DashboardMiniCard({
-  title,
-  icon,
-  iconColor,
+function FloatingBadge({
   children,
+  className,
+  icon,
+  tone,
 }: {
-  title: string;
-  icon: ReactNode;
-  iconColor: string;
   children: ReactNode;
+  className: string;
+  icon: ReactNode;
+  tone: "amber" | "coral" | "mint";
 }) {
+  const shouldReduceMotion = useReducedMotion();
+  const tones = {
+    amber: "border-[#f1be4e] bg-[#fff5ce] text-[#8d5a00] shadow-[#e5ad34]",
+    coral: "border-[#ffaaa5] bg-[#fff0ee] text-[#a8423d] shadow-[#e97c76]",
+    mint: "border-[#8ed9c9] bg-[#e7fbf5] text-[#087c69] shadow-[#67bea9]",
+  };
+
   return (
-    <div className="rounded-[1.55rem] border border-[#dcefeb] bg-white p-5 shadow-[0_14px_28px_rgba(129,170,156,0.08)]">
-      <div className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.08em] text-stone-500">
-        <span style={{ color: iconColor }}>{icon}</span>
-        {title}
-      </div>
-      <div className="mt-5">{children}</div>
-    </div>
-  );
-}
-
-function TimerRing() {
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative h-40 w-40">
-        <svg
-          viewBox="0 0 160 160"
-          className="h-full w-full -rotate-90"
-          width="160"
-          height="160"
-          aria-hidden="true"
-          style={{ display: "block", height: 160, width: 160 }}
-        >
-          <circle
-            cx="80"
-            cy="80"
-            r="56"
-            fill="none"
-            stroke="#e6f4f1"
-            strokeWidth="10"
-          />
-          <circle
-            cx="80"
-            cy="80"
-            r="56"
-            fill="none"
-            stroke="url(#timer-ring)"
-            strokeWidth="10"
-            strokeLinecap="round"
-            strokeDasharray="280 352"
-          />
-          <defs>
-            <linearGradient id="timer-ring" x1="0%" x2="100%" y1="0%" y2="0%">
-              <stop offset="0%" stopColor="var(--brand-primary-light)" />
-              <stop offset="100%" stopColor="var(--brand-sky)" />
-            </linearGradient>
-          </defs>
-        </svg>
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-[18px] font-black tracking-tight text-stone-800">
-            29:48
-          </div>
-          <div className="mt-1 text-[14px] text-stone-500">Sisa waktu</div>
-        </div>
-      </div>
-
-      <div className="mt-3 rounded-full bg-[var(--brand-primary-tint)] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[var(--brand-primary-dark)]">
-        30 MENIT
-      </div>
-    </div>
-  );
-}
-
-function TopicProgress({
-  topic,
-}: {
-  topic: (typeof weakTopics)[number];
-}) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-3 text-[15px]">
-        <span className="font-medium text-stone-700">{topic.label}</span>
-        <span className="font-bold text-stone-600">{topic.value}</span>
-      </div>
-      <div className="h-2.5 rounded-full bg-[#f5efe5]">
-        <div
-          className="h-full rounded-full"
-          style={{ width: topic.width, background: topic.tone }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function JourneySection() {
-  return (
-    <section
-      id="cara-kerja"
-      className="relative scroll-mt-32 px-4 py-24 text-stone-900 sm:px-6 md:py-32"
+    <motion.div
+      animate={shouldReduceMotion ? undefined : { y: [0, -5, 0] }}
+      className={`absolute z-10 hidden items-center gap-2 rounded-[14px] border px-3.5 py-2.5 text-[12px] font-black shadow-[0_5px_0] sm:flex ${tones[tone]} ${className}`}
+      transition={{ duration: 3.4, ease: "easeInOut", repeat: Infinity }}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[14%] top-[6%] h-[320px] w-[320px] rounded-full border border-[rgba(181,228,221,0.55)]" />
-        <div className="absolute right-[-140px] top-[18%] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,_rgba(227,247,243,0.72)_0%,_transparent_68%)]" />
-        <div
-          className="absolute bottom-[8%] left-[3%] h-[120px] w-[120px] opacity-35"
-          style={{ backgroundImage: "radial-gradient(#a6d9cf 1.2px, transparent 1.2px)", backgroundSize: "12px 12px" }}
+      {icon}
+      {children}
+    </motion.div>
+  );
+}
+
+function MascotHeroVisual() {
+  return (
+    <div className="relative mx-auto flex aspect-[1/1.04] w-full max-w-[480px] items-end justify-center overflow-hidden rounded-[42%_42%_36%_36%] border border-[#9fd9ce] bg-[radial-gradient(circle_at_50%_34%,#fff8d7_0%,#dcf7ef_48%,#acdcd0_100%)] shadow-[0_10px_0_#91cfc2,0_32px_70px_rgba(45,93,79,0.18)]">
+      <div className="pointer-events-none absolute inset-0 opacity-30" style={{ backgroundImage: "radial-gradient(#3da993 1.25px, transparent 1.25px)", backgroundSize: "21px 21px" }} />
+      <div className="pointer-events-none absolute bottom-7 h-16 w-[70%] rounded-full bg-[#23715f]/15 blur-xl" />
+      <SampleAnalysisCard />
+      <img
+        src="/ilmorax-owl-pharmacist.webp"
+        alt="Maskot burung hantu IlmoraX memakai jas apoteker dan membawa kartu belajar"
+        className="relative z-10 h-[88%] w-auto max-w-none translate-x-[18%] object-contain object-bottom drop-shadow-[0_18px_22px_rgba(48,76,67,0.18)] sm:h-[91%]"
+        fetchPriority="high"
+      />
+    </div>
+  );
+}
+
+function SampleAnalysisCard() {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      animate={shouldReduceMotion ? undefined : { y: [0, 4, 0], rotate: [-4, -3, -4] }}
+      className="absolute left-[4%] top-[11%] z-[1] w-[61%] -rotate-3 rounded-[20px] border border-[#b6ddd5] bg-white/95 p-3.5 shadow-[0_7px_0_#8bc9bd,0_20px_35px_rgba(31,94,80,0.15)] backdrop-blur-sm sm:left-[5%] sm:top-[12%] sm:w-[58%] sm:p-5"
+      transition={{ duration: 4.8, ease: "easeInOut", repeat: Infinity }}
+    >
+      <div className="flex items-center gap-2 text-[10px] font-black text-[#d95361] sm:text-[11px]">
+        <TargetIcon />
+        <span>Contoh analisis</span>
+      </div>
+
+      <div className="mt-3.5 space-y-3 sm:mt-5 sm:space-y-4">
+        <SampleTopicRow
+          label="Farmakokinetik"
+          status="Perlu diulang"
+          tone="coral"
+        />
+        <SampleTopicRow
+          label="Kardiovaskular"
+          status="Mulai kuat"
+          tone="amber"
         />
       </div>
 
-      <div className="relative mx-auto grid w-full max-w-[1240px] gap-12 lg:grid-cols-[1fr_1.16fr] lg:items-start">
-        <LandingPanel className="pt-6 lg:sticky lg:top-28 lg:self-start">
-          <div className="flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.18em] text-[var(--brand-primary)]">
-            <span className="h-3.5 w-3.5 rounded-full bg-[var(--brand-primary)]" />
-            Cara belajar
-          </div>
-
-          <h2 className="mt-7 max-w-[12.5ch] text-[clamp(2.6rem,4.3vw,4.35rem)] font-[720] leading-[0.98] tracking-[-0.045em] text-[#202124]">
-            Kerjakan try-out. Lihat yang belum dikuasai. Ulangi.
-          </h2>
-
-          <p className="mt-6 max-w-[34ch] text-[17px] leading-[1.8] text-stone-500">
-            Setelah try-out, lihat akurasi tiap topik. Gunakan hasilnya untuk
-            menentukan latihan berikutnya.
-          </p>
-
-          <div id="lencana" className="mt-10 grid scroll-mt-32 gap-1 sm:grid-cols-3">
-            {learningBadges.map((badge) => (
-              <div
-                key={badge.title}
-                className="rounded-md border border-[#e8eeeb] bg-white px-3 py-4 shadow-[0_14px_30px_rgba(110,156,143,0.08)]"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
-                    style={{
-                      background: badge.tone,
-                      color: badge.accent,
-                      borderColor: `${badge.accent}22`,
-                    }}
-                  >
-                    {badge.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[17px] font-bold text-stone-800">
-                      {badge.title}
-                    </div>
-                    <div className="mt-1.5 text-[13px] leading-relaxed text-stone-500">
-                      {badge.body}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-10 flex items-center gap-4 rounded-[1.45rem] border border-[#bce8e0] bg-[linear-gradient(180deg,#f8fffd_0%,#f3fffc_100%)] px-5 py-5 shadow-[0_16px_36px_rgba(110,170,153,0.08)]">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] bg-[var(--brand-primary)] text-white shadow-[0_12px_24px_rgba(24,183,161,0.22)]">
-              <BarChartIcon />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[16px] text-stone-600">
-                Hasil try-outmu tersimpan di satu tempat.
-              </div>
-              <div className="mt-1 text-[16px] font-bold text-[var(--brand-primary-dark)]">
-                Pakai untuk menentukan latihan berikutnya.
-              </div>
-            </div>
-            <div className="hidden text-[#8cd9cb] sm:block">
-              <TrendingUpIcon />
-            </div>
-          </div>
-        </LandingPanel>
-
-        <div className="grid gap-5">
-          {journeySteps.map((stepNumber) => (
-            <JourneyStepCard key={stepNumber} stepNumber={stepNumber} />
-          ))}
-        </div>
-      </div>
-    </section>
+      <a
+        href="#hasil"
+        className="mt-3.5 flex min-h-9 items-center justify-between rounded-[11px] bg-[#eef7fb] px-3 text-[10px] font-black text-[var(--brand-primary)] transition-transform hover:-translate-y-0.5 active:translate-y-0 sm:mt-5 sm:min-h-10 sm:text-[11px]"
+      >
+        Lihat contoh hasil
+        <ArrowUpRightIcon />
+      </a>
+    </motion.div>
   );
 }
 
-function ProofSection() {
-  return (
-    <section
-      id="hasil"
-      className="relative scroll-mt-32 px-4 pb-24 text-stone-900 sm:px-6 md:pb-32"
-    >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-[52%] top-[4%] h-[240px] w-[240px] rounded-full bg-[radial-gradient(circle,_rgba(228,247,243,0.85)_0%,_transparent_68%)]" />
-        <div className="absolute right-[4%] top-[1%] h-[260px] w-[260px] rounded-full bg-[radial-gradient(circle,_rgba(255,239,210,0.72)_0%,_transparent_72%)]" />
-      </div>
-
-      <div className="relative mx-auto w-full max-w-[1240px]">
-        <LandingPanel>
-          <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[12px] font-black uppercase tracking-[0.16em] text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
-            Hasil belajar
-          </span>
-
-          <h2 className="mt-7 max-w-[11ch] text-[clamp(2.9rem,5vw,5rem)] font-[740] leading-[0.98] tracking-[-0.05em] text-[#202124]">
-            Skor hanyalah awal.
-          </h2>
-
-          <p className="mt-6 max-w-[36ch] text-[18px] leading-[1.75] text-stone-500">
-            Lihat akurasi per topik, periksa jawabanmu, lalu pilih materi yang
-            perlu kamu ulangi.
-          </p>
-        </LandingPanel>
-
-        <div className="mt-12 grid gap-6 lg:grid-cols-[1.55fr_1fr]">
-          <ResultAnalyticsCard />
-
-          <div className="grid gap-5">
-            {focusCards.map((card) => (
-              <ResultFeatureCard key={card.title} card={card} />
-            ))}
-
-            <LandingPanel className="flex items-center gap-4 rounded-[1.6rem] border border-[#cceee7] bg-[linear-gradient(180deg,#f7fffd_0%,#f2fdfb_100%)] px-5 py-4 shadow-[0_14px_30px_rgba(112,174,160,0.08)]">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--brand-primary-tint)] text-[var(--brand-primary)]">
-                <ShieldBadgeIcon />
-              </div>
-              <p className="text-[16px] leading-relaxed text-stone-500">
-                Semua hasil disimpan aman di akunmu dan bisa diakses kapan saja.
-              </p>
-            </LandingPanel>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ResultAnalyticsCard() {
-  return (
-    <LandingPanelArticle className="rounded-[2.1rem] border border-[#dcefeb] bg-white p-6 shadow-[0_18px_46px_rgba(120,165,152,0.1)]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-[1.2rem] bg-[var(--brand-primary-tint)] text-[var(--brand-primary)]">
-            <LargeStepIcon><FlaskIcon /></LargeStepIcon>
-          </div>
-          <div>
-            <div className="text-[17px] font-bold text-stone-800">UKAI Tryout 1</div>
-            <div className="mt-1 text-[15px] text-stone-500">
-              Selesai dikerjakan hari ini • 30 menit
-            </div>
-          </div>
-        </div>
-
-        <span className="rounded-full bg-[var(--brand-primary-tint)] px-4 py-2 text-[13px] font-bold text-[var(--brand-primary)]">
-          KLINIS
-        </span>
-      </div>
-
-      <div className="mt-6 rounded-[1.7rem] border border-[#d6efea] bg-[linear-gradient(180deg,#fafdfe_0%,#fbfffd_100%)] p-5">
-        <div className="grid gap-5 md:grid-cols-[1fr_1fr_1fr_116px] md:items-center">
-          <MetricBlock label="SKOR ANDA" value="86" suffix="/100" subtext="Di atas rata-rata" tone="var(--brand-primary)" />
-          <MetricBlock label="PERSENTIL" value="78" suffix="/100" subtext="Lebih baik dari 78% peserta" />
-          <MetricBlock label="PERINGKAT" value="#12" subtext="dari 1.248 peserta" />
-          <div className="flex justify-center md:justify-end">
-            <div className="flex h-24 w-24 items-center justify-center rounded-[1.6rem] bg-[linear-gradient(180deg,var(--brand-primary-tint)_0%,#f8fffd_100%)] text-[var(--brand-primary)] shadow-[0_12px_24px_rgba(120,180,164,0.12)]">
-              <ShieldCheckIcon />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-[1.6rem] border border-[#edf0ef] bg-white p-5">
-          <div className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-stone-500">
-            Akurasi per topik
-            <InfoIcon />
-          </div>
-
-          <div className="mt-5 space-y-5">
-            {resultTopics.map((topic) => (
-              <ResultTopicRow key={topic.label} topic={topic} />
-            ))}
-          </div>
-
-          <a href="#paket" className="mt-6 inline-flex items-center gap-2 text-[15px] font-bold text-[var(--brand-primary)] no-underline">
-            Lihat analisis lengkap
-            <ArrowUpRightIcon />
-          </a>
-        </div>
-
-        <div className="rounded-[1.6rem] border border-[#edf0ef] bg-white p-5">
-          <div className="text-[13px] font-bold uppercase tracking-[0.04em] text-stone-500">
-            Latihan berikutnya
-          </div>
-
-          <div className="mt-4 grid gap-3">
-            {recommendedActions.map((item) => (
-              <RecommendedActionCard key={item.title} item={item} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-3 rounded-[1.6rem] border border-[#edf0ef] bg-white p-5 sm:grid-cols-3">
-        <MiniResultStat icon={<FlameIcon />} tone="#f59a1b" label="STREAK HARIAN" value="7" suffix="hari" />
-        <MiniResultStat icon={<BoltBadgeIcon />} tone="#69cf31" label="XP DIDAPATKAN" value="+860" suffix="XP" />
-        <MiniResultStat icon={<ClockIcon />} tone="#2892f5" label="AKURASI" value="86%" suffix="Benar" />
-      </div>
-    </LandingPanelArticle>
-  );
-}
-
-function ResultFeatureCard({
-  card,
-}: {
-  card: (typeof focusCards)[number];
-}) {
-  return (
-    <LandingPanelArticle className="rounded-[1.9rem] border border-[#e5ece9] bg-white p-6 shadow-[0_16px_38px_rgba(120,165,152,0.08)]">
-      <div className="flex flex-col items-start gap-5 sm:flex-row">
-        <div
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.4rem] border sm:h-24 sm:w-24 sm:rounded-[1.6rem]"
-          style={{ background: card.tone, color: card.accent, borderColor: `${card.accent}20` }}
-        >
-          <LargeStepIcon>{card.icon}</LargeStepIcon>
-        </div>
-
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className="rounded-xl px-3 py-1.5 text-[16px] font-black"
-              style={{ background: `${card.accent}12`, color: card.accent }}
-            >
-              {card.number}
-            </span>
-            <h3 className="text-[22px] font-bold tracking-tight text-stone-800">
-              {card.title}
-            </h3>
-          </div>
-
-          <p className="mt-4 max-w-[33ch] text-[16px] leading-[1.72] text-stone-500">
-            {card.body}
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {card.chips.map((chip) => (
-              <span
-                key={chip}
-                className="rounded-full border px-3 py-2 text-[13px] font-semibold"
-                style={{ color: card.accent, background: `${card.accent}10`, borderColor: `${card.accent}22` }}
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </LandingPanelArticle>
-  );
-}
-
-function MetricBlock({
+function SampleTopicRow({
   label,
-  value,
-  suffix,
-  subtext,
+  status,
   tone,
 }: {
   label: string;
-  value: string;
-  suffix?: string;
-  subtext: string;
-  tone?: string;
+  status: string;
+  tone: "amber" | "coral";
 }) {
+  const statusTone = {
+    amber: "bg-[#fff0c8] text-[#986100]",
+    coral: "bg-[#ffebed] text-[#b13f4d]",
+  };
+
   return (
-    <div className="min-w-0 md:border-r md:border-[#e2efea] md:pr-5 last:md:border-r-0">
-      <div className="text-[13px] font-bold uppercase tracking-[0.04em] text-stone-400">
+    <div>
+      <p className="truncate text-[11px] font-black text-stone-700 sm:text-[13px]">
         {label}
-      </div>
-      <div className="mt-2 flex items-end gap-2">
-        <span className="text-[52px] font-[760] leading-none tracking-[-0.05em] text-stone-800">
-          {value}
-        </span>
-        {suffix ? (
-          <span className="pb-1 text-[18px] font-semibold text-stone-400">
-            {suffix}
-          </span>
-        ) : null}
-      </div>
-      <div
-        className="mt-3 text-[15px]"
-        style={{ color: tone ?? "#7b8791" }}
-      >
-        {subtext}
-      </div>
-    </div>
-  );
-}
-
-function ResultTopicRow({
-  topic,
-}: {
-  topic: (typeof resultTopics)[number];
-}) {
-  return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-      <div
-        className="flex h-10 w-10 items-center justify-center rounded-full border"
-        style={{ color: topic.tone, background: `${topic.tone}12`, borderColor: `${topic.tone}20` }}
-      >
-        {topic.icon}
-      </div>
-      <div>
-        <div className="text-[15px] font-semibold text-stone-700">{topic.label}</div>
-        <div className="mt-2 h-1.5 rounded-full bg-[#f1ece8]">
-          <div className="h-full rounded-full" style={{ width: topic.width, background: topic.tone }} />
-        </div>
-      </div>
-      <div className="text-[15px] font-bold text-stone-500">{topic.value}</div>
-    </div>
-  );
-}
-
-function RecommendedActionCard({
-  item,
-}: {
-  item: (typeof recommendedActions)[number];
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-[1.25rem] border border-[#edf0ef] bg-[#fcfdfd] px-4 py-3">
-      <div
-        className="flex h-11 w-11 items-center justify-center rounded-full"
-        style={{ background: item.tone, color: item.accent }}
-      >
-        {item.icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[16px] font-semibold text-stone-700">{item.title}</div>
-        <div className="mt-1 text-[14px] text-stone-500">{item.meta}</div>
-      </div>
-      <span className="text-stone-300">
-        <ChevronRightIcon />
+      </p>
+      <span className={`mt-1.5 inline-flex rounded-full px-2 py-1 text-[9px] font-black sm:text-[10px] ${statusTone[tone]}`}>
+        {status}
       </span>
     </div>
   );
 }
 
-function MiniResultStat({
-  icon,
-  tone,
-  label,
-  value,
-  suffix,
-}: {
-  icon: ReactNode;
-  tone: string;
-  label: string;
-  value: string;
-  suffix: string;
-}) {
+function TryoutSection({ tryouts }: { tryouts: PublicTryout[] }) {
   return (
-    <div className="flex items-center gap-4 sm:border-r sm:border-[#edf0ef] sm:pr-4 last:sm:border-r-0">
-      <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-        style={{ background: `${tone}12`, color: tone }}
-      >
-        {icon}
+    <section id="cara-kerja" className="relative scroll-mt-24 overflow-hidden bg-[#fff9e8] px-5 py-20 sm:px-6 lg:py-24">
+      <div className="pointer-events-none absolute -right-16 top-20 h-64 w-64 rounded-full bg-[#ffcf58]/20" />
+      <div className="pointer-events-none absolute bottom-16 left-4 grid grid-cols-5 gap-3 opacity-25">
+        {Array.from({ length: 20 }).map((_, index) => <i key={index} className="h-1.5 w-1.5 rounded-full bg-[#df9c16]" />)}
       </div>
-      <div>
-        <div className="text-[13px] font-bold uppercase tracking-[0.04em] text-stone-400">
-          {label}
-        </div>
-        <div className="mt-1 flex items-end gap-2">
-          <span className="text-[24px] font-bold tracking-tight text-stone-800">{value}</span>
-          <span className="pb-0.5 text-[15px] text-stone-500">{suffix}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function JourneyStepCard({
-  stepNumber,
-}: {
-  stepNumber: JourneyStepNumber;
-}) {
-  const cardTone = getJourneyStepTone(stepNumber);
-
-  return (
-    <LandingPanelArticle
-      className="overflow-hidden rounded-[2rem] border bg-white p-6 shadow-[0_16px_42px_rgba(110,156,143,0.08)]"
-      style={{
-        borderColor: cardTone.border,
-        boxShadow: `0 16px 42px rgba(110,156,143,0.08), inset 0 -3px 0 ${cardTone.glow}`,
-      }}
-    >
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(290px,340px)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(310px,360px)]">
-        <div className="min-w-0">
-          <div className="flex items-start">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3">
-                <span
-                  className="rounded-xl px-3 py-1.5 text-[16px] font-black"
-                  style={{ background: cardTone.pillBg, color: cardTone.pillColor }}
-                >
-                  {stepNumber}
-                </span>
-                <h3 className="text-[23px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[25px]">
-                  {getJourneyStepTitle(stepNumber)}
-                </h3>
-              </div>
-
-              <p className="mt-5 max-w-[28ch] text-[16px] leading-[1.72] text-stone-500 sm:text-[17px]">
-                {getJourneyStepBody(stepNumber)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="min-w-0">{renderJourneyStepPreview(stepNumber)}</div>
-      </div>
-    </LandingPanelArticle>
-  );
-}
-
-function getJourneyStepTone(stepNumber: JourneyStepNumber) {
-  if (stepNumber === "01") {
-    return {
-      border: "#cdeee7",
-      glow: "rgba(35,191,174,0.22)",
-      pillBg: "var(--brand-primary-tint)",
-      pillColor: "#1db39d",
-    };
-  }
-
-  if (stepNumber === "02") {
-    return {
-      border: "#ffdadd",
-      glow: "rgba(255,121,133,0.18)",
-      pillBg: "#fff0f2",
-      pillColor: "#ff6876",
-    };
-  }
-
-  return {
-    border: "#ead7ff",
-    glow: "rgba(181,120,255,0.18)",
-    pillBg: "#f5ecff",
-    pillColor: "#a967ff",
-  };
-}
-
-function getJourneyStepTitle(stepNumber: JourneyStepNumber) {
-  if (stepNumber === "02") return "Lihat topik yang perlu diulang";
-  if (stepNumber === "03") return "Pilih latihan berikutnya";
-
-  return "Kerjakan try-out";
-}
-
-function getJourneyStepBody(stepNumber: JourneyStepNumber) {
-  if (stepNumber === "01") {
-    return "Kerjakan try-out dengan timer. Tandai soal yang masih meragukan dan selesaikan sesuai waktumu.";
-  }
-
-  if (stepNumber === "02") {
-    return "Begitu selesai, hasilmu menunjukkan topik dengan akurasi terendah dan bagian yang perlu kamu ulangi.";
-  }
-
-  return "Buka pembahasan, pahami konsepnya, lalu lanjutkan dengan latihan yang sesuai hasilmu.";
-}
-
-function renderJourneyStepPreview(stepNumber: JourneyStepNumber) {
-  if (stepNumber === "01") return <SimulationPreview />;
-  if (stepNumber === "02") return <WeakTopicPreview />;
-
-  return <RecommendationPreview />;
-}
-
-function SimulationPreview() {
-  return (
-    <div className="rounded-[1.55rem] border border-[#dcefeb] bg-[linear-gradient(180deg,#f7fffd_0%,#fbfffe_100%)] p-4 shadow-[0_10px_24px_rgba(114,170,156,0.08)]">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[1rem] border border-[#e7efec] bg-white px-4 py-3">
-          <div className="text-[13px] text-stone-500">Sisa Waktu</div>
-          <div className="mt-2 flex items-end gap-2 text-stone-800">
-            <span className="text-[18px] font-black">29 : 45</span>
-            <span className="pb-0.5 text-[13px] text-stone-500">menit</span>
-          </div>
-        </div>
-        <div className="rounded-[1rem] border border-[#e7efec] bg-white px-4 py-3">
-          <div className="text-[13px] text-stone-500">Soal ke</div>
-          <div className="mt-2 flex items-end justify-between gap-2">
-            <span className="text-[18px] font-black text-stone-800">12 / 20</span>
-            <span className="text-[var(--brand-primary)]">
-              <MenuGridIcon />
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-6 gap-2">
-        {["7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"].map((item) => {
-          return (
-            <div
-              key={item}
-              className="flex h-10 items-center justify-center rounded-full border text-[13px] font-bold"
-              style={getSimulationQuestionStyle(item)}
-            >
-              {item}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-stone-500">
-        <LegendItem tone="var(--brand-primary)" label="Terjawab" />
-        <LegendItem tone="#f4ab2c" label="Ragu-ragu" />
-        <LegendItem tone="#ff7b88" label="Belum dijawab" />
-      </div>
-    </div>
-  );
-}
-
-function getSimulationQuestionStyle(item: string): CSSProperties {
-  if (item === "12") {
-    return {
-      background: "var(--brand-primary)",
-      color: "#ffffff",
-      borderColor: "#bce8df",
-    };
-  }
-
-  if (["7", "8", "9", "10", "11"].includes(item)) {
-    return {
-      background: "#eefaf7",
-      color: "#15a390",
-      borderColor: "#bce8df",
-    };
-  }
-
-  if (["13", "14"].includes(item)) {
-    return {
-      background: "#fff4f5",
-      color: "#ff7d89",
-      borderColor: "#ffd7dc",
-    };
-  }
-
-  return {
-    background: "#ffffff",
-    color: "#777777",
-    borderColor: "#e5ece9",
-  };
-}
-
-function WeakTopicPreview() {
-  const rows = [
-    { label: "Farmakologi", value: "42%", width: "42%", tone: "#ff6b78", icon: <PillBottleIcon /> },
-    { label: "Kardiovaskular", value: "58%", width: "58%", tone: "#ff8e2a", icon: <HeartLineIcon /> },
-    { label: "Antibiotik & Antinfeksi", value: "63%", width: "63%", tone: "#f0aa30", icon: <SparkBadgeIcon /> },
-    { label: "Farmasi Klinik Lanjut", value: "82%", width: "82%", tone: "#70cc45", icon: <LockBadgeIcon /> },
-  ] as const;
-
-  return (
-    <div className="rounded-[1.55rem] border border-[#ffe3e6] bg-[linear-gradient(180deg,#fffefe_0%,#fffaf9_100%)] p-4 shadow-[0_10px_24px_rgba(255,135,145,0.08)]">
-      <div className="flex items-center justify-between gap-4">
-        <div className="text-[16px] font-bold text-stone-800">Topik terlemah</div>
-        <div className="max-w-[150px] truncate rounded-full border border-[#f3ece8] bg-white px-3 py-1 text-[11px] text-stone-400">
-          Berdasarkan akurasi
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-4">
-        {rows.map((row) => (
-          <div key={row.label} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl border"
-              style={{ color: row.tone, background: `${row.tone}12`, borderColor: `${row.tone}24` }}
-            >
-              {row.icon}
-            </div>
-            <div>
-              <div className="text-[15px] font-semibold text-stone-700">{row.label}</div>
-              <div className="mt-2 h-1.5 rounded-full bg-[#f4ece8]">
-                <div className="h-full rounded-full" style={{ width: row.width, background: row.tone }} />
-              </div>
-            </div>
-            <div className="text-[14px] font-bold" style={{ color: row.tone }}>
-              {row.value}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function RecommendationPreview() {
-  const chips = [
-    { label: "Ringkasan Materi", tone: brandColors.primary, bg: brandColors.primaryTint },
-    { label: "Latihan Topik", tone: "#2d9cff", bg: "#edf5ff" },
-    { label: "Video Pembahasan", tone: "#f0a22c", bg: "#fff4df" },
-    { label: "Soal Sejenis", tone: "#a86bff", bg: "#f5ecff" },
-  ] as const;
-
-  return (
-    <div className="rounded-[1.55rem] border border-[#eee0ff] bg-[linear-gradient(180deg,#fbf8ff_0%,#ffffff_100%)] p-4 shadow-[0_10px_24px_rgba(177,120,255,0.08)]">
-      <div className="rounded-[1.1rem] border border-[#efe8f9] bg-white px-4 py-3">
-        <div className="flex items-start justify-between gap-3">
+      <div className="relative mx-auto w-full max-w-[1180px]">
+        <Reveal className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
           <div>
-            <div className="flex items-center gap-2 text-[14px] font-bold text-stone-700">
-              <span className="text-[#4aa4ff]">
-                <NoteIcon />
-              </span>
-              Pembahasan
-            </div>
-            <p className="mt-2 max-w-[31ch] text-[14px] leading-relaxed text-stone-500">
-              ACE inhibitor bekerja dengan menghambat enzim ACE sehingga
-              menurunkan angiotensin II dan menurunkan tekanan darah.
-            </p>
+            <p className="text-[13px] font-black text-[#ad6b00]">Try-out tersedia</p>
+            <h2 className="mt-4 max-w-[12ch] text-[clamp(2.5rem,5vw,4.5rem)] font-[760] leading-[0.98] tracking-[-0.05em]">
+              Pilih yang mau kamu kerjakan.
+            </h2>
           </div>
-          <span className="text-stone-300">
-            <ChevronRightIcon />
-          </span>
-        </div>
-      </div>
+          <p className="max-w-[46ch] text-[17px] leading-[1.7] text-stone-600 lg:justify-self-end">
+            Lihat judul, jumlah soal, dan durasinya sebelum masuk. Akun diperlukan untuk menyimpan progresmu.
+          </p>
+        </Reveal>
 
-      <div className="mt-4 rounded-[1.1rem] border border-[#efe8f9] bg-white px-4 py-4">
-        <div className="text-[14px] font-bold text-stone-700">Latihan berikutnya</div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {chips.map((chip) => (
-            <span
-              key={chip.label}
-              className="rounded-full border px-3 py-2 text-[13px] font-semibold"
-              style={{ color: chip.tone, background: chip.bg, borderColor: `${chip.tone}24` }}
-            >
-              {chip.label}
-            </span>
-          ))}
+        <Reveal className="mt-10 overflow-hidden rounded-[26px] border border-[#ead9a8] bg-white shadow-[0_8px_0_#f1dfaa,0_26px_60px_rgba(130,92,22,0.08)]">
+          {tryouts.length > 0 ? (
+            <div className="divide-y divide-[#eee5ca]">
+              {tryouts.map((tryout) => (
+                <PublicTryoutRow key={tryout.id} tryout={tryout} />
+              ))}
+            </div>
+          ) : (
+            <div className="px-6 py-10 text-center sm:px-10">
+              <p className="text-[18px] font-bold">Daftar try-out sedang dimuat.</p>
+              <p className="mt-2 text-[14px] text-stone-500">Masuk untuk melihat katalog terbaru.</p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-4 border-t border-[#eee5ca] bg-[#fffdf7] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <p className="text-[13px] text-stone-500">
+              Setelah masuk, kamu bisa membuka seluruh katalog dan mulai mengerjakan.
+            </p>
+            <TryoutLink entryPoint="primary_link">Lihat semua try-out</TryoutLink>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function PublicTryoutRow({ tryout }: { tryout: PublicTryout }) {
+  const accessLabel = tryout.accessLevel === "free" ? "Gratis" : "Premium";
+  const colorStyle = {
+    "--tryout-color": tryout.categoryColor,
+  } as CSSProperties;
+
+  return (
+    <div
+      className="group grid gap-4 px-5 py-5 transition-colors hover:bg-[#fffcf1] sm:grid-cols-[auto_1fr_auto] sm:items-center sm:px-7"
+      style={colorStyle}
+    >
+      <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[color-mix(in_srgb,var(--tryout-color)_14%,white)] text-[var(--tryout-color)] shadow-[0_4px_0_color-mix(in_srgb,var(--tryout-color)_22%,white)] transition-transform group-hover:-rotate-3 group-hover:scale-105">
+        <TryoutIcon icon={tryout.icon} tryoutId={tryout.id} />
+      </div>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h3 className="text-[17px] font-bold tracking-tight">{tryout.title}</h3>
+          <span className="rounded-full bg-[color-mix(in_srgb,var(--tryout-color)_12%,white)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--tryout-color)]">{accessLabel}</span>
         </div>
+        <p className="mt-1 text-[13px] text-stone-500">{tryout.categoryName}</p>
+      </div>
+      <div className="flex items-center gap-3 text-[12px] font-bold text-stone-600 sm:justify-end">
+        <span className="rounded-full bg-stone-100 px-3 py-1.5">{tryout.questionCount} soal</span>
+        <span className="rounded-full bg-stone-100 px-3 py-1.5">{tryout.durationMinutes} menit</span>
+        <ArrowUpRightIcon />
       </div>
     </div>
+  );
+}
+
+function LearningLoopSection() {
+  const steps = [
+    {
+      title: "Kerjakan dengan timer",
+      body: "Jawab seperti saat ujian dan tandai soal yang masih meragukan.",
+      icon: <ClockIcon />,
+      tone: "bg-[#e8f7ff] text-[#1878a8] shadow-[#b8dff1]",
+    },
+    {
+      title: "Periksa jawaban",
+      body: "Lihat jawaban benar, pembahasan, dan materi yang perlu dibaca lagi.",
+      icon: <BookOpenIcon />,
+      tone: "bg-[#fff0ee] text-[#bd4f50] shadow-[#f1c2bd]",
+    },
+    {
+      title: "Ulangi topik lemah",
+      body: "Gunakan akurasi per topik untuk memilih latihan berikutnya.",
+      icon: <TargetIcon />,
+      tone: "bg-[#eaf9e4] text-[#438d31] shadow-[#c7e7bc]",
+    },
+  ];
+
+  return (
+    <section id="hasil" className="relative scroll-mt-24 overflow-hidden px-5 py-20 sm:px-6 lg:py-24">
+      <div className="pointer-events-none absolute -left-24 bottom-2 h-64 w-64 rounded-full border-[32px] border-[#bcebdd]/30" />
+      <div className="mx-auto grid w-full max-w-[1180px] gap-14 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
+        <Reveal>
+          <p className="text-[13px] font-bold text-[var(--brand-primary)]">Setelah try-out</p>
+          <h2 className="mt-4 max-w-[10ch] text-[clamp(2.7rem,5vw,4.8rem)] font-[760] leading-[0.96] tracking-[-0.05em]">
+            Skor hanyalah awal.
+          </h2>
+          <p className="mt-6 max-w-[37ch] text-[17px] leading-[1.7] text-stone-600">
+            Hasilmu menunjukkan topik yang sudah kuat dan bagian yang perlu kamu ulangi.
+          </p>
+        </Reveal>
+
+        <Reveal>
+          <div className="relative space-y-4 before:absolute before:bottom-10 before:left-7 before:top-10 before:w-1 before:rounded-full before:bg-[#d8e8e3]">
+            {steps.map((step, index) => (
+              <div
+                key={step.title}
+                className="relative grid grid-cols-[auto_1fr] gap-5 rounded-[22px] border border-[#dce9e5] bg-white p-5 shadow-[0_6px_0_#e0ebe8] transition-transform hover:-translate-y-1 sm:gap-7 sm:p-6"
+              >
+                <div className={`z-10 flex h-14 w-14 items-center justify-center rounded-[17px] shadow-[0_5px_0] ${step.tone}`}>
+                  {step.icon}
+                </div>
+                <div>
+                  <p className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-stone-400">Langkah {index + 1}</p>
+                  <h3 className="text-[20px] font-bold tracking-tight">{step.title}</h3>
+                  <p className="mt-2 max-w-[44ch] text-[15px] leading-[1.7] text-stone-600">
+                    {step.body}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      </div>
+    </section>
   );
 }
 
 function PricingSection() {
   return (
-    <section
-      id="paket"
-      className="relative scroll-mt-32 px-4 pb-24 text-stone-900 sm:px-6 md:pb-32"
-    >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute right-0 top-0 h-[360px] w-[360px] bg-[radial-gradient(circle,_rgba(255,226,173,0.72)_0%,_transparent_70%)]" />
-        <div className="absolute left-[6%] top-[24%] text-[var(--brand-primary)] opacity-90">
-          <SparkIcon />
-        </div>
-        <div className="absolute right-[12%] top-[12%] text-[#f5b12e] opacity-90">
-          <SparkIcon />
-        </div>
-      </div>
-
-      <div className="relative mx-auto w-full max-w-[1240px]">
-        <LandingPanel>
-          <span className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-primary-tint)] px-5 py-3 text-[12px] font-black uppercase tracking-[0.16em] text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_rgba(24,183,161,0.08)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)]" />
-            Paket belajar
-          </span>
-
-          <h2 className="mt-7 max-w-[14ch] text-[clamp(2.8rem,4.8vw,4.7rem)] font-[740] leading-[0.98] tracking-[-0.05em] text-[#202124]">
-            Gratis.
+    <section id="paket" className="relative scroll-mt-24 overflow-hidden bg-[#fff8eb] px-5 py-20 sm:px-6 lg:py-24">
+      <div className="pointer-events-none absolute inset-0 opacity-25" style={{ backgroundImage: "radial-gradient(#e3b95f 1.25px, transparent 1.25px)", backgroundSize: "24px 24px", maskImage: "linear-gradient(to bottom, black, transparent 88%)" }} />
+      <div className="pointer-events-none absolute -right-20 top-12 h-72 w-72 rounded-full bg-[#f5b544]/18" />
+      <div className="relative mx-auto w-full max-w-[1180px]">
+        <Reveal>
+          <h2 className="max-w-[12ch] text-[clamp(2.7rem,5vw,4.8rem)] font-[760] leading-[0.96] tracking-[-0.05em] text-stone-900">
+            Mulai gratis.
           </h2>
-
-          <p className="mt-6 max-w-[42ch] text-[18px] leading-[1.75] text-stone-500">
-            Coba try-out dasar tanpa biaya. Upgrade saat kamu ingin melihat
-            pola jawaban, pembahasan lengkap, dan latihan Premium.
+          <p className="mt-5 max-w-[46ch] text-[17px] leading-[1.7] text-stone-600">
+            Pilih akses yang sesuai dengan cara belajarmu. Paket dan harga tersedia di halaman Premium.
           </p>
-        </LandingPanel>
+        </Reveal>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-2">
-          <FreePricingCard />
-          <PremiumPricingCard />
-        </div>
-
-        <div className="mt-6 grid gap-3 rounded-[1.8rem] border border-[#edf0ef] bg-white p-5 shadow-[0_16px_36px_rgba(122,164,151,0.08)] md:grid-cols-4">
-          {pricingTrustItems.map((item) => (
-            <PricingTrustItem key={item.title} item={item} />
-          ))}
+        <div className="mt-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <PlanComparisonCard plan={plans[0]} />
+          <PlanComparisonCard plan={plans[1]} premium />
         </div>
       </div>
     </section>
   );
 }
 
-function FreePricingCard() {
-  const plan = plans[0];
-
-  return (
-    <LandingPanelArticle className="rounded-[2.1rem] border border-[#cfeee8] bg-white p-5 shadow-[0_20px_44px_rgba(116,168,154,0.1)]">
-      <div className="rounded-[1.7rem] bg-white p-4">
-        <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.2rem] bg-[var(--brand-primary-tint)] text-[var(--brand-primary)] sm:h-18 sm:w-18 sm:rounded-[1.4rem]">
-              <LargeStepIcon>{plan.icon}</LargeStepIcon>
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[26px] font-bold tracking-tight text-stone-800 sm:text-[30px]">
-                {plan.name}
-              </h3>
-              <p className="mt-2 max-w-[28ch] text-[16px] leading-[1.6] text-stone-500">
-                {plan.description}
-              </p>
-            </div>
-          </div>
-
-          <span className="inline-flex w-fit whitespace-nowrap rounded-full border border-[#bfece4] bg-[var(--brand-primary-tint)] px-4 py-2 text-[13px] font-bold text-[var(--brand-primary)]">
-            {plan.badge}
-          </span>
-        </div>
-
-        <ul className="mt-6 grid gap-0">
-          {plan.features.map((feature) => (
-            <li
-              key={feature}
-              className="flex items-center gap-3 border-b border-[#eef2f1] py-3 last:border-b-0"
-            >
-              <span className="text-[var(--brand-primary)]">
-                <CheckCircleIcon />
-              </span>
-              <span className="text-[16px] text-stone-700">{feature}</span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-6 rounded-[1.55rem] border border-[#cfeee8] bg-[linear-gradient(180deg,#f9fffe_0%,#f5fffc_100%)] p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-[15px] font-bold text-[var(--brand-primary-dark)]">
-              Try-out yang tersedia
-            </div>
-            <span className="shrink-0 whitespace-nowrap rounded-full bg-[#def7f1] px-3 py-1.5 text-[13px] font-bold text-[var(--brand-primary)]">
-              4 modul
-            </span>
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
-            {pricingPreviewTryouts.map((item) => (
-              <div
-                key={item.title}
-                className="flex flex-col items-center rounded-[1.15rem] border border-[#e3eeea] bg-white px-3 py-3 text-center shadow-[0_8px_18px_rgba(131,170,157,0.06)]"
-              >
-                <div
-                  className="flex h-11 w-11 items-center justify-center rounded-xl"
-                  style={{ background: item.tone, color: item.accent }}
-                >
-                  {item.icon}
-                </div>
-                <div className="mt-2 flex min-h-[2.6em] items-center text-[14px] font-bold leading-[1.3] text-stone-800">
-                  {item.title}
-                </div>
-                <div className="mt-0.5 text-[12.5px] text-stone-500">{item.meta}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <PricingPrimaryButton to={plan.to} theme="teal">
-            <BookOpenIcon />
-            {plan.cta}
-          </PricingPrimaryButton>
-        </div>
-      </div>
-    </LandingPanelArticle>
-  );
-}
-
-function PremiumPricingCard() {
-  const plan = plans[1];
-
-  return (
-    <LandingPanelArticle className="relative overflow-hidden rounded-[2.1rem] border border-[#f2a60f] bg-[linear-gradient(180deg,#33281d_0%,#241c14_100%)] p-5 text-white shadow-[0_24px_60px_rgba(242,166,15,0.22)]">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-20"
-        style={{ backgroundImage: "radial-gradient(rgba(242,177,46,0.55) 1px, transparent 1px)", backgroundSize: "14px 14px" }}
-      />
-      <div className="pointer-events-none absolute inset-x-8 bottom-0 h-20 bg-[radial-gradient(circle_at_bottom,_rgba(19,184,161,0.38),_transparent_65%)]" />
-
-      <div className="relative rounded-[1.7rem] border border-[rgba(242,177,46,0.14)] bg-[rgba(255,255,255,0.03)] p-4">
-        <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.2rem] border border-[rgba(242,177,46,0.32)] bg-[rgba(242,177,46,0.08)] text-[#f4bf4b] sm:h-18 sm:w-18 sm:rounded-[1.4rem]">
-              <LargeStepIcon>{plan.icon}</LargeStepIcon>
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[26px] font-bold tracking-tight text-[#ffd36d] sm:text-[30px]">
-                {plan.name}
-              </h3>
-              <p className="mt-2 max-w-[30ch] text-[16px] leading-[1.6] text-white/78">
-                {plan.description}
-              </p>
-            </div>
-          </div>
-
-          <span className="inline-flex w-fit whitespace-nowrap rounded-full border border-[rgba(242,177,46,0.38)] bg-[rgba(242,177,46,0.12)] px-4 py-2 text-[13px] font-bold text-[#ffd36d]">
-            {plan.badge}
-          </span>
-        </div>
-
-        <ul className="mt-6 grid gap-0">
-          {plan.features.map((feature) => (
-            <li
-              key={feature}
-              className="flex items-center gap-3 border-b border-[rgba(255,255,255,0.08)] py-3 last:border-b-0"
-            >
-              <span className="text-[#f5be47]">
-                <CheckCircleIcon />
-              </span>
-              <span className="text-[16px] text-white/88">{feature}</span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-6">
-          <div className="text-[15px] font-bold text-[#f4bf4b]">Yang kamu dapatkan</div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {premiumBenefits.map((benefit) => (
-              <div
-                key={benefit.title}
-                className="rounded-[1.15rem] border border-[rgba(242,177,46,0.14)] bg-[rgba(255,186,84,0.08)] px-3 py-4"
-              >
-                <div className="text-[#f4bf4b]">
-                  {benefit.icon}
-                </div>
-                <div className="mt-4 text-[14px] font-bold text-[#ffd36d]">{benefit.title}</div>
-                <div className="mt-2 text-[13px] leading-relaxed text-white/62">{benefit.body}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <PricingPrimaryButton to={plan.to} theme="gold">
-            <CrownIcon />
-            {plan.cta}
-          </PricingPrimaryButton>
-        </div>
-
-        <div className="mt-4 flex items-center justify-center gap-2 text-[14px] text-white/68">
-          <LockBadgeIcon />
-          Sekali bayar, akses sesuai paket
-        </div>
-      </div>
-    </LandingPanelArticle>
-  );
-}
-
-function PricingTrustItem({
-  item,
+function PlanComparisonCard({
+  plan,
+  premium = false,
 }: {
-  item: (typeof pricingTrustItems)[number];
+  plan: (typeof plans)[number];
+  premium?: boolean;
 }) {
-  return (
-    <div className="flex items-center gap-4 md:border-r md:border-[#edf0ef] md:pr-4 last:md:border-r-0">
-      <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-        style={{ background: `${item.tone}12`, color: item.tone }}
-      >
-        {item.icon}
-      </div>
-      <div>
-        <div className="text-[16px] font-bold text-stone-700">{item.title}</div>
-        <div className="mt-1 text-[14px] text-stone-500">{item.body}</div>
-      </div>
-    </div>
-  );
-}
-
-function PricingPrimaryButton({
-  to,
-  theme,
-  children,
-}: {
-  to: "/tryout" | "/premium";
-  theme: "teal" | "gold";
-  children: ReactNode;
-}) {
-  const className =
-    theme === "gold"
-      ? "inline-flex w-full items-center justify-center gap-3 rounded-[1.2rem] bg-[#f4b844] px-6 py-5 text-[18px] font-black text-[#2d220f] no-underline shadow-[0_12px_22px_rgba(244,184,68,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
-      : "inline-flex w-full items-center justify-center gap-3 rounded-[1.2rem] bg-[var(--brand-primary)] px-6 py-5 text-[18px] font-black text-white no-underline shadow-[0_12px_22px_rgba(24,183,161,0.22)] transition-transform duration-200 hover:-translate-y-0.5";
-  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "pricing_button");
+  const cardClassName = premium
+    ? "relative overflow-hidden border-amber-300 border-b-[#a96612] bg-[#2f281c] text-amber-50 shadow-[0_8px_0_#1f1a12,0_28px_60px_rgba(96,68,20,0.2)]"
+    : "border-[#cce7e1] border-b-[#9acfc3] bg-white text-stone-900 shadow-[0_8px_0_#cde7e1,0_24px_50px_rgba(45,93,79,0.1)]";
+  const featureColor = premium ? "text-amber-300" : "text-[#1aa98e]";
 
   return (
-    <Link
-      to={to}
-      search={intent ? { intent } : undefined}
-      onClick={trackLandingLinkClick}
-      className={className}
-    >
-      {children}
-    </Link>
+    <Reveal className={`rounded-[26px] border-2 border-b-[6px] p-6 sm:p-8 ${cardClassName}`}>
+      {premium && (
+        <div className="pointer-events-none absolute inset-0 opacity-[0.09]" style={{ backgroundImage: "radial-gradient(#ffffff 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
+      )}
+      <div className="relative flex items-start gap-4">
+        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[16px] border-2 ${premium ? "border-amber-300/30 bg-amber-300/10 text-amber-300" : "border-[#bce4dc] bg-[#e8f8f4] text-[#168e78]"}`}>
+          {plan.icon}
+        </div>
+        <div>
+          <p className={`text-[12px] font-black ${premium ? "text-amber-200/70" : "text-stone-500"}`}>{plan.badge}</p>
+          <h3 className={`mt-1 text-[30px] font-black tracking-tight ${premium ? "text-amber-100" : "text-stone-900"}`}>{plan.name}</h3>
+          <p className={`mt-2 max-w-[36ch] text-[15px] leading-[1.65] ${premium ? "text-amber-50/72" : "text-stone-600"}`}>{plan.description}</p>
+        </div>
+      </div>
+
+      <div className={`relative mt-7 grid gap-3 border-t pt-6 sm:grid-cols-2 ${premium ? "border-amber-100/15" : "border-stone-200"}`}>
+        {plan.features.map((feature) => (
+          <div key={feature} className="flex items-start gap-3 text-[14px] font-semibold leading-[1.45]">
+            <span className={`mt-0.5 shrink-0 ${featureColor}`}><CheckCircleIcon /></span>
+            <span>{feature}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="relative mt-8">
+        {premium ? (
+          <Link
+            to="/premium"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#f5b544] px-6 text-[15px] font-black text-[#2f281c] no-underline shadow-[0_4px_0_#a96612] transition-transform hover:-translate-y-0.5 active:translate-y-px"
+          >
+            Buka Premium
+            <ArrowUpRightIcon />
+          </Link>
+        ) : (
+          <TryoutLink entryPoint="pricing_button">Lihat try-out</TryoutLink>
+        )}
+      </div>
+    </Reveal>
   );
 }
-
-const footerLeaderboardRows = [
-  { rank: "#1", name: "Dewi Rahayu", xp: "5,420 XP", avatar: "👩" },
-  { rank: "#2", name: "Budi Santoso", xp: "5,180 XP", avatar: "🧑" },
-  { rank: "#3", name: "Rani Susanti", xp: "4,960 XP", avatar: "👱" },
-] as const;
 
 function FooterCta() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <footer className="px-4 pb-14 sm:px-6">
-      <div className="mx-auto max-w-[1240px] rounded-[2.8rem] border border-[#d7ece6] bg-[linear-gradient(180deg,#f8fbf8_0%,#eef8f5_100%)] p-4 shadow-[0_24px_54px_rgba(127,169,155,0.12)]">
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-[#bfe9de] bg-[linear-gradient(135deg,#ffd782_0%,#7bd6cf_44%,#5ca9ea_100%)] px-6 py-12 sm:px-8 md:px-12 md:py-16">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-20"
-            style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)", backgroundSize: "14px 14px" }}
-          />
-          <div className="pointer-events-none absolute left-10 top-16 h-24 w-24 bg-[radial-gradient(circle,_rgba(255,255,255,0.9)_0%,_transparent_60%)]" />
-          <div className="pointer-events-none absolute right-14 top-16 h-20 w-20 bg-[radial-gradient(circle,_rgba(241,255,238,0.95)_0%,_transparent_62%)]" />
-          <div className="pointer-events-none absolute bottom-10 right-28 h-16 w-16 bg-[radial-gradient(circle,_rgba(255,255,255,0.9)_0%,_transparent_62%)]" />
+    <section>
+      <Reveal className="relative w-full overflow-hidden border-y border-[#3b7390] bg-[linear-gradient(135deg,#173f5a_0%,#205b79_54%,#247a91_100%)] text-white shadow-[0_10px_0_#102f45,0_28px_70px_rgba(32,80,114,0.2)]">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.18]"
+          style={{
+            backgroundImage: "radial-gradient(#b8f0e4 1.35px, transparent 1.35px)",
+            backgroundSize: "23px 23px",
+            maskImage: "linear-gradient(90deg, transparent 8%, black 46%, black 100%)",
+          }}
+        />
+        <div className="pointer-events-none absolute -left-24 -top-24 h-60 w-60 rounded-full border-[34px] border-[#45c5ad]/15" />
+        <div className="pointer-events-none absolute -bottom-20 left-[42%] h-44 w-44 rotate-12 rounded-[42px] bg-[#ff8c87]/15" />
+        <div className="pointer-events-none absolute -right-14 -top-16 h-64 w-64 rounded-full bg-[#ffcf58]/28" />
 
-          <div className="pointer-events-none absolute inset-0 hidden lg:block">
-            <div className="absolute left-[14%] top-[18%] h-24 w-28 rounded-full border border-dashed border-white/60 border-t-transparent border-r-transparent" />
-            <div className="absolute right-[15%] top-[22%] h-24 w-28 rounded-full border border-dashed border-white/60 border-l-transparent border-b-transparent" />
-            <div className="absolute left-[12%] bottom-[14%] h-20 w-32 rounded-full border border-dashed border-white/55 border-r-transparent border-t-transparent" />
-            <div className="absolute right-[13%] bottom-[10%] h-24 w-28 rounded-full border border-dashed border-white/55 border-l-transparent border-t-transparent" />
-          </div>
-
-          {finalCalloutCards.map((card) => (
-            <FloatingStatCard key={card.title} card={card} />
-          ))}
-
-          <div className="absolute bottom-[12%] left-4 z-10 hidden w-[240px] rotate-[-4deg] rounded-[1.8rem] border border-[#d9e8ea] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(110,149,174,0.18)] lg:block xl:left-10">
-            <div className="flex items-center justify-between gap-3 text-[12px] font-black uppercase tracking-[0.08em] text-stone-500">
-              Peringkat mingguan
-              <span className="text-[#f4a620]">
-                <TrophyLineIcon />
-              </span>
-            </div>
-            <div className="mt-4 space-y-3">
-              {footerLeaderboardRows.map((row) => (
-                <div key={row.name} className="flex items-center gap-3">
-                  <div className="w-8 text-[16px] font-black text-[#f4a620]">{row.rank}</div>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fff4df] text-[16px]">
-                    {row.avatar}
-                  </div>
-                  <div>
-                    <div className="text-[15px] font-semibold text-stone-700">{row.name}</div>
-                    <div className="text-[13px] text-stone-400">{row.xp}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="absolute bottom-[12%] right-4 z-10 hidden w-[240px] rotate-[4deg] rounded-[1.8rem] border border-[#d9e8ea] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(110,149,174,0.18)] lg:block xl:right-10">            
-            <div className="flex items-center justify-between gap-3 text-[12px] font-black uppercase tracking-[0.08em] text-stone-500">
-              Lencana terbaru
-              <span className="text-[#aa7bff]">
-                <StarBadgeIcon />
-              </span>
-            </div>
-            <div className="mt-4 flex items-center gap-4">
-              <div className="flex h-18 w-18 items-center justify-center rounded-full bg-[linear-gradient(180deg,#def7f1_0%,#ffffff_100%)] shadow-[inset_0_0_0_6px_#67d0c1]">
-                <div className="h-10 w-6 rounded-full bg-[linear-gradient(180deg,#d7d7d7_0%,#ffffff_100%)] shadow-[inset_0_0_0_1px_#bdbdbd]" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[16px] font-bold text-stone-700">Pharmacy Novice Badge</div>
-                <div className="mt-2 inline-flex rounded-full bg-[#f5ecff] px-3 py-1 text-[12px] font-semibold text-[#aa7bff]">
-                  Baru diraih!
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative z-20 mx-auto max-w-[840px] rounded-[3rem] border border-[#c9ece6] bg-white px-6 py-12 text-center shadow-[0_24px_60px_rgba(111,160,173,0.18)] sm:px-10 md:px-14 md:py-16">
-            <div className="text-[12px] font-black uppercase tracking-[0.2em] text-[var(--brand-primary)]">
-              Mulai di sini
-            </div>
-            <h2
-              className="mx-auto mt-5 max-w-[12ch] text-[clamp(2.35rem,4.4vw,4.1rem)] font-[680] leading-[1.02] tracking-[-0.04em] text-[#202124]"
-              style={{
-                fontFamily:
-                  "'Plus Jakarta Sans', 'Geist', ui-sans-serif, system-ui, sans-serif",
-              }}
-            >
-              Uji dirimu. Pelajari hasilnya. Ulangi.
+        <div className="relative mx-auto grid min-h-[590px] w-full max-w-[1180px] lg:min-h-[640px] lg:grid-cols-[0.88fr_1.12fr] lg:items-center xl:min-h-[680px]">
+          <div className="z-10 px-6 pb-4 pt-12 sm:px-10 sm:pt-14 lg:px-14 lg:py-16">
+            <h2 className="max-w-[12ch] text-[clamp(2.8rem,5vw,4.9rem)] font-[760] leading-[0.96] tracking-[-0.05em]">
+              Yuk, mulai satu <span className="whitespace-nowrap">try-out.</span>
             </h2>
-            <p className="mx-auto mt-6 max-w-[28ch] text-[18px] leading-[1.72] text-stone-500">
-              Mulai dengan satu try-out. Setelah selesai, lihat topik yang perlu
-              kamu ulangi dan pilih latihan berikutnya.
+            <p className="mt-6 max-w-[36ch] text-[16px] leading-[1.7] text-[#d8edf3] sm:text-[17px]">
+              Setelah selesai, lihat evaluasi hasil, topik yang perlu diulang, dan pembahasan setiap jawaban.
             </p>
-
-            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <FooterActionButton to="/tryout" variant="primary">
-                <BookOpenIcon />
-                Mulai Try-out
-              </FooterActionButton>
-              <FooterActionButton to="/auth/login" variant="secondary">
-                <UserLineIcon />
-                Masuk
-              </FooterActionButton>
+            <div className="mt-8 sm:inline-flex">
+              <TryoutLink entryPoint="footer_cta" inverse>Pilih try-out</TryoutLink>
             </div>
           </div>
 
-          <div className="relative mx-auto mt-7 max-w-[500px] rounded-[1.7rem] border border-[#bfe9de] bg-[rgba(255,255,255,0.88)] px-5 py-4 shadow-[0_12px_30px_rgba(110,149,174,0.14)]">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fff1f4] text-[#ff7a88]">
-                <HeartLineIcon />
-              </div>
-              <p className="text-[17px] leading-relaxed text-stone-500">
-                Latihan pertama tidak perlu menunggu. Mulai gratis hari ini.
-              </p>
+          <div className="relative min-h-[330px] sm:min-h-[380px] lg:h-full lg:min-h-0">
+            <CtaFloatingObject
+              className="left-[6%] top-[11%] -rotate-3 sm:left-[13%] lg:left-[5%] lg:top-[18%]"
+              icon={<ClockIcon />}
+              label="Timer siap"
+              tone="amber"
+            />
+            <CtaFloatingObject
+              className="right-[4%] top-[16%] rotate-3 sm:right-[10%] lg:right-[5%] lg:top-[13%]"
+              icon={<TargetIcon />}
+              label="Topik makin jelas"
+              tone="mint"
+            />
+            <CtaFloatingObject
+              className="bottom-[8%] left-[4%] rotate-2 sm:left-[12%] lg:bottom-[13%] lg:left-[2%]"
+              icon={<BookOpenIcon />}
+              label="Pembahasan jawaban"
+              tone="coral"
+            />
+            <CtaFloatingObject
+              className="bottom-[9%] right-[4%] hidden -rotate-2 sm:flex sm:right-[8%] lg:bottom-[12%] lg:right-[1%]"
+              icon={<BarChartIcon />}
+              label="Evaluasi hasil"
+              tone="blue"
+            />
+
+            <div className="pointer-events-none absolute bottom-[2%] left-1/2 h-[290px] w-[282px] -translate-x-1/2 sm:h-[340px] sm:w-[330px] lg:bottom-[4%] lg:left-auto lg:right-[5%] lg:h-[500px] lg:w-[485px] lg:translate-x-0 xl:h-[530px] xl:w-[515px]">
+              <div className="absolute bottom-[7%] left-[15%] h-14 w-[70%] rounded-full bg-[#0e3044]/35 blur-xl" />
+              <motion.img
+                src="/ilmorax-owl-celebrate.webp"
+                alt="Maskot burung hantu IlmoraX merayakan selesainya latihan"
+                animate={shouldReduceMotion ? undefined : { y: [0, -8, 0], rotate: [0, 1, 0] }}
+                className="relative h-full w-full object-contain object-bottom drop-shadow-[0_24px_28px_rgba(7,34,49,0.28)]"
+                loading="lazy"
+                transition={{ duration: 4.2, ease: "easeInOut", repeat: Infinity }}
+              />
             </div>
+
+            <span className="pointer-events-none absolute bottom-[26%] right-[7%] h-4 w-4 rotate-12 rounded-[4px] bg-[#ffcf58] sm:right-[12%] lg:bottom-[24%]" />
+            <span className="pointer-events-none absolute bottom-[18%] right-[18%] h-3 w-7 -rotate-[24deg] rounded-full bg-[#ff8c87] sm:right-[22%] lg:bottom-[16%]" />
+            <span className="pointer-events-none absolute left-[26%] top-[37%] h-3 w-3 rotate-45 rounded-[3px] bg-[#72e1ca] lg:left-[19%]" />
           </div>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+function CtaFloatingObject({
+  className,
+  icon,
+  label,
+  tone,
+}: {
+  className: string;
+  icon: ReactNode;
+  label: string;
+  tone: "amber" | "blue" | "coral" | "mint";
+}) {
+  const shouldReduceMotion = useReducedMotion();
+  const tones = {
+    amber: "border-[#f1c457] bg-[#fff2bd] text-[#815200] shadow-[#d99a19]",
+    blue: "border-[#9bcaf0] bg-[#edf7ff] text-[#245f87] shadow-[#69a8d6]",
+    coral: "border-[#ffaaa5] bg-[#fff0ee] text-[#9f403b] shadow-[#dd716b]",
+    mint: "border-[#86d8c6] bg-[#e5fbf5] text-[#087360] shadow-[#58b59f]",
+  };
+
+  return (
+    <motion.div
+      animate={shouldReduceMotion ? undefined : { y: [0, -5, 0] }}
+      className={`absolute z-20 flex items-center gap-2 rounded-[14px] border px-3 py-2 text-[10px] font-black shadow-[0_5px_0] sm:px-3.5 sm:py-2.5 sm:text-[11px] ${tones[tone]} ${className}`}
+      transition={{ duration: 3.8, ease: "easeInOut", repeat: Infinity }}
+    >
+      {icon}
+      {label}
+    </motion.div>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer className="border-t border-[#d8e5e1] px-5 py-8 sm:px-6">
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4 text-[13px] text-stone-500 sm:flex-row sm:items-center sm:justify-between">
+        <p>IlmoraX oleh {businessDetails.name}</p>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <a href={`mailto:${businessDetails.email}`} className="text-stone-600 no-underline hover:text-[var(--brand-primary)]">
+            {businessDetails.email}
+          </a>
+          <Link to="/tentang-kami" className="text-stone-600 no-underline hover:text-[var(--brand-primary)]">
+            Tentang kami
+          </Link>
         </div>
       </div>
     </footer>
   );
 }
 
-function FloatingStatCard({
-  card,
-}: {
-  card: (typeof finalCalloutCards)[number];
-}) {
+function Reveal({ children, className = "" }: { children: ReactNode; className?: string }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <div
-      className={`absolute z-10 hidden rounded-[1.8rem] border border-[#d9e8ea] bg-white px-6 py-4 shadow-[0_14px_36px_rgba(110,149,174,0.18)] lg:block ${card.position} ${card.width}`}
+    <motion.div
+      className={className}
+      initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
+      transition={revealTransition}
+      viewport={{ amount: 0.15, once: true }}
+      whileInView={{ opacity: 1, y: 0 }}
     >
-      <div className="flex items-center gap-4">
-        <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
-          style={{ background: `${card.tone}12`, color: card.tone }}
-        >
-          {card.icon}
-        </div>
-        <div>
-          <div className="text-[12px] font-black uppercase tracking-[0.08em] text-stone-400">
-            {card.title}
-          </div>
-          <div className="mt-1 text-[19px] font-bold text-stone-700">{card.value}</div>
-        </div>
-      </div>
-    </div>
+      {children}
+    </motion.div>
   );
 }
 
-function FooterActionButton({
-  to,
-  variant,
+function TryoutLink({
   children,
+  entryPoint,
+  inverse = false,
 }: {
-  to: "/tryout" | "/auth/login";
-  variant: "primary" | "secondary";
   children: ReactNode;
+  entryPoint: "footer_cta" | "hero_primary" | "pricing_button" | "primary_link";
+  inverse?: boolean;
 }) {
-  const className =
-    variant === "primary"
-      ? "inline-flex min-w-[280px] items-center justify-center gap-3 rounded-[1.35rem] bg-[var(--brand-primary)] px-8 py-5 text-[18px] font-black text-white no-underline shadow-[0_12px_24px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
-      : "inline-flex min-w-[280px] items-center justify-center gap-3 rounded-[1.35rem] border border-[#c9ece6] bg-white px-8 py-5 text-[18px] font-black text-stone-800 no-underline shadow-[0_12px_24px_rgba(111,160,173,0.12)] transition-transform duration-200 hover:-translate-y-0.5";
-  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "footer_cta");
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics("/tryout", entryPoint);
+  const className = inverse
+    ? "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-[15px] font-bold text-[var(--brand-primary)] no-underline transition-transform hover:-translate-y-0.5 active:translate-y-px"
+    : "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--brand-primary)] px-6 text-[15px] font-bold text-white no-underline shadow-[0_14px_28px_rgba(32,80,114,0.2)] transition-transform hover:-translate-y-0.5 active:translate-y-px";
 
   return (
     <Link
-      to={to}
-      search={intent ? { intent } : undefined}
+      to="/tryout"
+      search={{ intent }}
       onClick={trackLandingLinkClick}
       className={className}
     >
       {children}
-    </Link>
-  );
-}
-
-function SectionIntro({
-  kicker,
-  title,
-  body,
-}: {
-  kicker: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <LandingPanel>
-      <div className="text-[11px] font-black uppercase tracking-[0.22em] text-[#1e63ff]">
-        {kicker}
-      </div>
-      <h2 className="mt-3 max-w-[14ch] text-[clamp(2.25rem,5vw,4.6rem)] font-black leading-[0.96] tracking-tight text-[#071a52]">
-        {title}
-      </h2>
-      <p className="mt-5 max-w-[38ch] text-[15px] font-semibold leading-relaxed text-stone-600">
-        {body}
-      </p>
-    </LandingPanel>
-  );
-}
-
-function InsightBar({
-  label,
-  value,
-  width,
-  tone,
-}: {
-  label: string;
-  value: string;
-  width: string;
-  tone: string;
-}) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between text-[12px] font-black text-stone-500">
-        <span>{label}</span>
-        <span>{value}</span>
-      </div>
-      <div className="rounded-full bg-[#edf5ff] p-1">
-        <div
-          className="h-3 rounded-full"
-          style={{
-            width,
-            background: `linear-gradient(90deg, ${tone} 0%, rgba(255,255,255,0.92) 100%)`,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function PrimaryLink({
-  to,
-  children,
-}: {
-  to: "/tryout" | "/premium" | "/auth/login";
-  children: ReactNode;
-}) {
-  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "primary_link");
-
-  return (
-    <Link
-      to={to}
-      search={intent ? { intent } : undefined}
-      onClick={trackLandingLinkClick}
-      className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-[15px] font-black text-[#071a52] no-underline shadow-[0_18px_34px_rgba(255,255,255,0.18)] transition-transform duration-200 hover:-translate-y-0.5"
-    >
-      {children}
       <ArrowUpRightIcon />
     </Link>
   );
 }
 
-function HeroPrimaryLink({
-  to,
-  children,
-}: {
-  to: "/tryout" | "/premium" | "/auth/login";
-  children: ReactNode;
-}) {
-  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "hero_primary");
+function LoginLink({ children }: { children: ReactNode }) {
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics("/auth/login", "hero_secondary");
 
   return (
     <Link
-      to={to}
-      search={intent ? { intent } : undefined}
+      to="/auth/login"
+      search={{ intent }}
       onClick={trackLandingLinkClick}
-      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] bg-[var(--brand-primary)] px-8 py-5 text-[17px] font-semibold text-white no-underline shadow-[0_14px_28px_rgba(24,183,161,0.24)] transition-transform duration-200 hover:-translate-y-0.5"
-    >
-      <BookFrameIcon />
-      {children}
-    </Link>
-  );
-}
-
-function HeroSecondaryLink({
-  to,
-  children,
-}: {
-  to: "/tryout" | "/auth/login";
-  children: ReactNode;
-}) {
-  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "hero_secondary");
-
-  return (
-    <Link
-      to={to}
-      search={intent ? { intent } : undefined}
-      onClick={trackLandingLinkClick}
-      className="inline-flex items-center justify-center gap-3 rounded-[1.2rem] border border-[#e3ece8] bg-white px-8 py-5 text-[17px] font-semibold text-stone-900 no-underline shadow-[0_12px_24px_rgba(39,68,58,0.08)] transition-transform duration-200 hover:-translate-y-0.5"
-    >
-      <LoginArrowIcon />
-      {children}
-    </Link>
-  );
-}
-
-function SecondaryLink({
-  to,
-  children,
-}: {
-  to: "/tryout" | "/auth/login";
-  children: ReactNode;
-}) {
-  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "secondary_link");
-
-  return (
-    <Link
-      to={to}
-      search={intent ? { intent } : undefined}
-      onClick={trackLandingLinkClick}
-      className="group inline-flex items-center justify-center gap-2 rounded-full border border-white/14 bg-white/8 px-5 py-3 text-[15px] font-black text-white no-underline backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5"
+      className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#cdded9] bg-white px-6 text-[15px] font-bold text-stone-800 no-underline transition-colors hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] active:translate-y-px"
     >
       {children}
-      <ArrowUpRightIcon />
-    </Link>
-  );
-}
-
-function LightLink({
-  to,
-  children,
-}: {
-  to: "/tryout" | "/auth/login";
-  children: ReactNode;
-}) {
-  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics(to, "light_link");
-
-  return (
-    <Link
-      to={to}
-      search={intent ? { intent } : undefined}
-      onClick={trackLandingLinkClick}
-      className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#dbe8ff] bg-[#edf5ff] px-5 py-3 text-[15px] font-black text-[#071a52] no-underline transition-transform duration-200 hover:-translate-y-0.5"
-    >
-      {children}
-      <ArrowUpRightIcon />
     </Link>
   );
 }

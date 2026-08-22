@@ -11,50 +11,6 @@ function fixedSvgSize(
   };
 }
 
-export function BrandMark() {
-  return (
-    <span
-      className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#fef3df_0%,var(--brand-primary-soft)_100%)] shadow-[0_10px_24px_rgba(51,100,89,0.12)] ring-1 ring-[#d9ebe4]"
-      style={{
-        alignItems: "center",
-        borderRadius: "9999px",
-        display: "inline-flex",
-        flexShrink: 0,
-        height: 44,
-        justifyContent: "center",
-        minHeight: 44,
-        minWidth: 44,
-        width: 44,
-      }}
-    >
-      <svg
-        viewBox="0 0 28 28"
-        className="h-7 w-7"
-        width="28"
-        height="28"
-        aria-hidden="true"
-        style={{ display: "block", flexShrink: 0, height: 28, width: 28 }}
-      >
-        <path
-          d="M14 5c-4.8 0-8.5 3.8-8.5 8.7 0 2.8 1.2 5.2 3.2 6.8v1.8c0 .9.7 1.5 1.5 1.5h7.6c.9 0 1.5-.7 1.5-1.5V20.5c2-1.6 3.2-4 3.2-6.8C22.5 8.8 18.8 5 14 5Z"
-          fill="#7f6142"
-        />
-        <path
-          d="M10.2 11.2c0-1.3.9-2.2 2.1-2.2 1 0 1.8.5 1.8 1.1 0-.7.9-1.1 1.9-1.1 1.2 0 2.1.9 2.1 2.2v3.4c0 1.3-.9 2.2-2.1 2.2-1 0-1.8-.5-1.9-1.1 0 .7-.8 1.1-1.8 1.1-1.2 0-2.1-.9-2.1-2.2v-3.4Z"
-          fill="#fff8ef"
-        />
-        <path
-          d="M11.8 12.8a1.2 1.2 0 1 0 0-.1Zm4.5 0a1.2 1.2 0 1 0 0-.1ZM11.5 20.2h5"
-          fill="none"
-          stroke="#4b3a27"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        />
-      </svg>
-    </span>
-  );
-}
-
 export function ArrowUpRightIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true" {...fixedSvgSize(16)}>

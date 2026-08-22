@@ -12,9 +12,8 @@ import "../styles/app.css";
 
 const SITE_URL = "https://ilmorax.com";
 const SITE_NAME = "IlmoraX";
-const DEFAULT_TITLE = "IlmoraX — Belajar Farmasi Jadi Seru!";
-const DEFAULT_DESCRIPTION = "Platform latihan UKAI terbaik untuk calon apoteker. Kumpulkan XP, jaga streak harian, dan taklukkan tryout dengan cara yang menyenangkan. 500+ soal UKAI, leaderboard, dan materi lengkap.";
-const OG_IMAGE = "/og-image.svg";
+const DEFAULT_TITLE = "IlmoraX | Try-out UKAI untuk Calon Apoteker";
+const DEFAULT_DESCRIPTION = "Latihan soal UKAI dengan timer, pembahasan, dan analisis hasil untuk membantu calon apoteker menentukan materi yang perlu dipelajari lagi.";
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -74,18 +73,12 @@ export const Route = createRootRoute({
       { property: "og:site_name", content: SITE_NAME },
       { property: "og:title", content: DEFAULT_TITLE },
       { property: "og:description", content: DEFAULT_DESCRIPTION },
-      { property: "og:image", content: `${SITE_URL}${OG_IMAGE}` },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "IlmoraX - Platform Latihan UKAI untuk Calon Apoteker" },
       { property: "og:locale", content: "id_ID" },
       
       // Twitter Card
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: DEFAULT_TITLE },
       { name: "twitter:description", content: DEFAULT_DESCRIPTION },
-      { name: "twitter:image", content: `${SITE_URL}${OG_IMAGE}` },
-      { name: "twitter:image:alt", content: "IlmoraX - Platform Latihan UKAI untuk Calon Apoteker" },
       
       // Additional SEO
       { name: "keywords", content: "UKAI, apoteker, farmasi, latihan UKAI, tryout farmasi, simulasi UKAI, belajar farmasi, calon apoteker" },
@@ -149,7 +142,7 @@ function RootComponent() {
   const { viewer } = Route.useRouteContext();
 
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <head>
         <HeadContent />
         <script

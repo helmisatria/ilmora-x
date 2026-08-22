@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LandingPage } from "../features/landing/landing-page";
 import { listMembershipProducts } from "../features/premium-access/checkout-functions";
+import { listPublicPublishedTryouts } from "../features/tryout-content/student-tryout-catalog-functions";
 
 type MembershipProduct = Awaited<ReturnType<typeof listMembershipProducts>>[number];
+type PublicTryout = Awaited<ReturnType<typeof listPublicPublishedTryouts>>[number];
 
 const fallbackProducts = [
   {
@@ -42,14 +44,15 @@ const fallbackProducts = [
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    try {
-      const products = await listMembershipProducts();
+    const [products, tryouts] = await Promise.all([
+      listMembershipProducts().catch(() => fallbackProducts),
+      listPublicPublishedTryouts().catch(() => [] as PublicTryout[]),
+    ]);
 
-      return { products: products.length > 0 ? products : fallbackProducts };
-    } catch {
-      // Keep public pricing visible during a temporary database outage.
-      return { products: fallbackProducts };
-    }
+    return {
+      products: products.length > 0 ? products : fallbackProducts,
+      tryouts,
+    };
   },
   head: () => ({
     meta: [
@@ -74,7 +77,7 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingRoute() {
-  const { products } = Route.useLoaderData();
+  const { products, tryouts } = Route.useLoaderData();
 
-  return <LandingPage products={products} />;
+  return <LandingPage products={products} tryouts={tryouts} />;
 }

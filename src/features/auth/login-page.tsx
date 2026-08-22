@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { BrandMark } from "../../components/brand-mark";
 import { signInWithGoogle } from "../../lib/auth-client";
 import {
   getLoginCallbackUrl,
@@ -97,14 +98,10 @@ export function LoginPage({
       <div className="relative mx-auto flex min-h-screen w-full max-w-[1120px] flex-col px-5 py-6 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-3 no-underline">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-[#f5cf7f] bg-[linear-gradient(180deg,#fff9ea_0%,#eefbf8_100%)] text-[11px] font-semibold text-stone-700 shadow-sm">
-              IX
-            </div>
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
-                IlmoraX
-              </div>
-            </div>
+            <BrandMark />
+            <span className="text-[16px] font-black tracking-tight text-stone-800">
+              Ilmora<span className="text-primary">X</span>
+            </span>
           </Link>
 
           <div className="hidden flex-wrap items-center gap-2 sm:flex">

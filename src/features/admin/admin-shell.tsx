@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import { BrandMark } from "../../components/brand-mark";
 import {
   Sidebar,
   SidebarContent,
@@ -39,9 +40,7 @@ export function AdminShell() {
       <Sidebar className="border-r border-sidebar-border bg-sidebar" collapsible="offcanvas">
         <SidebarHeader className="px-4 py-4">
           <Link to="/admin" className="group flex items-center gap-3 no-underline">
-            <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-primary/15 bg-primary text-sm font-black text-white">
-              IX
-            </span>
+            <BrandMark size="sm" />
             <span className="min-w-0">
               <span className="block text-sm font-black tracking-tight text-stone-800">IlmoraX</span>
               <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Admin workspace</span>
