@@ -6,9 +6,11 @@ import { TopBar } from "../../components/Navigation";
 import type { listMembershipProducts } from "./checkout-functions";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
+const premiumAccent = "#f5b544";
+
 const features = [
   "Tryout premium",
-  "Pembahasan video",
+  "Pembahasan soal",
   "Evaluasi per materi",
   "Rekomendasi latihan",
 ] as const;
@@ -16,7 +18,7 @@ const features = [
 const premiumStudyFlow = [
   "Kerjakan tryout premium",
   "Lihat materi yang masih lemah",
-  "Tonton pembahasan yang dibutuhkan",
+  "Baca pembahasan yang dibutuhkan",
   "Lanjutkan dengan latihan yang disarankan",
 ] as const;
 
@@ -114,7 +116,7 @@ export function PremiumPage({
                 Jangan berhenti di skor akhir.
               </h1>
               <p className="m-0 mt-5 max-w-[52ch] text-pretty text-[15px] font-medium leading-7 text-stone-600 sm:text-base">
-                Premium menunjukkan materi yang masih lemah, lalu mengarahkanmu ke pembahasan video dan latihan berikutnya.
+                Premium menunjukkan materi yang masih lemah, lalu mengarahkanmu ke pembahasan soal dan latihan berikutnya.
               </p>
             </div>
 
@@ -128,10 +130,7 @@ export function PremiumPage({
       <div className="premium-lane relative py-10 pb-24 lg:py-14 lg:pb-24">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           <div className="min-w-0">
-            <SectionHeader
-              title="Pilih durasi akses"
-              description="Semua paket membuka fitur yang sama. Pilih durasi yang sesuai dengan jadwal belajarmu."
-            />
+            <SectionHeader title="Pilih paket" />
             <div ref={cardsRef} className="grid gap-3" role="group" aria-label="Pilih paket premium">
               {activeProducts.map((product) => (
                 <div key={product.id} style={{ opacity: 0 }}>
@@ -159,20 +158,20 @@ export function PremiumPage({
 
           <aside ref={sidebarRef} className="min-w-0 xl:sticky xl:top-24">
             <div style={{ opacity: 0 }}>
-              <div className="mt-6 rounded-2xl border border-amber-200 border-l-4 border-l-amber-500 bg-[#fff9e8] p-5 text-stone-800 xl:mt-0">
+              <div className="mt-6 rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm xl:mt-0">
                 <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border-2 border-amber-300/30 bg-amber-300/10 text-amber-300">
                     <ReceiptIcon />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[12px] font-semibold text-amber-800">
-                      Pembayaran satu kali
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">
+                      Bayar sekali
                     </div>
-                    <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-stone-900">
-                      Tidak diperpanjang otomatis
+                    <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
+                      Tanpa perpanjangan otomatis
                     </h2>
-                    <p className="m-0 mt-2 max-w-[34ch] text-[13.5px] font-medium leading-relaxed text-stone-600">
-                      Jika Premium masih aktif, durasi baru ditambahkan setelah masa aktifmu berakhir.
+                    <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
+                      Jika Premium masih aktif, durasi baru ditambahkan ke masa aktifmu. Setelah Premium berakhir, akun kembali ke akses gratis.
                     </p>
                   </div>
                 </div>
@@ -184,7 +183,12 @@ export function PremiumPage({
                 <Link
                   to="/checkout"
                   search={{ productId: selectedProduct.id }}
-                  className="group mt-5 flex min-h-14 w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl bg-primary px-5 py-3.5 text-base font-extrabold tracking-wide text-white no-underline outline-none shadow-[0_12px_26px_-16px_rgba(21,61,92,0.8)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-light focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-0.5 sm:flex-nowrap sm:px-6 sm:py-4"
+                  className="group mt-5 flex min-h-14 w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-[var(--radius-lg)] border-2 border-amber-300 px-5 py-3.5 text-base font-extrabold tracking-wide text-stone-900 no-underline outline-none shadow-[0_14px_28px_-16px_rgba(180,83,9,0.55)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-0.5 sm:flex-nowrap sm:px-6 sm:py-4"
+                  style={{
+                    background: "linear-gradient(180deg, #fcd34d 0%, #f5b544 100%)",
+                    borderBottomWidth: 5,
+                    borderBottomColor: "#b45309",
+                  }}
                   onClick={() => posthog.capture("premium_checkout_clicked", {
                     product_id: selectedProduct.id,
                     product_name: selectedProduct.name,
@@ -248,11 +252,13 @@ function PackageCard({
 
   return (
     <button
-      className="group w-full rounded-2xl border bg-white px-4 py-4 text-left outline-none transition-all duration-200 hover:border-stone-300 hover:shadow-[0_18px_34px_-30px_rgba(41,37,36,0.7)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-px sm:px-5 sm:py-5"
+      className="group w-full rounded-[var(--radius-lg)] border-2 border-b-4 bg-white px-4 py-4 text-left outline-none shadow-sm transition-all duration-150 hover:-translate-y-[3px] hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-[1px] active:border-b-2 sm:px-5 sm:py-5"
       style={{
-        borderColor: isSelected ? "#205072" : "#e7e5e4",
-        background: isSelected ? "#f1f7fb" : "#ffffff",
-        boxShadow: isSelected ? "0 0 0 1px #205072" : undefined,
+        borderColor: isSelected ? "#205072" : "#f5f5f4",
+        borderBottomColor: isSelected ? "#153d5c" : "#e7e5e4",
+        background: isSelected
+          ? "linear-gradient(180deg, #f1f7fb 0%, rgba(255,255,255,0.96) 76%)"
+          : "#ffffff",
       }}
       onClick={onSelect}
       type="button"
@@ -260,7 +266,7 @@ function PackageCard({
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5">
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2"
           style={{
             background: isSelected ? "#dcecf7" : "#ffffff",
             borderColor: isSelected ? "#205072" : "#d6d3d1",
@@ -278,7 +284,7 @@ function PackageCard({
 
         <div className="col-start-2 flex min-w-0 items-center justify-between gap-3 sm:col-start-auto sm:justify-end sm:gap-4">
           <div className="min-w-0 text-left sm:text-right">
-            <div className="font-mono text-lg font-bold leading-none tracking-tight tabular-nums text-stone-900 sm:text-xl">
+            <div className="text-lg font-bold leading-none tracking-tight text-stone-900 sm:text-xl">
               Rp{product.price.toLocaleString("id-ID")}
             </div>
           </div>
@@ -286,7 +292,7 @@ function PackageCard({
           {savingPercent > 0 && <SavingPill value={savingPercent} />}
 
           <span
-            className="hidden h-9 w-9 items-center justify-center rounded-full border sm:flex"
+            className="hidden h-9 w-9 items-center justify-center rounded-full border-2 sm:flex"
             style={{
               background: isSelected ? "#205072" : "#ffffff",
               borderColor: isSelected ? "#205072" : "#d6d3d1",
@@ -310,18 +316,12 @@ function getSavingPercent(product: Product) {
 
 function FeatureComparison() {
   return (
-    <section className="mt-10" aria-labelledby="feature-comparison-title">
-      <h2 id="feature-comparison-title" className="text-xl font-bold tracking-tight text-stone-900">
-        Akses yang kamu dapat
-      </h2>
-      <p className="mt-1 max-w-[54ch] text-[13.5px] font-medium leading-relaxed text-stone-500">
-        Akun gratis tetap bisa belajar. Premium menambahkan evaluasi dan arahan setelah tryout.
-      </p>
-      <div className="mt-4 overflow-hidden border-y border-stone-200 bg-white px-1 sm:px-3">
+    <section className="mt-6 overflow-hidden rounded-[var(--radius-lg)] border-2 border-amber-100 border-b-4 border-b-amber-100 bg-[#fffaf0]/72 px-3 py-3 shadow-sm sm:px-5 sm:py-4" aria-label="Perbandingan fitur paket gratis dan premium">
+      <div className="md:hidden">
         <table className="w-full table-fixed border-collapse">
           <caption className="sr-only">Perbandingan fitur paket gratis dan premium</caption>
           <thead>
-            <tr className="border-b border-stone-200">
+            <tr className="border-b border-amber-100">
               <th scope="col" className="w-1/2 px-2 py-3 text-left text-[12px] font-semibold text-stone-700 sm:text-[13px]">
                 Fitur
               </th>
@@ -340,13 +340,35 @@ function FeatureComparison() {
           </tbody>
         </table>
       </div>
+
+      <div className="hidden md:block">
+        <table className="w-full table-fixed border-collapse">
+          <caption className="sr-only">Perbandingan fitur paket gratis dan premium</caption>
+          <thead>
+            <tr className="border-b border-amber-100">
+              <th scope="col" className="w-1/5 px-2 py-3 text-left text-[13px] font-semibold text-stone-700">
+                Fitur
+              </th>
+              {features.map((feature) => (
+                <th key={feature} scope="col" className="w-1/5 px-2 py-3 text-center text-[13px] font-semibold leading-tight text-stone-800">
+                  {feature}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <DesktopComparisonRow label="Gratis" isPremium={false} />
+            <DesktopComparisonRow label="Premium" isPremium />
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
 
 function ComparisonRow({ feature }: { feature: (typeof features)[number] }) {
   return (
-    <tr className="border-b border-stone-100 last:border-b-0">
+    <tr className="border-b border-amber-100 last:border-b-0">
       <th scope="row" className="px-2 py-3 text-left text-[12px] font-semibold leading-snug text-stone-700 sm:text-[13px]">
         {feature}
       </th>
@@ -360,6 +382,24 @@ function ComparisonRow({ feature }: { feature: (typeof features)[number] }) {
   );
 }
 
+function DesktopComparisonRow({ label, isPremium }: { label: string; isPremium: boolean }) {
+  return (
+    <tr className="border-b border-amber-100 last:border-b-0">
+      <th scope="row" className="px-2 py-4 text-left text-[13px] font-semibold text-stone-600">
+        {label}
+      </th>
+      {features.map((feature) => (
+        <td key={`${label}-${feature}`} className="px-2 py-4 text-center">
+          <FeatureValue
+            isPremium={isPremium}
+            label={`${feature} ${isPremium ? "tersedia di paket premium" : "tidak tersedia di paket gratis"}`}
+          />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
 function FeatureValue({ isPremium, label }: { isPremium: boolean; label: string }) {
   if (!isPremium) return <MinusIcon label={label} />;
 
@@ -367,36 +407,46 @@ function FeatureValue({ isPremium, label }: { isPremium: boolean; label: string 
 }
 
 function DurationPill({ days }: { days: number }) {
+  const isAmber = days === 180;
+
   return (
-    <span className="text-[12px] font-semibold leading-none text-stone-500">
-      · {days} hari
+    <span
+      className="rounded-full border-2 px-3 py-1 text-[12px] font-semibold leading-none"
+      style={{
+        color: isAmber ? "#b45309" : "#0b2135",
+        borderColor: isAmber ? "#fed7aa" : "#dcecf7",
+        background: isAmber ? "#fff7ed" : "#f1f7fb",
+      }}
+    >
+      {days} hari
     </span>
   );
 }
 
 function SavingPill({ value }: { value: number }) {
   return (
-    <span className="hidden text-[12px] font-semibold leading-none text-emerald-700 md:inline-flex">
+    <span className="hidden rounded-full border-2 border-green-100 bg-green-50 px-3 py-1 text-[12px] font-semibold leading-none text-green-700 md:inline-flex">
       Hemat {value}%
     </span>
   );
 }
 
-function SectionHeader({ title, description }: { title: string; description: string }) {
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="mb-5">
-      <h2 className="text-[26px] font-bold tracking-tight text-stone-900">{title}</h2>
-      <p className="mt-1 max-w-[58ch] text-pretty text-[13.5px] font-medium leading-relaxed text-stone-500">
-        {description}
-      </p>
+    <div className="mb-3 flex items-center gap-2">
+      <h2 className="text-[13px] font-semibold uppercase tracking-wide text-stone-500">{title}</h2>
+      <div className="h-px flex-1 bg-stone-200" aria-hidden="true" />
     </div>
   );
 }
 
 function StatusPill({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">
-      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide"
+      style={{ color: "#92400e", borderColor: `${premiumAccent}44`, background: `${premiumAccent}18` }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: premiumAccent }} aria-hidden="true" />
       {label}
     </span>
   );

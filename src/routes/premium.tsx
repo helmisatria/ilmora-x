@@ -18,13 +18,13 @@ export const Route = createFileRoute("/premium")({
       {
         name: "description",
         content:
-          "Temukan materi UKAI yang masih lemah, tonton pembahasan video, dan lanjutkan latihan dengan rekomendasi dari hasil tryout.",
+          "Temukan materi UKAI yang masih lemah, baca pembahasan soal, dan lanjutkan latihan dengan rekomendasi dari hasil tryout.",
       },
       { property: "og:title", content: "IlmoraX Premium | Belajar dari hasil tryout" },
       {
         property: "og:description",
         content:
-          "Lihat materi yang masih lemah, tonton pembahasannya, lalu lanjutkan dengan latihan yang disarankan.",
+          "Lihat materi yang masih lemah, baca pembahasannya, lalu lanjutkan dengan latihan yang disarankan.",
       },
     ],
   }),
