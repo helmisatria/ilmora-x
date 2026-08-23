@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 import { createRootRoute, HeadContent, Outlet, Scripts, redirect } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Toaster } from "sonner";
@@ -10,7 +8,7 @@ import { getPostLoginRedirectForPath } from "../lib/post-login-redirect";
 import { ProductAnalyticsIdentity, ProductAnalyticsProvider } from "../lib/product-analytics-client";
 import { getProtectedRedirect, needsProtectedViewer } from "../lib/route-protection";
 import { getSafeErrorMessage } from "../lib/user-errors";
-import appCss from "../styles/app.css?url";
+import "../styles/app.css";
 
 const SITE_URL = "https://ilmorax.com";
 const SITE_NAME = "IlmoraX";
@@ -91,6 +89,7 @@ export const Route = createRootRoute({
       { name: "format-detection", content: "telephone=no" },
     ],
     links: [
+      { rel: "stylesheet", href: "/landing-critical.css" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" },
@@ -145,8 +144,6 @@ function RootComponent() {
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
-        <link rel="stylesheet" href="/landing-critical.css" />
-        <link rel="stylesheet" href={appCss} />
         <HeadContent />
         <script
           dangerouslySetInnerHTML={{

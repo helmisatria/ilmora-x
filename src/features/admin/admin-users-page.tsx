@@ -20,16 +20,15 @@ export function AdminUsersPage({
   admins: AdminRow[];
 }) {
   const location = useLocation();
-
-  if (location.pathname !== "/admin/users") {
-    return <Outlet />;
-  }
-
   const router = useRouter();
   const [adminEmail, setAdminEmail] = useState("");
   const [adminRole, setAdminRole] = useState<"admin" | "super_admin">("admin");
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  if (location.pathname !== "/admin/users") {
+    return <Outlet />;
+  }
 
   const refresh = async () => {
     await router.invalidate();
