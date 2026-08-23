@@ -91,8 +91,6 @@ export const Route = createRootRoute({
       { name: "format-detection", content: "telephone=no" },
     ],
     links: [
-      { rel: "stylesheet", href: "/landing-critical.css" },
-      { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" },
@@ -147,6 +145,8 @@ function RootComponent() {
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
+        <link rel="stylesheet" href="/landing-critical.css" />
+        <link rel="stylesheet" href={appCss} />
         <HeadContent />
         <script
           dangerouslySetInnerHTML={{
