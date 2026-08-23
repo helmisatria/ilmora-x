@@ -191,7 +191,13 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
     const timer = window.setTimeout(() => {
       const el = document.querySelector<HTMLElement>(`[data-question-id="${id}"]`);
       if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      const headerHeight = headerRef.current?.offsetHeight ?? 0;
+      const questionTop = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: questionTop - headerHeight - 16,
+        behavior: "smooth",
+      });
       el.classList.add("ring-4", "ring-primary-light", "ring-offset-2");
       window.setTimeout(() => {
         el.classList.remove("ring-4", "ring-primary-light", "ring-offset-2");
