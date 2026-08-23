@@ -38,21 +38,21 @@ export function AdminShell() {
   return (
     <SidebarProvider>
       <Sidebar className="border-r border-sidebar-border bg-sidebar" collapsible="offcanvas">
-        <SidebarHeader className="px-4 py-4">
-          <Link to="/admin" className="group flex items-center gap-3 no-underline">
+        <SidebarHeader className="px-3 py-3">
+          <Link to="/admin" className="group flex items-center gap-2.5 no-underline">
             <BrandMark size="sm" />
             <span className="min-w-0">
-              <span className="block text-sm font-black tracking-tight text-stone-800">IlmoraX</span>
-              <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Admin workspace</span>
+              <span className="block text-[13px] font-black tracking-tight text-stone-800">IlmoraX</span>
+              <span className="block text-[10px] font-bold uppercase tracking-wide text-stone-400">Admin workspace</span>
             </span>
           </Link>
         </SidebarHeader>
 
         <SidebarSeparator />
 
-        <SidebarContent className="px-2 py-3">
+        <SidebarContent className="px-2 py-2">
           <SidebarGroup>
-            <SidebarGroupLabel className="px-2 text-[11px] font-black uppercase tracking-wide text-stone-400">
+            <SidebarGroupLabel className="h-7 px-2 text-[10px] font-black uppercase tracking-wide text-stone-400">
               Operate
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -68,7 +68,7 @@ export function AdminShell() {
                         isActive={isActive}
                         tooltip={section.label}
                         className={cn(
-                          "h-10 rounded-[var(--radius-sm)] px-3 text-sm font-bold text-stone-600",
+                          "h-8 rounded-[var(--radius-sm)] px-2.5 text-[13px] font-bold text-stone-600",
                           "hover:bg-primary-tint hover:text-primary-dark",
                           "data-[active=true]:border data-[active=true]:border-primary/10 data-[active=true]:bg-primary-soft data-[active=true]:text-primary-dark",
                         )}
@@ -88,8 +88,8 @@ export function AdminShell() {
 
         <SidebarSeparator />
 
-        <SidebarFooter className="px-4 py-4">
-          <Link to="/dashboard" className="admin-button-secondary w-full justify-center px-3 py-2 text-xs no-underline">
+        <SidebarFooter className="px-3 py-3">
+          <Link to="/dashboard" className="admin-button-secondary w-full justify-center px-3 text-xs no-underline">
             Open Student App
           </Link>
         </SidebarFooter>

@@ -104,20 +104,27 @@ export function AdminUsersPage({
           </p>
         )}
 
-        <section className="admin-panel mt-6">
+        <section className="admin-panel mt-4">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Admin whitelist</h2>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="admin-panel-title">Admin whitelist</h2>
+              <span className="admin-count">{admins.length}</span>
+            </div>
           </div>
 
-          <div className="grid gap-4 border-b border-stone-100 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_180px_120px]">
+          <div className="grid gap-2 border-b border-stone-100 p-3 sm:grid-cols-[minmax(0,1fr)_150px_88px] sm:p-4">
+            <label className="sr-only" htmlFor="admin-email">Admin email</label>
             <input
+              id="admin-email"
               value={adminEmail}
               onChange={(event) => setAdminEmail(event.target.value)}
               className="admin-control"
               placeholder="admin@example.com"
               type="email"
             />
+            <label className="sr-only" htmlFor="admin-role">Admin role</label>
             <select
+              id="admin-role"
               value={adminRole}
               onChange={(event) => setAdminRole(event.target.value as "admin" | "super_admin")}
               className="admin-control"
@@ -137,7 +144,7 @@ export function AdminUsersPage({
 
           <div>
             {admins.map((admin) => (
-              <div key={`${admin.email}:${admin.createdAt}`} className="admin-list-row">
+              <div key={`${admin.email}:${admin.createdAt}`} className="admin-list-row admin-list-row-compact">
                 <div className="admin-list-content">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h3 className="text-[15px] font-bold text-stone-800 tracking-tight">{admin.email}</h3>
@@ -146,18 +153,16 @@ export function AdminUsersPage({
                   <p className="mt-1.5 text-xs font-semibold text-stone-400">Added {formatDate(admin.createdAt)}</p>
                 </div>
 
-                <div className="admin-list-actions">
+                <div className="admin-list-actions sm:flex-row sm:items-center">
                   <StatusPill status={admin.active ? "active" : "removed"} />
-                  <div className="admin-list-actions-bar">
-                    <button
-                      onClick={() => handleRemoveAdmin(admin.email)}
-                      disabled={!admin.active || busyAction === `admin:${admin.email}`}
-                      className="admin-button-ghost text-red-600 hover:text-red-700 hover:bg-red-50"
-                      type="button"
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleRemoveAdmin(admin.email)}
+                    disabled={!admin.active || busyAction === `admin:${admin.email}`}
+                    className="admin-button-ghost text-red-600 hover:bg-red-50 hover:text-red-700"
+                    type="button"
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
             ))}
@@ -170,9 +175,12 @@ export function AdminUsersPage({
           </div>
         </section>
 
-        <section className="admin-panel mt-6">
+        <section className="admin-panel mt-4">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Students</h2>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="admin-panel-title">Students</h2>
+              <span className="admin-count">{students.length}</span>
+            </div>
           </div>
 
           <div>
@@ -195,13 +203,13 @@ export function AdminUsersPage({
                       <StatusPill status={student.status} />
                     </div>
                     <p className="mt-1 text-sm text-stone-500">{student.email}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                       <span className="admin-meta-tag first:before:hidden">{student.institution || "No institution"}</span>
                       <span className="admin-meta-tag">Joined {formatDate(student.joinedAt)}</span>
                     </div>
                   </div>
 
-                  <div className="admin-list-actions">
+                  <div className="admin-list-actions admin-list-actions-bar admin-user-actions">
                     <Link
                       to="/admin/users/$studentId"
                       params={{ studentId: student.userId }}
