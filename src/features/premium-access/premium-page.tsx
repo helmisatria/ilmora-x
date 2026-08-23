@@ -168,10 +168,10 @@ export function PremiumPage({
                       Bayar sekali
                     </div>
                     <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-amber-50">
-                      Tanpa perpanjangan otomatis
+                      Perpanjang saat kamu mau
                     </h2>
                     <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-amber-100/75">
-                      Jika Premium masih aktif, durasi baru ditambahkan ke masa aktifmu. Setelah Premium berakhir, akun kembali ke akses gratis.
+                      Masa aktif langsung ditambahkan setelah pembayaran. Jika Premium-mu masih aktif, durasi baru akan ditambahkan ke sisa masa aktif. Kamu hanya membayar lagi saat ingin memperpanjang.
                     </p>
                   </div>
                 </div>
