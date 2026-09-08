@@ -60,8 +60,7 @@ export function CompleteProfilePage({
     <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
       <div className="bg-white border-b-2 border-stone-200 px-4 py-4">
         <div className="max-w-[480px] mx-auto flex items-center gap-3">
-          <div className="text-2xl">🦉</div>
-          <span className="font-black text-primary text-lg">IlmoraX</span>
+          <span className="font-black text-primary text-xl tracking-tight">IlmoraX</span>
         </div>
       </div>
 
