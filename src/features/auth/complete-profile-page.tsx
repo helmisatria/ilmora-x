@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { BrandMark } from "../../components/brand-mark";
 import { institutions } from "../../data/institutions";
 import { completeProfile, getCurrentViewer } from "../../lib/auth-functions";
 import {
@@ -60,7 +61,10 @@ export function CompleteProfilePage({
     <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
       <div className="bg-white border-b-2 border-stone-200 px-4 py-4">
         <div className="max-w-[480px] mx-auto flex items-center gap-3">
-          <span className="font-black text-primary text-xl tracking-tight">IlmoraX</span>
+          <BrandMark />
+          <span className="whitespace-nowrap text-[16px] font-black tracking-tight text-[#1f2937] sm:text-[17px]">
+            Ilmora<span className="text-[var(--brand-primary)]">X</span>
+          </span>
         </div>
       </div>
 
