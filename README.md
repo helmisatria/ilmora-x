@@ -2,6 +2,8 @@
 
 IlmoraX is a web-based pharmacy exam prep platform. Students take timed Try-outs, review Attempts, track Student Evaluation, and compete on the weekly Leaderboard. Admins manage content, Students, Poll Sessions, reports, and operational monitoring.
 
+For current milestone status and open work, see [Milestone closeout](docs/MILESTONE_CLOSEOUT.md). Phase 0 is finished. Midtrans is the MVP payment provider, and referral discounts are deferred. The dated proposals and older checklists remain as records of the scope at the time they were written.
+
 ## Commands
 
 ```sh

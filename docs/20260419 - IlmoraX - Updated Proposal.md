@@ -1,5 +1,7 @@
 # Updated Proposal Pengembangan Platform IlmoraX
 
+> **Implementation note, 2026-09-24:** This proposal preserves the original scope text below. Helmi confirmed that Phase 0 is finished, Midtrans is the MVP payment provider, and referral discounts are deferred. `CONTEXT.md` holds later product rules. See [Milestone closeout](MILESTONE_CLOSEOUT.md) for code status and remaining work. Standalone Materi CMS was deferred out of M1; its final delivery milestone still needs to be recorded.
+
 **Tanggal:** 19 April 2026  
 **Ditujukan kepada:** Kak David  
 **Berdasarkan:** Proposal 14 April 2026, Proposal Dijawab 16 April 2026, dan additional request analytics / personalized evaluation dashboard

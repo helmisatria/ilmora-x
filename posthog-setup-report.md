@@ -1,4 +1,6 @@
 <wizard-report>
+> **Historical setup report:** The payment-method example below predates the Midtrans decision and does not describe the current hosted checkout. See [Milestone closeout](docs/MILESTONE_CLOSEOUT.md) for current status.
+
 # PostHog post-wizard report
 
 The wizard has completed a deep integration of PostHog into IlmoraX (TanStack Start). Here's what was set up:

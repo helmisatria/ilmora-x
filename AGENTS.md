@@ -13,6 +13,25 @@ Repository operational playbook for this project on Railway.
 - Typical environments: `staging` or `production`
 - Default debug email: `satriahelmi@gmail.com`
 
+## Trello action board
+
+- Board: [Ilmora X](https://trello.com/b/iL0ArxLw/ilmora-x). Use `To Do` for open gaps against `docs/20260419 - IlmoraX - Updated Proposal.md` and `docs/MILESTONE_CLOSEOUT.md`.
+- Check existing cards before creating one. Keep each card to one outcome; write a short description with the current gap and a clear done condition.
+- Add one scope label (`M1`, `M2`, `M3`, or `Release`) and one priority label: `P0` for a critical blocker, `P1` for work needed to close a milestone, or `P2` for a lower-impact follow-up. Add `Decision` or `Verification` when relevant.
+- Phase 0 is complete. Referral discounts are deferred; do not add them as open gaps unless scope changes.
+- Update or close cards only after checking the code and, where needed, staging behavior. A Trello card alone is not proof of deployment or acceptance.
+
+Use [trello-cli](https://github.com/mheap/trello-cli/tree/main/packages/trello-cli) with the configured local authentication:
+
+```bash
+trello sync
+trello card:list --board 'Ilmora X' --list 'To Do' --format json
+trello card:create --board 'Ilmora X' --list 'To Do' \
+  --name 'Short action title' \
+  --description 'Current gap. Done when the expected behavior is verified.' \
+  --label M2 --label P1 --format json
+```
+
 ## 30-second Railway triage sequence
 
 ```bash
