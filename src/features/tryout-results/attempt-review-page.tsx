@@ -1,11 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 import { useApp } from "../../data";
 import { PremiumDialog } from "../../components/PremiumDialog";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { hasFullTryoutReviewAccess, isPremiumQuestionLocked } from "../premium-access/premium-access";
 import { productAnalyticsEvents } from "../../lib/product-analytics";
 import { useProductAnalytics } from "../../lib/product-analytics-client";
 import { reportAttemptQuestion } from "../tryout-attempt/student-question-report-functions";
@@ -13,7 +12,9 @@ import type { getAttemptResult } from "./student-attempt-result-functions";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const FREE_WRONG_PREVIEW = 3;
+// Locked explanations are not sent by the server, so the blurred preview uses filler text.
+const LOCKED_EXPLANATION_PLACEHOLDER =
+  "Pembahasan lengkap soal ini menjelaskan alasan jawaban yang benar, konsep kunci yang diuji, dan kesalahan umum yang perlu dihindari saat mengerjakan soal serupa.";
 
 export const attemptReviewSearchSchema = z.object({
   q: z.string().optional(),
@@ -44,11 +45,6 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
   const { hasPremiumMembership } = useApp();
   const analytics = useProductAnalytics();
   const { attempt, tryout, questions } = result;
-  const hasFullTryoutAccess = hasFullTryoutReviewAccess({
-    accessLevel: tryout.accessLevel,
-    hasPremiumMembership: hasPremiumMembership || tryout.hasPremiumMembership,
-    hasLifetimeTryoutPurchase: tryout.hasLifetimeTryoutPurchase,
-  });
 
   const [showPremium, setShowPremium] = useState(false);
   const [openReportSnapshotId, setOpenReportSnapshotId] = useState("");
@@ -81,30 +77,6 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
   const headerRef = useRef<HTMLDivElement>(null);
   const questionsRef = useRef<HTMLDivElement>(null);
 
-  const lockedIds = useMemo(() => {
-    if (hasPremiumMembership || hasFullTryoutAccess) return new Set<string>();
-
-    const locked = new Set<string>();
-    let wrongIdx = 0;
-    for (const q of questions) {
-      if (isPremiumQuestionLocked({
-        questionAccessLevel: q.accessLevel,
-        tryoutAccessLevel: tryout.accessLevel,
-        hasPremiumMembership: hasPremiumMembership || tryout.hasPremiumMembership,
-        hasLifetimeTryoutPurchase: tryout.hasLifetimeTryoutPurchase,
-      })) {
-        locked.add(q.snapshotId);
-        continue;
-      }
-
-      const isWrongOrEmpty = q.isCorrect !== true;
-      if (isWrongOrEmpty) {
-        if (wrongIdx >= FREE_WRONG_PREVIEW) locked.add(q.snapshotId);
-        wrongIdx++;
-      }
-    }
-    return locked;
-  }, [questions, tryout.accessLevel, tryout.hasPremiumMembership, tryout.hasLifetimeTryoutPurchase, hasPremiumMembership, hasFullTryoutAccess]);
 
   const filteredQuestions = questions.filter((q) => {
     if (filter === "wrong") return q.selectedIndex !== null && q.isCorrect === false;
@@ -303,14 +275,10 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
               const userSel = q.selectedIndex;
               const isCorrect = q.isCorrect === true;
               const hasAnswer = q.selectedIndex !== null;
-              const premiumLocked = lockedIds.has(q.snapshotId);
+              const premiumLocked = q.locked;
               const videoSource = getVideoReviewSource(q.videoUrl);
               const pictureUrl = q.pictureUrl?.trim() ?? "";
-              const canViewVideo = Boolean(videoSource)
-                && (
-                  q.accessLevel === "free"
-                  || (!premiumLocked && (hasPremiumMembership || hasFullTryoutAccess))
-                );
+              const canViewVideo = Boolean(videoSource);
               const canViewPicture = Boolean(pictureUrl) && !premiumLocked;
               const isVideoExpanded = expandedVideoIds.has(q.snapshotId);
 
@@ -375,19 +343,15 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
                       {q.options.map((opt, i) => {
                         const isUser = userSel === i;
                         const isRight = q.correctIndex === i;
-                        const hideRight = premiumLocked && isRight && !isCorrect;
                         let cls = "bg-stone-50 border-stone-200 text-stone-600";
                         let icon = null;
 
-                        if (isRight && !hideRight) {
+                        if (isRight) {
                           cls = "bg-green-50 border-green-300 text-green-700";
                           icon = <CheckIcon className="w-4 h-4 text-green-600" />;
                         } else if (isUser && !isRight) {
                           cls = "bg-red-50 border-red-300 text-red-700";
                           icon = <XIcon className="w-4 h-4 text-red-500" />;
-                        } else if (hideRight) {
-                          cls = "bg-amber-50 border-amber-200 text-amber-700";
-                          icon = <LockIcon className="w-4 h-4 text-amber-600" />;
                         }
 
                         return (
@@ -398,7 +362,7 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
                             <span className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs bg-white border border-stone-200 shrink-0">
                               {String.fromCharCode(65 + i)}
                             </span>
-                            <span className={`flex-1 ${hideRight ? "select-none blur-sm" : ""}`}>{opt}</span>
+                            <span className="flex-1">{opt}</span>
                             {icon}
                           </div>
                         );
@@ -419,8 +383,8 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
                       <div className="p-4">
                         {premiumLocked ? (
                           <div className="relative">
-                            <p className="m-0 text-sm leading-relaxed text-stone-400 blur-sm select-none">
-                              {q.explanation}
+                            <p className="m-0 text-sm leading-relaxed text-stone-400 blur-sm select-none" aria-hidden="true">
+                              {LOCKED_EXPLANATION_PLACEHOLDER}
                             </p>
                             <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm">
                               <button
@@ -505,7 +469,7 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
                       </div>
                     )}
 
-                    {q.videoUrl && !canViewVideo && (
+                    {q.hasVideo && !canViewVideo && (
                       <div className="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-200 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-amber-100 border-2 border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
                           <PlayIcon className="w-4 h-4" />

@@ -110,7 +110,18 @@ export function ProgressPage({ summary }: { summary: ProgressSummary }) {
             </Link>
           ))}
 
-          {summary.attempts.length === 0 && (
+          {!summary.hasPremiumEvaluation && summary.totalAttempts > 0 && (
+            <div className="bg-white rounded-[var(--radius-lg)] p-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200 text-center">
+              <p className="m-0 text-sm font-semibold leading-relaxed text-stone-400">
+                Riwayat Try-out lengkap tersedia untuk Premium.
+              </p>
+              <Link to="/premium" className="btn btn-sm mt-3">
+                Upgrade ke Premium
+              </Link>
+            </div>
+          )}
+
+          {summary.totalAttempts === 0 && (
             <EmptyPanel message="Belum ada riwayat Try-out. Mulai Try-out gratis untuk mengisi progres." />
           )}
         </div>
