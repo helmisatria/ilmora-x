@@ -46,9 +46,11 @@ Use sandbox credentials with `MIDTRANS_IS_PRODUCTION=false`. Switch it to `true`
 
 | Command | What it does | When to run |
 | --- | --- | --- |
-| `pnpm jobs:leaderboard` | Starts the pg-boss worker that finalizes the previous weekly Leaderboard every Monday 00:05 WIB. | Always on, as its own process. |
-| `pnpm jobs:finalise-weekly-leaderboard [-- --week YYYY-MM-DD]` | Finalizes one week now and awards missing Top-N Badges. Safe to rerun. | Repair only, e.g. if the worker was down. |
+| `pnpm jobs:finalise-weekly-leaderboard [-- --week YYYY-MM-DD]` | Finalizes the previous week (or the given week) and awards missing Top-N Badges. Safe to rerun. | Runs on Railway as the `leaderboard-cron` service, Mondays 00:05 WIB (`5 17 * * 0` UTC). Run by hand only to repair a missed week. |
+| `pnpm jobs:leaderboard` | Starts an always-on pg-boss worker that does the same weekly finalization. | Not deployed. Use it instead of the cron service only if you need a long-running worker. Do not run both. |
 | `pnpm jobs:recompute-attempt-xp [-- --apply]` | Recalculates stored Attempt EXP with the current formula. Without `--apply` it only prints what would change. Badges, Badge reward EXP, and finalized weeks are kept. | Once, after an EXP formula change. Run the dry run first. |
+
+Railway has a `leaderboard-cron` service in both environments: production builds from `main`, staging from `dev`. It needs only `DATABASE_URL` (a reference to the Postgres service). The web service does not start any background jobs.
 
 EXP, Level, Badge, and Leaderboard rules are in `CONTEXT.md` (Engagement surface terms and the Rules section).
 
