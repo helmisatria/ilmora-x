@@ -11,6 +11,7 @@ Source ODS: `docs/IlmoraX - Experience level.ods`
 - Rows marked `supported` are included in proposal scope; rows marked `not_supported` are excluded from proposal scope.
 - Badge rows 40, 41, and 42 have missing badge names in the ODS source.
 - Institution spelling and codes preserve the source workbook where likely intentional.
+- This file mirrors the workbook as written. Where the app applies stricter or more specific rules (unique Try-out counts, first-Attempt rules for BADGE-025/026/027, non-stacking permanent bonus), see the Rules section of `CONTEXT.md`.
 
 ## Badge Support Summary
 

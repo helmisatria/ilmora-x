@@ -76,6 +76,7 @@ async function listSubmittedAttempts(studentUserId: string): Promise<StudentEval
   return db
     .select({
       id: attempts.id,
+      tryoutId: attempts.tryoutId,
       tryoutTitle: tryouts.title,
       attemptNumber: attempts.attemptNumber,
       status: attempts.status,

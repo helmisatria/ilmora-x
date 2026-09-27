@@ -10,6 +10,7 @@ const evaluation: StudentEvaluation = {
     badgeRewardXp: 50,
     streak: 2,
     totalAttempts: 1,
+    uniqueTryoutCount: 1,
     totalQuestions: 10,
     totalCorrect: 7,
     totalWrong: 3,
@@ -19,15 +20,16 @@ const evaluation: StudentEvaluation = {
   attempts: [
     {
       id: "attempt-1",
+      tryoutId: "tryout-a",
       tryoutTitle: "Try-out A",
       attemptNumber: 1,
       status: "submitted",
       startedAt: new Date("2026-09-01T00:00:00Z"),
       submittedAt: new Date("2026-09-01T01:00:00Z"),
-      score: 70,
+      score: 35,
       correctCount: 7,
-      wrongCount: 3,
-      totalQuestions: 10,
+      wrongCount: 13,
+      totalQuestions: 20,
       xpEarned: 250,
     },
   ],
@@ -56,6 +58,8 @@ test("hides Attempt history and Sub-category breakdown from free Students", () =
 
   assert.equal(summary.hasPremiumEvaluation, false);
   assert.equal(summary.totalAttempts, 1);
+  assert.equal(summary.uniqueTryoutCount, 1);
+  assert.equal(summary.failLegendAttemptCount, 1);
   assert.deepEqual(summary.attempts, []);
   assert.equal(summary.categories[0].name, "Farmakologi");
   assert.equal(summary.categories[0].correct, 7);

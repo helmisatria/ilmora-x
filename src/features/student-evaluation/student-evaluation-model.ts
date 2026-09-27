@@ -2,6 +2,7 @@ import { badgeCodeToId, calculateCurrentStreak } from "../engagement-surface/eng
 
 export type StudentEvaluationAttempt = {
   id: string;
+  tryoutId: string;
   tryoutTitle: string;
   attemptNumber: number;
   status: "submitted" | "auto_submitted";
@@ -41,6 +42,7 @@ export type StudentEvaluation = {
     badgeRewardXp: number;
     streak: number;
     totalAttempts: number;
+    uniqueTryoutCount: number;
     totalQuestions: number;
     totalCorrect: number;
     totalWrong: number;
@@ -53,6 +55,7 @@ export type StudentEvaluation = {
 
 export type StudentEvaluationAttemptRow = {
   id: string;
+  tryoutId: string;
   tryoutTitle: string;
   attemptNumber: number;
   status: string;
@@ -121,6 +124,7 @@ export function buildStudentEvaluation({
       badgeRewardXp,
       streak: calculateCurrentStreak(attempts.map((attempt) => attempt.submittedAt)),
       totalAttempts: attempts.length,
+      uniqueTryoutCount: new Set(attempts.map((attempt) => attempt.tryoutId)).size,
       totalQuestions,
       totalCorrect,
       totalWrong,
@@ -173,6 +177,7 @@ function toStudentEvaluationAttempt(row: StudentEvaluationAttemptRow): StudentEv
 
   return {
     id: row.id,
+    tryoutId: row.tryoutId,
     tryoutTitle: row.tryoutTitle,
     attemptNumber: row.attemptNumber,
     status: row.status as "submitted" | "auto_submitted",

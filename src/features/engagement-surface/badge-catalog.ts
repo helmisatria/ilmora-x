@@ -5,20 +5,22 @@ export interface Badge {
   category: "General" | "Level" | "Streak" | "Prestige";
   task: string;
   xpReward: number;
+  // Permanent boost to Try-out XP earned after the badge is awarded.
+  permanentXpBonusPercent?: number;
 }
 
 export const badges: Badge[] = [
   { id: 1, name: "First Steps", icon: "🎯", category: "General", task: "Complete your first test", xpReward: 10 },
   { id: 2, name: "Pharmacy Novice Badge", icon: "🌱", category: "Level", task: "Reach Level 3", xpReward: 60 },
   { id: 3, name: "Pharmacy Trainee Badge", icon: "📈", category: "Level", task: "Reach Level 6", xpReward: 90 },
-  { id: 4, name: "Pharmacy Practitioner Badge", icon: "💊", category: "Level", task: "Reach Level 11", xpReward: 140 },
-  { id: 5, name: "Pharmacy Professional Badge", icon: "🔬", category: "Level", task: "Reach Level 16", xpReward: 200 },
-  { id: 6, name: "Pharmacy Specialist Badge", icon: "🧬", category: "Level", task: "Reach Level 21", xpReward: 275 },
-  { id: 7, name: "Pharmacy Expert Badge", icon: "🏆", category: "Level", task: "Reach Level 26", xpReward: 0 },
-  { id: 8, name: "Pharmacy Consultant Badge", icon: "🎓", category: "Level", task: "Reach Level 31", xpReward: 0 },
-  { id: 9, name: "Pharmacy Master Badge", icon: "👑", category: "Level", task: "Reach Level 36", xpReward: 0 },
-  { id: 10, name: "Pharmacy Grand-Master Badge", icon: "⚡", category: "Level", task: "Reach Level 41", xpReward: 0 },
-  { id: 11, name: "Pharmacy Authority Badge", icon: "🌟", category: "Level", task: "Reach Level 46", xpReward: 0 },
+  { id: 4, name: "Pharmacy Practitioner Badge", icon: "💊", category: "Level", task: "Reach Level 11", xpReward: 140, permanentXpBonusPercent: 5 },
+  { id: 5, name: "Pharmacy Professional Badge", icon: "🔬", category: "Level", task: "Reach Level 16", xpReward: 200, permanentXpBonusPercent: 10 },
+  { id: 6, name: "Pharmacy Specialist Badge", icon: "🧬", category: "Level", task: "Reach Level 21", xpReward: 275, permanentXpBonusPercent: 15 },
+  { id: 7, name: "Pharmacy Expert Badge", icon: "🏆", category: "Level", task: "Reach Level 26", xpReward: 0, permanentXpBonusPercent: 20 },
+  { id: 8, name: "Pharmacy Consultant Badge", icon: "🎓", category: "Level", task: "Reach Level 31", xpReward: 0, permanentXpBonusPercent: 25 },
+  { id: 9, name: "Pharmacy Master Badge", icon: "👑", category: "Level", task: "Reach Level 36", xpReward: 0, permanentXpBonusPercent: 30 },
+  { id: 10, name: "Pharmacy Grand-Master Badge", icon: "⚡", category: "Level", task: "Reach Level 41", xpReward: 0, permanentXpBonusPercent: 35 },
+  { id: 11, name: "Pharmacy Authority Badge", icon: "🌟", category: "Level", task: "Reach Level 46", xpReward: 0, permanentXpBonusPercent: 40 },
   { id: 12, name: "Pharmacy Legendary Badge", icon: "💎", category: "Level", task: "Reach Level 50", xpReward: 0 },
   { id: 13, name: "Top 10", icon: "🏅", category: "Level", task: "Reach top 10 leaderboard", xpReward: 200 },
   { id: 14, name: "Top 5", icon: "🥈", category: "Level", task: "Reach top 5 leaderboard", xpReward: 500 },
@@ -31,7 +33,18 @@ export const badges: Badge[] = [
   { id: 22, name: "Dedicated", icon: "📚", category: "Streak", task: "Complete 15 unique tryouts", xpReward: 1000 },
   { id: 23, name: "Master", icon: "🎓", category: "Streak", task: "Complete 50 unique tryouts", xpReward: 5000 },
   { id: 24, name: "Legendary", icon: "👑", category: "Streak", task: "Complete 100 unique tryouts", xpReward: 7500 },
-  { id: 25, name: "Speed Runner", icon: "⚡", category: "Streak", task: "Finish tryout under time limit with >80% score", xpReward: 1000 },
-  { id: 26, name: "Fail Legend", icon: "💀", category: "Prestige", task: "Reach 5x fail", xpReward: 1000 },
-  { id: 27, name: "100% Club", icon: "💯", category: "Prestige", task: "Reach 100% Score", xpReward: 5000 },
+  { id: 25, name: "Speed Runner", icon: "⚡", category: "Streak", task: "Finish a 20+ question tryout on the first attempt in half the time with >80% score", xpReward: 1000 },
+  { id: 26, name: "Fail Legend", icon: "💀", category: "Prestige", task: "Reach 5x fail on first attempts of 20+ question tryouts", xpReward: 1000 },
+  { id: 27, name: "100% Club", icon: "💯", category: "Prestige", task: "Score 100% on the first attempt of a 20+ question tryout", xpReward: 5000 },
 ];
+
+// Only the highest level badge counts; the bonuses do not stack.
+export function getPermanentXpBonusPercent(awardedBadgeIds: Iterable<number>) {
+  const awarded = new Set(awardedBadgeIds);
+
+  return badges.reduce((highest, badge) => {
+    if (!awarded.has(badge.id)) return highest;
+
+    return Math.max(highest, badge.permanentXpBonusPercent ?? 0);
+  }, 0);
+}

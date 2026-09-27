@@ -85,15 +85,24 @@ _Avoid_: Users Insights, observability, audit log
 **Engagement surface**:
 The complete set of gamification concepts in scope: **EXP**, **Level** (1–50), **Badge**, **Streak** (daily Try-out consecutive days), **Leaderboard**. Hearts (lives) and Gems (currency) are **out of scope** and must not appear in the prototype top bar.
 
+**EXP**:
+Points a Student earns from submitted Try-out Attempts (Attempt EXP) and from Badge rewards (Badge reward EXP). Lifetime EXP is the sum of both and decides the Student's Level.
+
+**Level**:
+One of 50 steps (Pharmacy Newbie I → Pharmacy Legendary) reached at fixed lifetime EXP thresholds. The source of truth is the `DB_-_Exp_and_Grade` sheet in `docs/IlmoraX - Experience level.ods`, mirrored in `docs/IlmoraX - Structured Reference.md` and implemented in `src/features/engagement-surface/level-catalog.ts`. A test checks the code against the reference.
+
+**Grade**:
+The Level name without its roman numeral, e.g. Level 5 "Pharmacy Novice III" has Grade "Pharmacy Novice".
+
 **Badge**:
-A one-time Student achievement with an unlock requirement and optional EXP reward.
+A one-time Student achievement with an unlock requirement and optional EXP reward. The supported set and reward amounts come from the `DB_-_Badges` sheet in the same workbook.
 
 **Coupon**:
 An admin-created discount code redeemable at checkout during a validity window (`start_time`, `end_time`). Each **Student** may redeem a given Coupon at most once. Admin may additionally set a `max_total_uses` cap (≥1) on the Coupon itself — setting it to `1` produces a first-come-first-served single-claim code; leaving it unset allows unlimited redemptions across students within the validity window. A Coupon has an explicit product scope so it cannot accidentally apply to the wrong paid product type.
 _Avoid_: Promo, voucher, discount code
 
 **Dashboard Announcement**:
-An admin-created single-content message shown to Students as a dismissible dashboard modal.
+An admin-created single-content message shown to Students as a dismissible dashboard modal. _Not built yet: the rules below describe the intended behavior._
 _Avoid_: Banner, notice, popup
 
 ## Rules (payment)
@@ -204,7 +213,7 @@ A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuse
 - **Autosave is idempotent by final state.** Duplicate writes of the same latest snapshot are allowed. M1 does not need a separate autosave idempotency-key table; last accepted non-stale snapshot wins.
 - **Offline queue stores one latest full snapshot per Attempt.** M1 does not keep an ordered event queue. Each local fallback replaces the previous local snapshot for that Attempt with the newest `{answers, marked, last_question_index, queued_at}` state.
 - **In-progress Attempts auto-resume on reopen.** Visiting a Try-out with an existing in-progress Attempt restores that Attempt immediately from server state plus any newer local snapshot. The timer is recomputed from the server `deadline_at`; refresh, tab close, and browser reopen never pause the Attempt.
-- **Saves are triggered by answer-change (debounced ~500ms) + tab events** (blur, visibilitychange, beforeunload). No periodic timer saves.
+- **Saves are triggered by Attempt state changes, debounced ~700ms.** Any change to answers, marked Questions, or the current Question index schedules a server save. On `beforeunload` and `pagehide` the latest snapshot is written to the local queue (a server request may not finish while the page closes); the queue is replayed on the `online` event and on resume. No periodic timer saves.
 - **Persisted state per in-progress Attempt**: `{answers: {[qid]: choice}, marked: [qid…], last_question_index}`. Nothing else.
 - **M1 Attempt resilience is same-browser/device only.** Refresh, browser close/reopen on the same device, and temporary offline state must preserve the in-progress Attempt. Cross-device active-session invalidation is post-M1 anti-cheat scope.
 - **Submit requires an online server round trip in M1.** On submit, flush the latest local snapshot first, then submit. If offline at submit time, keep the local snapshot and tell the Student to reconnect before submitting. If the wall-clock deadline elapses while offline, the server auto-submits with the last accepted server state.
@@ -224,8 +233,8 @@ A 6-digit numeric code unique **among currently-open Poll Sessions only**. Reuse
 
 - **PostHog is the Product Analytics destination.** It is allowed to receive identifiable Student profile fields and learning-content context when useful for behavior analysis, including email, display name, institution, submitted answers, question text, and free-text Question report notes.
 - **Product Analytics is not the source of truth.** IlmoraX domain records, audit-like activity, and server observability remain owned by the database and logging layers.
-- **Product Analytics uses client and server capture.** Client-side capture is for page views, navigation funnels, and UI interaction; server-side capture is for trusted domain events such as profile completion, Try-out start/submit, Materi views, Question reports, Poll participation, and checkout completion.
-- **Product Analytics event names use IlmoraX domain language.** Fact events use past-tense domain names such as `tryout_started` and `question_reported`; UI-intent events use precise names such as `premium_membership_selected`. Avoid generic names like `button_clicked`, `form_submitted`, `quiz_completed`, or `page_interacted` except for automatic page views.
+- **Product Analytics uses client and server capture.** Client-side capture is for page views, navigation funnels, and UI interaction; server-side capture is for trusted domain events. Server-side today: `account_created`, `profile_completed`, `tryout_started`, `tryout_submitted`. `question_reported` is still captured client-side after the report succeeds. Materi views, Poll participation, and checkout completion are planned server events and _not captured yet_. The full event list lives in `src/lib/product-analytics.ts`.
+- **Product Analytics event names use IlmoraX domain language.** Fact events use past-tense domain names such as `tryout_started` and `question_reported`; UI-intent events use precise names such as `home_signup_selected`. Avoid generic names like `button_clicked`, `form_submitted`, `quiz_completed`, or `page_interacted` except for automatic page views.
 - **Product Analytics capture is environment-gated.** PostHog only captures when the relevant client or server PostHog environment variables are configured; local development without those variables must no-op cleanly.
 - **Acquisition funnel is the first Product Analytics funnel.** Track how many visitors view the home page, choose signup/register entry points, create an account, and reach the Try-out catalog from those entry points. Separately track how many visitors view the Try-out catalog and register from it.
 - **Acquisition distinguishes signup milestones.** `signup_started` means a visitor chose a Google sign-in/register entry point, `account_created` means OAuth produced a first authenticated account/session, and `profile_completed` is the acquisition conversion because a Student is not ready until mandatory profile completion.
@@ -259,12 +268,12 @@ _Avoid_: User (too generic), learner
 A Student whose email is on the admin whitelist. Gains access to admin CMS routes (`/admin/*`). Not a separate account — same Google sign-in, same session.
 
 **Super-admin**:
-An Admin with the power to add/remove other Admins via the CMS. Seeded via env var on first boot; can promote other Admins thereafter.
+An Admin with the power to add/remove other Admins via the CMS. The first email in `ADMIN_EMAILS` becomes Super-admin when `pnpm db:seed` runs on a database with no active Admins; Super-admins can promote other Admins thereafter.
 
 ## Rules (Identity & Access)
 
 - **Single Google sign-in for everyone.** No email/password for admins. better-auth handles session, tokens, OAuth.
-- **Admin whitelist is a DB table**, bootstrapped from an env var (`ADMIN_EMAILS`) on first deploy. Changes thereafter are CMS-driven; env var is ignored after bootstrap.
+- **Admin whitelist is a DB table**, bootstrapped from `ADMIN_EMAILS` (comma-separated) by `pnpm db:seed` only when no active Admin exists. Changes thereafter are CMS-driven; the env var is ignored after bootstrap.
 - **Admin status is re-verified on every `/admin/*` request** via middleware, not snapshotted at login. Removing an email from the whitelist revokes access immediately.
 - **Admins skip the mandatory profile completion step.** Whitelist match on first sign-in sends them to `/admin` directly.
 - **Two admin tiers**: `admin` (full CMS access) and `super_admin` (adds/removes admins). Only super_admins can modify the whitelist.
@@ -294,17 +303,17 @@ A record that grants a **Student** access to a Product or content target. A Prem
 - **Effective Premium Membership = any non-expired membership Entitlement** for this Student. It is one global access check across all premium surfaces.
 - **Lifetime Try-out ownership = any non-expired or lifetime content Entitlement** for the specific Try-out. It survives Premium Membership expiry.
 - **Paid access is enforced server-side.** Student UI locks are only hints; Attempt start, paid review access, premium evaluation, and paid Materi access must check Entitlements on the server.
-- **Try-out access levels are explicit:** `free` or `paid`. Do not model this as `isPremium`, and do not use `platinum` as a content tier.
+- **Try-out access levels are explicit:** free or paid. The stored `tryouts.access_level` values are `free` and `premium`, where `premium` means a paid Try-out (see `isPaidTryout`). Do not model this as an `isPremium` boolean, and do not use `platinum` as a content tier.
 - **"Premium" may be used as the student-facing badge for paid Try-outs.** In domain language, the Try-out is paid; in UI copy, "Premium" signals a higher-value locked module but must still offer both unlock paths.
 - **Admin Try-out access selection is Free or Premium.** The Premium admin label maps to a paid Try-out; Platinum is not an admin-selectable Try-out access level.
 - **Question access levels are explicit:** `free` or `premium`. If a Student can access a Try-out, that access unlocks premium questions inside that Try-out.
 - **Review locks follow effective access.** Active Premium members and Students with access to the specific paid Try-out do not see premium locks in review summary or detail review for that Attempt.
 - **Overlapping purchases extend the expiry** — buying while an Entitlement is still active adds the new duration to the existing `ends_at`. Never blocks re-purchase.
 - **Single premium tier in M2** — no "Premium Plus." Multi-tier is post-M2.
-- **Hard expiry cut**, with proactive email warnings at T-7d and T-1d before `ends_at`. No grace period.
+- **Hard expiry cut.** No grace period: access ends at `ends_at`. Proactive email warnings at T-7d and T-1d are planned but _not built yet_.
 - **Admin-granted Premium Membership must specify a duration.** Admin-granted Lifetime Try-out Purchase access is a separate action and is lifetime by default.
 - **Admin manual grants must preserve an audit trail.** A manual Entitlement grant records the granting Admin, Student, Product/access target, grant reason, and grant time.
-- **Lifetime access means no expiry while the content remains available.** Admin may retire/unpublish a purchased Try-out. If a replacement Try-out is explicitly linked, owners get access to the replacement.
+- **Lifetime access means no expiry while the content remains available.** Admin may retire/unpublish a purchased Try-out. If a replacement Try-out is explicitly linked, owners get access to the replacement. _Replacement linking is not built yet._
 - **Catalog cards have one primary action.** Locked paid cards open a context-aware upgrade dialog. The dialog offers Premium Membership or buying that one Try-out only, then routes to the same checkout.
 - **Active Premium members open paid Try-outs directly.** Paid Try-outs appear accessible/included while membership is active, and the lifetime purchase option is not shown for now.
 - **Locked paid Try-out clicks do not route directly to Premium.** The Student must first choose between Premium Membership and Lifetime Try-out Purchase because the click only expresses interest in the Try-out, not a preferred purchase mode.
@@ -330,7 +339,7 @@ A record that grants a **Student** access to a Product or content target. A Prem
 ## Language (Materi)
 
 **Materi**:
-A standalone study-material unit tagged with one `(Category, Sub-category)` pair (same taxonomy as Questions). Carries an access level, a Markdown body, optional YouTube embed URL, and an optional PDF attachment.
+A standalone study-material unit tagged with one `(Category, Sub-category, Topic)` path (same taxonomy as Questions). Carries an access level, a Markdown body, optional YouTube embed URL, and an optional PDF attachment.
 _Avoid_: Article, lesson, module
 
 ## Rules (Materi)
@@ -340,7 +349,7 @@ _Avoid_: Article, lesson, module
 - **Video: unlisted YouTube embeds only.** No self-hosted video in M1/M2. Attachments limited to a single PDF (≤20 MB) stored in object storage.
 - **No Materi versioning.** Live edits publish immediately; students always see latest. Past Attempts are unrelated to Materi since Materi isn't scored.
 - **Viewing Materi is tracked but grants no EXP.** View counts flow into Users Insights; there is no "Materi completed" mechanic.
-- **Question → Materi backlink in result review** (M2, paired with premium evaluation). For each wrong answer, the pembahasan surfaces relevant Materi by shared `(Category, Sub-category)`. Reverse direction (Materi → related Questions) is deferred.
+- **Question → Materi backlink in result review** (M2, paired with premium evaluation). For each wrong answer, the pembahasan surfaces published Materi that shares the Question snapshot's Topic. Reverse direction (Materi → related Questions) is deferred.
 
 ## Language (Moderation)
 
@@ -352,33 +361,43 @@ The frozen copy of a **Question**'s content captured when an **Attempt** begins.
 
 ## Rules (Moderation)
 
-- **Reports cluster per Question** in the admin moderation queue. Queue shows one row per reported Question with a report count; drill in for individual messages.
-- **Admin actions on a reported Question**: dismiss, edit, unpublish, delete. Delete warns if past Attempts reference the Question; unpublish is preferred in that case.
-- **Past Attempts never re-score on edit.** Historical scores, EXP, leaderboard totals, and evaluation numbers remain frozen regardless of question edits. (Opt-in re-scoring is a post-M1 feature.)
-- **Student feedback on report**: in-app toast on submit in M1 ("Laporan kami terima"), email acknowledgment added in M2. No in-app report history.
+- **The admin report queue lists one row per report.** Admins filter by status, reason, Try-out, and Question; the Question filter is how to see every report about one Question. Grouping into one row per Question with a count is _not built yet_.
+- **Admin actions on a report are status changes.** A report moves between `open`, `reviewed`, `resolved`, and `dismissed`. Fixing the Question itself (edit, unpublish, delete) happens through the Try-out workbook flow, not from the report queue.
+- **Past Attempts never re-score on edit.** Historical scores, EXP, leaderboard totals, and evaluation numbers remain frozen regardless of question edits. (Opt-in re-scoring is a post-M1 feature.) The one exception is the operator-run `jobs:recompute-attempt-xp` correction, which rewrites Attempt EXP after an EXP formula change; it never changes scores, Badges, Badge reward EXP, or finalized weekly leaderboard snapshots.
+- **Student feedback on report**: in-app confirmation on submit ("Laporan terkirim. Tim akan meninjau soal ini."). Email acknowledgment is planned for M2 and _not built yet_. No in-app report history.
 
 ## Rules
 
 - **Timer continues wall-clock during disconnect.** When a student disconnects mid-Attempt, the server-side deadline keeps counting. This prevents "disconnect to think" exploits and matches real exam behavior.
-- **EXP grant scales on retake and extra practice.** First Attempt of a Try-out grants full EXP. Subsequent Attempts inside the normal daily quota grant a reduced amount (currently 25% of base). Active Premium access or Lifetime Try-out Purchase ownership may allow extra same-day practice for the accessible Try-out, but Attempts beyond the normal daily quota grant 0 EXP.
+- **Attempt EXP is 4 per correct answer.** The workbook's "Total Right Question" column is `Experience / 4`, so the Level curve assumes 4 EXP per correct answer. There is no flat completion bonus: a blank submission earns 0 EXP. Example: 100 correct on a first Attempt = 400 EXP.
+- **EXP grant scales on retake and extra practice.** First Attempt of a Try-out grants full EXP. Subsequent Attempts inside the normal daily quota grant 25% of base (base = 4 × correct answers). Active Premium access or Lifetime Try-out Purchase ownership may allow extra same-day practice for the accessible Try-out, but Attempts beyond the normal daily quota grant 0 EXP.
+- **Attempt EXP is calculated once at submit and stored on the Attempt.** Formula: `round(4 × correct × attempt rate × (1 + permanent bonus %))`, where attempt rate is 1 for the first Attempt and 0.25 for retakes. Impersonated submissions earn 0 EXP.
 - **Daily Try-out Attempt limits are part of the Attempt lifecycle.** Premium access or Lifetime Try-out Purchase ownership may grant extended practice access, but the Attempt lifecycle decides whether a new Attempt can start and whether that Attempt earns EXP.
 - **Badge counts of "Complete N CBT" use unique Try-outs completed**, not total Attempts. Prevents farming BADGE-022/023/024 by retaking a short Try-out.
 - **Permanent EXP bonus: only the highest tier applies.** A student at level 46 with BADGE-004..011 all earned gets a single +40% multiplier (from BADGE-011), not additive stacking. Applies to EXP earned after the badge is awarded only; never retroactive.
+- **Permanent EXP bonus boosts Attempt EXP only.** It multiplies Try-out Attempt EXP, not Badge reward EXP. The Attempt that unlocks a Level Badge does not get that Badge's bonus, because Badges are evaluated after the Attempt EXP is stored.
+- **Level Badges chain within one evaluation.** Badge reward EXP can push a Student over the next Level threshold, which unlocks the next Level Badge in the same evaluation.
+- **High-reward performance Badges only count full first Attempts.** 100% Club (BADGE-027), Speed Runner (BADGE-025), and Fail Legend (BADGE-026) only count a Student's first Attempt of a Try-out with at least 20 Questions. Retakes and short quizzes are too easy to farm for rewards of 1000–5000 EXP.
+  - **100% Club:** score of 100% on a qualifying Attempt. Lifetime accuracy does not count.
+  - **Speed Runner:** score above 80%, submitted by the Student (not auto-submitted), in no more than half of the Try-out's time limit.
+  - **Fail Legend:** 5 qualifying Attempts with a score below 70.
+- **Only the server awards per-Attempt Badges.** Student-facing pages show 100% Club and Speed Runner as unlocked only after the server has awarded them; they never infer it from summary numbers.
 - **Leaderboard is weekly and EXP-earned-that-week only.** Week = Monday 00:00 → Sunday 23:59 WIB (UTC+7). The week closes at Monday 00:00 WIB; finalization may run shortly after the boundary (for example Monday 00:05 WIB). The canonical week key is the Jakarta Monday start date (`YYYY-MM-DD`).
 - **Live current-week leaderboard resets at the week boundary.** At Monday 00:00 WIB the live leaderboard window moves to the new week even if previous-week finalization is still pending.
-- **Previous-week history may be pending after the boundary.** If a closed week has not been finalized yet, history/admin surfaces show a finalizing state instead of recomputing or displaying provisional Badge outcomes.
+- **Previous-week history may be pending after the boundary.** If a closed week has not been finalized yet, history/admin surfaces show a finalizing state instead of recomputing or displaying provisional Badge outcomes. _History surfaces are not built yet (see below)._
 - **Top-N leaderboard badges (BADGE-013..016) are awarded from finalized weekly rank only.** A temporary in-week rank never earns the badge. The scheduled job runs after the Monday 00:00 WIB boundary, computes the previous completed week, and awards each badge at most once per Student.
 - **Top-N leaderboard badges cascade by final rank.** Rank 1 earns Top 1, Top 3, Top 5, and Top 10 if missing; rank 4 earns Top 5 and Top 10 if missing. Each newly earned Badge grants its configured one-time reward EXP.
 - **Top-N leaderboard badges do not grant permanent EXP bonuses.** They grant one-time reward EXP only unless the Badge catalog explicitly changes later.
 - **Repeat Top-N finishes only grant missing Badges.** A Student who already owns a broader Top-N Badge does not receive that Badge or its reward EXP again when later earning a narrower rank.
 - **Weekly leaderboard rank uses deterministic tiebreakers.** Sort by weekly EXP descending, then by the accepted submission time of the Student's last EXP-earning Attempt for that week, then by stable Student id. Equal EXP never expands a Top-N badge cutoff beyond N Students.
-- **Weekly leaderboard requires a minimum participant threshold** (admin-configurable, default 10 ranked Students) to award Top-N badges. A ranked Student has ≥1 EXP earned that week. Below threshold, leaderboard still displays as a ranking but no badges are granted.
+- **Weekly leaderboard requires a minimum participant threshold** (set by the `WEEKLY_LEADERBOARD_PARTICIPANT_THRESHOLD` env var, default 10 ranked Students; there is no admin setting yet) to award Top-N badges. A ranked Student has ≥1 EXP earned that week. Below threshold, leaderboard still displays as a ranking but no badges are granted.
 - **Only students with ≥1 EXP earned that week are ranked.** Zero-activity students are excluded from the leaderboard view and rank counts.
 - **Zero-EXP Attempts do not affect weekly leaderboard competition.** They do not count toward participant threshold, weekly EXP, or tiebreaker timing.
-- **Leaderboard page defaults to the live current week.** Previous finalized weeks are available as history so Students and Admins can inspect past ranks and Badge outcomes.
+- **Leaderboard page defaults to the live current week.** Previous finalized weeks should be available as history so Students and Admins can inspect past ranks and Badge outcomes. _Not built yet: the page shows only the live week, and finalized snapshots are only in the database._
 - **Active-week leaderboard copy must not promise Top-N Badge awards.** It may show current rank and explain the finalized-week requirement, but "earned" language is reserved for finalized awards.
 - **Badge reward EXP does not affect the finalized leaderboard that produced it.** Weekly leaderboard rank is based on bonus-adjusted Try-out Attempt EXP for that week; badge reward EXP affects lifetime EXP/Level after award but never reorders the completed week.
 - **Attempt EXP and Badge reward EXP are distinct EXP sources.** Lifetime EXP/Level includes both sources, but weekly leaderboard competition includes only Attempt EXP.
+- **Leaderboard rows show lifetime Level, ranked by weekly EXP.** Rank and the "EXP minggu ini" number use that week's Attempt EXP; the Level and Grade shown next to a Student come from lifetime EXP, the same Level they see on their profile.
 - **Weekly leaderboard finalization is idempotent.** Re-running finalization for the same week may fill missing Top-N badge awards, but must never duplicate a Student's Badge or badge reward EXP.
 - **A finalized weekly snapshot is the source of truth for that week.** If no snapshot exists, repair may create one from eligible Attempts; once the snapshot exists, reruns use it to fill missing awards and must not recalculate ranks.
 - **Late accepted Attempts do not reopen finalized leaderboard weeks.** Once a week is finalized for Top-N badge awards, later accepted submissions cannot change that week's badge outcome.
@@ -388,10 +407,11 @@ The frozen copy of a **Question**'s content captured when an **Attempt** begins.
 - **All Badges open a detail modal.** Locked Badges use the modal to preview their name, icon, requirement, current progress, and EXP reward so Badge goals are transparent rather than secret. Unlocked Badges use the same modal to explain what the Student earned and why.
 - **Top-N Badge details show current standing, not unlock progress.** During an active week they may show the Student's live rank and the finalized-week requirement, but the Badge remains locked until weekly finalization awards it.
 - **Badge detail modal CTAs are contextual.** A Badge detail modal may link Students to the relevant surface only when the path is obvious and non-misleading, such as Try-out practice for progress, streak, score, and level Badges, or Leaderboard for weekly rank Badges.
-- **Badge evaluation has separate cadences by rule type.** Continuous eligibility badges may be evaluated daily; Top-N leaderboard badges are evaluated only by weekly leaderboard finalization after the week closes.
-- **Asynchronous badge awards get a one-time return-session celebration.** If a Badge is awarded while the Student is offline, the next student session shows the earned Badge once; after dismissal it remains only in the Badge collection/profile.
-- **Admin weekly leaderboard reruns are repair-only.** Admins may rerun finalization for a past week to fill missing awards, but reruns use the finalized snapshot rules, do not reopen late submissions, and must not duplicate rewards.
-- **Weekly participant threshold is frozen at finalization.** The threshold value used for a finalized week is stored with the snapshot; later admin setting changes apply only to future unfinalized weeks.
+- **Badge evaluation has separate cadences by rule type.** Continuous eligibility Badges (level, streak, progress, score) are evaluated right after each Try-out submit. Top-N leaderboard Badges are evaluated only by weekly leaderboard finalization after the week closes.
+- **Weekly finalization re-checks continuous Badges for Top-N winners.** Top-N reward EXP can cross a Level threshold, so finalization runs continuous Badge evaluation for each Student who received a Top-N Badge. Level Badges unlock at once instead of on the Student's next submit.
+- **Asynchronous badge awards get a one-time return-session celebration.** If a Badge is awarded while the Student is offline, the next student session shows the earned Badge once; after dismissal it remains only in the Badge collection/profile. _Not built yet: `student_badges.seen_at` exists for this but nothing reads or sets it._
+- **Admin weekly leaderboard reruns are repair-only.** Operators may rerun finalization for a past week with `pnpm jobs:finalise-weekly-leaderboard -- --week YYYY-MM-DD` (there is no Admin UI for it yet) to fill missing awards, but reruns use the finalized snapshot rules, do not reopen late submissions, and must not duplicate rewards.
+- **Weekly participant threshold is frozen at finalization.** The threshold value used for a finalized week is stored with the snapshot; later changes to the threshold setting apply only to future unfinalized weeks.
 - **Suspended Students are excluded from leaderboard finalization.** A Student suspended before finalization is not ranked for that finalized week, does not count toward the participant threshold, and cannot receive Top-N badge awards.
 - **Deleted Students are excluded from leaderboard finalization.** A Student deleted before finalization is not ranked for that finalized week and cannot receive new Badge awards.
 - **Admin accounts are excluded from student leaderboard finalization.** Admin testing activity must not consume student rank slots, count toward participant thresholds, or earn student engagement rewards.
@@ -403,10 +423,14 @@ The frozen copy of a **Question**'s content captured when an **Attempt** begins.
 - A **Try-out** has many **Attempts**
 - An **Attempt** belongs to one **Student** and one **Try-out**
 - A **Category** has many **Sub-categories**
-- A **Question** belongs to exactly one `(Category, Sub-category)` pair
+- A **Sub-category** has many **Topics**
+- A **Try-out** belongs to one **Category**
+- A **Question** belongs to exactly one `(Category, Sub-category, Topic)` path
+- A **Student** earns Attempt EXP from submitted **Attempts** and Badge reward EXP from **Badges**; lifetime EXP decides their **Level**
+- A **Student** holds each **Badge** at most once
 
 ## Flagged ambiguities
 
 - "Try-out", "CBT", and "exercise" were used interchangeably across the updated proposal and Phase 0 PRD — resolved: they refer to the same entity. Canonical UI term is **Try-out**; "CBT" acceptable in internal/admin docs; "exercise" should not be used. If an untimed practice mode is later needed, it will be a `mode` flag on Try-out, not a new entity.
 - Phase 0 prototype PRD shows "Hearts, Streak, Gems, XP" in the student top bar, but the updated proposal never mentions Hearts or Gems — resolved: Hearts and Gems are out of scope. Student top bar is **Streak, EXP, Level** only. Any heart/gem UI must be removed from the prototype before design review.
-- Section 7 header schema shows 2 category levels while the example text ("Klinis > Kardiovaskular > Hipertensi") reads as 3 — resolved: **2 levels only**. The example is illustrative; "Kardiovaskular - Hipertensi" is one sub-category string.
+- Section 7 header schema shows 2 category levels while the example text ("Klinis > Kardiovaskular > Hipertensi") reads as 3 — first resolved as 2 levels only, then superseded by `docs/adr/0005-migrate-taxonomy-to-topic-level.md`: the taxonomy is now **3 levels (Category → Sub-category → Topic)**, so the example maps to Category `Klinis`, Sub-category `Kardiovaskular`, Topic `Hipertensi`.

@@ -1,3 +1,4 @@
+import { isFailLegendAttempt } from "../engagement-surface/engagement-surface-model";
 import type { StudentEvaluation } from "../student-evaluation/student-evaluation-model";
 
 // Free Students only get totals and top-level Category scores.
@@ -12,6 +13,9 @@ export function buildProgressSummary(evaluation: StudentEvaluation, hasPremiumEv
     badgeRewardXp: evaluation.summary.badgeRewardXp,
     streak: evaluation.summary.streak,
     totalAttempts: evaluation.summary.totalAttempts,
+    // Badge progress counts are not premium-gated, so compute them before hiding Attempt history.
+    uniqueTryoutCount: evaluation.summary.uniqueTryoutCount,
+    failLegendAttemptCount: evaluation.attempts.filter(isFailLegendAttempt).length,
     totalQuestions: evaluation.summary.totalQuestions,
     totalCorrect: evaluation.summary.totalCorrect,
     awardedBadgeIds: evaluation.summary.awardedBadgeIds,

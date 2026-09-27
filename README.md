@@ -42,6 +42,16 @@ Error Payment URL:  https://your-public-app.example/payment/error
 
 Use sandbox credentials with `MIDTRANS_IS_PRODUCTION=false`. Switch it to `true` only with a production Server Key and production dashboard configuration.
 
+## Jobs
+
+| Command | What it does | When to run |
+| --- | --- | --- |
+| `pnpm jobs:leaderboard` | Starts the pg-boss worker that finalizes the previous weekly Leaderboard every Monday 00:05 WIB. | Always on, as its own process. |
+| `pnpm jobs:finalise-weekly-leaderboard [-- --week YYYY-MM-DD]` | Finalizes one week now and awards missing Top-N Badges. Safe to rerun. | Repair only, e.g. if the worker was down. |
+| `pnpm jobs:recompute-attempt-xp [-- --apply]` | Recalculates stored Attempt EXP with the current formula. Without `--apply` it only prints what would change. Badges, Badge reward EXP, and finalized weeks are kept. | Once, after an EXP formula change. Run the dry run first. |
+
+EXP, Level, Badge, and Leaderboard rules are in `CONTEXT.md` (Engagement surface terms and the Rules section).
+
 ## Code Map
 
 - `src/routes/`: TanStack file routes only. Keep route files focused on `createFileRoute`, loader/head setup, and rendering feature views.
@@ -56,7 +66,7 @@ Use sandbox credentials with `MIDTRANS_IS_PRODUCTION=false`. Switch it to `true`
 - `src/features/student-evaluation/`: Student Evaluation page, read model, and pure summary builder.
 - `src/features/poll-session/`: Poll Session operation. Admin mutations live in `poll-admin-functions.ts`, Student join/answer flow lives in `poll-student-functions.ts`, shared record loading/live invalidation lives in `poll-session-records.ts`, and pure projections live in `poll-session.ts`.
 - `src/features/leaderboard/`: Weekly Leaderboard ranking, finalization, Student Leaderboard read functions, and Leaderboard view models.
-- `src/features/engagement-surface/`: EXP, Level, Badge, Streak, and reward catalog rules.
+- `src/features/engagement-surface/`: Level table (`level-catalog.ts`), Badge catalog and permanent EXP bonus (`badge-catalog.ts`), pure Badge eligibility and Streak rules (`engagement-surface-model.ts`), and Badge awarding (`engagement-surface.ts`). Attempt EXP is calculated in `src/features/tryout-attempt/attempt-xp.ts`.
 - `src/features/premium-access/`: Premium Membership, Lifetime Try-out Purchase access rules, product catalog, and Coupon data.
 - `src/features/media/`: Media asset URL, S3 storage, Admin media read functions/page/uploads, and Question picture storage support.
 - `src/features/landing/`: Landing page Implementation, static landing content, icons, and link analytics.
@@ -81,3 +91,4 @@ Use sandbox credentials with `MIDTRANS_IS_PRODUCTION=false`. Switch it to `true`
 - `docs/adr/0002-finalize-weekly-leaderboards-for-top-n-badges.md`
 - `docs/adr/0003-use-server-sent-events-for-poll-session-live-updates.md`
 - `docs/adr/0004-organize-code-by-domain-feature-folders.md`
+- `docs/adr/0005-migrate-taxonomy-to-topic-level.md`
