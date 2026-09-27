@@ -26,6 +26,7 @@ type CreateMidtransSnapTransactionInput = {
   };
   finishRedirectUrl: string;
   errorRedirectUrl: string;
+  notificationUrl: string;
   items: Array<{
     id: string;
     name: string;
@@ -43,6 +44,9 @@ type MidtransSnapTransaction = {
 export async function createMidtransSnapTransaction(input: CreateMidtransSnapTransactionInput) {
   return requestMidtrans<MidtransSnapTransaction>(getMidtransSnapBaseUrl(), "/snap/v1/transactions", {
     method: "POST",
+    headers: {
+      "X-Override-Notification": input.notificationUrl,
+    },
     body: JSON.stringify({
       transaction_details: {
         order_id: input.orderId,

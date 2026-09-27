@@ -16,6 +16,14 @@ export function getCheckoutIdFromPaymentReturn(orderId: string | undefined) {
   return checkoutId || null;
 }
 
+// Sent with each Snap transaction so every environment receives its own payment
+// notifications, even when staging and production share one Midtrans account.
+export function makeMidtransNotificationUrl() {
+  const appUrl = process.env.APP_URL ?? "http://localhost:8090";
+
+  return `${appUrl.replace(/\/+$/, "")}/api/midtrans/webhook`;
+}
+
 export function makePaymentReturnUrl(type: "finish" | "error") {
   const appUrl = process.env.APP_URL ?? "http://localhost:8090";
 

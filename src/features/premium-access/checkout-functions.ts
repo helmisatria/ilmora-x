@@ -31,7 +31,7 @@ import {
   type ProductType,
 } from "./payment-service";
 import { createMidtransSnapTransaction } from "./midtrans-client.server";
-import { makePaymentReturnUrl } from "./payment-return";
+import { makeMidtransNotificationUrl, makePaymentReturnUrl } from "./payment-return";
 
 const productIdSchema = z.object({
   productId: z.string().trim().min(1),
@@ -265,6 +265,7 @@ async function startCheckoutWithMidtrans(
       },
       finishRedirectUrl: makePaymentReturnUrl("finish"),
       errorRedirectUrl: makePaymentReturnUrl("error"),
+      notificationUrl: makeMidtransNotificationUrl(),
       items: [
         {
           id: product.id,

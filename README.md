@@ -27,7 +27,7 @@ MIDTRANS_TRANSACTION_DURATION_SECONDS=86400
 APP_URL="https://your-public-app.example"
 ```
 
-In the Midtrans dashboard, set the Payment Notification URL to:
+Each Snap transaction sends `X-Override-Notification: <APP_URL>/api/midtrans/webhook`, so Midtrans notifies the environment that created the payment. Staging and production can share one sandbox account, and a wrong `APP_URL` means payments never confirm. Still set the dashboard Payment Notification URL to the production webhook as a fallback:
 
 ```text
 https://your-public-app.example/api/midtrans/webhook
@@ -41,6 +41,8 @@ Error Payment URL:  https://your-public-app.example/payment/error
 ```
 
 Use sandbox credentials with `MIDTRANS_IS_PRODUCTION=false`. Switch it to `true` only with a production Server Key and production dashboard configuration.
+
+Before launch: production currently runs on the sandbox key, so test cards can buy Premium. Swap in the production Server Key and set `MIDTRANS_IS_PRODUCTION=true` on the production Railway service.
 
 ## Jobs
 

@@ -16,6 +16,10 @@ test("creates a sandbox Snap transaction with server-side authentication", async
       new Headers(init?.headers).get("authorization"),
       `Basic ${Buffer.from("SB-Mid-server-server-key:").toString("base64")}`,
     );
+    assert.equal(
+      new Headers(init?.headers).get("x-override-notification"),
+      "https://ilmorax.test/api/midtrans/webhook",
+    );
 
     const body = JSON.parse(String(init?.body));
 
@@ -44,6 +48,7 @@ test("creates a sandbox Snap transaction with server-side authentication", async
       },
       finishRedirectUrl: "https://ilmorax.test/checkout/123/status",
       errorRedirectUrl: "https://ilmorax.test/checkout/123/status",
+      notificationUrl: "https://ilmorax.test/api/midtrans/webhook",
       items: [{
         id: "premium-30-days",
         name: "Premium 1 Bulan",
