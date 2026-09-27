@@ -104,7 +104,7 @@ export function DashboardPage({ summary, tryouts }: DashboardPageData) {
           <div className="mt-5 grid grid-cols-3 gap-3">
             <StatCard icon={<DocumentIcon />} label="Soal dikerjakan" value={String(summary.totalQuestions)} accent="#205072" />
             <StatCard icon={<TargetIcon />} label="Akurasi" value={`${accuracy}%`} accent="#f59e0b" />
-            <StatCard icon={<ChartIcon />} label="Try-out" value={String(summary.attempts.length)} accent="#0ea5e9" />
+            <StatCard icon={<ChartIcon />} label="Try-out" value={String(summary.totalAttempts)} accent="#0ea5e9" />
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.85fr)] lg:items-start">
