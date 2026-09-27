@@ -8,6 +8,7 @@ import {
   attempts,
   categories,
   questions,
+  studentBadges,
   subCategories,
   topics,
   tryoutQuestions,
@@ -15,8 +16,11 @@ import {
 } from "../../lib/db/schema";
 import { conflict, notFound } from "../../lib/http/errors";
 import { type Viewer } from "../../lib/auth-functions";
+import { calculateAttemptXp } from "./attempt-xp";
 import { getDailyAttemptWindow } from "./daily-attempt-window";
 import { awardDailyBadges } from "../engagement-surface/engagement-surface";
+import { getPermanentXpBonusPercent } from "../engagement-surface/badge-catalog";
+import { badgeCodeToId } from "../engagement-surface/engagement-surface-model";
 import { isPaidTryout, resolveTryoutAccess } from "../premium-access/premium-access";
 import { getTryoutEntitlementAccess } from "../premium-access/payment-service";
 
@@ -278,12 +282,14 @@ export async function submitAttemptForStudent({
     ? await isExtraPracticeAttempt(attempt, dailyAttemptLimit)
     : false;
   const isImpersonatedSubmission = Boolean(viewer.impersonation);
+  const xpBonusPercent = isImpersonatedSubmission ? 0 : await getStudentXpBonusPercent(viewer.userId);
   const xpEarned = isImpersonatedSubmission
     ? 0
     : calculateAttemptXp({
         correctCount,
         attemptNumber: attempt.attemptNumber,
         isExtraPractice: extraPracticeAttempt,
+        xpBonusPercent,
       });
   const now = new Date();
   const timedOut = now > attempt.deadlineAt;
@@ -340,6 +346,7 @@ export async function submitAttemptForStudent({
       total_questions: attempt.totalQuestions,
       score,
       xp_earned: xpEarned,
+      xp_bonus_percent: xpBonusPercent,
       answers: finalAnswers,
       ...getImpersonationMetadata(viewer),
     },
@@ -573,26 +580,18 @@ async function getTakeAttemptQuestionRows(attemptId: string) {
   }));
 }
 
-function calculateXp(correctCount: number, attemptNumber: number) {
-  const baseXp = 50 + correctCount * 20;
+// Level badges awarded before this submit give a permanent XP bonus.
+async function getStudentXpBonusPercent(studentUserId: string) {
+  const badgeRows = await db
+    .select({ badgeCode: studentBadges.badgeCode })
+    .from(studentBadges)
+    .where(eq(studentBadges.studentUserId, studentUserId));
 
-  if (attemptNumber === 1) return baseXp;
-
-  return Math.round(baseXp * 0.25);
-}
-
-function calculateAttemptXp({
-  correctCount,
-  attemptNumber,
-  isExtraPractice,
-}: {
-  correctCount: number;
-  attemptNumber: number;
-  isExtraPractice: boolean;
-}) {
-  if (isExtraPractice) return 0;
-
-  return calculateXp(correctCount, attemptNumber);
+  return getPermanentXpBonusPercent(
+    badgeRows
+      .map((badge) => badgeCodeToId(badge.badgeCode))
+      .filter((badgeId): badgeId is number => badgeId !== null),
+  );
 }
 
 async function getAttemptProductAnalyticsAnswers(attemptId: string) {

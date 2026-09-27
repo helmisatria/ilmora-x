@@ -17,6 +17,7 @@ test("builds Leaderboard entry view data", () => {
       userId: "student-1",
       name: "Ari",
       xp: 120,
+      totalXp: 250,
       avatar: "AR",
       photoUrl: null,
       me: true,
@@ -25,6 +26,7 @@ test("builds Leaderboard entry view data", () => {
 
   assert.equal(entry.r, 1);
   assert.equal(entry.n, "Ari");
+  assert.equal(entry.xp, 120);
   assert.equal(entry.level, 3);
   assert.equal(entry.grade, "Pharmacy Novice");
   assert.equal(entry.ch, "up");
@@ -32,8 +34,8 @@ test("builds Leaderboard entry view data", () => {
 
 test("calculates Leaderboard leader gap and profile links", () => {
   const [leader, viewer] = toLeaderboardEntryViews([
-    { rank: 1, userId: "leader", name: "Leader", xp: 500, avatar: "LE", me: false },
-    { rank: 2, userId: "viewer", name: "Viewer", xp: 350, avatar: "VI", me: true },
+    { rank: 1, userId: "leader", name: "Leader", xp: 500, totalXp: 500, avatar: "LE", me: false },
+    { rank: 2, userId: "viewer", name: "Viewer", xp: 350, totalXp: 350, avatar: "VI", me: true },
   ]);
 
   assert.equal(getLeaderboardLeaderGap(viewer, leader), 150);

@@ -242,10 +242,10 @@ This checklist tracks the practical work needed to finish M1. Keep every item ti
 - [x] Load evaluation page metrics from server-backed summary data.
 - [x] Load result page TopBar progress from server-backed summary data.
 - [x] Load try-out page TopBar progress from server-backed summary data.
-- [ ] Confirm XP formula matches product expectations.
+- [x] Confirm XP formula matches product expectations.
 - [ ] Confirm streak timezone behavior uses `Asia/Jakarta`.
 - [ ] Add tests for streak calculation.
-- [ ] Add tests for level calculation.
+- [x] Add tests for level calculation.
 - [ ] Add tests for progress summary aggregation.
 - [x] Add category-level performance breakdown from real attempts.
 - [x] Add sub-category performance breakdown from real attempts.

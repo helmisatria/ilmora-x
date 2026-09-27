@@ -19,6 +19,7 @@ type LeaderboardEntryInput = {
   userId: string;
   name: string;
   xp: number;
+  totalXp: number;
   avatar: string;
   photoUrl?: string | null;
   me: boolean;
@@ -26,7 +27,7 @@ type LeaderboardEntryInput = {
 
 export function toLeaderboardEntryViews(entries: LeaderboardEntryInput[]): LeaderboardEntryView[] {
   return entries.map((entry) => {
-    const level = getLevelForXp(entry.xp).level;
+    const level = getLevelForXp(entry.totalXp).level;
 
     return {
       r: entry.rank,

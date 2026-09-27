@@ -46,6 +46,7 @@ export const getPublicStudentProfile = createServerFn({ method: "GET" })
 
     const submittedAttempts = await db
       .select({
+        tryoutId: attempts.tryoutId,
         submittedAt: attempts.submittedAt,
         totalQuestions: attempts.totalQuestions,
         correctCount: attempts.correctCount,
@@ -96,5 +97,6 @@ export const getPublicStudentProfile = createServerFn({ method: "GET" })
       totalQuestions: submittedAttempts.reduce((total, attempt) => total + attempt.totalQuestions, 0),
       totalCorrect: submittedAttempts.reduce((total, attempt) => total + (attempt.correctCount ?? 0), 0),
       totalTryouts: submittedAttempts.length,
+      uniqueTryoutCount: new Set(submittedAttempts.map((attempt) => attempt.tryoutId)).size,
     };
   });

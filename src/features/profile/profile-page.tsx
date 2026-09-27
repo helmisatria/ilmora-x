@@ -261,9 +261,6 @@ export function ProfilePage({ summary, viewer }: ProfilePageData) {
 
 function getUnlockedBadgeIds(summary: Awaited<ReturnType<typeof listProgressSummary>>) {
   const level = getLevelForXp(summary.xp).level;
-  const accuracy = summary.totalQuestions > 0
-    ? Math.round((summary.totalCorrect / summary.totalQuestions) * 100)
-    : 0;
 
   return new Set(
     badges
@@ -276,9 +273,8 @@ function getUnlockedBadgeIds(summary: Awaited<ReturnType<typeof listProgressSumm
 
         if (levelMatch) return level >= Number(levelMatch[1]);
         if (streakMatch) return summary.streak >= Number(streakMatch[1]);
-        if (tryoutMatch) return summary.attempts.length >= Number(tryoutMatch[1]);
+        if (tryoutMatch) return summary.uniqueTryoutCount >= Number(tryoutMatch[1]);
         if (badge.id === 1) return summary.attempts.length > 0;
-        if (badge.name === "100% Club") return accuracy >= 100;
 
         return false;
       })

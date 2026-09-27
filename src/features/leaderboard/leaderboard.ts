@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "../../lib/db/client";
 import {
   adminMembers,
@@ -10,6 +10,7 @@ import {
   weeklyLeaderboardEntries,
   weeklyLeaderboardSnapshots,
 } from "../../lib/db/schema";
+import { awardDailyBadges } from "../engagement-surface/engagement-surface";
 import {
   rankWeeklyLeaderboardRows,
   type WeeklyLeaderboardRankedRow,
@@ -137,6 +138,46 @@ export async function listWeeklyLeaderboardEntriesForWeek(
     );
 
   return rankWeeklyLeaderboardRows(rows).slice(0, limit);
+}
+
+// Levels come from all-time XP (attempts + badge rewards), not from the weekly ranking XP.
+export async function listTotalXpByStudent(studentUserIds: string[]) {
+  const totalXpByStudent = new Map<string, number>();
+
+  if (studentUserIds.length === 0) return totalXpByStudent;
+
+  const [attemptRows, badgeRewardRows] = await Promise.all([
+    db
+      .select({
+        studentUserId: attempts.studentUserId,
+        xp: sql<number>`coalesce(sum(${attempts.xpEarned}), 0)`,
+      })
+      .from(attempts)
+      .where(and(
+        inArray(attempts.studentUserId, studentUserIds),
+        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
+      ))
+      .groupBy(attempts.studentUserId),
+    db
+      .select({
+        studentUserId: studentExpLedger.studentUserId,
+        xp: sql<number>`coalesce(sum(${studentExpLedger.xpAmount}), 0)`,
+      })
+      .from(studentExpLedger)
+      .where(and(
+        inArray(studentExpLedger.studentUserId, studentUserIds),
+        eq(studentExpLedger.sourceType, "badge_reward"),
+      ))
+      .groupBy(studentExpLedger.studentUserId),
+  ]);
+
+  for (const row of [...attemptRows, ...badgeRewardRows]) {
+    const currentXp = totalXpByStudent.get(row.studentUserId) ?? 0;
+
+    totalXpByStudent.set(row.studentUserId, currentXp + Number(row.xp));
+  }
+
+  return totalXpByStudent;
 }
 
 async function getWeeklyLeaderboardSnapshot(weekStartDate: string) {
@@ -306,6 +347,12 @@ async function awardTopNBadgesFromSnapshot(snapshotId: string, weekStartDate: st
         updatedAt: new Date(),
       })
       .where(eq(weeklyLeaderboardEntries.id, entry.id));
+
+    // Top-N reward XP can push the student over a level threshold, so unlock level badges now
+    // instead of waiting for their next Try-out submit.
+    const levelBadges = await awardDailyBadges(entry.studentUserId);
+
+    awardedBadgeCount += levelBadges.length;
   }
 
   return {
