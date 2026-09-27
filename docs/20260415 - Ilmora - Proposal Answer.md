@@ -1,5 +1,7 @@
 # Proposal Answer
 
+> **Historical client review:** See [Milestone closeout](MILESTONE_CLOSEOUT.md) for current status. Phase 0 is finished, Midtrans is selected, and referral discounts are deferred.
+
 Date: 16 April 2026
 
 Overall is good, but these are some of my inquiries regarding the proposal:

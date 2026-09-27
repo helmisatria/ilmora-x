@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PostLoginRedirect } from "./post-login-redirect";
 
 export const acquisitionIntentSchema = z.enum([
   "home_signup",
@@ -43,12 +44,18 @@ export function getAcquisitionIntent(value: unknown): AcquisitionIntent | undefi
   return result.data;
 }
 
-export function getLoginCallbackUrl(intent: AcquisitionIntent | undefined) {
-  if (!intent) {
-    return "/auth/complete-profile";
-  }
+export function getLoginCallbackUrl(
+  intent: AcquisitionIntent | undefined,
+  redirectTo?: PostLoginRedirect,
+) {
+  const params = new URLSearchParams();
 
-  const params = new URLSearchParams({ intent });
+  if (intent) params.set("intent", intent);
+  if (redirectTo) params.set("redirectTo", redirectTo);
 
-  return `/auth/complete-profile?${params.toString()}`;
+  const search = params.toString();
+
+  if (!search) return "/auth/complete-profile";
+
+  return `/auth/complete-profile?${search}`;
 }

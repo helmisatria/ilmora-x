@@ -1,30 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import { hasPremiumMembershipEndsAt } from "../premium-access/premium-access";
 import { getStudentEvaluation } from "../student-evaluation/student-evaluation";
+import { buildProgressSummary } from "./progress-summary";
 import { getStudentViewer } from "./student-viewer.server";
 
 export const listProgressSummary = createServerFn({ method: "GET" }).handler(async () => {
   const viewer = await getStudentViewer();
   const evaluation = await getStudentEvaluation(viewer.userId);
+  const hasPremiumEvaluation = hasPremiumMembershipEndsAt(viewer.premiumMembershipEndsAt);
 
-  return {
-    xp: evaluation.summary.xp,
-    attemptXp: evaluation.summary.attemptXp,
-    badgeRewardXp: evaluation.summary.badgeRewardXp,
-    streak: evaluation.summary.streak,
-    uniqueTryoutCount: evaluation.summary.uniqueTryoutCount,
-    totalQuestions: evaluation.summary.totalQuestions,
-    totalCorrect: evaluation.summary.totalCorrect,
-    awardedBadgeIds: evaluation.summary.awardedBadgeIds,
-    attempts: evaluation.attempts.map((attempt) => ({
-      id: attempt.id,
-      tryoutTitle: attempt.tryoutTitle,
-      attemptNumber: attempt.attemptNumber,
-      submittedAt: attempt.submittedAt?.toISOString() ?? null,
-      score: attempt.score,
-      correctCount: attempt.correctCount,
-      totalQuestions: attempt.totalQuestions,
-      xpEarned: attempt.xpEarned,
-    })),
-    categories: evaluation.categories,
-  };
+  return buildProgressSummary(evaluation, hasPremiumEvaluation);
 });

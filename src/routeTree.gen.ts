@@ -28,6 +28,8 @@ import { Route as ResultsAttemptIdRouteImport } from './routes/results.$attemptI
 import { Route as ProfileUserIdRouteImport } from './routes/profile.$userId'
 import { Route as PollJoinRouteImport } from './routes/poll.join'
 import { Route as PollCodeRouteImport } from './routes/poll.$code'
+import { Route as PaymentFinishRouteImport } from './routes/payment.finish'
+import { Route as PaymentErrorRouteImport } from './routes/payment.error'
 import { Route as CheckoutCheckoutIdRouteImport } from './routes/checkout.$checkoutId'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCompleteProfileRouteImport } from './routes/auth/complete-profile'
@@ -45,8 +47,8 @@ import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
 import { Route as CheckoutCheckoutIdStatusRouteImport } from './routes/checkout.$checkoutId.status'
-import { Route as ApiXenditWebhookRouteImport } from './routes/api/xendit/webhook'
 import { Route as ApiPollsEventsRouteImport } from './routes/api/polls/events'
+import { Route as ApiMidtransWebhookRouteImport } from './routes/api/midtrans/webhook'
 import { Route as ApiMediaMediaIdRouteImport } from './routes/api/media.$mediaId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAdminQuestionPictureRouteImport } from './routes/api/admin/question-picture'
@@ -150,6 +152,16 @@ const PollCodeRoute = PollCodeRouteImport.update({
   path: '/poll/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PaymentFinishRoute = PaymentFinishRouteImport.update({
+  id: '/payment/finish',
+  path: '/payment/finish',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentErrorRoute = PaymentErrorRouteImport.update({
+  id: '/payment/error',
+  path: '/payment/error',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutCheckoutIdRoute = CheckoutCheckoutIdRouteImport.update({
   id: '/$checkoutId',
   path: '/$checkoutId',
@@ -236,14 +248,14 @@ const CheckoutCheckoutIdStatusRoute =
     path: '/status',
     getParentRoute: () => CheckoutCheckoutIdRoute,
   } as any)
-const ApiXenditWebhookRoute = ApiXenditWebhookRouteImport.update({
-  id: '/api/xendit/webhook',
-  path: '/api/xendit/webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPollsEventsRoute = ApiPollsEventsRouteImport.update({
   id: '/api/polls/events',
   path: '/api/polls/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMidtransWebhookRoute = ApiMidtransWebhookRouteImport.update({
+  id: '/api/midtrans/webhook',
+  path: '/api/midtrans/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMediaMediaIdRoute = ApiMediaMediaIdRouteImport.update({
@@ -311,6 +323,8 @@ export interface FileRoutesByFullPath {
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/checkout/$checkoutId': typeof CheckoutCheckoutIdRouteWithChildren
+  '/payment/error': typeof PaymentErrorRoute
+  '/payment/finish': typeof PaymentFinishRoute
   '/poll/$code': typeof PollCodeRoute
   '/poll/join': typeof PollJoinRoute
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -323,8 +337,8 @@ export interface FileRoutesByFullPath {
   '/api/admin/question-picture': typeof ApiAdminQuestionPictureRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
+  '/api/midtrans/webhook': typeof ApiMidtransWebhookRoute
   '/api/polls/events': typeof ApiPollsEventsRoute
-  '/api/xendit/webhook': typeof ApiXenditWebhookRoute
   '/checkout/$checkoutId/status': typeof CheckoutCheckoutIdStatusRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
   '/api/admin/media/upload': typeof ApiAdminMediaUploadRoute
@@ -357,6 +371,8 @@ export interface FileRoutesByTo {
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/checkout/$checkoutId': typeof CheckoutCheckoutIdRouteWithChildren
+  '/payment/error': typeof PaymentErrorRoute
+  '/payment/finish': typeof PaymentFinishRoute
   '/poll/$code': typeof PollCodeRoute
   '/poll/join': typeof PollJoinRoute
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -369,8 +385,8 @@ export interface FileRoutesByTo {
   '/api/admin/question-picture': typeof ApiAdminQuestionPictureRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
+  '/api/midtrans/webhook': typeof ApiMidtransWebhookRoute
   '/api/polls/events': typeof ApiPollsEventsRoute
-  '/api/xendit/webhook': typeof ApiXenditWebhookRoute
   '/checkout/$checkoutId/status': typeof CheckoutCheckoutIdStatusRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
   '/api/admin/media/upload': typeof ApiAdminMediaUploadRoute
@@ -405,6 +421,8 @@ export interface FileRoutesById {
   '/auth/complete-profile': typeof AuthCompleteProfileRoute
   '/auth/login': typeof AuthLoginRoute
   '/checkout/$checkoutId': typeof CheckoutCheckoutIdRouteWithChildren
+  '/payment/error': typeof PaymentErrorRoute
+  '/payment/finish': typeof PaymentFinishRoute
   '/poll/$code': typeof PollCodeRoute
   '/poll/join': typeof PollJoinRoute
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -417,8 +435,8 @@ export interface FileRoutesById {
   '/api/admin/question-picture': typeof ApiAdminQuestionPictureRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
+  '/api/midtrans/webhook': typeof ApiMidtransWebhookRoute
   '/api/polls/events': typeof ApiPollsEventsRoute
-  '/api/xendit/webhook': typeof ApiXenditWebhookRoute
   '/checkout/$checkoutId/status': typeof CheckoutCheckoutIdStatusRoute
   '/results/$attemptId/review': typeof ResultsAttemptIdReviewRoute
   '/api/admin/media/upload': typeof ApiAdminMediaUploadRoute
@@ -454,6 +472,8 @@ export interface FileRouteTypes {
     | '/auth/complete-profile'
     | '/auth/login'
     | '/checkout/$checkoutId'
+    | '/payment/error'
+    | '/payment/finish'
     | '/poll/$code'
     | '/poll/join'
     | '/profile/$userId'
@@ -466,8 +486,8 @@ export interface FileRouteTypes {
     | '/api/admin/question-picture'
     | '/api/auth/$'
     | '/api/media/$mediaId'
+    | '/api/midtrans/webhook'
     | '/api/polls/events'
-    | '/api/xendit/webhook'
     | '/checkout/$checkoutId/status'
     | '/results/$attemptId/review'
     | '/api/admin/media/upload'
@@ -500,6 +520,8 @@ export interface FileRouteTypes {
     | '/auth/complete-profile'
     | '/auth/login'
     | '/checkout/$checkoutId'
+    | '/payment/error'
+    | '/payment/finish'
     | '/poll/$code'
     | '/poll/join'
     | '/profile/$userId'
@@ -512,8 +534,8 @@ export interface FileRouteTypes {
     | '/api/admin/question-picture'
     | '/api/auth/$'
     | '/api/media/$mediaId'
+    | '/api/midtrans/webhook'
     | '/api/polls/events'
-    | '/api/xendit/webhook'
     | '/checkout/$checkoutId/status'
     | '/results/$attemptId/review'
     | '/api/admin/media/upload'
@@ -547,6 +569,8 @@ export interface FileRouteTypes {
     | '/auth/complete-profile'
     | '/auth/login'
     | '/checkout/$checkoutId'
+    | '/payment/error'
+    | '/payment/finish'
     | '/poll/$code'
     | '/poll/join'
     | '/profile/$userId'
@@ -559,8 +583,8 @@ export interface FileRouteTypes {
     | '/api/admin/question-picture'
     | '/api/auth/$'
     | '/api/media/$mediaId'
+    | '/api/midtrans/webhook'
     | '/api/polls/events'
-    | '/api/xendit/webhook'
     | '/checkout/$checkoutId/status'
     | '/results/$attemptId/review'
     | '/api/admin/media/upload'
@@ -583,14 +607,16 @@ export interface RootRouteChildren {
   ApiHealthzRoute: typeof ApiHealthzRoute
   AuthCompleteProfileRoute: typeof AuthCompleteProfileRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  PaymentErrorRoute: typeof PaymentErrorRoute
+  PaymentFinishRoute: typeof PaymentFinishRoute
   PollCodeRoute: typeof PollCodeRoute
   PollJoinRoute: typeof PollJoinRoute
   ResultsAttemptIdRoute: typeof ResultsAttemptIdRouteWithChildren
   ApiAdminQuestionPictureRoute: typeof ApiAdminQuestionPictureRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiMediaMediaIdRoute: typeof ApiMediaMediaIdRoute
+  ApiMidtransWebhookRoute: typeof ApiMidtransWebhookRoute
   ApiPollsEventsRoute: typeof ApiPollsEventsRoute
-  ApiXenditWebhookRoute: typeof ApiXenditWebhookRoute
   ApiAdminMediaUploadRoute: typeof ApiAdminMediaUploadRoute
 }
 
@@ -729,6 +755,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PollCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/payment/finish': {
+      id: '/payment/finish'
+      path: '/payment/finish'
+      fullPath: '/payment/finish'
+      preLoaderRoute: typeof PaymentFinishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment/error': {
+      id: '/payment/error'
+      path: '/payment/error'
+      fullPath: '/payment/error'
+      preLoaderRoute: typeof PaymentErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout/$checkoutId': {
       id: '/checkout/$checkoutId'
       path: '/$checkoutId'
@@ -848,18 +888,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutCheckoutIdStatusRouteImport
       parentRoute: typeof CheckoutCheckoutIdRoute
     }
-    '/api/xendit/webhook': {
-      id: '/api/xendit/webhook'
-      path: '/api/xendit/webhook'
-      fullPath: '/api/xendit/webhook'
-      preLoaderRoute: typeof ApiXenditWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/polls/events': {
       id: '/api/polls/events'
       path: '/api/polls/events'
       fullPath: '/api/polls/events'
       preLoaderRoute: typeof ApiPollsEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/midtrans/webhook': {
+      id: '/api/midtrans/webhook'
+      path: '/api/midtrans/webhook'
+      fullPath: '/api/midtrans/webhook'
+      preLoaderRoute: typeof ApiMidtransWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/media/$mediaId': {
@@ -1045,14 +1085,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthzRoute: ApiHealthzRoute,
   AuthCompleteProfileRoute: AuthCompleteProfileRoute,
   AuthLoginRoute: AuthLoginRoute,
+  PaymentErrorRoute: PaymentErrorRoute,
+  PaymentFinishRoute: PaymentFinishRoute,
   PollCodeRoute: PollCodeRoute,
   PollJoinRoute: PollJoinRoute,
   ResultsAttemptIdRoute: ResultsAttemptIdRouteWithChildren,
   ApiAdminQuestionPictureRoute: ApiAdminQuestionPictureRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiMediaMediaIdRoute: ApiMediaMediaIdRoute,
+  ApiMidtransWebhookRoute: ApiMidtransWebhookRoute,
   ApiPollsEventsRoute: ApiPollsEventsRoute,
-  ApiXenditWebhookRoute: ApiXenditWebhookRoute,
   ApiAdminMediaUploadRoute: ApiAdminMediaUploadRoute,
 }
 export const routeTree = rootRouteImport

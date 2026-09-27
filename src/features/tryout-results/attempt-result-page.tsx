@@ -7,18 +7,16 @@ import { getLevelForXp } from "../engagement-surface/level-catalog";
 import { runConfetti } from "../../utils/confetti";
 import { PremiumDialog } from "../../components/PremiumDialog";
 import { BottomNav, TopBar } from "../../components/Navigation";
-import { hasFullTryoutReviewAccess } from "../premium-access/premium-access";
 import type { listProgressSummary } from "../student/student-progress-functions";
 import type { getAttemptResult } from "./student-attempt-result-functions";
-
-const FREE_WRONG_PREVIEW = 3;
 
 type WrongAnswerView = {
   id: string;
   subject: string;
   question: string;
   options: string[];
-  correct: number;
+  correct: number | null;
+  locked: boolean;
   explanation: string;
   explanationPreview?: string;
   videoUrl?: string;
@@ -38,11 +36,6 @@ export function AttemptResultPage({ attemptId, result, summary }: AttemptResultP
   const isChildRoute = location.pathname !== `/results/${attemptId}`;
 
   const { attempt, tryout, questions } = result;
-  const hasFullTryoutAccess = hasFullTryoutReviewAccess({
-    accessLevel: tryout.accessLevel,
-    hasPremiumMembership,
-  });
-
   const score = attempt.score;
   const total = attempt.totalQuestions;
   const xpEarn = attempt.xpEarned;
@@ -94,6 +87,7 @@ export function AttemptResultPage({ attemptId, result, summary }: AttemptResultP
         question: q.questionText,
         options: q.options,
         correct: q.correctIndex,
+        locked: q.locked,
         explanation: q.explanation,
         explanationPreview: q.explanation.slice(0, 120) + "...",
         videoUrl: q.videoUrl ?? undefined,
@@ -101,8 +95,7 @@ export function AttemptResultPage({ attemptId, result, summary }: AttemptResultP
         user: q.selectedIndex !== null ? q.options[q.selectedIndex] : "Tidak dijawab",
       };
     });
-  const hasFullReviewAccess = hasPremiumMembership || hasFullTryoutAccess;
-  const lockedCount = hasFullReviewAccess ? 0 : Math.max(0, wrongs.length - FREE_WRONG_PREVIEW);
+  const lockedCount = wrongs.filter((wrong) => wrong.locked).length;
 
   const openPremiumAccess = () => {
     setShowPremiumDialog(true);
@@ -325,11 +318,11 @@ export function AttemptResultPage({ attemptId, result, summary }: AttemptResultP
                 filter="wrong"
               />
               <div className="grid gap-3">
-                {wrongs.map((w, i) => (
+                {wrongs.map((w) => (
                   <WrongCard
                     key={w.id}
                     wrong={w}
-                    locked={!hasFullReviewAccess && i >= FREE_WRONG_PREVIEW}
+                    locked={w.locked}
                     attemptId={attempt.id}
                   />
                 ))}
@@ -510,7 +503,7 @@ function WrongCard({
           <XIcon />
           <span className="max-w-[26ch] truncate">{wrong.user}</span>
         </span>
-        {locked ? (
+        {locked || wrong.correct === null ? (
           <span className="inline-flex items-center gap-1.5 rounded-lg border-2 border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" aria-hidden="true">
               <path d="M7 11V8a5 5 0 0 1 10 0v3M6.8 11h10.4c1 0 1.8.8 1.8 1.8v5.4c0 1-.8 1.8-1.8 1.8H6.8c-1 0-1.8-.8-1.8-1.8v-5.4c0-1 .8-1.8 1.8-1.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

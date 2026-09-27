@@ -8,6 +8,7 @@ import { user } from "./db/schema";
 import { parseInput } from "./http/validation";
 import { readImpersonationPayload } from "./impersonation-cookie";
 import { acquisitionIntentSchema } from "./product-analytics";
+import type { PostLoginRedirect } from "./post-login-redirect";
 
 export type Viewer = {
   userId: string;
@@ -127,11 +128,14 @@ export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Vie
   };
 }
 
-export function getPostLoginRedirectForViewer(viewer: Viewer) {
+export function getPostLoginRedirectForViewer(
+  viewer: Viewer,
+  redirectTo?: PostLoginRedirect,
+) {
   if (viewer.profile?.status === "suspended") return "/auth/login";
   if (viewer.admin) return "/admin";
   if (!viewer.profile?.completed) return "/auth/complete-profile";
-  return "/dashboard";
+  return redirectTo ?? "/dashboard";
 }
 
 export const getCurrentViewer = createServerFn({ method: "GET" }).handler(async () => {

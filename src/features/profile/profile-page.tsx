@@ -187,7 +187,7 @@ export function ProfilePage({ summary, viewer }: ProfilePageData) {
 
           <div className="grid grid-flow-dense grid-cols-3 gap-3">
             <StatCard label="Soal" value={String(summary.totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
-            <StatCard label="Try-out" value={String(summary.attempts.length)} accent="#0ea5e9" icon={<ChartIcon />} />
+            <StatCard label="Try-out" value={String(summary.totalAttempts)} accent="#0ea5e9" icon={<ChartIcon />} />
             <StatCard label="Streak" value={`${summary.streak}`} accent="#f59e0b" icon={<FlameIcon />} />
           </div>
 
@@ -274,7 +274,7 @@ function getUnlockedBadgeIds(summary: Awaited<ReturnType<typeof listProgressSumm
         if (levelMatch) return level >= Number(levelMatch[1]);
         if (streakMatch) return summary.streak >= Number(streakMatch[1]);
         if (tryoutMatch) return summary.uniqueTryoutCount >= Number(tryoutMatch[1]);
-        if (badge.id === 1) return summary.attempts.length > 0;
+        if (badge.id === 1) return summary.totalAttempts > 0;
 
         return false;
       })

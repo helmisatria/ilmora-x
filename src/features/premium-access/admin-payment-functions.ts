@@ -20,8 +20,8 @@ import {
   createAdminGrant,
   normalizeCouponCode,
 } from "./payment-service";
-import { applyXenditInvoiceToCheckout } from "./xendit-webhook.server";
-import { getXenditInvoice } from "./xendit-client.server";
+import { getMidtransTransaction } from "./midtrans-client.server";
+import { applyMidtransTransactionToCheckout } from "./midtrans-webhook.server";
 
 const productSchema = z.object({
   id: z.string().trim().min(1).optional(),
@@ -302,7 +302,7 @@ export const grantEntitlementAdmin = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const syncCheckoutWithXenditAdmin = createServerFn({ method: "POST" })
+export const syncCheckoutWithMidtransAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(checkoutIdSchema, input))
   .handler(async ({ data }) => {
@@ -316,12 +316,12 @@ export const syncCheckoutWithXenditAdmin = createServerFn({ method: "POST" })
       throw notFound("Checkout was not found.");
     }
 
-    if (!checkout.xenditInvoiceId) {
-      throw badRequest("Checkout has no Xendit invoice.");
+    if (checkout.paymentProvider !== "midtrans" || !checkout.providerOrderId) {
+      throw badRequest("Checkout has no Midtrans transaction.");
     }
 
-    const invoice = await getXenditInvoice(checkout.xenditInvoiceId);
-    const result = await applyXenditInvoiceToCheckout(invoice, checkout);
+    const transaction = await getMidtransTransaction(checkout.providerOrderId);
+    const result = await applyMidtransTransactionToCheckout(transaction, checkout);
 
     return { ok: true, result };
   });
@@ -447,8 +447,9 @@ function toCheckoutDto(row: {
     couponCode: checkout.couponCode,
     status: checkout.status,
     total: checkout.finalAmount,
-    xenditInvoiceId: checkout.xenditInvoiceId,
-    xenditStatus: checkout.xenditStatus,
+    paymentProvider: checkout.paymentProvider,
+    providerOrderId: checkout.providerOrderId,
+    providerStatus: checkout.providerStatus,
     createdAt: checkout.createdAt.toISOString(),
     paidAt: checkout.paidAt?.toISOString() ?? null,
     expiresAt: checkout.expiresAt?.toISOString() ?? null,

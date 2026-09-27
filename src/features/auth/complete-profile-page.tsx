@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { BrandMark } from "../../components/brand-mark";
 import { institutions } from "../../data/institutions";
 import { completeProfile, getCurrentViewer } from "../../lib/auth-functions";
 import {
@@ -7,15 +8,18 @@ import {
   type AcquisitionIntent,
 } from "../../lib/product-analytics";
 import { useProductAnalytics } from "../../lib/product-analytics-client";
+import type { PostLoginRedirect } from "../../lib/post-login-redirect";
 
 export type CompleteProfileViewer = NonNullable<Awaited<ReturnType<typeof getCurrentViewer>>>;
 
 export function CompleteProfilePage({
   viewer,
   intent,
+  redirectTo,
 }: {
   viewer: CompleteProfileViewer;
   intent?: AcquisitionIntent;
+  redirectTo?: PostLoginRedirect;
 }) {
   const navigate = useNavigate();
   const analytics = useProductAnalytics();
@@ -46,7 +50,7 @@ export function CompleteProfilePage({
         },
       });
 
-      navigate({ to: result.redirectTo });
+      navigate({ to: redirectTo ?? result.redirectTo });
     } catch {
       setErrorMessage("Profil belum tersimpan. Coba lagi sebentar.");
       setSaving(false);
@@ -57,8 +61,10 @@ export function CompleteProfilePage({
     <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
       <div className="bg-white border-b-2 border-stone-200 px-4 py-4">
         <div className="max-w-[480px] mx-auto flex items-center gap-3">
-          <div className="text-2xl">🦉</div>
-          <span className="font-black text-primary text-lg">IlmoraX</span>
+          <BrandMark />
+          <span className="whitespace-nowrap text-[16px] font-black tracking-tight text-[#1f2937] sm:text-[17px]">
+            Ilmora<span className="text-[var(--brand-primary)]">X</span>
+          </span>
         </div>
       </div>
 

@@ -1,5 +1,7 @@
 # Proposal Pengembangan Platform Genius Pharmacist
 
+> **Historical proposal:** The [19 April update](20260419%20-%20IlmoraX%20-%20Updated%20Proposal.md) superseded this draft. Helmi has since confirmed Phase 0 completion, Midtrans for MVP payments, and deferral of referral discounts. See [Milestone closeout](MILESTONE_CLOSEOUT.md) for current work.
+
 **Tanggal:** 14 April 2026  
 **Ditujukan kepada:** Kak David
 
@@ -306,4 +308,3 @@ Setelah release ke production, terdapat masa **bug-fix warranty selama 2 bulan**
 Proposal ini dibuat sebagai dasar approval untuk pelaksanaan project **Genius Pharmacist** dengan pendekatan bertahap per phase dan milestone, agar pengembangan lebih terukur, scope lebih jelas, dan setiap hasil kerja dapat direview sebelum lanjut ke tahap berikutnya.
 
 Apabila proposal ini disetujui, project dapat dimulai setelah **down payment** diterima dan phase **design / prototype** dimulai.
-

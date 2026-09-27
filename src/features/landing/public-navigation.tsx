@@ -6,6 +6,7 @@ import {
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
+import { BrandMark } from "~/components/brand-mark";
 import {
   Sheet,
   SheetClose,
@@ -16,13 +17,13 @@ import {
   SheetTrigger,
 } from "~/components/ui/sheet";
 import { heroNavItems } from "./landing-content";
-import { BrandMark } from "./landing-icons";
 import { useLandingLinkAnalytics } from "./landing-link-analytics";
 
 const defaultActiveNavHref = heroNavItems[0].href;
 type HeroNavHref = (typeof heroNavItems)[number]["href"];
 const useSafeLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
+const pendingScrollTimeoutMs = 1_500;
 
 type PublicNavigationProps = {
   isHomePage?: boolean;
@@ -34,10 +35,10 @@ export function PublicNavigation({ isHomePage = false }: PublicNavigationProps) 
   const shouldReduceMotion = useReducedMotion();
 
   return (
-    <header className="fixed inset-x-0 top-0 z-30 px-3 pt-4 sm:px-4 sm:pt-5">
+    <header className="fixed inset-x-0 top-0 z-30 px-3 pt-3 sm:px-4">
       <motion.nav
         animate={{ opacity: 1, y: 0 }}
-        className="landing-reveal mx-auto flex w-full max-w-[1240px] items-center justify-between rounded-full border border-[rgba(214,234,228,0.95)] bg-[rgba(255,255,255,0.92)] px-2.5 py-2.5 shadow-[0_16px_42px_rgba(144,181,170,0.18)] backdrop-blur-2xl sm:px-4 sm:py-3"
+        className="landing-reveal mx-auto flex min-h-14 w-full max-w-[1180px] items-center justify-between rounded-full border border-[rgba(214,234,228,0.95)] bg-[rgba(255,255,255,0.94)] px-2 py-1.5 shadow-[0_10px_32px_rgba(65,109,95,0.12)] backdrop-blur-xl sm:px-3"
         initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       >
@@ -56,8 +57,13 @@ export function PublicNavigation({ isHomePage = false }: PublicNavigationProps) 
             search={{ intent: tryoutAnalytics.intent }}
             onClick={tryoutAnalytics.trackLandingLinkClick}
             className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-full bg-[var(--brand-primary)] px-3.5 text-[12px] font-bold text-white no-underline shadow-[0_12px_24px_rgba(32,80,114,0.2)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-px sm:min-h-11 sm:px-5 sm:text-[13px]"
+            style={{
+              backgroundColor: "#205072",
+              boxShadow: "0 4px 0 #123b55, 0 12px 24px rgba(32,80,114,0.2)",
+              color: "#ffffff",
+            }}
           >
-            Daftar Gratis
+            Lihat try-out
           </Link>
 
           <Sheet>
@@ -65,7 +71,7 @@ export function PublicNavigation({ isHomePage = false }: PublicNavigationProps) 
               <button
                 type="button"
                 aria-label="Buka menu navigasi"
-                className="inline-flex size-10 items-center justify-center rounded-full border border-[#d7e7e2] bg-white text-[#24475e] shadow-[0_8px_18px_rgba(26,47,60,0.08)] transition-colors duration-200 hover:bg-[#f0f7f5] active:scale-[0.98] sm:size-11"
+                className="inline-flex size-10 items-center justify-center rounded-full border border-[#d7e7e2] bg-white text-[#24475e] transition-colors duration-200 hover:bg-[#f0f7f5] active:scale-[0.98] lg:hidden"
               >
                 <HamburgerMenuIcon className="size-5" />
               </button>
@@ -138,7 +144,7 @@ export function PublicNavigation({ isHomePage = false }: PublicNavigationProps) 
                     onClick={tryoutAnalytics.trackLandingLinkClick}
                     className="inline-flex min-h-12 w-full items-center justify-center rounded-[1rem] bg-[var(--brand-primary)] px-5 text-[14px] font-black text-white no-underline transition-transform active:translate-y-px"
                   >
-                    Daftar Gratis
+                    Lihat try-out
                   </Link>
                 </SheetClose>
                 <p className="mt-3 text-center text-[12px] text-stone-500">
@@ -165,8 +171,31 @@ export function PublicNavigation({ isHomePage = false }: PublicNavigationProps) 
 
 function DesktopNavigation({ isHomePage }: { isHomePage: boolean }) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const pendingHrefRef = useRef<HeroNavHref | null>(null);
+  const pendingTimeoutRef = useRef<number | null>(null);
   const [activeHref, setActiveHref] = useState<HeroNavHref>(defaultActiveNavHref);
   const [indicator, setIndicator] = useState({ left: 0, width: 0, opacity: 0 });
+
+  function clearPendingHref() {
+    pendingHrefRef.current = null;
+
+    if (pendingTimeoutRef.current === null) return;
+
+    window.clearTimeout(pendingTimeoutRef.current);
+    pendingTimeoutRef.current = null;
+  }
+
+  function keepHrefActiveWhileScrolling(href: HeroNavHref) {
+    clearPendingHref();
+    pendingHrefRef.current = href;
+    setActiveHref(href);
+
+    pendingTimeoutRef.current = window.setTimeout(() => {
+      pendingHrefRef.current = null;
+      pendingTimeoutRef.current = null;
+      setActiveHref(getActiveHrefFromScroll());
+    }, pendingScrollTimeoutMs);
+  }
 
   function updateIndicator(nextHref: string) {
     const menu = menuRef.current;
@@ -195,24 +224,6 @@ function DesktopNavigation({ isHomePage }: { isHomePage: boolean }) {
     });
   }
 
-  function getActiveHrefFromScroll() {
-    const scanLine = window.innerHeight * 0.36;
-    let nextHref: HeroNavHref = defaultActiveNavHref;
-
-    for (const item of heroNavItems) {
-      const section = document.getElementById(item.href.replace("#", ""));
-
-      if (!section) continue;
-
-      const bounds = section.getBoundingClientRect();
-
-      if (bounds.top <= scanLine && bounds.bottom > scanLine) return item.href;
-      if (bounds.top <= scanLine) nextHref = item.href;
-    }
-
-    return nextHref;
-  }
-
   useEffect(() => {
     if (!isHomePage) return;
 
@@ -233,12 +244,24 @@ function DesktopNavigation({ isHomePage }: { isHomePage: boolean }) {
 
     let animationFrame = 0;
 
+    function syncActiveHref() {
+      const nextHref = getActiveHrefFromScroll();
+      const pendingHref = pendingHrefRef.current;
+
+      if (pendingHref && pendingHref !== nextHref) return;
+      if (pendingHref) clearPendingHref();
+
+      setActiveHref((currentHref) =>
+        currentHref === nextHref ? currentHref : nextHref,
+      );
+    }
+
     function requestActiveSync() {
       if (animationFrame) return;
 
       animationFrame = window.requestAnimationFrame(() => {
         animationFrame = 0;
-        setActiveHref(getActiveHrefFromScroll());
+        syncActiveHref();
       });
     }
 
@@ -252,6 +275,8 @@ function DesktopNavigation({ isHomePage }: { isHomePage: boolean }) {
       window.removeEventListener("resize", requestActiveSync);
     };
   }, [isHomePage]);
+
+  useEffect(() => () => clearPendingHref(), []);
 
   useSafeLayoutEffect(() => updateIndicator(activeHref), [activeHref, isHomePage]);
 
@@ -282,7 +307,7 @@ function DesktopNavigation({ isHomePage }: { isHomePage: boolean }) {
           data-nav-href={item.href}
           href={isHomePage ? item.href : `/${item.href}`}
           onClick={(event) => {
-            setActiveHref(item.href);
+            if (isHomePage) keepHrefActiveWhileScrolling(item.href);
             handleLandingAnchorClick(event, item.href, isHomePage);
           }}
           className={`relative rounded-full px-3 py-3 text-[13px] font-semibold no-underline transition-colors duration-300 ${
@@ -303,6 +328,24 @@ function DesktopNavigation({ isHomePage }: { isHomePage: boolean }) {
       </Link>
     </div>
   );
+}
+
+function getActiveHrefFromScroll(): HeroNavHref {
+  const scanLine = window.innerHeight * 0.3;
+  let nextHref: HeroNavHref = defaultActiveNavHref;
+
+  for (const item of heroNavItems) {
+    const section = document.getElementById(item.href.replace("#", ""));
+
+    if (!section) continue;
+
+    const bounds = section.getBoundingClientRect();
+
+    if (bounds.top <= scanLine && bounds.bottom > scanLine) return item.href;
+    if (bounds.top <= scanLine) nextHref = item.href;
+  }
+
+  return nextHref;
 }
 
 function handleLandingAnchorClick(

@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { badges, type Badge } from "./badge-catalog";
-import { isFailLegendAttempt } from "./engagement-surface-model";
 import { getLevelForXp } from "./level-catalog";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
@@ -208,8 +207,8 @@ function getBadgeProgressValue(
     if (badge.task.includes("unique tryouts")) return data.summary.uniqueTryoutCount;
     return data.summary.streak;
   }
-  if (badge.id === 1) return data.summary.attempts.length > 0 ? 1 : 0;
-  if (badge.name === "Fail Legend") return data.summary.attempts.filter(isFailLegendAttempt).length;
+  if (badge.id === 1) return data.summary.totalAttempts > 0 ? 1 : 0;
+  if (badge.name === "Fail Legend") return data.summary.failLegendAttemptCount;
 
   return 0;
 }

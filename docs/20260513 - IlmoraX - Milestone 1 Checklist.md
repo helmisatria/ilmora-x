@@ -1,5 +1,7 @@
 # IlmoraX Milestone 1 Checklist
 
+> **Historical checklist:** These boxes reflect the May 2026 work log, not a fresh audit. Some unchecked work is now implemented, while some checked items need new verification. Use [Milestone closeout](MILESTONE_CLOSEOUT.md) for the current to-do list.
+
 **Date:** 2026-05-13  
 **Milestone:** M1 - Core Platform, Try-out, Admin Foundation, and Basic Analytics  
 **Source plan:** `docs/20260506 - IlmoraX - Milestone 1 Backend Integration Plan.md`

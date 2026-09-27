@@ -19,7 +19,7 @@ import {
   saveProductAdmin,
   setCouponActiveAdmin,
   setProductActiveAdmin,
-  syncCheckoutWithXenditAdmin,
+  syncCheckoutWithMidtransAdmin,
 } from "./admin-payment-functions";
 import {
   makeCouponFormDefaults,
@@ -258,7 +258,7 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
     setBusyAction(`sync:${checkoutId}`);
 
     try {
-      const result = await syncCheckoutWithXenditAdmin({ data: { checkoutId } });
+      const result = await syncCheckoutWithMidtransAdmin({ data: { checkoutId } });
 
       toast.info(`Checkout sync result: ${result.result}`);
       await refresh();
@@ -326,7 +326,7 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
           <a href="/admin" className="admin-back-link">Admin</a>
           <h1 className="admin-title">Payments</h1>
           <p className="admin-description">
-            Manage Products, Coupons, manual access grants, and Xendit Checkout repair.
+            Manage Products, Coupons, manual access grants, and Midtrans Checkout repair.
           </p>
         </header>
 

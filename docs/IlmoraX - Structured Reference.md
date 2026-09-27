@@ -1,5 +1,7 @@
 # IlmoraX Experience Level and Badge - Structured Reference
 
+This file records the source workbook values, not implementation status. See [Milestone closeout](MILESTONE_CLOSEOUT.md) for the current Badge and EXP gaps.
+
 Source ODS: `docs/IlmoraX - Experience level.ods`
 
 ## Extraction Notes

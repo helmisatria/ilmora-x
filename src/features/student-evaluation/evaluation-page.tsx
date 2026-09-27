@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { BottomNav, TopBar } from "../../components/Navigation";
-import { useApp } from "../../data";
 import { restoreReturnScroll, saveReturnScroll } from "../../lib/return-scroll";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
@@ -10,7 +9,7 @@ type EvaluationCategory = ProgressSummary["categories"][number];
 type EvaluationAttempt = ProgressSummary["attempts"][number];
 
 export function EvaluationPage({ summary }: { summary: ProgressSummary }) {
-  const { hasPremiumMembership } = useApp();
+  const hasPremiumMembership = summary.hasPremiumEvaluation;
   const totalQuestions = summary.totalQuestions;
   const totalCorrect = summary.totalCorrect;
   const totalWrong = totalQuestions - totalCorrect;
@@ -163,6 +162,7 @@ function CategoryCard({
   const categoryTotal = category.total;
   const categoryCorrect = category.correct;
   const categoryPct = categoryTotal > 0 ? Math.round((categoryCorrect / categoryTotal) * 100) : 0;
+  const subCategories = isPremium ? category.subCategories : LOCKED_SUBCATEGORY_PREVIEW;
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
@@ -180,8 +180,8 @@ function CategoryCard({
 
       <div className={`relative border-t border-stone-100 bg-stone-50/70 px-3 py-3 sm:px-4 ${!isPremium ? "select-none" : ""}`}>
         <div className="grid gap-2.5">
-          {category.subCategories.map((subcategory, index) => {
-            const isLast = index === category.subCategories.length - 1;
+          {subCategories.map((subcategory, index) => {
+            const isLast = index === subCategories.length - 1;
 
             return (
               <SubcategoryRow
@@ -205,6 +205,12 @@ function CategoryCard({
     </div>
   );
 }
+
+// The server omits Sub-category data for free Students, so the locked card blurs placeholder rows instead.
+const LOCKED_SUBCATEGORY_PREVIEW: EvaluationCategory["subCategories"] = [
+  { id: "locked-1", name: "Sub-kategori 1", correct: 3, total: 5, topics: [] },
+  { id: "locked-2", name: "Sub-kategori 2", correct: 2, total: 5, topics: [] },
+];
 
 function SubcategoryRow({
   subcategory,
@@ -355,6 +361,15 @@ function getRecommendation(summary: ProgressSummary) {
 
   if (weakestSubCategory) {
     return `Prioritaskan ${weakestSubCategory.name} di ${weakestSubCategory.categoryName}.`;
+  }
+
+  const weakestCategory = summary.categories
+    .filter((category) => category.total > 0)
+    .map((category) => ({ ...category, accuracy: category.correct / category.total }))
+    .sort((a, b) => a.accuracy - b.accuracy)[0];
+
+  if (weakestCategory) {
+    return `Prioritaskan kategori ${weakestCategory.name}.`;
   }
 
   return "Lanjutkan retake untuk memperjelas area prioritas.";

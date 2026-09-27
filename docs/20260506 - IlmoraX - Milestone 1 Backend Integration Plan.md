@@ -1,5 +1,7 @@
 # IlmoraX Milestone 1 Backend Integration Plan
 
+> **Historical implementation plan:** Phase 0 is finished and most M1 flows now exist in code. The status and acceptance items in this plan were written before implementation. Use [Milestone closeout](MILESTONE_CLOSEOUT.md) for the current gaps and verification work.
+
 **Date:** 2026-05-06  
 **Phase:** Milestone 1 - Core Platform, Try-out, Admin Foundation, and Basic Analytics  
 **Status:** Ready for execution after Phase 0 design approval  

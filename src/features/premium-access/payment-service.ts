@@ -12,6 +12,7 @@ import { badRequest, conflict, notFound } from "../../lib/http/errors";
 export type ProductType = "premium_membership" | "lifetime_tryout" | "material";
 export type ContentType = "tryout" | "material";
 export type CouponDiscountType = "percentage" | "fixed";
+export type CouponReservationReader = Pick<typeof db, "select">;
 
 export const checkoutExternalIdPrefix = "checkout_";
 
@@ -33,10 +34,10 @@ export function getCheckoutIdFromExternalId(externalId: string | null | undefine
   return externalId.slice(checkoutExternalIdPrefix.length);
 }
 
-export function getInvoiceDurationSeconds() {
-  const parsed = Number.parseInt(process.env.XENDIT_INVOICE_DURATION_SECONDS ?? "", 10);
+export function getPaymentDurationSeconds() {
+  const parsed = Number.parseInt(process.env.MIDTRANS_TRANSACTION_DURATION_SECONDS ?? "", 10);
 
-  if (Number.isInteger(parsed) && parsed > 0) {
+  if (Number.isInteger(parsed) && parsed >= 300 && parsed <= 604_800) {
     return parsed;
   }
 
@@ -353,8 +354,11 @@ export function assertProductShape(product: {
   }
 }
 
-export async function countActiveCouponReservations(couponId: string) {
-  const [row] = await db
+export async function countActiveCouponReservations(
+  couponId: string,
+  reader: CouponReservationReader = db,
+): Promise<number> {
+  const [row] = await reader
     .select({ count: sql<number>`count(*)` })
     .from(couponRedemptions)
     .where(and(

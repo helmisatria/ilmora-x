@@ -1,19 +1,21 @@
+/// <reference types="vite/client" />
+
 import { createRootRoute, HeadContent, Outlet, Scripts, redirect } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Toaster } from "sonner";
 import { AppProvider } from "../data/provider";
 import { getCurrentViewer } from "../lib/auth-functions";
 import { getAcquisitionIntent } from "../lib/product-analytics";
+import { getPostLoginRedirectForPath } from "../lib/post-login-redirect";
 import { ProductAnalyticsIdentity, ProductAnalyticsProvider } from "../lib/product-analytics-client";
 import { getProtectedRedirect, needsProtectedViewer } from "../lib/route-protection";
 import { getSafeErrorMessage } from "../lib/user-errors";
-import "../styles/app.css";
+import appCss from "../styles/app.css?url";
 
 const SITE_URL = "https://ilmorax.com";
 const SITE_NAME = "IlmoraX";
-const DEFAULT_TITLE = "IlmoraX — Belajar Farmasi Jadi Seru!";
-const DEFAULT_DESCRIPTION = "Platform latihan UKAI terbaik untuk calon apoteker. Kumpulkan XP, jaga streak harian, dan taklukkan tryout dengan cara yang menyenangkan. 500+ soal UKAI, leaderboard, dan materi lengkap.";
-const OG_IMAGE = "/og-image.svg";
+const DEFAULT_TITLE = "IlmoraX | Try-out UKAI untuk Calon Apoteker";
+const DEFAULT_DESCRIPTION = "Latihan soal UKAI dengan timer, pembahasan, dan analisis hasil untuk membantu calon apoteker menentukan materi yang perlu dipelajari lagi.";
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -39,10 +41,14 @@ export const Route = createRootRoute({
         const search = location.search as { intent?: unknown };
         const searchIntent = getAcquisitionIntent(search.intent);
         const intent = searchIntent ?? (location.pathname.startsWith("/tryout") ? "tryout_catalog_signup" : undefined);
+        const postLoginRedirect = getPostLoginRedirectForPath(location.pathname);
 
         throw redirect({
           to: redirectTo,
-          search: intent ? { intent } : undefined,
+          search:
+            intent || postLoginRedirect
+              ? { intent, redirectTo: postLoginRedirect }
+              : undefined,
         });
       }
 
@@ -69,18 +75,12 @@ export const Route = createRootRoute({
       { property: "og:site_name", content: SITE_NAME },
       { property: "og:title", content: DEFAULT_TITLE },
       { property: "og:description", content: DEFAULT_DESCRIPTION },
-      { property: "og:image", content: `${SITE_URL}${OG_IMAGE}` },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "IlmoraX - Platform Latihan UKAI untuk Calon Apoteker" },
       { property: "og:locale", content: "id_ID" },
       
       // Twitter Card
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: DEFAULT_TITLE },
       { name: "twitter:description", content: DEFAULT_DESCRIPTION },
-      { name: "twitter:image", content: `${SITE_URL}${OG_IMAGE}` },
-      { name: "twitter:image:alt", content: "IlmoraX - Platform Latihan UKAI untuk Calon Apoteker" },
       
       // Additional SEO
       { name: "keywords", content: "UKAI, apoteker, farmasi, latihan UKAI, tryout farmasi, simulasi UKAI, belajar farmasi, calon apoteker" },
@@ -91,7 +91,6 @@ export const Route = createRootRoute({
       { name: "format-detection", content: "telephone=no" },
     ],
     links: [
-      { rel: "stylesheet", href: "/landing-critical.css" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" },
@@ -144,8 +143,10 @@ function RootComponent() {
   const { viewer } = Route.useRouteContext();
 
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <head>
+        <link rel="stylesheet" href="/landing-critical.css" />
+        <link rel="stylesheet" href={appCss} />
         <HeadContent />
         <script
           dangerouslySetInnerHTML={{

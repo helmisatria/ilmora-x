@@ -1,5 +1,7 @@
 # Plan 004: Improve Checkout, Entitlement, and Manual Grant Support Workflows
 
+> **Historical plan:** The Xendit field names and examples below describe the June 2026 planning baseline. The implemented payment flow now uses Midtrans. See [Milestone closeout](../docs/MILESTONE_CLOSEOUT.md) for current gaps.
+
 > **Executor instructions**: Follow this plan step by step. Run every verification command and confirm the expected result before moving to the next step. If anything in the "STOP conditions" section occurs, stop and report. When done, update the status row for this plan in `plans/README.md`.
 >
 > **Drift check (run first)**: `git diff --stat 4f9a420..HEAD -- src/features/premium-access/admin-payment-functions.ts src/features/premium-access/admin-payments-page.tsx src/lib/db/schema.ts`

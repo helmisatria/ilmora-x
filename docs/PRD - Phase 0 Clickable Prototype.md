@@ -1,5 +1,7 @@
 # PRD — Phase 0: Clickable Prototype
 
+> **Status, 2026-09-24:** Helmi confirmed Phase 0 is finished. This PRD records the prototype requirements. See [Milestone closeout](MILESTONE_CLOSEOUT.md) for current M1 to M3 gaps. Midtrans is the selected payment provider and referral discounts are deferred; older mock examples below are historical.
+
 **Project:** IlmoraX  
 **Date:** 19 April 2026  
 **Milestone:** Phase 0 — Design / Clickable Prototype  

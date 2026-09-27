@@ -17,6 +17,7 @@ import { assertAttemptOwner } from "../identity/access-rules";
 import { normalizeTryoutAccessLevel } from "../premium-access/premium-access";
 import { getTryoutEntitlementAccess } from "../premium-access/payment-service";
 import { getStudentViewer } from "../student/student-viewer.server";
+import { applyReviewAccess } from "./review-access";
 import {
   getAttemptForStudent,
   toOptionIndex,
@@ -54,6 +55,13 @@ export const getAttemptResult = createServerFn({ method: "GET" })
 
     const snapshotRows = await getAttemptSnapshotRows(data.attemptId);
     const entitlementAccess = await getTryoutEntitlementAccess(viewer.userId, attempt.tryoutId);
+    // Admins inspecting a Student's Attempt see the full review; impersonation sees what the Student sees.
+    const isAdminInspection = Boolean(viewer.admin) && !viewer.impersonation;
+    const reviewAccess = applyReviewAccess(snapshotRows, {
+      tryoutAccessLevel: tryout.accessLevel,
+      hasPremiumMembership: isAdminInspection || entitlementAccess.hasPremiumMembership,
+      hasLifetimeTryoutPurchase: entitlementAccess.hasLifetimeTryoutPurchase,
+    });
     const markedRows = await db
       .select({ snapshotId: attemptMarkedQuestions.snapshotId })
       .from(attemptMarkedQuestions)
@@ -80,8 +88,9 @@ export const getAttemptResult = createServerFn({ method: "GET" })
         accessLevel: normalizeTryoutAccessLevel(tryout.accessLevel),
         hasPremiumMembership: entitlementAccess.hasPremiumMembership,
         hasLifetimeTryoutPurchase: entitlementAccess.hasLifetimeTryoutPurchase,
+        hasFullReviewAccess: reviewAccess.hasFullReviewAccess,
       },
-      questions: snapshotRows,
+      questions: reviewAccess.questions,
     };
   });
 

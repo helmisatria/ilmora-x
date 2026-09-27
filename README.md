@@ -2,6 +2,8 @@
 
 IlmoraX is a web-based pharmacy exam prep platform. Students take timed Try-outs, review Attempts, track Student Evaluation, and compete on the weekly Leaderboard. Admins manage content, Students, Poll Sessions, reports, and operational monitoring.
 
+For current milestone status and open work, see [Milestone closeout](docs/MILESTONE_CLOSEOUT.md). Phase 0 is finished. Midtrans is the MVP payment provider, and referral discounts are deferred. The dated proposals and older checklists remain as records of the scope at the time they were written.
+
 ## Commands
 
 ```sh
@@ -13,6 +15,34 @@ pnpm build
 ```
 
 The Vite dev server uses port `8090`.
+
+## Midtrans payments
+
+Paid Checkouts use Midtrans Snap hosted checkout. Configure these server-side variables:
+
+```sh
+MIDTRANS_SERVER_KEY="SB-Mid-server-..."
+MIDTRANS_IS_PRODUCTION=false
+MIDTRANS_TRANSACTION_DURATION_SECONDS=86400
+APP_URL="https://your-public-app.example"
+```
+
+Each Snap transaction sends `X-Override-Notification: <APP_URL>/api/midtrans/webhook`, so Midtrans notifies the environment that created the payment. Staging and production can share one sandbox account, and a wrong `APP_URL` means payments never confirm. Still set the dashboard Payment Notification URL to the production webhook as a fallback:
+
+```text
+https://your-public-app.example/api/midtrans/webhook
+```
+
+Set the Snap redirection URLs to:
+
+```text
+Finish Redirect URL: https://your-public-app.example/payment/finish
+Error Payment URL:  https://your-public-app.example/payment/error
+```
+
+Use sandbox credentials with `MIDTRANS_IS_PRODUCTION=false`. Switch it to `true` only with a production Server Key and production dashboard configuration.
+
+Before launch: production currently runs on the sandbox key, so test cards can buy Premium. Swap in the production Server Key and set `MIDTRANS_IS_PRODUCTION=true` on the production Railway service.
 
 ## Jobs
 

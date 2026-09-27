@@ -8,13 +8,13 @@ export const Route = createFileRoute("/tentang-kami")({
       {
         name: "description",
         content:
-          "Kenali IlmoraX, layanan belajar digital dari Ilmora Academy untuk persiapan UKAI yang lebih terarah.",
+          "Kenali IlmoraX dan cara kami membantu calon apoteker berlatih, mengevaluasi hasil, dan menentukan materi berikutnya sebelum UKAI.",
       },
       { property: "og:title", content: "Tentang Kami — IlmoraX" },
       {
         property: "og:description",
         content:
-          "Informasi layanan, alamat, dan kontak resmi Ilmora Academy sebagai penyedia IlmoraX.",
+          "Tentang IlmoraX, cara belajar yang kami bangun, serta informasi resmi Ilmora Academy.",
       },
     ],
   }),

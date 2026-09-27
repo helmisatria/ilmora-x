@@ -1,14 +1,22 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LoginPage } from "../../features/auth/login-page";
 import { getPostLoginRedirect } from "../../lib/auth-functions";
-import { analyticsSearchSchema } from "../../lib/product-analytics";
+import { authSearchSchema } from "../../lib/post-login-redirect";
 
 export const Route = createFileRoute("/auth/login")({
-  loader: async () => {
+  loaderDeps: ({ search }) => ({ redirectTo: search.redirectTo }),
+  loader: async ({ deps }) => {
     const redirectTo = await getPostLoginRedirect();
 
     if (redirectTo !== "/auth/login") {
-      throw redirect({ to: redirectTo });
+      const destination =
+        redirectTo === "/dashboard" ? deps.redirectTo ?? redirectTo : redirectTo;
+      const search =
+        destination === "/auth/complete-profile" && deps.redirectTo
+          ? { redirectTo: deps.redirectTo }
+          : undefined;
+
+      throw redirect({ to: destination, search });
     }
 
     return null;
@@ -30,11 +38,11 @@ export const Route = createFileRoute("/auth/login")({
     ],
   }),
   component: LoginRoute,
-  validateSearch: analyticsSearchSchema,
+  validateSearch: authSearchSchema,
 });
 
 function LoginRoute() {
-  const { intent } = Route.useSearch();
+  const { intent, redirectTo } = Route.useSearch();
 
-  return <LoginPage intent={intent} />;
+  return <LoginPage intent={intent} redirectTo={redirectTo} />;
 }

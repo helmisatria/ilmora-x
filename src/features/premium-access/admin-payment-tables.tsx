@@ -52,8 +52,9 @@ export type CheckoutTableRow = {
   couponCode: string | null;
   status: string;
   total: number;
-  xenditInvoiceId: string | null;
-  xenditStatus: string | null;
+  paymentProvider: string;
+  providerOrderId: string | null;
+  providerStatus: string | null;
   createdAt: string;
   paidAt: string | null;
   expiresAt: string | null;
@@ -346,7 +347,7 @@ export const CheckoutTable = memo(function CheckoutTable({
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-2">
             <StatusPill label={row.original.status} />
-            {row.original.xenditStatus && <StatusPill label={`Xendit ${row.original.xenditStatus}`} />}
+            {row.original.providerStatus && <StatusPill label={`${row.original.paymentProvider} ${row.original.providerStatus}`} />}
           </div>
         ),
       },
@@ -367,11 +368,11 @@ export const CheckoutTable = memo(function CheckoutTable({
           <div className="flex flex-wrap justify-end gap-2">
             <button
               className="admin-button-ghost text-primary hover:bg-primary-tint"
-              disabled={!row.original.xenditInvoiceId || busyAction === `sync:${row.original.id}`}
+              disabled={row.original.paymentProvider !== "midtrans" || !row.original.providerOrderId || busyAction === `sync:${row.original.id}`}
               onClick={() => onSync(row.original.id)}
               type="button"
             >
-              Sync Xendit
+              Sync Midtrans
             </button>
           </div>
         ),

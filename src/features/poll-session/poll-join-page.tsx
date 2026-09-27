@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { BrandMark } from "../../components/brand-mark";
 import { useApp } from "../../data";
 import { useProductAnalytics } from "../../lib/product-analytics-client";
 import { getSafeErrorMessage } from "../../lib/user-errors";
@@ -68,9 +69,7 @@ export function PollJoinPage() {
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[560px] items-center justify-center px-4 py-12 sm:px-6">
         <section className="w-full translate-y-0 opacity-100 blur-0 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]">
           <div className="mb-10 flex items-center justify-center gap-3 text-stone-950">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[15px] font-semibold shadow-[inset_0_0_0_1px_rgba(28,25,23,0.08),0_18px_50px_rgba(28,25,23,0.08)]">
-              IX
-            </div>
+            <BrandMark alt="IlmoraX" size="sm" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
               Poll
             </span>

@@ -107,31 +107,33 @@ _Avoid_: Banner, notice, popup
 
 ## Rules (payment)
 
-- **Coupon redemption is per-Student.** A Student cannot redeem the same Coupon twice even if the global `max_total_uses` hasn't been reached. Checkout enforces this in code: a `reserved` or `finalized` redemption of that Coupon by the Student blocks another use, while `released` redemptions (expired Checkouts) do not count. The redemption ledger is indexed on `(student_user_id, coupon_id)` but has no unique constraint on that pair, because released rows may repeat.
+Midtrans Snap is the agreed MVP payment provider. Referral discounts remain deferred. The dated proposals below `docs/` retain their original scope text; use this section and `docs/MILESTONE_CLOSEOUT.md` for current implementation decisions.
+
+- **Coupon redemption is per-Student.** A partial unique index prevents more than one reserved or finalized redemption for the same Coupon and Student. An expired or cancelled Checkout releases its reservation so the Student can try again; a finalized Coupon cannot be reused.
 - **Referral discounts are out of scope for now.** Students may still have referral codes in profile for future use, but checkout does not validate or advertise referral discounts.
 - **Checkout accepts at most one Coupon.** Single input field labeled "Kode Kupon". Stacking is explicitly disallowed.
 - **Coupon scope is product-aware.** Admin chooses whether a Coupon applies to Premium Membership, Lifetime Try-out Purchase, Materi, or all paid products.
-- **MVP checkout uses Xendit-hosted payment.** IlmoraX calculates the final amount, creates one Xendit Payment Link, and redirects the Student to Xendit's hosted checkout page; IlmoraX does not show an in-app payment-method selector in the MVP.
+- **MVP checkout uses Midtrans Snap.** IlmoraX calculates the final amount, creates a Snap transaction, and redirects the Student to Midtrans-hosted checkout. IlmoraX does not show an in-app payment-method selector in the MVP.
 - **Products are admin-managed.** Admins can create, update, activate, and deactivate Products from Admin CMS so prices and sellable access can change without a code deploy.
 - **A Checkout snapshots the commercial terms.** Product edits never change an existing Checkout; each Checkout keeps the Product name/type, base amount, discount amount, final amount, and access target used when it was created.
-- **Zero-total Checkout skips Xendit.** If a Coupon reduces the final amount to Rp0, IlmoraX records a paid Checkout and grants the Entitlement server-side without creating a Xendit payment.
+- **Zero-total Checkout skips Midtrans.** If a Coupon reduces the final amount to Rp0, IlmoraX records a paid Checkout and grants the Entitlement server-side without creating a Midtrans transaction.
 - **Limited Coupon use is reserved at Checkout creation.** A Coupon redemption is reserved while payment is pending, finalized when the Checkout is paid, and released when the Checkout expires.
-- **Checkout lifecycle is simple in MVP.** A Checkout starts as pending and ends as paid, expired, or cancelled; normal failed payment attempts inside Xendit's hosted page do not create a separate IlmoraX failed state. A paid provider event with a mismatched amount moves the Checkout to `review_required` instead of paid.
+- **Checkout lifecycle is simple in MVP.** A paid-provider Checkout starts as pending and ends as paid, expired, or cancelled. A paid notification with the wrong amount moves it to `review_required` for Admin repair. A zero-total Coupon Checkout starts as paid. A failed attempt inside Midtrans checkout does not grant access; terminal cancellation or failure releases a reserved Coupon.
 - **Entitlements are granted from verified server-side completion.** Browser redirects never grant access by themselves; the Student-facing return page may poll Checkout status while the server waits for a verified webhook or trusted server-side sync.
-- **Pending Checkouts are reused for the same purchase.** If the same Student tries to buy the same Product with the same Coupon while a payable Checkout is still pending, IlmoraX sends them back to the existing Payment Link instead of creating a duplicate Checkout.
-- **MVP Payment Links expire after 24 hours.** The duration comes from `XENDIT_INVOICE_DURATION_SECONDS` (default 86400). Expiry releases any reserved Coupon use and prevents old unpaid invoices from lingering indefinitely.
+- **Pending Checkouts are reused for the same purchase.** If the same Student tries to buy the same Product with the same Coupon while a payable Checkout is still pending, IlmoraX sends them back to the existing Midtrans checkout URL instead of creating a duplicate Checkout.
+- **MVP Midtrans transactions expire after 24 hours by default.** The server may configure the duration. Expiry releases any reserved Coupon use and prevents old unpaid Checkouts from lingering indefinitely.
 - **Coupon admin is part of the MVP.** Admins can create, update, activate, and disable Coupons with code, discount type/value, product scope, validity window, and optional max total use.
 - **Percentage Coupons are uncapped in MVP.** A percentage discount reduces the Product price by that percentage with no maximum discount cap; fixed-amount Coupons cover campaigns that need a known rupiah discount.
 - **Coupon codes are case-insensitive.** IlmoraX trims and uppercases Coupon codes, then enforces uniqueness on the normalized code.
-- **Admin manual grants are explicit support actions.** Admins may grant Premium Membership or Lifetime Try-out Purchase Entitlements outside Xendit checkout for support, offline payment, giveaways, or payment repair.
-- **Xendit external IDs use the Checkout ID.** IlmoraX sends the Checkout identity as Xendit's `external_id` so webhooks can be matched directly to the local Checkout.
-- **Xendit webhooks require callback-token verification.** IlmoraX rejects webhook requests unless the `x-callback-token` header matches the configured Xendit webhook token.
-- **Xendit webhooks are idempotent.** Duplicate webhooks are accepted for delivery reliability, but Checkout transitions and Entitlement grants happen at most once.
-- **MVP handles paid and expired Xendit invoices.** `PAID` marks a matching Checkout paid after amount validation; `EXPIRED` marks a still-pending Checkout expired. Unknown provider statuses are stored for support review without changing Checkout access.
+- **Admin manual grants are explicit support actions.** Admins may grant Premium Membership or Lifetime Try-out Purchase Entitlements outside Midtrans checkout for support, offline payment, giveaways, or payment repair.
+- **Midtrans order IDs identify Checkouts.** IlmoraX sends `checkout_<checkout ID>` as Midtrans `order_id` so notifications and status sync can find the local Checkout.
+- **Midtrans notifications require signature verification.** IlmoraX checks `signature_key` against the order ID, status code, gross amount, and configured server key before processing a notification.
+- **Midtrans notifications are idempotent.** Duplicate notifications must not duplicate Checkout transitions, Coupon redemptions, or Entitlements.
+- **MVP handles Midtrans terminal statuses.** A `settlement` or `capture` with status code `200` and an accepted fraud status marks a matching Checkout paid after amount validation. `expire` expires it; `cancel`, `deny`, or failure cancels it. Other statuses remain pending and are stored for support review.
 - **Paid amount must match the Checkout final amount.** A paid provider event with a mismatched amount does not grant access automatically and must be reviewed by Admin.
-- **Checkout redirects land on a status page.** Xendit success and failure redirects both return to one IlmoraX Checkout status page; that page polls server status and never grants access by itself.
-- **Admin payment repair uses the same transition rules.** Admin-triggered Xendit status sync can repair delayed webhooks, but it must verify provider status and amount before changing Checkout or granting access.
-- **Provider payloads are retained for support.** IlmoraX stores Xendit invoice responses and webhook payloads as operational evidence, without storing API keys or secrets.
+- **Checkout redirects land on a status page.** Midtrans finish and error redirects both lead to the IlmoraX Checkout status page; that page polls server status and never grants access by itself.
+- **Admin payment repair uses the same transition rules.** Admin-triggered Midtrans status sync can repair delayed notifications, but it must verify provider status and amount before changing Checkout or granting access.
+- **Provider payloads are retained for support.** IlmoraX stores Midtrans transaction responses and notification payloads as operational evidence, without storing API keys or secrets.
 - **Checkout status polling is short and visible.** The Student status page polls every 3 seconds for a short window, then shows a still-waiting state with manual refresh.
 
 ## Rules (Dashboard Announcement)
