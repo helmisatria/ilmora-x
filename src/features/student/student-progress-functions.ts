@@ -11,6 +11,7 @@ export const listProgressSummary = createServerFn({ method: "GET" }).handler(asy
     attemptXp: evaluation.summary.attemptXp,
     badgeRewardXp: evaluation.summary.badgeRewardXp,
     streak: evaluation.summary.streak,
+    uniqueTryoutCount: evaluation.summary.uniqueTryoutCount,
     totalQuestions: evaluation.summary.totalQuestions,
     totalCorrect: evaluation.summary.totalCorrect,
     awardedBadgeIds: evaluation.summary.awardedBadgeIds,

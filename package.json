@@ -13,6 +13,7 @@
     "auth:generate": "pnpm dlx auth@latest generate --config src/lib/auth.ts",
     "jobs:finalise-weekly-leaderboard": "tsx src/lib/jobs/finalise-weekly-leaderboard.ts",
     "jobs:leaderboard": "tsx src/lib/jobs/leaderboard-worker.ts",
+    "jobs:recompute-attempt-xp": "tsx src/lib/jobs/recompute-attempt-xp.ts",
     "secret:generate": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs"

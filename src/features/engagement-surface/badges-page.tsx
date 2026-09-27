@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { badges, type Badge } from "./badge-catalog";
+import { isFailLegendAttempt } from "./engagement-surface-model";
 import { getLevelForXp } from "./level-catalog";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
@@ -165,13 +166,10 @@ export function BadgesPage({ summary }: { summary: ProgressSummary }) {
 
 function getBadgeProgress(summary: ProgressSummary): BadgeProgressView[] {
   const level = getLevelForXp(summary.xp).level;
-  const accuracy = summary.totalQuestions > 0
-    ? Math.round((summary.totalCorrect / summary.totalQuestions) * 100)
-    : 0;
 
   return badges.map((badge) => {
     const target = getBadgeTarget(badge);
-    const progress = getBadgeProgressValue(badge, { accuracy, level, summary });
+    const progress = getBadgeProgressValue(badge, { level, summary });
     const isAwarded = summary.awardedBadgeIds.includes(badge.id);
 
     return {
@@ -194,23 +192,24 @@ function getBadgeTarget(badge: Badge) {
   if (tryoutMatch) return Number(tryoutMatch[1]);
   if (failMatch) return Number(failMatch[1]);
   if (badge.id === 1) return 1;
-  if (badge.name === "100% Club") return 100;
 
   return 1;
 }
 
 function getBadgeProgressValue(
   badge: Badge,
-  data: { accuracy: number; level: number; summary: ProgressSummary },
+  data: { level: number; summary: ProgressSummary },
 ) {
   if (badge.task.toLowerCase().includes("leaderboard")) return 0;
+  // Only the server can judge these per-attempt rules, so they show as unlocked once awarded.
+  if (badge.name === "100% Club" || badge.name === "Speed Runner") return 0;
   if (badge.category === "Level") return data.level;
   if (badge.category === "Streak") {
-    if (badge.task.includes("unique tryouts")) return data.summary.attempts.length;
+    if (badge.task.includes("unique tryouts")) return data.summary.uniqueTryoutCount;
     return data.summary.streak;
   }
   if (badge.id === 1) return data.summary.attempts.length > 0 ? 1 : 0;
-  if (badge.name === "100% Club") return data.accuracy;
+  if (badge.name === "Fail Legend") return data.summary.attempts.filter(isFailLegendAttempt).length;
 
   return 0;
 }
@@ -340,7 +339,7 @@ function BadgeDetailModal({
   const progressPercent = Math.round(pct * 100);
   const requirement = getBadgeRequirementText(badge);
   const progressText = getBadgeProgressText(badge, progress, total, unlocked);
-  const rewardText = badge.xpReward > 0 ? `+${badge.xpReward.toLocaleString("id-ID")} EXP` : "Tanpa bonus EXP";
+  const rewardText = getBadgeRewardText(badge);
 
   return (
     <Dialog open={Boolean(badge)} onOpenChange={(open) => !open && onClose()}>
@@ -442,6 +441,15 @@ function BadgeDetailModal({
   );
 }
 
+function getBadgeRewardText(badge: Badge) {
+  const parts: string[] = [];
+
+  if (badge.xpReward > 0) parts.push(`+${badge.xpReward.toLocaleString("id-ID")} EXP`);
+  if (badge.permanentXpBonusPercent) parts.push(`+${badge.permanentXpBonusPercent}% EXP permanen`);
+
+  return parts.length > 0 ? parts.join(" · ") : "Tanpa bonus EXP";
+}
+
 function getBadgeRequirementText(badge: Badge) {
   const levelMatch = badge.task.match(/Reach Level (\d+)/i);
   const streakMatch = badge.task.match(/Complete tryout every day for (\d+) days/i);
@@ -453,9 +461,9 @@ function getBadgeRequirementText(badge: Badge) {
   if (streakMatch) return `Selesaikan Try-out setiap hari selama ${streakMatch[1]} hari berturut-turut.`;
   if (tryoutMatch) return `Selesaikan ${tryoutMatch[1]} Try-out unik. Retake Try-out yang sama tidak menambah hitungan.`;
   if (leaderboardMatch) return `Masuk Top ${leaderboardMatch[1]} Leaderboard mingguan setelah minggu selesai difinalisasi.`;
-  if (badge.name === "100% Club") return "Raih skor 100% pada progres jawabanmu.";
-  if (badge.name === "Speed Runner") return "Selesaikan Try-out sebelum waktu habis dengan skor di atas 80%.";
-  if (badge.name === "Fail Legend") return "Capai 5 kali hasil tidak lulus.";
+  if (badge.name === "100% Club") return "Raih skor 100% pada percobaan pertama Try-out dengan minimal 20 soal.";
+  if (badge.name === "Speed Runner") return "Selesaikan percobaan pertama Try-out dengan minimal 20 soal dalam separuh waktu, dengan skor di atas 80%.";
+  if (badge.name === "Fail Legend") return "Capai 5 kali tidak lulus (skor di bawah 70) pada percobaan pertama Try-out dengan minimal 20 soal.";
 
   return badge.task;
 }
@@ -467,7 +475,6 @@ function getBadgeProgressText(
   unlocked: boolean,
 ) {
   if (unlocked) return "Selesai";
-  if (badge.name === "100% Club") return `${progress}%/${total}%`;
 
   return `${progress}/${total}`;
 }

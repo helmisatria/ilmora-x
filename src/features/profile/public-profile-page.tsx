@@ -135,18 +135,14 @@ function isBadgeUnlocked(
 ) {
   if (profile.awardedBadgeIds.includes(badge.id)) return true;
 
-  const accuracy = profile.totalQuestions > 0
-    ? Math.round((profile.totalCorrect / profile.totalQuestions) * 100)
-    : 0;
   const levelMatch = badge.task.match(/Reach Level (\d+)/i);
   const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
   const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
 
   if (levelMatch) return level >= Number(levelMatch[1]);
   if (streakMatch) return profile.streak >= Number(streakMatch[1]);
-  if (tryoutMatch) return profile.totalTryouts >= Number(tryoutMatch[1]);
+  if (tryoutMatch) return profile.uniqueTryoutCount >= Number(tryoutMatch[1]);
   if (badge.id === 1) return profile.totalTryouts > 0;
-  if (badge.name === "100% Club") return accuracy >= 100;
 
   return false;
 }

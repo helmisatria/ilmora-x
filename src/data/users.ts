@@ -1,3 +1,4 @@
+import { getLevelTier } from "../features/engagement-surface/level-catalog";
 import { hasPremiumMembershipEndsAt } from "../features/premium-access/premium-access";
 
 export interface User {
@@ -28,27 +29,5 @@ export function hasPremiumMembership(user: User): boolean {
 }
 
 export function getGradeForLevel(level: number): string {
-  if (level >= 46) return "Pharmacy Authority";
-  if (level >= 36) return "Pharmacy Legend";
-  if (level >= 26) return "Pharmacy Expert";
-  if (level >= 16) return "Pharmacy Professional";
-  if (level >= 11) return "Pharmacy Practitioner";
-  if (level >= 6) return "Pharmacy Trainee";
-  if (level >= 3) return "Pharmacy Novice";
-  return "Pharmacy Newbie";
-}
-
-export function getLevelGrade(user: User): string {
-  return getGradeByLevel(user.level);
-}
-
-export function getGradeByLevel(level: number): string {
-  if (level >= 46) return "Pharmacy Authority";
-  if (level >= 36) return "Pharmacy Legend";
-  if (level >= 26) return "Pharmacy Expert";
-  if (level >= 16) return "Pharmacy Professional";
-  if (level >= 11) return "Pharmacy Practitioner";
-  if (level >= 6) return "Pharmacy Trainee";
-  if (level >= 3) return "Pharmacy Novice";
-  return "Pharmacy Newbie";
+  return getLevelTier(level);
 }

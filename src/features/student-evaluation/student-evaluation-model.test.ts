@@ -11,6 +11,7 @@ test("builds Student Evaluation totals from submitted Attempts and Badge rewards
     submittedAttempts: [
       {
         id: "attempt-1",
+        tryoutId: "tryout-a",
         tryoutTitle: "Try-out A",
         attemptNumber: 1,
         status: "submitted",
@@ -24,6 +25,7 @@ test("builds Student Evaluation totals from submitted Attempts and Badge rewards
       },
       {
         id: "attempt-2",
+        tryoutId: "tryout-b",
         tryoutTitle: "Try-out B",
         attemptNumber: 2,
         status: "auto_submitted",
@@ -72,6 +74,7 @@ test("builds Student Evaluation totals from submitted Attempts and Badge rewards
   assert.equal(evaluation.summary.attemptXp, 285);
   assert.equal(evaluation.summary.badgeRewardXp, 50);
   assert.equal(evaluation.summary.totalAttempts, 2);
+  assert.equal(evaluation.summary.uniqueTryoutCount, 2);
   assert.equal(evaluation.summary.totalQuestions, 20);
   assert.equal(evaluation.summary.totalCorrect, 13);
   assert.equal(evaluation.summary.totalWrong, 7);
