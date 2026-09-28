@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { BrandMark } from "../../components/brand-mark";
-import { signInWithGoogle } from "../../lib/auth-client";
+import { signInWithEmail, signInWithGoogle, signUpWithEmail } from "../../lib/auth-client";
 import {
   getLoginCallbackUrl,
   productAnalyticsEvents,
@@ -37,13 +37,19 @@ const trustPills = [
 export function LoginPage({
   intent,
   redirectTo,
+  emailPasswordEnabled,
 }: {
   intent?: AcquisitionIntent;
   redirectTo?: PostLoginRedirect;
+  emailPasswordEnabled: boolean;
 }) {
   const analytics = useProductAnalytics();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [emailMode, setEmailMode] = useState<"signIn" | "signUp">("signIn");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -76,6 +82,50 @@ export function LoginPage({
 
     setLoading(false);
     setErrorMessage("Google login belum bisa dimulai. Cek konfigurasi OAuth lokal.");
+  };
+
+  const handleEmailLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (loading) return;
+
+    setLoading(true);
+    setErrorMessage("");
+
+    if (emailMode === "signUp") {
+      if (intent === "tryout_catalog_signup") {
+        analytics.capture(productAnalyticsEvents.tryoutCatalogSignupStarted, {
+          intent,
+          source_path: "/auth/login",
+          provider: "email",
+        });
+      }
+      analytics.capture(productAnalyticsEvents.signupStarted, {
+        intent,
+        source_path: "/auth/login",
+        provider: "email",
+      });
+    }
+
+    try {
+      const result = emailMode === "signUp"
+        ? await signUpWithEmail(name.trim(), email.trim(), password)
+        : await signInWithEmail(email.trim(), password);
+
+      if (result.ok) {
+        window.location.href = getLoginCallbackUrl(intent, redirectTo);
+        return;
+      }
+
+      setErrorMessage(
+        emailMode === "signUp"
+          ? "Akun belum bisa dibuat. Periksa email dan kata sandi, atau masuk dengan Google."
+          : "Email atau kata sandi salah. Coba lagi atau masuk dengan Google.",
+      );
+    } catch {
+      setErrorMessage("Tidak bisa terhubung. Coba lagi sebentar.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -158,6 +208,76 @@ export function LoginPage({
                   {loading ? <LoadingIcon /> : <GoogleIcon />}
                   {loading ? "Menyiapkan akun..." : "Masuk dengan Google"}
                 </button>
+
+                {emailPasswordEnabled && (
+                  <div className="mt-6 border-t border-stone-200 pt-6 text-left">
+                    <p className="mb-4 text-center text-xs font-semibold text-stone-500">
+                      Atau gunakan email untuk pengujian
+                    </p>
+                    <div className="mb-4 flex rounded-xl bg-stone-100 p-1 text-sm font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => { setEmailMode("signIn"); setErrorMessage(""); }}
+                        className={`flex-1 rounded-lg py-2 ${emailMode === "signIn" ? "bg-white text-stone-800 shadow-sm" : "text-stone-500"}`}
+                        aria-pressed={emailMode === "signIn"}
+                      >
+                        Masuk
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEmailMode("signUp"); setErrorMessage(""); }}
+                        className={`flex-1 rounded-lg py-2 ${emailMode === "signUp" ? "bg-white text-stone-800 shadow-sm" : "text-stone-500"}`}
+                        aria-pressed={emailMode === "signUp"}
+                      >
+                        Buat akun
+                      </button>
+                    </div>
+                    <form onSubmit={handleEmailLogin} className="space-y-3">
+                      {emailMode === "signUp" && (
+                        <label className="block text-sm font-semibold text-stone-700">
+                          Nama
+                          <input
+                            type="text"
+                            name="name"
+                            autoComplete="name"
+                            required
+                            value={name}
+                            onChange={(event) => setName(event.target.value)}
+                            className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 font-normal focus:border-primary focus:outline-none"
+                          />
+                        </label>
+                      )}
+                      <label className="block text-sm font-semibold text-stone-700">
+                        Email
+                        <input
+                          type="email"
+                          name="email"
+                          autoComplete="email"
+                          required
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 font-normal focus:border-primary focus:outline-none"
+                        />
+                      </label>
+                      <label className="block text-sm font-semibold text-stone-700">
+                        Kata sandi
+                        <input
+                          type="password"
+                          name="password"
+                          autoComplete={emailMode === "signUp" ? "new-password" : "current-password"}
+                          minLength={8}
+                          required
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 font-normal focus:border-primary focus:outline-none"
+                        />
+                      </label>
+                      <button type="submit" disabled={loading} className="btn btn-primary w-full py-3">
+                        {loading ? "Memproses..." : emailMode === "signUp" ? "Buat akun" : "Masuk dengan email"}
+                      </button>
+                    </form>
+                  </div>
+                )}
 
                 {errorMessage && (
                   <p className="mx-auto mt-4 max-w-[32ch] text-center text-xs font-semibold leading-relaxed text-red-500">
