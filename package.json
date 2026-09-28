@@ -9,6 +9,10 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "test:e2e:smoke": "playwright test --config=e2e/playwright.config.ts public.spec.ts",
+    "test:e2e:full": "E2E_REQUIRE_AUTH=1 playwright test --config=e2e/playwright.config.ts",
+    "test:e2e:auth": "node e2e/save-auth.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:seed": "tsx src/lib/db/seed.ts",
@@ -51,6 +55,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
