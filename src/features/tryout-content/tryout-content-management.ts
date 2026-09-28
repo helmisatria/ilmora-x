@@ -1,8 +1,9 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { db } from "../../lib/db/client";
 import {
   attemptQuestionSnapshots,
   attempts,
+  entitlements,
   questions,
   tryoutQuestions,
   tryouts,
@@ -104,6 +105,7 @@ export async function publishTryoutContent(tryoutId: string) {
 
 export async function unpublishTryoutContent(tryoutId: string) {
   await ensureTryoutExists(tryoutId);
+  await ensureNoLifetimeOwners(tryoutId);
 
   await db
     .update(tryouts)
@@ -118,7 +120,19 @@ export async function unpublishTryoutContent(tryoutId: string) {
 
 export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutId: string }) {
   await validateTryoutWorkbookInput(data);
-  await ensureTryoutExists(data.tryoutId);
+  const [currentTryout] = await db
+    .select({ status: tryouts.status })
+    .from(tryouts)
+    .where(eq(tryouts.id, data.tryoutId))
+    .limit(1);
+
+  if (!currentTryout) {
+    throw notFound("Try-out was not found.");
+  }
+
+  if (currentTryout.status === "published" && data.tryout.status !== "published") {
+    await ensureNoLifetimeOwners(data.tryoutId);
+  }
 
   const imported = await db.transaction(async (tx) => {
     const resolvedData = await resolveWorkbookTaxonomy(tx, data);
@@ -228,6 +242,24 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
   });
 
   return { ok: true, imported };
+}
+
+async function ensureNoLifetimeOwners(tryoutId: string) {
+  const now = new Date();
+  const [owner] = await db
+    .select({ id: entitlements.id })
+    .from(entitlements)
+    .where(and(
+      eq(entitlements.productType, "lifetime_tryout"),
+      eq(entitlements.contentType, "tryout"),
+      eq(entitlements.contentId, tryoutId),
+      or(isNull(entitlements.endsAt), gt(entitlements.endsAt, now)),
+    ))
+    .limit(1);
+
+  if (owner) {
+    throw conflict("This Try-out has lifetime owners and cannot be unpublished.");
+  }
 }
 
 export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
