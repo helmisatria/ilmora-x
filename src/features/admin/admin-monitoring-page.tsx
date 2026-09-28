@@ -17,19 +17,36 @@ export function AdminMonitoringPage({ monitoring }: { monitoring: QueueMonitorin
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="admin-title">Monitoring</h1>
-              <p className="admin-description">pg-boss queues, schedules, and worker backlog.</p>
+              <p className="admin-description">Weekly Leaderboard finalization and optional pg-boss queues.</p>
             </div>
-            <StatusPill active={monitoring.installed} />
+            <StatusPill active={!monitoring.finalization.needsFinalization} />
           </div>
         </header>
 
+        <section className="admin-panel mt-6 p-6">
+          <p className="admin-kicker">Weekly Leaderboard</p>
+          <h2 className="mt-2 text-xl font-black tracking-tight text-stone-800">
+            {monitoring.finalization.needsFinalization ? "Previous week has no snapshot" : "Previous week finalized"}
+          </h2>
+          <p className="mt-2 text-sm font-semibold text-stone-500">
+            Expected week: {monitoring.finalization.expectedWeek}. Latest snapshot: {monitoring.finalization.latestWeek ?? "none"}.
+          </p>
+          {monitoring.finalization.finalizedAt && (
+            <p className="mt-1 text-sm font-semibold text-stone-500">
+              Finalized {formatDate(monitoring.finalization.finalizedAt)} · {monitoring.finalization.rankedStudentCount} ranked Students.
+            </p>
+          )}
+          <p className="mt-2 text-sm font-semibold text-stone-500">
+            Railway is configured to run the finalization command every Monday at 00:05 WIB. Check the Railway leaderboard-cron service for run logs; this page confirms the database result.
+          </p>
+        </section>
+
         {!monitoring.installed ? (
-          <section className="admin-panel mt-6 p-6">
-            <p className="admin-kicker">pg-boss</p>
-            <h2 className="mt-2 text-xl font-black tracking-tight text-stone-800">Queue schema is not installed yet.</h2>
+          <section className="admin-panel mt-4 p-6">
+            <p className="admin-kicker">Optional pg-boss worker</p>
+            <h2 className="mt-2 text-lg font-black tracking-tight text-stone-800">No pg-boss queues are configured.</h2>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-stone-500">
-              Start the worker once with <code className="rounded bg-stone-100 px-1.5 py-0.5">pnpm run jobs:leaderboard</code>.
-              The monitoring tables will appear after pg-boss creates its schema.
+              This does not indicate whether the separate Railway cron ran. Use the snapshot above to check its result.
             </p>
           </section>
         ) : (
@@ -53,7 +70,7 @@ export function AdminMonitoringPage({ monitoring }: { monitoring: QueueMonitorin
 }
 
 function StatusPill({ active }: { active: boolean }) {
-  const label = active ? "pg-boss installed" : "pg-boss not installed";
+  const label = active ? "Previous week finalized" : "Finalization needed";
   const className = active
     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
     : "border-amber-200 bg-amber-50 text-amber-700";

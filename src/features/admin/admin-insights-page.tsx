@@ -5,6 +5,8 @@ export type AdminInsights = Awaited<ReturnType<typeof getAdminContentCounts>>;
 type DifficultQuestion = AdminInsights["difficultQuestions"][number];
 type ReportedQuestion = AdminInsights["reportedQuestions"][number];
 type TryoutParticipation = AdminInsights["tryoutParticipation"][number];
+type CategoryPerformance = AdminInsights["categoryPerformance"][number];
+type RecentActivity = AdminInsights["recentActivity"][number];
 
 export function AdminInsightsPage({ counts }: { counts: AdminInsights }) {
   return (
@@ -13,18 +15,46 @@ export function AdminInsightsPage({ counts }: { counts: AdminInsights }) {
         <header className="admin-header">
           <a href="/admin" className="admin-back-link">Admin</a>
           <h1 className="admin-title">Insights</h1>
-          <p className="admin-description">Basic Milestone 1 metrics from real tables.</p>
+          <p className="admin-description">Student activity from the last {counts.periodDays} days, plus all-time content totals.</p>
         </header>
         <div className="mt-6 grid gap-3 md:grid-cols-3">
-          <Metric label="Students" value={counts.students} />
-          <Metric label="Active Students" value={counts.activeStudents} />
-          <Metric label="Completed Attempts" value={counts.completedAttempts} />
-          <Metric label="Average Score" value={`${counts.averageScore}%`} />
+          <Metric label="Students · all time" value={counts.students} />
+          <Metric label="New Students · 30 days" value={counts.newStudents} />
+          <Metric label="Active Students · 30 days" value={counts.activeStudents} />
+          <Metric label="Premium Students · current" value={counts.premiumStudents} />
+          <Metric label="Free Students · current" value={counts.freeStudents} />
+          <Metric label="Completed Attempts · 30 days" value={counts.periodAttempts} />
+          <Metric label="Answered Questions · 30 days" value={counts.answeredQuestions} />
+          <Metric label="Average Score · all time" value={`${counts.averageScore}%`} />
           <Metric label="Open reports" value={counts.openReports} />
           <Metric label="Try-outs" value={counts.tryouts} />
           <Metric label="Questions" value={counts.questions} />
           <Metric label="Categories" value={counts.categories} />
           <Metric label="Materi" value={counts.materi} />
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <InsightPanel title="Category Performance · 30 days" emptyMessage="No answered Questions in this period.">
+            {counts.categoryPerformance.map((category: CategoryPerformance) => (
+              <InsightRow
+                key={category.category}
+                title={category.category}
+                meta={`${category.correct}/${category.answered} correct`}
+                value={`${Math.round(100 * category.correct / category.answered)}%`}
+              />
+            ))}
+          </InsightPanel>
+
+          <InsightPanel title="Recent Activity · 30 days" emptyMessage="No Student activity in this period.">
+            {counts.recentActivity.map((event: RecentActivity, index: number) => (
+              <InsightRow
+                key={`${event.createdAt}:${index}`}
+                title={event.studentName}
+                meta={formatActivity(event.eventType)}
+                value={formatDate(event.createdAt)}
+              />
+            ))}
+          </InsightPanel>
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -64,6 +94,27 @@ export function AdminInsightsPage({ counts }: { counts: AdminInsights }) {
       </div>
     </main>
   );
+}
+
+function formatActivity(eventType: string) {
+  const labels: Record<string, string> = {
+    login: "Signed in",
+    profile_completed: "Completed profile",
+    tryout_started: "Started Try-out",
+    tryout_submitted: "Submitted Try-out",
+    question_reported: "Reported Question",
+    materi_viewed: "Viewed Materi",
+  };
+
+  return labels[eventType] ?? eventType;
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(value));
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
