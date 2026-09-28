@@ -129,7 +129,12 @@ export async function expireCheckoutIfNeeded(checkout: typeof checkouts.$inferSe
   if (checkout.status !== "pending") return checkout;
   if (!checkout.expiresAt || checkout.expiresAt > now) return checkout;
 
-  await markCheckoutExpired(checkout.id, now);
+  const expired = await markCheckoutExpired(checkout.id, now);
+
+  if (!expired) {
+    const [currentCheckout] = await db.select().from(checkouts).where(eq(checkouts.id, checkout.id)).limit(1);
+    return currentCheckout ?? checkout;
+  }
 
   return {
     ...checkout,
@@ -139,14 +144,17 @@ export async function expireCheckoutIfNeeded(checkout: typeof checkouts.$inferSe
 }
 
 export async function markCheckoutExpired(checkoutId: string, now = new Date()) {
-  await db.transaction(async (tx) => {
-    await tx
+  return db.transaction(async (tx) => {
+    const expired = await tx
       .update(checkouts)
       .set({
         status: "expired",
         updatedAt: now,
       })
-      .where(and(eq(checkouts.id, checkoutId), eq(checkouts.status, "pending")));
+      .where(and(eq(checkouts.id, checkoutId), eq(checkouts.status, "pending")))
+      .returning({ id: checkouts.id });
+
+    if (expired.length === 0) return false;
 
     await tx
       .update(couponRedemptions)
@@ -156,6 +164,30 @@ export async function markCheckoutExpired(checkoutId: string, now = new Date()) 
         updatedAt: now,
       })
       .where(and(eq(couponRedemptions.checkoutId, checkoutId), eq(couponRedemptions.status, "reserved")));
+
+    return true;
+  });
+}
+
+export async function expireOverdueCheckouts(now = new Date()) {
+  return db.transaction(async (tx) => {
+    const expired = await tx
+      .update(checkouts)
+      .set({ status: "expired", updatedAt: now })
+      .where(and(eq(checkouts.status, "pending"), lte(checkouts.expiresAt, now)))
+      .returning({ id: checkouts.id });
+
+    if (expired.length === 0) return 0;
+
+    await tx
+      .update(couponRedemptions)
+      .set({ status: "released", releasedAt: now, updatedAt: now })
+      .where(and(
+        inArray(couponRedemptions.checkoutId, expired.map((checkout) => checkout.id)),
+        eq(couponRedemptions.status, "reserved"),
+      ));
+
+    return expired.length;
   });
 }
 

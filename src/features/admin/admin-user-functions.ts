@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../lib/db/client";
 import {
   activityEvents,
   adminMembers,
+  entitlements,
   studentProfiles,
   user,
 } from "../../lib/db/schema";
@@ -37,7 +38,7 @@ const removeAdminSchema = z.object({
 });
 
 export const listStudentsAdmin = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async ({ context }) => {
-  const rows = await db
+  const [rows, memberships] = await Promise.all([db
     .select({
       userId: user.id,
       name: user.name,
@@ -51,11 +52,21 @@ export const listStudentsAdmin = createServerFn({ method: "GET" }).middleware([a
     })
     .from(user)
     .leftJoin(studentProfiles, eq(studentProfiles.userId, user.id))
-    .orderBy(desc(user.createdAt));
+    .orderBy(desc(user.createdAt)),
+  db
+    .select({ studentUserId: entitlements.studentUserId })
+    .from(entitlements)
+    .where(and(
+      eq(entitlements.productType, "premium_membership"),
+      gt(entitlements.endsAt, new Date()),
+    )),
+  ]);
+  const premiumUserIds = new Set(memberships.map((membership) => membership.studentUserId));
 
   return rows.map((row) => ({
     ...row,
     isCurrentSessionUser: row.userId === context.viewer.sessionUserId,
+    hasPremiumMembership: premiumUserIds.has(row.userId),
     joinedAt: row.joinedAt.toISOString(),
     profileCompletedAt: row.profileCompletedAt?.toISOString() ?? null,
     status: (row.status ?? "active") as "active" | "suspended",

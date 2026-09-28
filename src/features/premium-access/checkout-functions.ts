@@ -19,6 +19,7 @@ import {
   calculateDiscountAmount,
   countActiveCouponReservations,
   expireCheckoutIfNeeded,
+  expireOverdueCheckouts,
   getPaymentDurationSeconds,
   makePaymentId,
   getProductForCheckout,
@@ -73,6 +74,7 @@ export const getCheckoutProduct = createServerFn({ method: "GET" })
 export const previewCheckoutCoupon = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(couponPreviewSchema, input))
   .handler(async ({ data }) => {
+    if (data.couponCode) await expireOverdueCheckouts();
     const product = await getProductForCheckout(data.productId);
     const coupon = await getValidCouponForProduct({
       code: data.couponCode,
@@ -135,6 +137,7 @@ async function startCheckoutWithMidtrans(
   });
 
   const viewer = await getStudentViewer();
+  if (data.couponCode) await expireOverdueCheckouts();
   const product = await getProductForCheckout(data.productId);
 
   logger.set({ student: { id: viewer.userId } });
