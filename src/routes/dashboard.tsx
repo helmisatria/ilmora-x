@@ -1,16 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getStudentAnnouncement } from "../features/announcement/announcement-functions";
 import { DashboardPage } from "../features/dashboard/dashboard-page";
 import { listProgressSummary } from "../features/student/student-progress-functions";
 import { listPublishedTryouts } from "../features/tryout-content/student-tryout-catalog-functions";
 
 export const Route = createFileRoute("/dashboard")({
   loader: async () => {
-    const [summary, tryouts] = await Promise.all([
+    const [summary, tryouts, announcement] = await Promise.all([
       listProgressSummary(),
       listPublishedTryouts(),
+      getStudentAnnouncement().catch(() => null),
     ]);
 
-    return { summary, tryouts };
+    return { summary, tryouts, announcement };
   },
   head: () => ({
     meta: [
@@ -32,5 +34,5 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardRoute() {
   const data = Route.useLoaderData();
-  return <DashboardPage summary={data.summary} tryouts={data.tryouts} />;
+  return <DashboardPage summary={data.summary} tryouts={data.tryouts} announcement={data.announcement} />;
 }

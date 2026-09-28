@@ -4,6 +4,8 @@ import { PremiumDialog } from "../../components/PremiumDialog";
 import { BottomNav, TopBar } from "../../components/Navigation";
 import { TryoutIcon } from "../../components/TryoutIcon";
 import { useApp } from "../../data";
+import type { LiveAnnouncement } from "../announcement/announcement-functions";
+import { StudentAnnouncementModal } from "../announcement/announcement-modal";
 import { getLevelForXp, getNextLevel, getXpProgress } from "../engagement-surface/level-catalog";
 import { isPaidTryout, resolveTryoutAccess } from "../premium-access/premium-access";
 import { getDashboardAccuracy, getDashboardPalette } from "./dashboard-view-model";
@@ -16,9 +18,10 @@ type DashboardTryout = Awaited<ReturnType<typeof listPublishedTryouts>>[number];
 export type DashboardPageData = {
   summary: ProgressSummary;
   tryouts: DashboardTryout[];
+  announcement?: LiveAnnouncement | null;
 };
 
-export function DashboardPage({ summary, tryouts }: DashboardPageData) {
+export function DashboardPage({ summary, tryouts, announcement = null }: DashboardPageData) {
   const { user, hasPremiumMembership: devHasPremiumMembership } = useApp();
   const navigate = useNavigate();
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
@@ -182,6 +185,7 @@ export function DashboardPage({ summary, tryouts }: DashboardPageData) {
         hasPremiumMembership={hasPremiumMembership}
         tryout={selectedTryout}
       />
+      <StudentAnnouncementModal announcement={announcement} />
     </>
   );
 }

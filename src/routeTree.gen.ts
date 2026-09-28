@@ -45,6 +45,7 @@ import { Route as AdminMediaRouteImport } from './routes/admin/media'
 import { Route as AdminMateriRouteImport } from './routes/admin/materi'
 import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
+import { Route as AdminAnnouncementsRouteImport } from './routes/admin/announcements'
 import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
 import { Route as CheckoutCheckoutIdStatusRouteImport } from './routes/checkout.$checkoutId.status'
 import { Route as ApiPollsEventsRouteImport } from './routes/api/polls/events'
@@ -237,6 +238,11 @@ const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ResultsAttemptIdReviewRoute = ResultsAttemptIdReviewRouteImport.update({
   id: '/review',
   path: '/review',
@@ -308,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/progress': typeof ProgressRoute
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
@@ -406,6 +414,7 @@ export interface FileRoutesById {
   '/progress': typeof ProgressRoute
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/materi': typeof AdminMateriRoute
@@ -457,6 +466,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/tentang-kami'
     | '/tryout'
+    | '/admin/announcements'
     | '/admin/categories'
     | '/admin/insights'
     | '/admin/materi'
@@ -505,6 +515,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/tentang-kami'
     | '/tryout'
+    | '/admin/announcements'
     | '/admin/categories'
     | '/admin/insights'
     | '/admin/materi'
@@ -554,6 +565,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/tentang-kami'
     | '/tryout'
+    | '/admin/announcements'
     | '/admin/categories'
     | '/admin/insights'
     | '/admin/materi'
@@ -874,6 +886,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCategoriesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/announcements': {
+      id: '/admin/announcements'
+      path: '/announcements'
+      fullPath: '/admin/announcements'
+      preLoaderRoute: typeof AdminAnnouncementsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/results/$attemptId/review': {
       id: '/results/$attemptId/review'
       path: '/review'
@@ -979,6 +998,7 @@ const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminInsightsRoute: typeof AdminInsightsRoute
   AdminMateriRoute: typeof AdminMateriRoute
@@ -994,6 +1014,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnnouncementsRoute: AdminAnnouncementsRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminInsightsRoute: AdminInsightsRoute,
   AdminMateriRoute: AdminMateriRoute,

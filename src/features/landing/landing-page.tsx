@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import { TryoutIcon } from "../../components/TryoutIcon";
+import type { LiveAnnouncement } from "../announcement/announcement-functions";
+import { LandingAnnouncementModal } from "../announcement/announcement-modal";
 import type { listMembershipProducts } from "../premium-access/checkout-functions";
 import type { listPublicPublishedTryouts } from "../tryout-content/student-tryout-catalog-functions";
 import { businessDetails, plans } from "./landing-content";
@@ -28,9 +30,11 @@ const revealTransition = {
 export function LandingPage({
   products,
   tryouts,
+  announcement = null,
 }: {
   products: MembershipProduct[];
   tryouts: PublicTryout[];
+  announcement?: LiveAnnouncement | null;
 }) {
   return (
     <main
@@ -45,6 +49,7 @@ export function LandingPage({
       <PricingSection />
       <FooterCta />
       <SiteFooter />
+      <LandingAnnouncementModal announcement={announcement} />
     </main>
   );
 }

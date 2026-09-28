@@ -23,6 +23,7 @@ const adminSections = [
   { label: "Users", to: "/admin/users", description: "Student accounts, status, and profile details.", icon: UsersIcon },
   { label: "Try-outs", to: "/admin/tryouts", description: "Assessment setup, publishing, and question assignment.", icon: BookIcon },
   { label: "Payments", to: "/admin/payments", description: "Products, Coupons, manual grants, and checkout repair.", icon: PaymentIcon },
+  { label: "Announcements", to: "/admin/announcements", description: "Modal announcement for the landing page and Student dashboard.", icon: MegaphoneIcon },
   { label: "Media", to: "/admin/media", description: "Reusable image and video links for Question review content.", icon: MediaIcon },
   { label: "Categories", to: "/admin/categories", description: "Three-level curriculum taxonomy for Questions and Materi links.", icon: TagsIcon },
   { label: "Polls", to: "/admin/polls", description: "Live classroom Poll Sessions, rounds, and history.", icon: SignalIcon },
@@ -236,6 +237,15 @@ function SignalIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <path d="M4 18.5a11.5 11.5 0 0 1 16 0M7.5 15a6.5 6.5 0 0 1 9 0M12 19h.1" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
       <path d="M12 5v3M18.5 7.5l-2 2M5.5 7.5l2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MegaphoneIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

@@ -661,6 +661,36 @@ export const activityEvents = pgTable("activity_events", {
   check("activity_events_type_check", sql`${table.eventType} in ('login', 'profile_completed', 'tryout_started', 'tryout_submitted', 'question_reported', 'materi_viewed', 'admin_impersonation_started', 'admin_impersonation_stopped')`),
 ]);
 
+export const dashboardAnnouncements = pgTable("dashboard_announcements", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  imageUrl: text("image_url"),
+  ctaLabel: text("cta_label"),
+  ctaUrl: text("cta_url"),
+  placement: text("placement").notNull().default("all"),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  active: boolean("active").notNull().default(false),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("dashboard_announcements_single_active_unique")
+    .on(table.active)
+    .where(sql`${table.active} = true`),
+  check("dashboard_announcements_placement_check", sql`${table.placement} in ('all', 'landing', 'app')`),
+  check("dashboard_announcements_window_check", sql`${table.endsAt} > ${table.startsAt}`),
+  check("dashboard_announcements_cta_check", sql`(${table.ctaLabel} is null) = (${table.ctaUrl} is null)`),
+]);
+
+export const dashboardAnnouncementDismissals = pgTable("dashboard_announcement_dismissals", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  announcementId: text("announcement_id").notNull().references(() => dashboardAnnouncements.id, { onDelete: "cascade" }),
+  studentUserId: text("student_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  dismissedAt: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  unique("dashboard_announcement_dismissals_student_unique").on(table.announcementId, table.studentUserId),
+]);
+
 export const categoryRelations = relations(categories, ({ many }) => ({
   subCategories: many(subCategories),
   tryouts: many(tryouts),
