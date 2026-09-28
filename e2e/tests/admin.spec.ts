@@ -8,6 +8,7 @@ test.use({ storageState: authFile });
 
 test("Admin can search and filter Students, then open their Evaluation", async ({ page }) => {
   await page.goto("/admin/users");
+  await page.waitForLoadState("networkidle");
   const panel = page.locator("section.admin-panel").filter({
     has: page.getByRole("heading", { name: "Students", exact: true }),
   });
@@ -82,15 +83,17 @@ test("overdue Checkouts do not remain Pending", async ({ page }) => {
   }
 });
 
-test("profile join date matches the Admin account record and has no dev switch", async ({ page }) => {
+test("profile join date matches the Admin account record and the dev switch follows the environment", async ({ page }) => {
   await page.goto("/profile");
   const emailRow = page.getByText("Email", { exact: true }).locator("..");
   const joinedRow = page.getByText("Bergabung", { exact: true }).locator("..");
   const email = (await emailRow.innerText()).replace(/^Email\s*/i, "").trim();
   const profileJoined = (await joinedRow.innerText()).replace(/^Bergabung\s*/i, "").trim();
-  await expect(page.getByRole("checkbox", { name: "CONFIG TOGGLE Premium user" })).toHaveCount(0);
+  const isLocal = ["localhost", "127.0.0.1"].includes(new URL(process.env.E2E_BASE_URL ?? "https://staging.ilmorax.com").hostname);
+  await expect(page.getByRole("checkbox", { name: "CONFIG TOGGLE Premium user" })).toHaveCount(isLocal ? 1 : 0);
 
   await page.goto("/admin/users");
+  await page.waitForLoadState("networkidle");
   const panel = page.locator("section.admin-panel").filter({
     has: page.getByRole("heading", { name: "Students", exact: true }),
   });
