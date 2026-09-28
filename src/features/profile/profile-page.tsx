@@ -237,11 +237,11 @@ export function ProfilePage({ summary, viewer }: ProfilePageData) {
               <AccountRow label="Institusi" value={profileInstitution} />
               <AccountRow
                 label="Bergabung"
-                value={user.joinDate ? new Date(user.joinDate).toLocaleDateString("id-ID", {
+                value={new Date(user.joinDate).toLocaleDateString("id-ID", {
                   day: "numeric",
                   month: "long",
                   year: "numeric",
-                }) : "—"}
+                })}
               />
             </div>
           </div>

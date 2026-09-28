@@ -18,7 +18,6 @@ import { adminMiddleware } from "../admin/admin-access";
 import {
   assertProductShape,
   createAdminGrant,
-  expireOverdueCheckouts,
   normalizeCouponCode,
 } from "./payment-service";
 import { getMidtransTransaction } from "./midtrans-client.server";
@@ -82,7 +81,6 @@ const emptyCouponUsageSummary: CouponUsageSummary = {
 export const getPaymentAdminData = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .handler(async () => {
-    await expireOverdueCheckouts();
     const [productRows, couponRows, couponUsageRows, studentRows, tryoutRows, checkoutRows, entitlementRows] = await Promise.all([
       db.select().from(products).orderBy(products.type, products.price, products.name),
       db.select().from(coupons).orderBy(desc(coupons.createdAt)),

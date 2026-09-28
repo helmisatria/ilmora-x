@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { sql, type SQL } from "drizzle-orm";
 import { db } from "../../lib/db/client";
-import { weeklyLeaderboardSnapshots } from "../../lib/db/schema";
-import { getPreviousJakartaWeekStartDateKey } from "../leaderboard/leaderboard";
 import { superAdminMiddleware } from "./admin-access";
 
 type SerializableJson =
@@ -78,23 +76,6 @@ async function pgBossTableExists(tableName: string) {
 export const getQueueMonitoringAdmin = createServerFn({ method: "GET" })
   .middleware([superAdminMiddleware])
   .handler(async () => {
-    const expectedWeek = getPreviousJakartaWeekStartDateKey();
-    const [latestSnapshot] = await db
-      .select({
-        weekStartDate: weeklyLeaderboardSnapshots.weekStartDate,
-        finalizedAt: weeklyLeaderboardSnapshots.finalizedAt,
-        rankedStudentCount: weeklyLeaderboardSnapshots.rankedStudentCount,
-      })
-      .from(weeklyLeaderboardSnapshots)
-      .orderBy(sql`${weeklyLeaderboardSnapshots.weekStartDate} desc`)
-      .limit(1);
-    const finalization = {
-      expectedWeek,
-      latestWeek: latestSnapshot?.weekStartDate ?? null,
-      finalizedAt: latestSnapshot?.finalizedAt.toISOString() ?? null,
-      rankedStudentCount: latestSnapshot?.rankedStudentCount ?? null,
-      needsFinalization: !latestSnapshot || latestSnapshot.weekStartDate < expectedWeek,
-    };
     const hasQueueTable = await pgBossTableExists("queue");
     const hasScheduleTable = await pgBossTableExists("schedule");
     const hasJobTable = await pgBossTableExists("job");
@@ -102,7 +83,6 @@ export const getQueueMonitoringAdmin = createServerFn({ method: "GET" })
     if (!hasQueueTable && !hasScheduleTable && !hasJobTable) {
       return {
         installed: false,
-        finalization,
         queues: [] as PgBossQueueRow[],
         schedules: [] as PgBossScheduleRow[],
       };
@@ -192,7 +172,6 @@ export const getQueueMonitoringAdmin = createServerFn({ method: "GET" })
 
     return {
       installed: true,
-      finalization,
       queues,
       schedules,
     };

@@ -25,25 +25,10 @@ export function AdminUsersPage({
   const [adminRole, setAdminRole] = useState<"admin" | "super_admin">("admin");
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [studentQuery, setStudentQuery] = useState("");
-  const [studentStatus, setStudentStatus] = useState("all");
-  const [studentAccess, setStudentAccess] = useState("all");
 
   if (location.pathname !== "/admin/users") {
     return <Outlet />;
   }
-
-  const normalizedQuery = studentQuery.trim().toLocaleLowerCase();
-  const visibleStudents = students.filter((student) => {
-    const matchesQuery = !normalizedQuery ||
-      (student.displayName || student.name).toLocaleLowerCase().includes(normalizedQuery) ||
-      student.email.toLocaleLowerCase().includes(normalizedQuery);
-    const matchesStatus = studentStatus === "all" || student.status === studentStatus;
-    const matchesAccess = studentAccess === "all" ||
-      (studentAccess === "premium" ? student.hasPremiumMembership : !student.hasPremiumMembership);
-
-    return matchesQuery && matchesStatus && matchesAccess;
-  });
 
   const refresh = async () => {
     await router.invalidate();
@@ -194,36 +179,12 @@ export function AdminUsersPage({
           <div className="admin-panel-header">
             <div className="flex items-center justify-between gap-4">
               <h2 className="admin-panel-title">Students</h2>
-              <span className="admin-count">{visibleStudents.length}/{students.length}</span>
+              <span className="admin-count">{students.length}</span>
             </div>
           </div>
 
-          <div className="grid gap-2 border-b border-stone-100 p-3 sm:grid-cols-[minmax(0,1fr)_150px_150px] sm:p-4">
-            <label className="sr-only" htmlFor="student-search">Search Students by name or email</label>
-            <input
-              id="student-search"
-              value={studentQuery}
-              onChange={(event) => setStudentQuery(event.target.value)}
-              className="admin-control"
-              placeholder="Search name or email"
-              type="search"
-            />
-            <label className="sr-only" htmlFor="student-status">Account status</label>
-            <select id="student-status" value={studentStatus} onChange={(event) => setStudentStatus(event.target.value)} className="admin-control">
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-            </select>
-            <label className="sr-only" htmlFor="student-access">Premium access</label>
-            <select id="student-access" value={studentAccess} onChange={(event) => setStudentAccess(event.target.value)} className="admin-control">
-              <option value="all">All access</option>
-              <option value="premium">Premium</option>
-              <option value="free">Free</option>
-            </select>
-          </div>
-
           <div>
-            {visibleStudents.map((student) => {
+            {students.map((student) => {
               const nextStatus = student.status === "suspended" ? "active" : "suspended";
               const buttonLabel = student.status === "suspended" ? "Unsuspend" : "Suspend";
               const isSuspendingSelf = student.isCurrentSessionUser && nextStatus === "suspended";
@@ -240,7 +201,6 @@ export function AdminUsersPage({
                         {student.displayName || student.name}
                       </Link>
                       <StatusPill status={student.status} />
-                      <span className="admin-meta-tag">{student.hasPremiumMembership ? "Premium" : "Free"}</span>
                     </div>
                     <p className="mt-1 text-sm text-stone-500">{student.email}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -278,9 +238,9 @@ export function AdminUsersPage({
               );
             })}
 
-            {visibleStudents.length === 0 && (
+            {students.length === 0 && (
               <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-stone-400">{students.length === 0 ? "No Students found yet." : "No Students match these filters."}</p>
+                <p className="text-sm font-semibold text-stone-400">No Students found yet.</p>
               </div>
             )}
           </div>
