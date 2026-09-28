@@ -1,9 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
-import { sql, type SQL } from "drizzle-orm";
+import { eq, inArray, sql, type SQL } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../../lib/db/client";
-import { weeklyLeaderboardSnapshots } from "../../lib/db/schema";
-import { getPreviousJakartaWeekStartDateKey } from "../leaderboard/leaderboard";
+import { weeklyLeaderboardEntries, weeklyLeaderboardSnapshots } from "../../lib/db/schema";
+import { badRequest } from "../../lib/http/errors";
+import { parseInput } from "../../lib/http/validation";
+import { finaliseWeeklyLeaderboard, getPreviousJakartaWeekStartDateKey } from "../leaderboard/leaderboard";
+import { isClosedJakartaWeekStartDateKey, listClosedJakartaWeekStartDateKeys } from "../leaderboard/leaderboard-weeks";
 import { superAdminMiddleware } from "./admin-access";
+
+const RECENT_WEEK_COUNT = 6;
+
+const finaliseWeekSchema = z.object({
+  weekStartDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
 
 type SerializableJson =
   | null
@@ -75,6 +85,54 @@ async function pgBossTableExists(tableName: string) {
   return row?.exists === true;
 }
 
+// Closed weeks, newest first. A week without a snapshot was never finalized.
+async function listRecentWeeklyFinalizations() {
+  const weekStartDates = listClosedJakartaWeekStartDateKeys(RECENT_WEEK_COUNT);
+  const snapshots = await db
+    .select({
+      weekStartDate: weeklyLeaderboardSnapshots.weekStartDate,
+      finalizedAt: weeklyLeaderboardSnapshots.finalizedAt,
+      rankedStudentCount: weeklyLeaderboardSnapshots.rankedStudentCount,
+      participantThreshold: weeklyLeaderboardSnapshots.participantThreshold,
+      thresholdMet: weeklyLeaderboardSnapshots.thresholdMet,
+      topNBadgeCount: sql<number>`coalesce(sum(jsonb_array_length(${weeklyLeaderboardEntries.badgesAwarded})), 0)::int`,
+    })
+    .from(weeklyLeaderboardSnapshots)
+    .leftJoin(weeklyLeaderboardEntries, eq(weeklyLeaderboardEntries.snapshotId, weeklyLeaderboardSnapshots.id))
+    .where(inArray(weeklyLeaderboardSnapshots.weekStartDate, weekStartDates))
+    .groupBy(weeklyLeaderboardSnapshots.id);
+  const snapshotByWeek = new Map(snapshots.map((snapshot) => [snapshot.weekStartDate, snapshot]));
+
+  return weekStartDates.map((weekStartDate) => {
+    const snapshot = snapshotByWeek.get(weekStartDate);
+
+    if (!snapshot) return { weekStartDate, snapshot: null };
+
+    return {
+      weekStartDate,
+      snapshot: {
+        finalizedAt: snapshot.finalizedAt.toISOString(),
+        rankedStudentCount: snapshot.rankedStudentCount,
+        participantThreshold: snapshot.participantThreshold,
+        thresholdMet: snapshot.thresholdMet,
+        topNBadgeCount: Number(snapshot.topNBadgeCount),
+      },
+    };
+  });
+}
+
+// Same repair path as `pnpm jobs:finalise-weekly-leaderboard -- --week YYYY-MM-DD`.
+export const finaliseWeeklyLeaderboardAdmin = createServerFn({ method: "POST" })
+  .middleware([superAdminMiddleware])
+  .inputValidator((input) => parseInput(finaliseWeekSchema, input))
+  .handler(async ({ data }) => {
+    if (!isClosedJakartaWeekStartDateKey(data.weekStartDate)) {
+      throw badRequest("Only a closed week can be finalized. Use the Monday start date of a past week.");
+    }
+
+    return finaliseWeeklyLeaderboard(data.weekStartDate);
+  });
+
 export const getQueueMonitoringAdmin = createServerFn({ method: "GET" })
   .middleware([superAdminMiddleware])
   .handler(async () => {
@@ -94,6 +152,7 @@ export const getQueueMonitoringAdmin = createServerFn({ method: "GET" })
       finalizedAt: latestSnapshot?.finalizedAt.toISOString() ?? null,
       rankedStudentCount: latestSnapshot?.rankedStudentCount ?? null,
       needsFinalization: !latestSnapshot || latestSnapshot.weekStartDate < expectedWeek,
+      recentWeeks: await listRecentWeeklyFinalizations(),
     };
     const hasQueueTable = await pgBossTableExists("queue");
     const hasScheduleTable = await pgBossTableExists("schedule");

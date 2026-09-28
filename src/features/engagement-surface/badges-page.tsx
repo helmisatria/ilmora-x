@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { badges, type Badge } from "./badge-catalog";
+import { badges, getBadgeRequirementText, type Badge } from "./badge-catalog";
 import { getLevelForXp } from "./level-catalog";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
@@ -447,24 +447,6 @@ function getBadgeRewardText(badge: Badge) {
   if (badge.permanentXpBonusPercent) parts.push(`+${badge.permanentXpBonusPercent}% EXP permanen`);
 
   return parts.length > 0 ? parts.join(" · ") : "Tanpa bonus EXP";
-}
-
-function getBadgeRequirementText(badge: Badge) {
-  const levelMatch = badge.task.match(/Reach Level (\d+)/i);
-  const streakMatch = badge.task.match(/Complete tryout every day for (\d+) days/i);
-  const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
-  const leaderboardMatch = badge.task.match(/Reach top (\d+) leaderboard/i);
-
-  if (badge.id === 1) return "Selesaikan Try-out pertamamu.";
-  if (levelMatch) return `Capai Level ${levelMatch[1]}.`;
-  if (streakMatch) return `Selesaikan Try-out setiap hari selama ${streakMatch[1]} hari berturut-turut.`;
-  if (tryoutMatch) return `Selesaikan ${tryoutMatch[1]} Try-out unik. Retake Try-out yang sama tidak menambah hitungan.`;
-  if (leaderboardMatch) return `Masuk Top ${leaderboardMatch[1]} Leaderboard mingguan setelah minggu selesai difinalisasi.`;
-  if (badge.name === "100% Club") return "Raih skor 100% pada percobaan pertama Try-out dengan minimal 20 soal.";
-  if (badge.name === "Speed Runner") return "Selesaikan percobaan pertama Try-out dengan minimal 20 soal dalam separuh waktu, dengan skor di atas 80%.";
-  if (badge.name === "Fail Legend") return "Capai 5 kali tidak lulus (skor di bawah 70) pada percobaan pertama Try-out dengan minimal 20 soal.";
-
-  return badge.task;
 }
 
 function getBadgeProgressText(

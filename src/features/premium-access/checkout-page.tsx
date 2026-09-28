@@ -199,7 +199,7 @@ export function CheckoutPage({
             "radial-gradient(900px 340px at 10% -18%, #f59e0b35, transparent 62%), radial-gradient(720px 340px at 94% -12%, rgba(32,80,114,0.12), transparent 68%), linear-gradient(180deg, #fff8eb 0%, #fbfaf7 100%)",
         }}
       >
-        <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
+        <TopBar progress={{ xp: summary.xp, streak: summary.streak }} celebrateNewBadges={false} />
 
         <div className="premium-lane pt-7 lg:pt-9">
           <div ref={heroRef} className="max-w-[560px]" style={{ opacity: 0 }}>

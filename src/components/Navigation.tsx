@@ -2,6 +2,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useApp } from "../data";
 import { getLevelForXp } from "../features/engagement-surface/level-catalog";
 import { stopStudentImpersonationAdmin } from "../features/admin/admin-user-functions";
+import { NewBadgeCelebration } from "../features/engagement-surface/new-badge-celebration";
 import { AvatarDisplay } from "./AvatarDisplay";
 
 type TopBarProgress = {
@@ -15,7 +16,16 @@ type TopBarProfile = {
   photoUrl?: string | null;
 };
 
-export function TopBar({ progress, profile }: { progress?: TopBarProgress; profile?: TopBarProfile }) {
+export function TopBar({
+  progress,
+  profile,
+  celebrateNewBadges = true,
+}: {
+  progress?: TopBarProgress;
+  profile?: TopBarProfile;
+  // Pages that show their own popups turn this off and place NewBadgeCelebration themselves.
+  celebrateNewBadges?: boolean;
+}) {
   const { user, impersonation } = useApp();
   const router = useRouter();
   const xp = progress?.xp ?? user.xp;
@@ -36,6 +46,7 @@ export function TopBar({ progress, profile }: { progress?: TopBarProgress; profi
 
   return (
     <>
+      {celebrateNewBadges && <NewBadgeCelebration />}
       {impersonation && (
         <div className="sticky top-0 z-30 border-b-2 border-amber-200 bg-amber-50 py-2 text-amber-900">
           <div className="page-lane flex items-center justify-between gap-3">
