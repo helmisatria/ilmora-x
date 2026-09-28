@@ -33,7 +33,7 @@ const fallbackUser: User = {
   weeklyXp: 0,
   streak: 0,
   referralCode: "-",
-  joinDate: new Date().toISOString(),
+  joinDate: "",
   completedProfile: false,
   totalQuestions: 0,
   totalCorrect: 0,
@@ -59,6 +59,7 @@ function getUserFromViewer(viewer: Viewer | null): User {
   return {
     ...fallbackUser,
     name,
+    joinDate: viewer.joinedAt,
     email: viewer.email,
     institution,
     avatar: avatar.avatar,

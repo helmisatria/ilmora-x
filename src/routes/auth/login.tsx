@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LoginPage } from "../../features/auth/login-page";
 import { getPostLoginRedirect } from "../../lib/auth-functions";
+import { getEmailPasswordAuthEnabled } from "../../lib/auth-config";
 import { authSearchSchema } from "../../lib/post-login-redirect";
 
 export const Route = createFileRoute("/auth/login")({
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/auth/login")({
       throw redirect({ to: destination, search });
     }
 
-    return null;
+    return { emailPasswordEnabled: await getEmailPasswordAuthEnabled() };
   },
   head: () => ({
     meta: [
@@ -43,6 +44,7 @@ export const Route = createFileRoute("/auth/login")({
 
 function LoginRoute() {
   const { intent, redirectTo } = Route.useSearch();
+  const { emailPasswordEnabled } = Route.useLoaderData();
 
-  return <LoginPage intent={intent} redirectTo={redirectTo} />;
+  return <LoginPage intent={intent} redirectTo={redirectTo} emailPasswordEnabled={emailPasswordEnabled} />;
 }
