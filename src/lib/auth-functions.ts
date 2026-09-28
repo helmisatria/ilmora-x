@@ -12,6 +12,7 @@ import type { PostLoginRedirect } from "./post-login-redirect";
 
 export type Viewer = {
   userId: string;
+  joinedAt: string;
   email: string;
   name: string | null;
   image: string | null;
@@ -89,6 +90,7 @@ export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Vie
       email: user.email,
       name: user.name,
       image: user.image,
+      createdAt: user.createdAt,
     })
     .from(user)
     .where(eq(user.id, targetUserId))
@@ -99,6 +101,7 @@ export async function getCurrentViewerFromHeaders(headers: Headers): Promise<Vie
 
   return {
     userId: effectiveSessionUser.id,
+    joinedAt: new Date(effectiveSessionUser.createdAt).toISOString(),
     email: effectiveSessionUser.email,
     name: effectiveSessionUser.name ?? null,
     image: effectiveSessionUser.image ?? null,
