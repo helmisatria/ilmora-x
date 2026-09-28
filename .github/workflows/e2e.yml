@@ -1,0 +1,72 @@
+name: E2E regression
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: e2e
+          POSTGRES_PASSWORD: e2e
+          POSTGRES_DB: ilmora_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U e2e -d ilmora_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://e2e:e2e@127.0.0.1:5432/ilmora_e2e
+      BETTER_AUTH_URL: http://127.0.0.1:8090
+      APP_URL: http://127.0.0.1:8090
+      E2E_BASE_URL: http://127.0.0.1:8090
+      ADMIN_EMAILS: e2e-admin@example.test
+      E2E_REQUIRE_AUTH: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26.7.0
+      - name: Install dependencies
+        run: |
+          npm install --global pnpm@9.15.9
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Create disposable app secret
+        run: echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - name: Prepare database
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+      - name: Start app and prepare browser sessions
+        run: |
+          pnpm exec vite dev --host 127.0.0.1 > e2e-app.log 2>&1 &
+          for attempt in {1..60}; do
+            if curl --fail --silent "$E2E_BASE_URL/api/healthz" > /dev/null; then break; fi
+            sleep 2
+          done
+          curl --fail --silent "$E2E_BASE_URL/api/healthz" > /dev/null
+          pnpm exec tsx e2e/prepare-local.ts
+      - name: Run regression
+        run: pnpm test:e2e:full
+      - name: Upload failure report
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: e2e-failure-report
+          path: |
+            playwright-report/
+            test-results/
+            e2e-app.log
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("staging health and Google login are available", async ({ page, request }) => {
+test("app health and Google login are available", async ({ page, request }) => {
   const health = await request.get("/api/healthz");
   expect(health.ok()).toBeTruthy();
   expect(await health.json()).toMatchObject({ status: "ok", database: "connected" });
