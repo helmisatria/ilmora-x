@@ -1,83 +1,29 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, gt, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../lib/db/client";
 import {
   attemptAnswers,
   attemptQuestionSnapshots,
   attempts,
-  activityEvents,
   categories,
-  entitlements,
   materi,
   questionReports,
   questions,
   studentProfiles,
   tryouts,
-  user,
 } from "../../lib/db/schema";
 import { adminMiddleware } from "./admin-access";
 
 export const getAdminContentCounts = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async () => {
-  const now = new Date();
-  const since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const [categoryCount] = await db.select({ count: sql<number>`count(*)` }).from(categories);
   const [tryoutCount] = await db.select({ count: sql<number>`count(*)` }).from(tryouts);
   const [questionCount] = await db.select({ count: sql<number>`count(*)` }).from(questions);
   const [materiCount] = await db.select({ count: sql<number>`count(*)` }).from(materi);
   const [studentCount] = await db.select({ count: sql<number>`count(*)` }).from(studentProfiles);
-  const [newStudentCount, premiumStudentCount, activeStudentCount, periodAttemptCount, categoryPerformance, recentActivity] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` })
-      .from(studentProfiles)
-      .innerJoin(user, eq(user.id, studentProfiles.userId))
-      .where(gte(user.createdAt, since))
-      .then((rows) => rows[0]),
-    db.select({ count: sql<number>`count(distinct ${entitlements.studentUserId})` })
-      .from(entitlements)
-      .innerJoin(studentProfiles, eq(studentProfiles.userId, entitlements.studentUserId))
-      .where(and(eq(entitlements.productType, "premium_membership"), gt(entitlements.endsAt, now)))
-      .then((rows) => rows[0]),
-    db.select({ count: sql<number>`count(distinct ${activityEvents.studentUserId})` })
-      .from(activityEvents)
-      .where(and(
-        gte(activityEvents.createdAt, since),
-        inArray(activityEvents.eventType, ["login", "profile_completed", "tryout_started", "tryout_submitted", "question_reported", "materi_viewed"]),
-      ))
-      .then((rows) => rows[0]),
-    db.select({ count: sql<number>`count(*)` })
-      .from(attempts)
-      .where(and(sql`${attempts.status} in ('submitted', 'auto_submitted')`, gte(attempts.submittedAt, since)))
-      .then((rows) => rows[0]),
-    db.select({
-      category: attemptQuestionSnapshots.categoryName,
-      answered: sql<number>`count(${attemptAnswers.id})`,
-      correct: sql<number>`count(*) filter (where ${attemptAnswers.isCorrect} = true)`,
-    })
-      .from(attemptQuestionSnapshots)
-      .innerJoin(attemptAnswers, eq(attemptAnswers.snapshotId, attemptQuestionSnapshots.id))
-      .innerJoin(attempts, eq(attempts.id, attemptQuestionSnapshots.attemptId))
-      .where(and(
-        sql`${attempts.status} in ('submitted', 'auto_submitted')`,
-        gte(attempts.submittedAt, since),
-        sql`${attemptAnswers.selectedOption} is not null`,
-      ))
-      .groupBy(attemptQuestionSnapshots.categoryName)
-      .orderBy(desc(sql`count(${attemptAnswers.id})`)),
-    db.select({
-      eventType: activityEvents.eventType,
-      createdAt: activityEvents.createdAt,
-      studentName: studentProfiles.displayName,
-      accountName: user.name,
-    })
-      .from(activityEvents)
-      .leftJoin(user, eq(user.id, activityEvents.studentUserId))
-      .leftJoin(studentProfiles, eq(studentProfiles.userId, activityEvents.studentUserId))
-      .where(and(
-        gte(activityEvents.createdAt, since),
-        inArray(activityEvents.eventType, ["login", "profile_completed", "tryout_started", "tryout_submitted", "question_reported", "materi_viewed"]),
-      ))
-      .orderBy(desc(activityEvents.createdAt))
-      .limit(10),
-  ]);
+  const [activeStudentCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(studentProfiles)
+    .where(eq(studentProfiles.status, "active"));
   const [reportCount] = await db
     .select({ count: sql<number>`count(*)` })
     .from(questionReports)
@@ -141,18 +87,12 @@ export const getAdminContentCounts = createServerFn({ method: "GET" }).middlewar
     .limit(5);
 
   return {
-    periodDays: 30,
     categories: Number(categoryCount?.count ?? 0),
     tryouts: Number(tryoutCount?.count ?? 0),
     questions: Number(questionCount?.count ?? 0),
     materi: Number(materiCount?.count ?? 0),
     students: Number(studentCount?.count ?? 0),
-    newStudents: Number(newStudentCount?.count ?? 0),
-    premiumStudents: Number(premiumStudentCount?.count ?? 0),
-    freeStudents: Math.max(0, Number(studentCount?.count ?? 0) - Number(premiumStudentCount?.count ?? 0)),
     activeStudents: Number(activeStudentCount?.count ?? 0),
-    periodAttempts: Number(periodAttemptCount?.count ?? 0),
-    answeredQuestions: categoryPerformance.reduce((total, category) => total + Number(category.answered), 0),
     openReports: Number(reportCount?.count ?? 0),
     completedAttempts: Number(completedAttemptCount?.count ?? 0),
     averageScore: Number(averageScore?.score ?? 0),
@@ -173,16 +113,6 @@ export const getAdminContentCounts = createServerFn({ method: "GET" }).middlewar
       title: tryout.title,
       completedAttempts: Number(tryout.completedAttempts ?? 0),
       averageScore: Number(tryout.averageScore ?? 0),
-    })),
-    categoryPerformance: categoryPerformance.map((category) => ({
-      category: category.category,
-      answered: Number(category.answered),
-      correct: Number(category.correct),
-    })),
-    recentActivity: recentActivity.map((event) => ({
-      eventType: event.eventType,
-      studentName: event.studentName || event.accountName || "Unknown Student",
-      createdAt: event.createdAt.toISOString(),
     })),
   };
 });

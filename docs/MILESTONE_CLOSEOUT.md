@@ -1,8 +1,8 @@
 # Milestone closeout
 
-Updated 2026-09-28 against `origin/dev` at `769a6eb`.
+Updated 2026-09-28 against `origin/dev` at `5216eae`.
 
-This combines a code and document review with focused staging checks listed below. It is not full milestone acceptance or proof of a production deployment. The dated proposals record the original agreement. `CONTEXT.md` records later product rules. Helmi confirmed that Phase 0 is finished, Midtrans is the MVP payment provider, and referral discounts are deferred. Do not count those three items as open work.
+This is a code and document review, not staging acceptance or proof of a production deployment. The dated proposals record the original agreement. `CONTEXT.md` records later product rules. Helmi confirmed that Phase 0 is finished, Midtrans is the MVP payment provider, and referral discounts are deferred. Do not count those three items as open work.
 
 The five plans in `plans/README.md` are done. They cover Admin payment workflows and navigation, not the full proposal.
 
@@ -13,7 +13,7 @@ Open action items are tracked on the [Ilmora X Trello board](https://trello.com/
 | Milestone | Confirmed in the code | Still open |
 | --- | --- | --- |
 | Phase 0 | Owner confirmed completion. | No Phase 0 implementation item is tracked here. |
-| M1 | Google login and profile completion, Admin taxonomy and Try-out management, workbook import, timed Attempts, save and resume, results, reports, progress, Student search and filters, and proposed basic Users Insights. | Paid-access revocation, a clear suspended-account state, duplicate Question report protection, and full end-to-end acceptance. Standalone Materi CMS was moved out of M1 in `CONTEXT.md`. |
+| M1 | Google login and profile completion, Admin taxonomy and Try-out management, workbook import, timed Attempts, save and resume, results, reports, progress, and basic Insights. | Admin Student search and filters, paid-access revocation, several proposed Insights measures, and a clear suspended-account state. Standalone Materi CMS was moved out of M1 in `CONTEXT.md`. |
 | M2 | Midtrans Snap checkout, signed notification handling, Products, Coupons, discount calculation, redemption limits, and Entitlements. | Server-side premium Evaluation access, the proposed emails, and standalone Materi management and access if it remains in project scope. |
 | M3 | A 50-level catalog, 26 in-scope Badges, award records, current-week Leaderboard, weekly finalization code, Poll Sessions, public profiles, and Coming Soon links. | Level names and EXP thresholds do not match the supplied reference, plus permanent EXP bonuses, Admin Badge and Leaderboard controls, finalized-week history, accurate earned-Badge display, and one-time return-session Badge celebration. |
 
@@ -21,9 +21,9 @@ Open action items are tracked on the [Ilmora X Trello board](https://trello.com/
 
 ### M1
 
-- [x] Add Admin Student search and filters for name, email, status, and premium access. Verified search and premium filtering on staging after `769a6eb` deployed.
+- [ ] Add Admin Student search and filters for name, email, status, and premium access. The current list renders all Students without search or filters. See `src/features/admin/admin-users-page.tsx`.
 - [ ] Let Admin revoke a Student's paid access, as specified in the Phase 0 PRD. Manual grants exist, but the Admin workflow has no revoke action.
-- [x] Complete the proposed Users Insights. Staging shows new, premium, free, and active Students; Attempts and answered Questions in a stated 30-day window; category performance; and recent activity after `769a6eb` deployed.
+- [ ] Complete the proposed Users Insights. Add new users, premium and free users, activity in a stated time window, question activity, category performance, and recent activity. The current `activeStudents` count means accounts with active status, not Students active in a period. See `src/features/admin/admin-content-counts.ts` and the updated proposal's Users Insights section.
 - [ ] Give suspended Students a clear blocked page or message. `src/lib/route-protection.ts` currently sends them to login.
 - [ ] Prevent repeated submissions of the same Question report from creating duplicate moderation rows and activity events. `reportAttemptQuestion` inserts a new row on every request, and the old M1 checklist still marks this guard open.
 - [ ] Record staging acceptance for first Google login, profile completion, Admin login, suspended access, an interrupted Attempt, result review, and workbook import. A working route in the repository is not a completed end-to-end check.
@@ -43,7 +43,7 @@ Open action items are tracked on the [Ilmora X Trello board](https://trello.com/
 - [ ] Show finalized previous weeks to Students and Admins, including rank and Badge outcomes. The current `listLeaderboard` function only reads the live week. Show a finalizing state until a closed week has a snapshot.
 - [ ] Use awarded Badge records as the source of truth for unlocked state. The Badge collection and public profile also infer unlocked Badges from progress. Their "unique Try-outs" display counts Attempts, so retakes can show an unearned Badge.
 - [ ] Show a newly awarded Badge once when a Student returns after an offline or scheduled award. `student_badges.seen_at` exists, but no return-session acknowledgment flow was found.
-- [ ] Verify a scheduled weekly finalization run and a real Poll Session in staging. Railway has a separate `leaderboard-cron` service scheduled for Monday 00:05 WIB. A previous-week snapshot exists, but the scheduled trigger has not been confirmed from run logs. Optional pg-boss queues are not used for this cron.
+- [ ] Verify the weekly finalization worker and a real Poll Session in staging. The schedule is implemented, but `ENABLE_PG_BOSS_JOBS` defaults to `false` in `.env.example`; repository checks cannot prove a worker is running.
 
 ### Release and document checks
 
@@ -60,10 +60,3 @@ Referral discounts remain deferred. Paid Materi purchases remain out of MVP scop
 - Relative file links in the updated Markdown files resolved, and `git diff --check` passed.
 
 These are local checks. They do not establish CI status, staging acceptance, Midtrans delivery, or a running weekly worker.
-
-## Focused staging checks on 2026-09-28
-
-- Railway deployed `769a6eb` to staging. Admin Users search and Premium filtering worked; Insights displayed the added 30-day metrics and activity.
-- Admin Payments changed four overdue Pending checkouts to Expired. The staging database then had zero Pending checkouts and zero reserved Coupon redemptions. This does not replace a full Midtrans sandbox acceptance pass.
-- Admin Monitoring showed the previous-week Leaderboard snapshot for `2026-09-21`. The Railway cron schedule is configured, but its scheduled trigger remains unverified.
-- The Student profile showed the account's actual 22 August 2026 join date and no development Premium switch. The free Evaluation page change was locally checked but its refreshed staging page was not observed because the browser connection failed during that check.

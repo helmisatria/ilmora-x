@@ -162,6 +162,8 @@ function CategoryCard({
   const categoryTotal = category.total;
   const categoryCorrect = category.correct;
   const categoryPct = categoryTotal > 0 ? Math.round((categoryCorrect / categoryTotal) * 100) : 0;
+  const subCategories = isPremium ? category.subCategories : LOCKED_SUBCATEGORY_PREVIEW;
+
   return (
     <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
       <div className="p-5">
@@ -177,18 +179,23 @@ function CategoryCard({
       </div>
 
       <div className={`relative border-t border-stone-100 bg-stone-50/70 px-3 py-3 sm:px-4 ${!isPremium ? "select-none" : ""}`}>
-        {isPremium ? (
-          <div className="grid gap-2.5">
-            {category.subCategories.map((subcategory, index) => (
+        <div className="grid gap-2.5">
+          {subCategories.map((subcategory, index) => {
+            const isLast = index === subCategories.length - 1;
+
+            return (
               <SubcategoryRow
                 key={subcategory.name}
                 subcategory={subcategory}
-                isLast={index === category.subCategories.length - 1}
+                isBlurred={!isPremium}
+                isLast={isLast}
               />
-            ))}
-          </div>
-        ) : (
-          <div className="flex min-h-20 items-center justify-center rounded-b-[var(--radius-lg)] bg-amber-50/86 px-5">
+            );
+          })}
+        </div>
+
+        {!isPremium && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-b-[var(--radius-lg)] bg-amber-50/86 px-5 backdrop-blur-[1px]">
             <Link to="/premium" className="btn btn-sm" style={{ background: "#2f281c", color: "#fff7ed", borderBottomColor: "#a16207" }}>
               Unlock Breakdown
             </Link>
@@ -199,18 +206,26 @@ function CategoryCard({
   );
 }
 
+// The server omits Sub-category data for free Students, so the locked card blurs placeholder rows instead.
+const LOCKED_SUBCATEGORY_PREVIEW: EvaluationCategory["subCategories"] = [
+  { id: "locked-1", name: "Sub-kategori 1", correct: 3, total: 5, topics: [] },
+  { id: "locked-2", name: "Sub-kategori 2", correct: 2, total: 5, topics: [] },
+];
+
 function SubcategoryRow({
   subcategory,
+  isBlurred,
   isLast,
 }: {
   subcategory: EvaluationCategory["subCategories"][number];
+  isBlurred: boolean;
   isLast: boolean;
 }) {
   const pct = subcategory.total > 0 ? Math.round((subcategory.correct / subcategory.total) * 100) : 0;
   const branchClassName = isLast ? "h-1/2" : "h-full";
 
   return (
-    <div className="relative pl-5">
+    <div className={`relative pl-5 ${isBlurred ? "blur-[3px] opacity-70" : ""}`}>
       <span className={`absolute left-1.5 top-0 w-px rounded-full bg-stone-200 ${branchClassName}`} aria-hidden="true" />
       <span className="absolute left-1.5 top-1/2 h-px w-3 -translate-y-1/2 bg-stone-200" aria-hidden="true" />
       <div className="grid gap-2 rounded-[var(--radius-md)] border border-stone-100 bg-white/90 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
