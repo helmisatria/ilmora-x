@@ -66,4 +66,4 @@ These are local checks. They do not establish CI status, staging acceptance, Mid
 - Railway deployed `769a6eb` to staging. Admin Users search and Premium filtering worked; Insights displayed the added 30-day metrics and activity.
 - Admin Payments changed four overdue Pending checkouts to Expired. The staging database then had zero Pending checkouts and zero reserved Coupon redemptions. This does not replace a full Midtrans sandbox acceptance pass.
 - Admin Monitoring showed the previous-week Leaderboard snapshot for `2026-09-21`. The Railway cron schedule is configured, but its scheduled trigger remains unverified.
-- The Student profile showed the account's actual 22 August 2026 join date and no development Premium switch. The free Evaluation page change was locally checked but its refreshed staging page was not observed because the browser connection failed during that check.
+- The Student profile showed the account's actual 22 August 2026 join date and no development Premium switch. The refreshed free Evaluation page showed only the unlock action, with no placeholder Sub-category scores.
