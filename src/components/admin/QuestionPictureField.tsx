@@ -2,6 +2,7 @@ import type { ChangeEvent, DragEvent } from "react";
 import { useRef, useState } from "react";
 
 type QuestionPictureFieldProps = {
+  label?: string;
   value: string;
   busy?: boolean;
   onChange: (value: string) => void;
@@ -9,6 +10,7 @@ type QuestionPictureFieldProps = {
 };
 
 export function QuestionPictureField({
+  label = "Picture URL",
   value,
   busy = false,
   onChange,
@@ -46,7 +48,7 @@ export function QuestionPictureField({
       }
 
       if (result.mediaType !== "image") {
-        onError("Use an image for the review picture.");
+        onError("Upload an image file.");
         return;
       }
 
@@ -91,7 +93,7 @@ export function QuestionPictureField({
 
   return (
     <div>
-      <span className="mb-2 block text-sm font-bold text-stone-700">Picture URL</span>
+      <span className="mb-2 block text-sm font-bold text-stone-700">{label}</span>
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -125,7 +127,7 @@ export function QuestionPictureField({
         </div>
 
         {isDragging && (
-          <p className="mt-2 text-xs font-bold text-primary-dark">Drop image to fill Picture URL.</p>
+          <p className="mt-2 text-xs font-bold text-primary-dark">Drop image to fill {label}.</p>
         )}
       </div>
 
@@ -133,7 +135,7 @@ export function QuestionPictureField({
         <div className="mt-3 rounded-[var(--radius-md)] border-2 border-stone-100 bg-stone-50 p-3">
           <img
             src={value}
-            alt="Picture URL preview"
+            alt={`${label} preview`}
             className="max-h-56 w-full rounded-[var(--radius-sm)] object-contain"
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

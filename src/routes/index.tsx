@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getLandingAnnouncement } from "../features/announcement/announcement-functions";
 import { LandingPage } from "../features/landing/landing-page";
 import { listMembershipProducts } from "../features/premium-access/checkout-functions";
 import { listPublicPublishedTryouts } from "../features/tryout-content/student-tryout-catalog-functions";
@@ -44,14 +45,16 @@ const fallbackProducts = [
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const [products, tryouts] = await Promise.all([
+    const [products, tryouts, announcement] = await Promise.all([
       listMembershipProducts().catch(() => fallbackProducts),
       listPublicPublishedTryouts().catch(() => [] as PublicTryout[]),
+      getLandingAnnouncement().catch(() => null),
     ]);
 
     return {
       products: products.length > 0 ? products : fallbackProducts,
       tryouts,
+      announcement,
     };
   },
   head: () => ({
@@ -77,7 +80,7 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingRoute() {
-  const { products, tryouts } = Route.useLoaderData();
+  const { products, tryouts, announcement } = Route.useLoaderData();
 
-  return <LandingPage products={products} tryouts={tryouts} />;
+  return <LandingPage products={products} tryouts={tryouts} announcement={announcement} />;
 }

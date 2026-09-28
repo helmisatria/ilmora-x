@@ -102,7 +102,7 @@ An admin-created discount code redeemable at checkout during a validity window (
 _Avoid_: Promo, voucher, discount code
 
 **Dashboard Announcement**:
-An admin-created single-content message shown to Students as a dismissible dashboard modal. _Not built yet: the rules below describe the intended behavior._
+An admin-created single-content message shown as a dismissible modal on the landing page, the Student dashboard, or both. Admin manages it at `/admin/announcements`.
 _Avoid_: Banner, notice, popup
 
 ## Rules (payment)
@@ -139,7 +139,10 @@ Midtrans Snap is the agreed MVP payment provider. Referral discounts remain defe
 ## Rules (Dashboard Announcement)
 
 - **Dashboard Announcement dismissal is per-Student and per-announcement.** Dismissing one Dashboard Announcement must not suppress future Dashboard Announcements created by Admin.
-- **Only one Dashboard Announcement may be active at a time in v1.** The dashboard shows a single active Dashboard Announcement modal, with no carousel or nested announcement slides.
+- **Only one Dashboard Announcement may be active at a time in v1.** The dashboard shows a single active Dashboard Announcement modal, with no carousel or nested announcement slides. Enabling one announcement disables the others; a partial unique index enforces this in the database.
+- **A Dashboard Announcement shows only while enabled and inside its window.** It appears from `starts_at` until `ends_at`, on the placement Admin picked: landing page, Student app, or both.
+- **Landing page dismissal is per-browser.** Landing visitors may be signed out, so closing the modal there is remembered in the browser's local storage, not in the database.
+- **Admin impersonation does not dismiss for the Student.** Closing the modal while viewing as a Student is not recorded.
 
 ## Language (Live Poll)
 
