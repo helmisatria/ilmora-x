@@ -9,41 +9,39 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { badges, getBadgeRequirementText, type Badge } from "./badge-catalog";
+import {
+  badgeGroups,
+  getBadgeGroupKey,
+  getNextBadges,
+  hasMeasurableProgress,
+  type BadgeGroupKey,
+  type BadgeProgressView,
+} from "./badge-groups";
 import { getLevelForXp } from "./level-catalog";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
 type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
-type BadgeProgressView = {
-  badgeId: number;
-  progress: number;
-  total: number;
-  unlocked: boolean;
+
+const groupStyles: Record<BadgeGroupKey, { accent: string; icon: ReactNode }> = {
+  start: { accent: "#205072", icon: <TargetIcon /> },
+  level: { accent: "#0ea5e9", icon: <LevelIcon /> },
+  streak: { accent: "#f59e0b", icon: <FlameIcon /> },
+  tryouts: { accent: "#14b8a6", icon: <BookIcon /> },
+  leaderboard: { accent: "#8b5cf6", icon: <TrophyIcon /> },
+  special: { accent: "#fb7185", icon: <StarIcon /> },
 };
 
-type BadgeCategory = Badge["category"];
-
-const categories: Array<{
-  key: BadgeCategory;
-  label: string;
-  accent: string;
-  icon: ReactNode;
-}> = [
-  { key: "General", label: "General", accent: "#205072", icon: <TargetIcon /> },
-  { key: "Level", label: "Level", accent: "#0ea5e9", icon: <LevelIcon /> },
-  { key: "Streak", label: "Streak", accent: "#f59e0b", icon: <FlameIcon /> },
-  { key: "Prestige", label: "Prestige", accent: "#fb7185", icon: <StarIcon /> },
-];
+function getBadgeAccent(badge: Badge) {
+  return groupStyles[getBadgeGroupKey(badge)].accent;
+}
 
 export function BadgesPage({ summary }: { summary: ProgressSummary }) {
-  const [activeCategory, setActiveCategory] = useState<BadgeCategory>("General");
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
   const badgeProgress = getBadgeProgress(summary);
-  const filteredBadges = badges.filter((badge) => badge.category === activeCategory);
   const progressMap = new Map(badgeProgress.map((progress) => [progress.badgeId, progress]));
   const unlockedCount = badgeProgress.filter((progress) => progress.unlocked).length;
-  const activeMeta = categories.find((category) => category.key === activeCategory) ?? categories[0];
-  const activeUnlocked = filteredBadges.filter((badge) => progressMap.get(badge.id)?.unlocked).length;
+  const nextBadges = getNextBadges(badges, badgeProgress);
   const selectedProgress = selectedBadge ? progressMap.get(selectedBadge.id) : null;
 
   return (
@@ -70,82 +68,74 @@ export function BadgesPage({ summary }: { summary: ProgressSummary }) {
             Pantau bukti progres belajarmu
           </h1>
           <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-            Lencana terbuka dari tryout, streak, level, dan pencapaian khusus.
+            Lencana adalah penghargaan dari aktivitas belajarmu. Setiap lencana memberi EXP, dan
+            beberapa lencana Level memberi bonus EXP permanen.
           </p>
 
-          <div className="mt-5 grid max-w-[560px] grid-flow-dense grid-cols-2 gap-3">
-            <SummaryCard label="Terbuka" value={`${unlockedCount}/${badges.length}`} accent="#205072" />
-            <SummaryCard label={activeMeta.label} value={`${activeUnlocked}/${filteredBadges.length}`} accent={activeMeta.accent} />
-          </div>
+          <p className="m-0 mt-5 inline-flex items-baseline gap-2 rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white px-4 py-3 shadow-sm">
+            <span className="text-[22px] font-bold leading-none tracking-tight text-stone-800">
+              {unlockedCount}
+            </span>
+            <span className="text-[14px] font-semibold text-stone-500">
+              dari {badges.length} lencana terbuka
+            </span>
+          </p>
         </div>
       </div>
 
       <div className="page-lane relative -mt-4 pb-28">
-        <div className="rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-3 shadow-sm">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {categories.map((category) => (
-              <button
-                key={category.key}
-                className="group min-w-0 rounded-[var(--radius-md)] border-2 border-b-4 px-2.5 py-3 transition-all duration-150 active:translate-y-[1px]"
-                style={{
-                  background: activeCategory === category.key ? `${category.accent}12` : "#ffffff",
-                  borderColor: activeCategory === category.key ? `${category.accent}40` : "#e7e5e4",
-                  borderBottomColor: activeCategory === category.key ? category.accent : "#d6d3d1",
-                  color: activeCategory === category.key ? category.accent : "#78716c",
-                }}
-                onClick={() => setActiveCategory(category.key)}
-                type="button"
-              >
-                <span
-                  className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl border-2 bg-white transition-transform duration-700 ease-out group-hover:scale-105"
-                  style={{
-                    borderColor: `${category.accent}30`,
-                    background: activeCategory === category.key ? "#ffffff" : `${category.accent}10`,
-                  }}
-                >
-                  {category.icon}
-                </span>
-                <span className="mt-2 block truncate text-[10px] font-black uppercase tracking-wide">
-                  {category.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <NextBadgesSection
+          nextBadges={nextBadges}
+          allUnlocked={unlockedCount === badges.length}
+        />
 
-        <div className="mt-6">
-          <SectionHeader title={activeMeta.label} />
-          <div className="grid grid-flow-dense grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {filteredBadges.map((badge) => {
-              const progress = progressMap.get(badge.id);
-              return (
-                <BadgeCard
-                  key={badge.id}
-                  badge={badge}
-                  progress={progress?.progress ?? 0}
-                  total={progress?.total ?? 1}
-                  unlocked={progress?.unlocked ?? false}
-                  accent={activeMeta.accent}
-                  onSelect={() => setSelectedBadge(badge)}
-                />
-              );
-            })}
-          </div>
-        </div>
+        <section aria-labelledby="all-badges-heading" className="mt-8">
+          <h2 id="all-badges-heading" className="text-[20px] font-bold tracking-tight text-stone-800">
+            Semua lencana
+          </h2>
 
-        <div className="mt-6 rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-5 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-rose-100 bg-rose-50 text-coral">
-              <SparkIcon />
-            </div>
-            <div>
-              <h3 className="text-base font-extrabold text-stone-800">Ritme progres</h3>
-              <p className="mt-1 text-[13.5px] leading-relaxed text-stone-500 font-medium max-w-[30ch]">
-                Fokus pada satu kategori dulu agar target lencana berikutnya terasa jelas.
-              </p>
-            </div>
-          </div>
-        </div>
+          {badgeGroups.map((group) => {
+            const groupBadges = badges.filter((badge) => getBadgeGroupKey(badge) === group.key);
+            const style = groupStyles[group.key];
+
+            return (
+              <section key={group.key} aria-labelledby={`badge-group-${group.key}`} className="mt-6">
+                <div className="mb-3 flex items-start gap-3">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2"
+                    style={{ borderColor: `${style.accent}30`, background: `${style.accent}10`, color: style.accent }}
+                  >
+                    {style.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 id={`badge-group-${group.key}`} className="text-[15px] font-extrabold text-stone-800">
+                      {group.title}
+                    </h3>
+                    <p className="m-0 mt-0.5 text-[13px] font-medium leading-snug text-stone-500">
+                      {group.description}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {groupBadges.map((badge) => {
+                    const progress = progressMap.get(badge.id);
+                    return (
+                      <BadgeCard
+                        key={badge.id}
+                        badge={badge}
+                        progress={progress?.progress ?? 0}
+                        total={progress?.total ?? 1}
+                        unlocked={progress?.unlocked ?? false}
+                        accent={style.accent}
+                        onSelect={() => setSelectedBadge(badge)}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </section>
       </div>
 
       <BottomNav active="badge" />
@@ -155,11 +145,92 @@ export function BadgesPage({ summary }: { summary: ProgressSummary }) {
         progress={selectedProgress?.progress ?? 0}
         total={selectedProgress?.total ?? 1}
         unlocked={selectedProgress?.unlocked ?? false}
-        accent={activeMeta.accent}
+        accent={selectedBadge ? getBadgeAccent(selectedBadge) : groupStyles.start.accent}
         onClose={() => setSelectedBadge(null)}
       />
     </div>
     </div>
+  );
+}
+
+function NextBadgesSection({
+  nextBadges,
+  allUnlocked,
+}: {
+  nextBadges: ReturnType<typeof getNextBadges>;
+  allUnlocked: boolean;
+}) {
+  return (
+    <section
+      aria-labelledby="next-badges-heading"
+      className="rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-4 shadow-sm sm:p-5"
+    >
+      <h2 id="next-badges-heading" className="text-[18px] font-bold tracking-tight text-stone-800">
+        Lencana berikutnya
+      </h2>
+
+      {allUnlocked ? (
+        <p className="m-0 mt-1 text-[13.5px] font-medium leading-relaxed text-stone-500">
+          Semua lencana sudah terbuka. Luar biasa!
+        </p>
+      ) : nextBadges.length === 0 ? (
+        <p className="m-0 mt-1 text-[13.5px] font-medium leading-relaxed text-stone-500">
+          Lencana yang tersisa diberikan otomatis oleh sistem, misalnya dari Leaderboard mingguan.
+          Terus kerjakan Try-out untuk mengejarnya.
+        </p>
+      ) : (
+        <>
+          <p className="m-0 mt-1 text-[13.5px] font-medium leading-relaxed text-stone-500">
+            Paling dekat untuk kamu buka sekarang.
+          </p>
+          <ul className="m-0 mt-4 grid list-none gap-3 p-0 md:grid-cols-3">
+            {nextBadges.map(({ badge, progress }) => (
+              <NextBadgeItem key={badge.id} badge={badge} progress={progress} />
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+function NextBadgeItem({ badge, progress }: { badge: Badge; progress: BadgeProgressView }) {
+  const accent = getBadgeAccent(badge);
+  const action = getBadgeAction(badge);
+
+  return (
+    <li className="flex flex-col rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 p-3.5">
+      <div className="flex items-center gap-3">
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 text-[22px]"
+          style={{ borderColor: `${accent}38`, background: `${accent}10` }}
+          aria-hidden="true"
+        >
+          {badge.icon}
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-[14px] font-extrabold leading-tight text-stone-800">{badge.name}</h3>
+          <div className="mt-0.5 text-[12px] font-black" style={{ color: accent }}>
+            {getBadgeStatusText(badge, progress.progress, progress.total, progress.unlocked)}
+          </div>
+        </div>
+      </div>
+      <p className="m-0 mt-2.5 text-[13px] font-semibold leading-snug text-stone-600">
+        {getBadgeRequirementText(badge)}
+      </p>
+      <p className="m-0 mt-1 text-[12px] font-bold text-stone-400">
+        Hadiah: {getBadgeRewardText(badge)}
+      </p>
+      {action && (
+        <Link
+          to={action.to}
+          className="btn btn-sm mt-3 w-full no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-800 md:mt-auto"
+        >
+          {action.icon}
+          {action.label}
+        </Link>
+      )}
+    </li>
   );
 }
 
@@ -199,9 +270,8 @@ function getBadgeProgressValue(
   badge: Badge,
   data: { level: number; summary: ProgressSummary },
 ) {
-  if (badge.task.toLowerCase().includes("leaderboard")) return 0;
-  // Only the server can judge these per-attempt rules, so they show as unlocked once awarded.
-  if (badge.name === "100% Club" || badge.name === "Speed Runner") return 0;
+  // Only the server can judge these rules, so they show as unlocked once awarded.
+  if (!hasMeasurableProgress(badge)) return 0;
   if (badge.category === "Level") return data.level;
   if (badge.category === "Streak") {
     if (badge.task.includes("unique tryouts")) return data.summary.uniqueTryoutCount;
@@ -211,24 +281,6 @@ function getBadgeProgressValue(
   if (badge.name === "Fail Legend") return data.summary.failLegendAttemptCount;
 
   return 0;
-}
-
-function SummaryCard({ label, value, accent }: { label: string; value: string; accent: string }) {
-  return (
-    <div
-      className="rounded-[var(--radius-lg)] bg-white p-4 shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200"
-      style={{
-        background: `linear-gradient(180deg, ${accent}12 0%, rgba(255,255,255,0.94) 76%)`,
-      }}
-    >
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
-        {label}
-      </div>
-      <div className="mt-2 text-[22px] font-bold tracking-tight text-stone-800 leading-none">
-        {value}
-      </div>
-    </div>
-  );
 }
 
 function BadgeCard({
@@ -247,20 +299,19 @@ function BadgeCard({
   onSelect: () => void;
 }) {
   const pct = total > 0 ? Math.min(progress / total, 1) : 0;
-  const progressPercent = Math.round(pct * 100);
-  const progressLabel = getBadgeProgressText(badge, progress, total, unlocked);
+  const statusText = getBadgeStatusText(badge, progress, total, unlocked);
   const circumference = 2 * Math.PI * 37;
   const offset = circumference - circumference * pct;
 
   return (
     <button
-      aria-label={`Lihat detail lencana ${badge.name}`}
-      className={`group flex min-h-[190px] w-full flex-col items-center rounded-[var(--radius-lg)] bg-white p-3 text-center shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 transition-all duration-150 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${unlocked ? "" : "opacity-75"}`}
+      aria-label={`Lihat detail lencana ${badge.name}: ${getBadgeShortRequirement(badge)}, ${statusText}`}
+      className="group flex min-h-[190px] w-full flex-col items-center rounded-[var(--radius-lg)] bg-white p-3 text-center shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 transition-all duration-150 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       onClick={onSelect}
       style={{ "--tw-ring-color": accent } as CSSProperties}
       type="button"
     >
-      <div className="relative h-[82px] w-[82px]">
+      <div className={`relative h-[82px] w-[82px] ${unlocked ? "" : "opacity-75"}`}>
         <svg viewBox="0 0 88 88" className="absolute inset-0 -rotate-90" aria-hidden="true">
           <circle cx="44" cy="44" r="37" fill="none" stroke="#e7e5e4" strokeWidth="6" />
           <circle
@@ -290,28 +341,18 @@ function BadgeCard({
           </span>
         </div>
       </div>
-      <b className="mt-2 text-[12.5px] font-extrabold leading-tight text-stone-800 max-w-[11ch]">
+      <b className="mt-2 text-[12.5px] font-extrabold leading-tight text-stone-800 max-w-[14ch]">
         {badge.name}
       </b>
-      <div className="mt-auto w-full pt-3">
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <span className="text-[10px] font-black uppercase tracking-wide text-stone-400">
-            Progres
-          </span>
-          <span className="text-[11px] font-black leading-none" style={{ color: unlocked ? accent : "#78716c" }}>
-            {progressLabel}
-          </span>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-stone-100">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              background: unlocked ? accent : "#a8a29e",
-              width: `${progressPercent}%`,
-            }}
-          />
-        </div>
-      </div>
+      <span className="mt-1 text-[11.5px] font-semibold leading-snug text-stone-500">
+        {getBadgeShortRequirement(badge)}
+      </span>
+      <span
+        className="mt-auto pt-2 text-[12px] font-black"
+        style={{ color: unlocked ? accent : "#78716c" }}
+      >
+        {statusText}
+      </span>
     </button>
   );
 }
@@ -337,7 +378,7 @@ function BadgeDetailModal({
   const pct = total > 0 ? Math.min(progress / total, 1) : 0;
   const progressPercent = Math.round(pct * 100);
   const requirement = getBadgeRequirementText(badge);
-  const progressText = getBadgeProgressText(badge, progress, total, unlocked);
+  const progressText = getBadgeStatusText(badge, progress, total, unlocked);
   const rewardText = getBadgeRewardText(badge);
 
   return (
@@ -440,6 +481,7 @@ function BadgeDetailModal({
   );
 }
 
+
 function getBadgeRewardText(badge: Badge) {
   const parts: string[] = [];
 
@@ -449,15 +491,40 @@ function getBadgeRewardText(badge: Badge) {
   return parts.length > 0 ? parts.join(" · ") : "Tanpa bonus EXP";
 }
 
-function getBadgeProgressText(
+function getBadgeStatusText(
   badge: Badge,
   progress: number,
   total: number,
   unlocked: boolean,
 ) {
-  if (unlocked) return "Selesai";
+  if (unlocked) return "Terbuka";
+  if (!hasMeasurableProgress(badge)) return "Terkunci";
 
-  return `${progress}/${total}`;
+  const group = getBadgeGroupKey(badge);
+  if (group === "level") return `Level ${progress}/${total}`;
+  if (group === "streak") return `${progress}/${total} hari`;
+  if (group === "start" || group === "tryouts") return `${progress}/${total} Try-out`;
+
+  return `${progress}/${total} kali`;
+}
+
+function getBadgeShortRequirement(badge: Badge) {
+  const target = getBadgeTarget(badge);
+  const group = getBadgeGroupKey(badge);
+
+  if (group === "start") return "Selesaikan 1 Try-out";
+  if (group === "level") return `Capai Level ${target}`;
+  if (group === "streak") return `${target} hari berturut-turut`;
+  if (group === "tryouts") return `${target} Try-out berbeda`;
+  if (group === "leaderboard") {
+    const rank = badge.task.match(/top (\d+)/i)?.[1];
+    return `Masuk Top ${rank} mingguan`;
+  }
+  if (badge.name === "100% Club") return "Skor 100% di percobaan pertama";
+  if (badge.name === "Speed Runner") return "Separuh waktu, skor di atas 80%";
+  if (badge.name === "Fail Legend") return `${target}x tidak lulus`;
+
+  return getBadgeRequirementText(badge);
 }
 
 function getBadgeAction(badge: Badge): null | {
@@ -465,28 +532,17 @@ function getBadgeAction(badge: Badge): null | {
   to: "/tryout" | "/leaderboard";
   icon: ReactNode;
 } {
-  const task = badge.task.toLowerCase();
+  const group = getBadgeGroupKey(badge);
 
-  if (task.includes("leaderboard")) {
+  if (group === "leaderboard") {
     return { label: "Lihat Leaderboard", to: "/leaderboard", icon: <LevelIcon /> };
   }
 
   if (badge.name === "Fail Legend") return null;
-  if (badge.category === "Level") return { label: "Tambah EXP", to: "/tryout", icon: <TargetIcon /> };
-  if (badge.category === "Streak") return { label: "Kerjakan Hari Ini", to: "/tryout", icon: <FlameIcon /> };
+  if (group === "level") return { label: "Tambah EXP", to: "/tryout", icon: <TargetIcon /> };
+  if (group === "streak") return { label: "Kerjakan Hari Ini", to: "/tryout", icon: <FlameIcon /> };
 
   return { label: "Mulai Try-out", to: "/tryout", icon: <TargetIcon /> };
-}
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <div className="mb-3 flex items-center gap-2">
-      <span className="text-[13px] font-semibold uppercase tracking-wide text-stone-500">
-        {title}
-      </span>
-      <div className="h-px flex-1 bg-stone-200" />
-    </div>
-  );
 }
 
 function CloseIcon() {
@@ -540,11 +596,19 @@ function StarIcon() {
   );
 }
 
-function SparkIcon() {
+function BookIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.8 2.8M14.9 14.9l2.8 2.8M17.7 6.3l-2.8 2.8M9.1 14.9l-2.8 2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M12 8.5 13 11l2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M8 7h8M8 11h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrophyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path d="M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 21h8M9 18h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

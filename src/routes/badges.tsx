@@ -14,7 +14,7 @@ export const Route = createFileRoute("/badges")({
       {
         name: "description",
         content:
-          "Pantau dan kumpulkan lencana dari tryout, streak, level, dan pencapaian khusus. Lencana General, Level, Streak, dan Prestige menunggu untuk dibuka.",
+          "Pantau dan kumpulkan lencana dari tryout, streak, level, dan pencapaian khusus. Lihat lencana mana yang paling dekat untuk kamu buka.",
       },
       { property: "og:title", content: "Koleksi Lencana — IlmoraX" },
       {
