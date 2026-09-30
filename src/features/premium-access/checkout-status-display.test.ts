@@ -3,7 +3,7 @@ import test from "node:test";
 import { getCheckoutStatusDisplayState } from "./checkout-status-display";
 
 test("shows a successful payment clearly", () => {
-  assert.equal(getCheckoutStatusDisplayState("paid").title, "Pembayaran berhasil");
+  assert.equal(getCheckoutStatusDisplayState("paid").title, "Premium sudah aktif");
 });
 
 test("distinguishes failed and cancelled Midtrans payments", () => {

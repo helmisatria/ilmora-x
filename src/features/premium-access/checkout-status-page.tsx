@@ -1,11 +1,14 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useApp } from "../../data";
 import { getCheckoutStatus } from "./checkout-functions";
 import { getCheckoutStatusDisplayState } from "./checkout-status-display";
 
 type CheckoutStatus = Awaited<ReturnType<typeof getCheckoutStatus>>;
 
 export function CheckoutStatusPage({ checkoutId }: { checkoutId: string }) {
+  const router = useRouter();
+  const { user, hasPremiumMembership } = useApp();
   const [status, setStatus] = useState<CheckoutStatus | null>(null);
   const [pollingEnded, setPollingEnded] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -75,6 +78,15 @@ export function CheckoutStatusPage({ checkoutId }: { checkoutId: string }) {
     };
   }, [checkoutId, loadStatus, stopPolling]);
 
+  const isPaid = status?.status === "paid";
+
+  // The signed-in user is loaded once per navigation, so reload it to pick up the new Premium access.
+  useEffect(() => {
+    if (!isPaid) return;
+
+    void router.invalidate();
+  }, [isPaid, router]);
+
   const state = getCheckoutStatusDisplayState(
     status?.status ?? "pending",
     status?.providerStatus ?? null,
@@ -103,6 +115,19 @@ export function CheckoutStatusPage({ checkoutId }: { checkoutId: string }) {
           <p className="mx-auto mt-3 max-w-[36ch] text-sm font-semibold leading-relaxed text-stone-500">
             {state.description}
           </p>
+
+          {isPaid && hasPremiumMembership && user.entitlementEndsAt && (
+            <div className="mt-5 flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border-2 border-amber-200 bg-amber-50 px-4 py-3 text-left">
+              <span className="text-xs font-bold tracking-wide text-amber-700">Premium aktif sampai</span>
+              <span className="text-sm font-bold text-amber-900">
+                {new Date(user.entitlementEndsAt).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
+          )}
 
           {status && (
             <div className="mt-5 rounded-[var(--radius-lg)] border-2 border-stone-100 bg-stone-50 p-4 text-left">
@@ -137,7 +162,7 @@ export function CheckoutStatusPage({ checkoutId }: { checkoutId: string }) {
               </Link>
             ) : (
               <Link className="btn btn-primary no-underline" to="/dashboard">
-                Dashboard
+                {isPaid ? "Mulai Belajar" : "Dashboard"}
               </Link>
             )}
             <button className="btn btn-white" disabled={refreshing} onClick={() => void loadStatus()} type="button">

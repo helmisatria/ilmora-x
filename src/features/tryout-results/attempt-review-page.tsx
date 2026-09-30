@@ -4,13 +4,10 @@ import { z } from "zod";
 import { useApp } from "../../data";
 import { PremiumDialog } from "../../components/PremiumDialog";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { productAnalyticsEvents } from "../../lib/product-analytics";
 import { useProductAnalytics } from "../../lib/product-analytics-client";
 import { reportAttemptQuestion } from "../tryout-attempt/student-question-report-functions";
 import type { getAttemptResult } from "./student-attempt-result-functions";
-
-gsap.registerPlugin(ScrollTrigger);
 
 // Locked explanations are not sent by the server, so the blurred preview uses filler text.
 const LOCKED_EXPLANATION_PLACEHOLDER =
@@ -165,7 +162,9 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
       if (!el) return;
 
       const headerHeight = headerRef.current?.offsetHeight ?? 0;
-      const questionTop = el.getBoundingClientRect().top + window.scrollY;
+      // Cards may still be sliding in, so remove their in-flight offset from the target.
+      const animationOffset = Number(gsap.getProperty(el, "y")) || 0;
+      const questionTop = el.getBoundingClientRect().top + window.scrollY - animationOffset;
       window.scrollTo({
         top: questionTop - headerHeight - 16,
         behavior: "smooth",
@@ -197,10 +196,6 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
             duration: 0.5,
             stagger: 0.08,
             ease: "power2.out",
-            scrollTrigger: {
-              trigger: questionsRef.current,
-              start: "top 85%",
-            },
           }
         );
       }
@@ -210,7 +205,7 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
   }, [filter]);
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full min-h-screen bg-[#fafafa] font-['Cabinet_Grotesk',system-ui,sans-serif]">
+    <main className="overflow-x-clip w-full max-w-full min-h-screen bg-[#fafafa] font-['Cabinet_Grotesk',system-ui,sans-serif]">
       {/* Sticky Header */}
       <header
         ref={headerRef}

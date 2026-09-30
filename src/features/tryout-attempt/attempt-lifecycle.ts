@@ -76,6 +76,29 @@ export async function getAttemptStartState({
   };
 }
 
+// Returns null instead of starting a new attempt, so a stale activeAttemptId can't skip preparation.
+export async function resumeActiveAttemptForStudent({
+  viewer,
+  tryoutId,
+}: {
+  viewer: Viewer;
+  tryoutId: string;
+}) {
+  const [existingAttempt] = await db
+    .select({ id: attempts.id })
+    .from(attempts)
+    .where(and(
+      eq(attempts.studentUserId, viewer.userId),
+      eq(attempts.tryoutId, tryoutId),
+      eq(attempts.status, "in_progress"),
+    ))
+    .limit(1);
+
+  if (!existingAttempt) return null;
+
+  return getTakeAttemptData(existingAttempt.id);
+}
+
 export async function startOrResumeAttemptForStudent({
   viewer,
   tryoutId,
