@@ -6,6 +6,7 @@ import { TryoutIcon } from "../../components/TryoutIcon";
 import { useApp } from "../../data";
 import type { LiveAnnouncement } from "../announcement/announcement-functions";
 import { StudentAnnouncementModal } from "../announcement/announcement-modal";
+import { NewBadgeCelebration } from "../engagement-surface/new-badge-celebration";
 import { getLevelForXp, getNextLevel, getXpProgress } from "../engagement-surface/level-catalog";
 import { isPaidTryout, resolveTryoutAccess } from "../premium-access/premium-access";
 import { getDashboardAccuracy, getDashboardPalette } from "./dashboard-view-model";
@@ -26,6 +27,8 @@ export function DashboardPage({ summary, tryouts, announcement = null }: Dashboa
   const navigate = useNavigate();
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [selectedTryout, setSelectedTryout] = useState<DashboardTryout | null>(null);
+  // Show the Badge celebration first, then the announcement, so two popups never stack.
+  const [badgeCelebrationSettled, setBadgeCelebrationSettled] = useState(false);
 
   const palette = getDashboardPalette();
   const levelInfo = getLevelForXp(summary.xp);
@@ -51,6 +54,7 @@ export function DashboardPage({ summary, tryouts, announcement = null }: Dashboa
         >
           <TopBar
             progress={{ xp: summary.xp, streak: summary.streak }}
+            celebrateNewBadges={false}
           />
 
           <div className="page-lane pt-5 sm:pt-7 lg:pt-10">
@@ -185,7 +189,8 @@ export function DashboardPage({ summary, tryouts, announcement = null }: Dashboa
         hasPremiumMembership={hasPremiumMembership}
         tryout={selectedTryout}
       />
-      <StudentAnnouncementModal announcement={announcement} />
+      <NewBadgeCelebration onSettled={() => setBadgeCelebrationSettled(true)} />
+      <StudentAnnouncementModal announcement={badgeCelebrationSettled ? announcement : null} />
     </>
   );
 }

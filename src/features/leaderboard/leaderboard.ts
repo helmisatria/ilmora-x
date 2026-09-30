@@ -12,6 +12,12 @@ import {
 } from "../../lib/db/schema";
 import { awardDailyBadges } from "../engagement-surface/engagement-surface";
 import {
+  getJakartaWeekStartDateKey,
+  getJakartaWeekWindow,
+  getPreviousJakartaWeekStartDateKey,
+  isClosedJakartaWeekStartDateKey,
+} from "./leaderboard-weeks";
+import {
   rankWeeklyLeaderboardRows,
   type WeeklyLeaderboardRankedRow,
   type WeeklyLeaderboardRankingRow,
@@ -34,7 +40,7 @@ export type WeeklyLeaderboardProfileRow = WeeklyLeaderboardRankingRow & {
   photoUrl: string | null;
 };
 
-export { rankWeeklyLeaderboardRows };
+export { getJakartaWeekStartDateKey, getJakartaWeekWindow, getPreviousJakartaWeekStartDateKey, rankWeeklyLeaderboardRows };
 export type { WeeklyLeaderboardRankedRow, WeeklyLeaderboardRankingRow };
 
 export function getWeeklyParticipantThreshold() {
@@ -46,37 +52,16 @@ export function getWeeklyParticipantThreshold() {
   return configuredThreshold;
 }
 
-export function getJakartaWeekStartDateKey(date = new Date()) {
-  const jakartaDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-  const day = jakartaDate.getUTCDay();
-  const daysSinceMonday = day === 0 ? 6 : day - 1;
-
-  jakartaDate.setUTCDate(jakartaDate.getUTCDate() - daysSinceMonday);
-
-  return formatUtcDateKey(jakartaDate);
-}
-
-export function getPreviousJakartaWeekStartDateKey(date = new Date()) {
-  const currentWeekStart = dateKeyToJakartaStart(getJakartaWeekStartDateKey(date));
-  currentWeekStart.setUTCDate(currentWeekStart.getUTCDate() - 7);
-
-  return formatJakartaDateKey(currentWeekStart);
-}
-
-export function getJakartaWeekWindow(weekStartDate: string) {
-  const startsAt = dateKeyToJakartaStart(weekStartDate);
-  const endsAt = new Date(startsAt);
-
-  endsAt.setUTCDate(endsAt.getUTCDate() + 7);
-
-  return { startsAt, endsAt };
-}
-
 export async function finalisePreviousWeeklyLeaderboard() {
   return finaliseWeeklyLeaderboard(getPreviousJakartaWeekStartDateKey());
 }
 
 export async function finaliseWeeklyLeaderboard(weekStartDate: string) {
+  // A snapshot is permanent, so never take one of a week that is still running.
+  if (!isClosedJakartaWeekStartDateKey(weekStartDate)) {
+    throw new Error(`${weekStartDate} is not the Monday start date of a closed week.`);
+  }
+
   const existingSnapshot = await getWeeklyLeaderboardSnapshot(weekStartDate);
 
   if (existingSnapshot) {
@@ -413,22 +398,4 @@ async function awardStudentBadge({
 
     return true;
   });
-}
-
-function dateKeyToJakartaStart(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00+07:00`);
-}
-
-function formatJakartaDateKey(date: Date) {
-  const jakartaDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-
-  return formatUtcDateKey(jakartaDate);
-}
-
-function formatUtcDateKey(date: Date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
 }

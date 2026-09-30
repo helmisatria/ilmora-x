@@ -1,8 +1,12 @@
-import { getQueueMonitoringAdmin } from "./admin-monitoring-functions";
+import { useRouter } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
+import { finaliseWeeklyLeaderboardAdmin, getQueueMonitoringAdmin } from "./admin-monitoring-functions";
 
 export type QueueMonitoring = Awaited<ReturnType<typeof getQueueMonitoringAdmin>>;
 type QueueRow = QueueMonitoring["queues"][number];
 type ScheduleRow = QueueMonitoring["schedules"][number];
+type WeekRow = QueueMonitoring["finalization"]["recentWeeks"][number];
 
 export function AdminMonitoringPage({ monitoring }: { monitoring: QueueMonitoring }) {
   const totalQueued = monitoring.queues.reduce((sum, queue) => sum + queue.queuedCount, 0);
@@ -39,6 +43,7 @@ export function AdminMonitoringPage({ monitoring }: { monitoring: QueueMonitorin
           <p className="mt-2 text-sm font-semibold text-stone-500">
             Railway is configured to run the finalization command every Monday at 00:05 WIB. Check the Railway leaderboard-cron service for run logs; this page confirms the database result.
           </p>
+          <WeeklyFinalizationTable weeks={monitoring.finalization.recentWeeks} />
         </section>
 
         {!monitoring.installed ? (
@@ -66,6 +71,77 @@ export function AdminMonitoringPage({ monitoring }: { monitoring: QueueMonitorin
         )}
       </div>
     </main>
+  );
+}
+
+function WeeklyFinalizationTable({ weeks }: { weeks: WeekRow[] }) {
+  const router = useRouter();
+  const [busyWeek, setBusyWeek] = useState<string | null>(null);
+
+  const finaliseWeek = async (week: WeekRow) => {
+    setBusyWeek(week.weekStartDate);
+
+    try {
+      const result = await finaliseWeeklyLeaderboardAdmin({ data: { weekStartDate: week.weekStartDate } });
+      const action = week.snapshot ? "Rerun finished" : "Week finalized";
+
+      toast.success(`${action} for ${week.weekStartDate}. ${result.awardedBadgeCount} new Badges awarded.`);
+      await router.invalidate();
+    } catch {
+      toast.error(`Finalization failed for ${week.weekStartDate}. Check the server logs and try again.`);
+    } finally {
+      setBusyWeek(null);
+    }
+  };
+
+  return (
+    <div className="mt-5 overflow-x-auto rounded-[var(--radius-md)] border border-stone-100">
+      <table className="min-w-full text-left text-sm">
+        <thead className="border-b border-stone-100 bg-stone-50 text-xs font-black uppercase tracking-[0.14em] text-stone-400">
+          <tr>
+            <th className="px-5 py-3">Week</th>
+            <th className="px-5 py-3">Snapshot</th>
+            <th className="px-5 py-3">Ranked</th>
+            <th className="px-5 py-3">Top-N Badges</th>
+            <th className="px-5 py-3 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {weeks.map((week) => (
+            <tr key={week.weekStartDate} className="border-b border-stone-100 last:border-b-0">
+              <td className="px-5 py-4 align-top font-black text-stone-800">{week.weekStartDate}</td>
+              <td className="px-5 py-4 align-top font-semibold text-stone-500">
+                {week.snapshot ? formatDate(week.snapshot.finalizedAt) : <span className="text-amber-700">Not finalized</span>}
+              </td>
+              <td className="px-5 py-4 align-top font-semibold text-stone-600">
+                {week.snapshot ? (
+                  <>
+                    {week.snapshot.rankedStudentCount}
+                    {!week.snapshot.thresholdMet && (
+                      <span className="ml-1 text-xs text-stone-400">(below {week.snapshot.participantThreshold}, no awards)</span>
+                    )}
+                  </>
+                ) : "-"}
+              </td>
+              <td className="px-5 py-4 align-top font-black text-stone-700">{week.snapshot ? week.snapshot.topNBadgeCount : "-"}</td>
+              <td className="px-5 py-4 text-right align-top">
+                <button
+                  className={week.snapshot ? "admin-button-secondary px-3 text-xs" : "admin-button-primary px-3 text-xs"}
+                  disabled={busyWeek !== null}
+                  onClick={() => finaliseWeek(week)}
+                  type="button"
+                >
+                  {busyWeek === week.weekStartDate ? "Running..." : week.snapshot ? "Rerun" : "Finalize"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="border-t border-stone-100 px-5 py-3 text-xs font-semibold text-stone-400">
+        Rerun only fills missing Top-N Badges from the saved snapshot. It never changes ranks or gives a Badge twice.
+      </p>
+    </div>
   );
 }
 
