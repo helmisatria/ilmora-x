@@ -21,7 +21,7 @@ export function PublicProfilePage({ profile, summary, badgeCatalog }: PublicProf
   const grade = getGradeForLevel(levelInfo.level);
   const currentLevelXp = levelInfo.xp;
   const nextLevelXp = nextLevel?.xp ?? levelInfo.xp;
-  const unlockedBadgeList = badgeCatalog.filter((badge) => isBadgeUnlocked(badge, profile, levelInfo.level));
+  const unlockedBadgeList = badgeCatalog.filter((badge) => profile.awardedBadgeIds.includes(badge.id));
   const visibleBadgeCount = badgeCatalog.filter((badge) => badge.active || unlockedBadgeList.includes(badge)).length;
 
   return (
@@ -128,26 +128,6 @@ export function PublicProfilePage({ profile, summary, badgeCatalog }: PublicProf
       <BottomNav active="rank" />
     </div>
   );
-}
-
-function isBadgeUnlocked(
-  badge: EffectiveBadge,
-  profile: Awaited<ReturnType<typeof getPublicStudentProfile>>,
-  level: number,
-) {
-  if (profile.awardedBadgeIds.includes(badge.id)) return true;
-  if (!badge.active) return false;
-
-  const levelMatch = badge.task.match(/Reach Level (\d+)/i);
-  const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
-  const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
-
-  if (levelMatch) return level >= Number(levelMatch[1]);
-  if (streakMatch) return profile.streak >= Number(streakMatch[1]);
-  if (tryoutMatch) return profile.uniqueTryoutCount >= Number(tryoutMatch[1]);
-  if (badge.id === 1) return profile.totalTryouts > 0;
-
-  return false;
 }
 
 function SectionHeader({ title }: { title: string }) {
