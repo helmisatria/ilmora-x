@@ -127,6 +127,13 @@
       "when": 1790640000000,
       "tag": "0017_mark_existing_badges_seen",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790726400000,
+      "tag": "0018_admin_badge_leaderboard_settings",
+      "breakpoints": true
     }
   ]
 }

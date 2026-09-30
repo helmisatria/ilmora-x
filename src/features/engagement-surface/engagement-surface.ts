@@ -2,12 +2,29 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../lib/db/client";
 import {
   attempts,
+  badgeSettings,
   studentBadges,
   studentExpLedger,
 } from "../../lib/db/schema";
+import { badgeIdToCode, mergeBadgeSettings } from "./badge-settings";
 import { badgeCodeToId, calculateCurrentStreak, getNextEligibleDailyBadge } from "./engagement-surface-model";
 
 export { badgeCodeToId, calculateCurrentStreak };
+
+// The code catalog with Admin overrides applied. Read at award time so changes affect future awards only.
+export async function listEffectiveBadges() {
+  const overrides = await db
+    .select({
+      badgeCode: badgeSettings.badgeCode,
+      displayName: badgeSettings.displayName,
+      requirementText: badgeSettings.requirementText,
+      xpReward: badgeSettings.xpReward,
+      active: badgeSettings.active,
+    })
+    .from(badgeSettings);
+
+  return mergeBadgeSettings(overrides);
+}
 
 export async function awardDailyBadges(studentUserId: string) {
   const submittedAttempts = await db
@@ -50,6 +67,7 @@ export async function awardDailyBadges(studentUserId: string) {
       .map((badge) => badgeCodeToId(badge.badgeCode))
       .filter((badgeId): badgeId is number => badgeId !== null),
   );
+  const activeBadges = (await listEffectiveBadges()).filter((badge) => badge.active);
   const attemptXp = submittedAttempts.reduce((total, attempt) => total + attempt.xpEarned, 0);
   let totalXp = attemptXp + Number(badgeRewardRow?.xp ?? 0);
   const awardedBadges: Array<{ badgeId: number; rewardXp: number }> = [];
@@ -59,6 +77,7 @@ export async function awardDailyBadges(studentUserId: string) {
       awardedBadgeIds,
       submittedAttempts,
       totalXp,
+      badgeList: activeBadges,
     });
 
     if (!eligibleBadge) return awardedBadges;
@@ -80,10 +99,6 @@ export async function awardDailyBadges(studentUserId: string) {
     totalXp += awardedBadge.rewardXp;
     awardedBadges.push(awardedBadge);
   }
-}
-
-function badgeIdToCode(badgeId: number) {
-  return `BADGE-${String(badgeId).padStart(3, "0")}`;
 }
 
 async function awardBadgeReward({

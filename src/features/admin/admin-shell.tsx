@@ -28,6 +28,8 @@ const adminSections = [
   { label: "Categories", to: "/admin/categories", description: "Three-level curriculum taxonomy for Questions and Materi links.", icon: TagsIcon },
   { label: "Polls", to: "/admin/polls", description: "Live classroom Poll Sessions, rounds, and history.", icon: SignalIcon },
   { label: "Reports", to: "/admin/reports", description: "Question reports from Students.", icon: FlagIcon },
+  { label: "Badges", to: "/admin/badges", description: "Badge names, requirement text, EXP rewards, and on/off for Super Admins.", icon: BadgeIcon },
+  { label: "Leaderboard", to: "/admin/leaderboard", description: "Weekly participant threshold for Top-N Badges, for Super Admins.", icon: TrophyIcon },
   { label: "Insights", to: "/admin/insights", description: "Basic platform metrics for Milestone 1.", icon: ChartIcon },
   { label: "Monitoring", to: "/admin/monitoring", description: "pg-boss queue and schedule status for Super Admins.", icon: MonitorIcon },
 ] as const;
@@ -246,6 +248,24 @@ function MegaphoneIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BadgeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <circle cx="12" cy="9" r="6" stroke="currentColor" strokeWidth="2" />
+      <path d="m8.5 14-1.5 8 5-3 5 3-1.5-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrophyIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17 6h3a3 3 0 0 1-3 3M7 6H4a3 3 0 0 0 3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

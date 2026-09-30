@@ -1,16 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { listBadgeCatalog } from "../features/engagement-surface/badge-catalog-functions";
 import { PublicProfilePage } from "../features/profile/public-profile-page";
 import { getPublicStudentProfile } from "../features/profile/public-student-profile-functions";
 import { listProgressSummary } from "../features/student/student-progress-functions";
 
 export const Route = createFileRoute("/profile/$userId")({
   loader: async ({ params }) => {
-    const [profile, summary] = await Promise.all([
+    const [profile, summary, badgeCatalog] = await Promise.all([
       getPublicStudentProfile({ data: { studentUserId: params.userId } }),
       listProgressSummary(),
+      listBadgeCatalog(),
     ]);
 
-    return { profile, summary };
+    return { profile, summary, badgeCatalog };
   },
   head: () => ({
     meta: [
@@ -31,6 +33,6 @@ export const Route = createFileRoute("/profile/$userId")({
 });
 
 function PublicProfileRoute() {
-  const { profile, summary } = Route.useLoaderData();
-  return <PublicProfilePage profile={profile} summary={summary} />;
+  const { profile, summary, badgeCatalog } = Route.useLoaderData();
+  return <PublicProfilePage profile={profile} summary={summary} badgeCatalog={badgeCatalog} />;
 }
