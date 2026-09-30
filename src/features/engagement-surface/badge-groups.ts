@@ -11,12 +11,12 @@ export type BadgeProgressView = {
 
 // Display-only grouping. Badge["category"] stays as-is because awarding and profiles rely on it.
 export const badgeGroups: Array<{ key: BadgeGroupKey; title: string; description: string }> = [
-  { key: "start", title: "Mulai", description: "Lencana pertamamu setelah menyelesaikan satu Try-out." },
-  { key: "level", title: "Level", description: "Naik level dengan mengumpulkan EXP. Beberapa lencana memberi bonus EXP permanen." },
-  { key: "streak", title: "Konsistensi harian", description: "Kerjakan minimal satu Try-out setiap hari tanpa putus." },
-  { key: "tryouts", title: "Jumlah Try-out", description: "Selesaikan Try-out yang berbeda. Mengulang Try-out yang sama tidak dihitung." },
-  { key: "leaderboard", title: "Leaderboard", description: "Masuk peringkat atas Leaderboard mingguan. Diberikan setelah minggu selesai." },
-  { key: "special", title: "Spesial", description: "Pencapaian khusus dari hasil Try-out tertentu, dinilai otomatis oleh sistem." },
+  { key: "start", title: "Mulai", description: "Selesaikan Try-out pertamamu untuk mendapatkan lencana ini." },
+  { key: "level", title: "Level", description: "Kumpulkan EXP untuk naik level. Level tertentu memberi bonus EXP permanen." },
+  { key: "streak", title: "Konsistensi harian", description: "Kerjakan minimal satu Try-out setiap hari, berturut-turut." },
+  { key: "tryouts", title: "Jumlah Try-out", description: "Selesaikan Try-out yang berbeda-beda. Try-out yang diulang dihitung sekali." },
+  { key: "leaderboard", title: "Leaderboard", description: "Raih peringkat atas di Leaderboard mingguan. Lencana diberikan setelah minggu berakhir." },
+  { key: "special", title: "Spesial", description: "Pencapaian khusus dari hasil Try-out. Lencana diberikan otomatis." },
 ];
 
 export function getBadgeGroupKey(badge: Badge): BadgeGroupKey {

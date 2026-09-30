@@ -68,8 +68,8 @@ export function BadgesPage({ summary }: { summary: ProgressSummary }) {
             Kumpulkan lencana dari usaha belajarmu
           </h1>
           <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-            Dapatkan lencana dengan mengerjakan Try-out, naik level, dan belajar rutin setiap hari.
-            Sebagian besar lencana memberi EXP, dan beberapa lencana Level memberi bonus EXP permanen.
+            Setiap langkah belajarmu bisa jadi lencana. Kerjakan Try-out, naik level, dan belajar
+            rutin untuk mengumpulkannya.
           </p>
 
           <p className="m-0 mt-5 inline-flex items-baseline gap-2 rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white px-4 py-3 shadow-sm">
@@ -175,8 +175,8 @@ function NextBadgesSection({
         </p>
       ) : nextBadges.length === 0 ? (
         <p className="m-0 mt-1 text-[13.5px] font-medium leading-relaxed text-stone-500">
-          Lencana yang tersisa diberikan otomatis, misalnya dari Leaderboard mingguan atau hasil
-          Try-out tertentu. Terus kerjakan Try-out untuk mendapatkannya.
+          Lencana yang tersisa diberikan otomatis dari Leaderboard mingguan dan hasil Try-out.
+          Terus semangat kerjakan Try-out, ya!
         </p>
       ) : (
         <>
@@ -412,7 +412,7 @@ function BadgeDetailModal({
               </DialogTitle>
               <DialogDescription className="mt-2 text-[13px] font-semibold leading-relaxed text-white/72">
                 {unlocked
-                  ? "Lencana ini sudah kamu dapatkan."
+                  ? "Selamat, lencana ini sudah jadi milikmu!"
                   : "Penuhi syarat di bawah untuk mendapatkan lencana ini."}
               </DialogDescription>
             </div>
@@ -436,7 +436,7 @@ function BadgeDetailModal({
                   Progres
                 </div>
                 <div className="mt-1 text-[18px] font-black leading-none text-stone-800">
-                  {progressText}
+                  {hasProgressBar ? progressText : "Diberikan otomatis"}
                 </div>
               </div>
               {hasProgressBar && (
@@ -454,7 +454,7 @@ function BadgeDetailModal({
               </div>
             ) : (
               <p className="m-0 mt-2 text-[13px] font-semibold leading-snug text-stone-500">
-                Diberikan otomatis oleh sistem saat syarat terpenuhi.
+                Lencana ini otomatis masuk ke koleksimu saat syaratnya terpenuhi.
               </p>
             )}
           </div>
@@ -497,7 +497,7 @@ function getBadgeRewardText(badge: Badge) {
   if (badge.xpReward > 0) parts.push(`+${badge.xpReward.toLocaleString("id-ID")} EXP`);
   if (badge.permanentXpBonusPercent) parts.push(`+${badge.permanentXpBonusPercent}% EXP permanen`);
 
-  return parts.length > 0 ? parts.join(" · ") : "Tanpa hadiah EXP";
+  return parts.length > 0 ? parts.join(" · ") : "Lencana kehormatan";
 }
 
 function getBadgeStatusText(
@@ -531,7 +531,7 @@ function getBadgeShortRequirement(badge: Badge) {
   }
   if (badge.name === "100% Club") return "Skor 100% di percobaan pertama";
   if (badge.name === "Speed Runner") return "Separuh waktu, skor di atas 80%";
-  if (badge.name === "Fail Legend") return `${target}x tidak lulus`;
+  if (badge.name === "Fail Legend") return `Pantang menyerah ${target}x`;
 
   return getBadgeRequirementText(badge);
 }
@@ -548,7 +548,7 @@ function getBadgeAction(badge: Badge): null | {
   }
 
   if (badge.name === "Fail Legend") return null;
-  if (group === "level") return { label: "Tambah EXP", to: "/tryout", icon: <TargetIcon /> };
+  if (group === "level") return { label: "Kumpulkan EXP", to: "/tryout", icon: <TargetIcon /> };
   if (group === "streak") return { label: "Kerjakan Hari Ini", to: "/tryout", icon: <FlameIcon /> };
 
   return { label: "Mulai Try-out", to: "/tryout", icon: <TargetIcon /> };
