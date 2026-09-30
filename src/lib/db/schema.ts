@@ -517,6 +517,30 @@ export const weeklyLeaderboardSnapshots = pgTable("weekly_leaderboard_snapshots"
   check("weekly_leaderboard_snapshots_ranked_count_check", sql`${table.rankedStudentCount} >= 0`),
 ]);
 
+// One row. Missing row means the env var or built-in default applies.
+export const leaderboardSettings = pgTable("leaderboard_settings", {
+  id: text("id").primaryKey().default("default"),
+  participantThreshold: integer("participant_threshold").notNull(),
+  updatedByAdminUserId: text("updated_by_admin_user_id"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("leaderboard_settings_single_row_check", sql`${table.id} = 'default'`),
+  check("leaderboard_settings_threshold_check", sql`${table.participantThreshold} >= 1`),
+]);
+
+// Admin overrides on top of the code Badge catalog. Null fields fall back to the catalog.
+export const badgeSettings = pgTable("badge_settings", {
+  badgeCode: text("badge_code").primaryKey(),
+  displayName: text("display_name"),
+  requirementText: text("requirement_text"),
+  xpReward: integer("xp_reward"),
+  active: boolean("active").notNull().default(true),
+  updatedByAdminUserId: text("updated_by_admin_user_id"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("badge_settings_xp_reward_check", sql`${table.xpReward} is null or ${table.xpReward} >= 0`),
+]);
+
 export const weeklyLeaderboardEntries = pgTable("weekly_leaderboard_entries", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
   snapshotId: text("snapshot_id").notNull().references(() => weeklyLeaderboardSnapshots.id, { onDelete: "cascade" }),
@@ -658,7 +682,7 @@ export const activityEvents = pgTable("activity_events", {
   metadata: jsonb("metadata").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-  check("activity_events_type_check", sql`${table.eventType} in ('login', 'profile_completed', 'tryout_started', 'tryout_submitted', 'question_reported', 'materi_viewed', 'admin_impersonation_started', 'admin_impersonation_stopped')`),
+  check("activity_events_type_check", sql`${table.eventType} in ('login', 'profile_completed', 'tryout_started', 'tryout_submitted', 'question_reported', 'materi_viewed', 'admin_impersonation_started', 'admin_impersonation_stopped', 'admin_leaderboard_settings_updated', 'admin_badge_settings_updated')`),
 ]);
 
 export const dashboardAnnouncements = pgTable("dashboard_announcements", {

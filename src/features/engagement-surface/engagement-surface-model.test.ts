@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { badges } from "./badge-catalog";
+import { mergeBadgeSettings } from "./badge-settings";
 import {
   getNextEligibleDailyBadge,
   isFailLegendAttempt,
@@ -119,4 +120,35 @@ test("failing 5 different full tryouts earns Fail Legend", () => {
   const { awardedBadgeIds } = awardAllBadges(fails, 0);
 
   assert.equal(awardedBadgeIds.has(26), true);
+});
+
+test("turned-off badges are skipped and the next eligible badge is awarded instead", () => {
+  const badgeList = mergeBadgeSettings([
+    { badgeCode: "BADGE-001", displayName: null, requirementText: null, xpReward: null, active: false },
+    { badgeCode: "BADGE-017", displayName: null, requirementText: null, xpReward: 42, active: true },
+  ]).filter((badge) => badge.active);
+  const badge = getNextEligibleDailyBadge({
+    awardedBadgeIds: new Set(),
+    submittedAttempts: [makeAttempt({ score: 50, totalQuestions: 10 })],
+    totalXp: 0,
+    badgeList,
+  });
+
+  assert.equal(badge, null);
+
+  const today = new Date();
+  const streakAttempts = [0, 1, 2].map((daysAgo) => {
+    const startedAt = new Date(today.getTime() - daysAgo * 24 * 60 * MINUTE);
+
+    return makeAttempt({ startedAt, submittedAt: startedAt, score: 50, totalQuestions: 10 });
+  });
+  const streakBadge = getNextEligibleDailyBadge({
+    awardedBadgeIds: new Set(),
+    submittedAttempts: streakAttempts,
+    totalXp: 0,
+    badgeList,
+  });
+
+  assert.equal(streakBadge?.code, "BADGE-017");
+  assert.equal(streakBadge?.xpReward, 42);
 });

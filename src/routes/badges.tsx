@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { listBadgeCatalog } from "../features/engagement-surface/badge-catalog-functions";
 import { BadgesPage } from "../features/engagement-surface/badges-page";
 import { listProgressSummary } from "../features/student/student-progress-functions";
 
 export const Route = createFileRoute("/badges")({
   loader: async () => {
-    const summary = await listProgressSummary();
+    const [summary, badgeCatalog] = await Promise.all([listProgressSummary(), listBadgeCatalog()]);
 
-    return { summary };
+    return { summary, badgeCatalog };
   },
   head: () => ({
     meta: [
@@ -27,6 +28,6 @@ export const Route = createFileRoute("/badges")({
 });
 
 function BadgesRoute() {
-  const { summary } = Route.useLoaderData();
-  return <BadgesPage summary={summary} />;
+  const { summary, badgeCatalog } = Route.useLoaderData();
+  return <BadgesPage summary={summary} badgeCatalog={badgeCatalog} />;
 }

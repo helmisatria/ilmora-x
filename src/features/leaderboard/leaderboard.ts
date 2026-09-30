@@ -3,6 +3,7 @@ import { db } from "../../lib/db/client";
 import {
   adminMembers,
   attempts,
+  leaderboardSettings,
   studentBadges,
   studentExpLedger,
   studentProfiles,
@@ -10,26 +11,25 @@ import {
   weeklyLeaderboardEntries,
   weeklyLeaderboardSnapshots,
 } from "../../lib/db/schema";
-import { awardDailyBadges } from "../engagement-surface/engagement-surface";
+import { awardDailyBadges, listEffectiveBadges } from "../engagement-surface/engagement-surface";
 import {
   getJakartaWeekStartDateKey,
   getJakartaWeekWindow,
   getPreviousJakartaWeekStartDateKey,
   isClosedJakartaWeekStartDateKey,
 } from "./leaderboard-weeks";
+import { resolveWeeklyParticipantThreshold } from "./leaderboard-settings";
 import {
   rankWeeklyLeaderboardRows,
   type WeeklyLeaderboardRankedRow,
   type WeeklyLeaderboardRankingRow,
 } from "./weekly-leaderboard-ranking";
 
-const DEFAULT_WEEKLY_PARTICIPANT_THRESHOLD = 10;
-
 const TOP_N_BADGES = [
-  { badgeCode: "BADGE-016", maxRank: 1, rewardXp: 1000 },
-  { badgeCode: "BADGE-015", maxRank: 3, rewardXp: 750 },
-  { badgeCode: "BADGE-014", maxRank: 5, rewardXp: 500 },
-  { badgeCode: "BADGE-013", maxRank: 10, rewardXp: 200 },
+  { badgeCode: "BADGE-016", maxRank: 1 },
+  { badgeCode: "BADGE-015", maxRank: 3 },
+  { badgeCode: "BADGE-014", maxRank: 5 },
+  { badgeCode: "BADGE-013", maxRank: 10 },
 ] as const;
 
 export type WeeklyLeaderboardProfileRow = WeeklyLeaderboardRankingRow & {
@@ -43,13 +43,16 @@ export type WeeklyLeaderboardProfileRow = WeeklyLeaderboardRankingRow & {
 export { getJakartaWeekStartDateKey, getJakartaWeekWindow, getPreviousJakartaWeekStartDateKey, rankWeeklyLeaderboardRows };
 export type { WeeklyLeaderboardRankedRow, WeeklyLeaderboardRankingRow };
 
-export function getWeeklyParticipantThreshold() {
-  const configuredThreshold = Number(process.env.WEEKLY_LEADERBOARD_PARTICIPANT_THRESHOLD);
+export async function getWeeklyParticipantThreshold() {
+  const [setting] = await db
+    .select({ participantThreshold: leaderboardSettings.participantThreshold })
+    .from(leaderboardSettings)
+    .limit(1);
 
-  if (!Number.isInteger(configuredThreshold)) return DEFAULT_WEEKLY_PARTICIPANT_THRESHOLD;
-  if (configuredThreshold < 1) return DEFAULT_WEEKLY_PARTICIPANT_THRESHOLD;
-
-  return configuredThreshold;
+  return resolveWeeklyParticipantThreshold({
+    adminValue: setting?.participantThreshold,
+    envValue: process.env.WEEKLY_LEADERBOARD_PARTICIPANT_THRESHOLD,
+  });
 }
 
 export async function finalisePreviousWeeklyLeaderboard() {
@@ -68,12 +71,12 @@ export async function finaliseWeeklyLeaderboard(weekStartDate: string) {
     return awardTopNBadgesFromSnapshot(existingSnapshot.id, weekStartDate);
   }
 
-  const threshold = getWeeklyParticipantThreshold();
+  const threshold = await getWeeklyParticipantThreshold();
   const rankedStudents = await listRankedStudentsForWeek(weekStartDate);
   const snapshot = await createWeeklyLeaderboardSnapshot({
     weekStartDate,
     rankedStudents,
-    participantThreshold: threshold,
+    participantThreshold: threshold.value,
   });
 
   return awardTopNBadgesFromSnapshot(snapshot.id, weekStartDate);
@@ -297,10 +300,18 @@ async function awardTopNBadgesFromSnapshot(snapshotId: string, weekStartDate: st
     .where(eq(weeklyLeaderboardEntries.snapshotId, snapshotId))
     .orderBy(asc(weeklyLeaderboardEntries.rank));
 
+  const effectiveBadgeByCode = new Map((await listEffectiveBadges()).map((badge) => [badge.code, badge]));
+  const topNBadges = TOP_N_BADGES.flatMap((topNBadge) => {
+    const badge = effectiveBadgeByCode.get(topNBadge.badgeCode);
+
+    if (!badge?.active) return [];
+
+    return [{ ...topNBadge, rewardXp: badge.xpReward }];
+  });
   let awardedBadgeCount = 0;
 
   for (const entry of entries) {
-    const eligibleBadges = TOP_N_BADGES.filter((badge) => entry.rank <= badge.maxRank);
+    const eligibleBadges = topNBadges.filter((badge) => entry.rank <= badge.maxRank);
     const awardedBadgeCodes: string[] = [];
 
     for (const badge of eligibleBadges) {

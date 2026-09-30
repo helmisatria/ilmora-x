@@ -4,7 +4,7 @@ import { BottomNav, TopBar } from "../../components/Navigation";
 import { AvatarDisplay } from "../../components/AvatarDisplay";
 import { useApp } from "../../data";
 import { getGradeForLevel } from "../../data/users";
-import { badges } from "../engagement-surface/badge-catalog";
+import type { EffectiveBadge } from "../engagement-surface/badge-settings";
 import { getLevelForXp, getNextLevel, getXpProgress } from "../engagement-surface/level-catalog";
 import { avatarOptions as sharedAvatarOptions, defaultAvatar, isSelectableAvatar, resolveAvatarDisplay } from "../../lib/avatar";
 import { signOut } from "../../lib/auth-client";
@@ -37,10 +37,11 @@ function getProfileAvatarState({
 
 export type ProfilePageData = {
   summary: Awaited<ReturnType<typeof listProgressSummary>>;
+  badgeCatalog: EffectiveBadge[];
   viewer: Awaited<ReturnType<typeof getCurrentViewer>>;
 };
 
-export function ProfilePage({ summary, viewer }: ProfilePageData) {
+export function ProfilePage({ summary, badgeCatalog, viewer }: ProfilePageData) {
   const {
     user,
     hasPremiumMembership,
@@ -69,8 +70,9 @@ export function ProfilePage({ summary, viewer }: ProfilePageData) {
   const nextLevel = getNextLevel(summary.xp);
   const xpProgress = getXpProgress(summary.xp);
   const grade = getGradeForLevel(levelInfo.level);
-  const unlockedBadgeIds = getUnlockedBadgeIds(summary);
-  const unlockedBadgeList = badges.filter((badge) => unlockedBadgeIds.has(badge.id));
+  const unlockedBadgeIds = getUnlockedBadgeIds(badgeCatalog, summary);
+  const unlockedBadgeList = badgeCatalog.filter((badge) => unlockedBadgeIds.has(badge.id));
+  const visibleBadgeCount = badgeCatalog.filter((badge) => badge.active || unlockedBadgeIds.has(badge.id)).length;
   const highestLevelBadge = unlockedBadgeList
     .filter((badge) => badge.category === "Level" && badge.id >= 4 && badge.id <= 11)
     .sort((a, b) => b.id - a.id)[0];
@@ -202,13 +204,13 @@ export function ProfilePage({ summary, viewer }: ProfilePageData) {
 
         <div className="grid gap-6">
           <div>
-            <SectionHeader title={`Lencana ${unlockedBadgeList.length}/${badges.length}`} action="Lihat semua" to="/badges" />
+            <SectionHeader title={`Lencana ${unlockedBadgeList.length}/${visibleBadgeCount}`} action="Lihat semua" to="/badges" />
             {unlockedBadgeList.length === 0 ? (
               <EmptyBadges />
             ) : (
               <div className="grid grid-flow-dense grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-4 xl:grid-cols-6">
                 {unlockedBadgeList.slice(0, 8).map((badge) => (
-                  <BadgePreview key={badge.id} name={badge.name} icon={badge.icon} />
+                  <BadgePreview key={badge.id} name={badge.displayName} icon={badge.icon} />
                 ))}
               </div>
             )}
@@ -259,13 +261,14 @@ export function ProfilePage({ summary, viewer }: ProfilePageData) {
   );
 }
 
-function getUnlockedBadgeIds(summary: Awaited<ReturnType<typeof listProgressSummary>>) {
+function getUnlockedBadgeIds(badgeCatalog: EffectiveBadge[], summary: Awaited<ReturnType<typeof listProgressSummary>>) {
   const level = getLevelForXp(summary.xp).level;
 
   return new Set(
-    badges
+    badgeCatalog
       .filter((badge) => {
         if (summary.awardedBadgeIds.includes(badge.id)) return true;
+        if (!badge.active) return false;
 
         const levelMatch = badge.task.match(/Reach Level (\d+)/i);
         const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
