@@ -58,7 +58,7 @@ export function getBadgeRequirementText(badge: Badge) {
   if (badge.id === 1) return "Selesaikan Try-out pertamamu.";
   if (levelMatch) return `Capai Level ${levelMatch[1]}.`;
   if (streakMatch) return `Selesaikan Try-out setiap hari selama ${streakMatch[1]} hari berturut-turut.`;
-  if (tryoutMatch) return `Selesaikan ${tryoutMatch[1]} Try-out unik. Retake Try-out yang sama tidak menambah hitungan.`;
+  if (tryoutMatch) return `Selesaikan ${tryoutMatch[1]} Try-out unik. Mengulang Try-out yang sama tidak dihitung.`;
   if (leaderboardMatch) return `Masuk Top ${leaderboardMatch[1]} Leaderboard mingguan setelah minggu selesai difinalisasi.`;
   if (badge.name === "100% Club") return "Raih skor 100% pada percobaan pertama Try-out dengan minimal 20 soal.";
   if (badge.name === "Speed Runner") return "Selesaikan percobaan pertama Try-out dengan minimal 20 soal dalam separuh waktu, dengan skor di atas 80%.";

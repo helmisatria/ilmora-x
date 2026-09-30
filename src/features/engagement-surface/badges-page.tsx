@@ -65,11 +65,11 @@ export function BadgesPage({ summary }: { summary: ProgressSummary }) {
             Koleksi Lencana
           </div>
           <h1 className="mt-2 max-w-[18ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
-            Pantau bukti progres belajarmu
+            Kumpulkan lencana dari usaha belajarmu
           </h1>
           <p className="m-0 mt-3 max-w-[56ch] text-[14px] font-medium leading-relaxed text-stone-500 sm:text-[15px]">
-            Lencana adalah penghargaan dari aktivitas belajarmu. Setiap lencana memberi EXP, dan
-            beberapa lencana Level memberi bonus EXP permanen.
+            Dapatkan lencana dengan mengerjakan Try-out, naik level, dan belajar rutin setiap hari.
+            Sebagian besar lencana memberi EXP, dan beberapa lencana Level memberi bonus EXP permanen.
           </p>
 
           <p className="m-0 mt-5 inline-flex items-baseline gap-2 rounded-[var(--radius-lg)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white px-4 py-3 shadow-sm">
@@ -77,7 +77,7 @@ export function BadgesPage({ summary }: { summary: ProgressSummary }) {
               {unlockedCount}
             </span>
             <span className="text-[14px] font-semibold text-stone-500">
-              dari {badges.length} lencana terbuka
+              dari {badges.length} lencana didapat
             </span>
           </p>
         </div>
@@ -171,17 +171,17 @@ function NextBadgesSection({
 
       {allUnlocked ? (
         <p className="m-0 mt-1 text-[13.5px] font-medium leading-relaxed text-stone-500">
-          Semua lencana sudah terbuka. Luar biasa!
+          Kamu sudah mendapatkan semua lencana. Luar biasa!
         </p>
       ) : nextBadges.length === 0 ? (
         <p className="m-0 mt-1 text-[13.5px] font-medium leading-relaxed text-stone-500">
-          Lencana yang tersisa diberikan otomatis oleh sistem, misalnya dari Leaderboard mingguan.
-          Terus kerjakan Try-out untuk mengejarnya.
+          Lencana yang tersisa diberikan otomatis, misalnya dari Leaderboard mingguan atau hasil
+          Try-out tertentu. Terus kerjakan Try-out untuk mendapatkannya.
         </p>
       ) : (
         <>
           <p className="m-0 mt-1 text-[13.5px] font-medium leading-relaxed text-stone-500">
-            Paling dekat untuk kamu buka sekarang.
+            Lencana yang paling dekat untuk kamu dapatkan.
           </p>
           <ul className="m-0 mt-4 grid list-none gap-3 p-0 md:grid-cols-3">
             {nextBadges.map(({ badge, progress }) => (
@@ -380,6 +380,7 @@ function BadgeDetailModal({
   const requirement = getBadgeRequirementText(badge);
   const progressText = getBadgeStatusText(badge, progress, total, unlocked);
   const rewardText = getBadgeRewardText(badge);
+  const hasProgressBar = unlocked || hasMeasurableProgress(badge);
 
   return (
     <Dialog open={Boolean(badge)} onOpenChange={(open) => !open && onClose()}>
@@ -404,15 +405,15 @@ function BadgeDetailModal({
             </div>
             <div className="min-w-0">
               <div className="mb-2 inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white/75">
-                {unlocked ? "Terbuka" : "Terkunci"}
+                {unlocked ? "Didapat" : "Terkunci"}
               </div>
               <DialogTitle className="text-[25px] font-black leading-none tracking-tight text-white">
                 {badge.name}
               </DialogTitle>
               <DialogDescription className="mt-2 text-[13px] font-semibold leading-relaxed text-white/72">
                 {unlocked
-                  ? "Lencana ini sudah masuk koleksimu."
-                  : "Lencana ini bisa kamu kejar dari aktivitas belajar yang relevan."}
+                  ? "Lencana ini sudah kamu dapatkan."
+                  : "Penuhi syarat di bawah untuk mendapatkan lencana ini."}
               </DialogDescription>
             </div>
           </div>
@@ -421,7 +422,7 @@ function BadgeDetailModal({
         <div className="grid gap-4 bg-[#fffcf7] p-5">
           <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-stone-200 bg-white p-4">
             <div className="text-[10px] font-black uppercase tracking-wide text-stone-400">
-              Cara mendapat
+              Cara mendapatkan
             </div>
             <p className="m-0 mt-1 text-[15px] font-extrabold leading-snug text-stone-800">
               {requirement}
@@ -438,22 +439,30 @@ function BadgeDetailModal({
                   {progressText}
                 </div>
               </div>
-              <div className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-black" style={{ background: `${accent}16`, color: accent }}>
-                {progressPercent}%
+              {hasProgressBar && (
+                <div className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-black" style={{ background: `${accent}16`, color: accent }}>
+                  {progressPercent}%
+                </div>
+              )}
+            </div>
+            {hasProgressBar ? (
+              <div className="mt-3 h-3 overflow-hidden rounded-full bg-stone-100">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ background: accent, width: `${progressPercent}%` }}
+                />
               </div>
-            </div>
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-stone-100">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ background: accent, width: `${progressPercent}%` }}
-              />
-            </div>
+            ) : (
+              <p className="m-0 mt-2 text-[13px] font-semibold leading-snug text-stone-500">
+                Diberikan otomatis oleh sistem saat syarat terpenuhi.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-stone-200 bg-white p-4">
             <div>
               <div className="text-[10px] font-black uppercase tracking-wide text-stone-400">
-                Reward
+                Hadiah
               </div>
               <div className="mt-1 text-[18px] font-black leading-none text-stone-800">
                 {rewardText}
@@ -488,7 +497,7 @@ function getBadgeRewardText(badge: Badge) {
   if (badge.xpReward > 0) parts.push(`+${badge.xpReward.toLocaleString("id-ID")} EXP`);
   if (badge.permanentXpBonusPercent) parts.push(`+${badge.permanentXpBonusPercent}% EXP permanen`);
 
-  return parts.length > 0 ? parts.join(" · ") : "Tanpa bonus EXP";
+  return parts.length > 0 ? parts.join(" · ") : "Tanpa hadiah EXP";
 }
 
 function getBadgeStatusText(
@@ -497,7 +506,7 @@ function getBadgeStatusText(
   total: number,
   unlocked: boolean,
 ) {
-  if (unlocked) return "Terbuka";
+  if (unlocked) return "Didapat";
   if (!hasMeasurableProgress(badge)) return "Terkunci";
 
   const group = getBadgeGroupKey(badge);
