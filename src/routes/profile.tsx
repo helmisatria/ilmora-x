@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { getCurrentViewer } from "../lib/auth-functions";
+import { listBadgeCatalog } from "../features/engagement-surface/badge-catalog-functions";
 import { ProfilePage } from "../features/profile/profile-page";
 import { listProgressSummary } from "../features/student/student-progress-functions";
 
@@ -15,9 +16,9 @@ export const Route = createFileRoute("/profile")({
       throw redirect({ to: "/auth/complete-profile" });
     }
 
-    const summary = await listProgressSummary();
+    const [summary, badgeCatalog] = await Promise.all([listProgressSummary(), listBadgeCatalog()]);
 
-    return { summary, viewer };
+    return { summary, badgeCatalog, viewer };
   },
   head: () => ({
     meta: [
@@ -39,6 +40,6 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfileRoute() {
-  const { summary, viewer } = Route.useLoaderData();
-  return <ProfilePage summary={summary} viewer={viewer} />;
+  const { summary, badgeCatalog, viewer } = Route.useLoaderData();
+  return <ProfilePage summary={summary} badgeCatalog={badgeCatalog} viewer={viewer} />;
 }

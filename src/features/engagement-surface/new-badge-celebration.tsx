@@ -6,12 +6,10 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { badges, getBadgeRequirementText, type Badge } from "./badge-catalog";
-import { badgeCodeToId } from "./engagement-surface-model";
 import { listUnseenStudentBadges, markStudentBadgesSeen } from "./new-badge-functions";
 
 type UnseenBadge = Awaited<ReturnType<typeof listUnseenStudentBadges>>[number];
-type CelebratedBadge = UnseenBadge & { badge: Badge };
+type CelebratedBadge = UnseenBadge & { badge: NonNullable<UnseenBadge["badge"]> };
 
 // The next page can load before the "seen" write lands, so remember dismissals in this tab.
 const dismissedStudentBadgeIds = new Set<string>();
@@ -85,7 +83,7 @@ export function NewBadgeCelebration({ onSettled }: { onSettled?: () => void }) {
             {isSingle ? "Lencana baru" : `${celebratedBadges.length} lencana baru`}
           </div>
           <DialogTitle className="mt-1 text-[24px] font-black leading-tight tracking-tight text-white">
-            {isSingle ? first.badge.name : "Kamu dapat lencana baru!"}
+            {isSingle ? first.badge.displayName : "Kamu dapat lencana baru!"}
           </DialogTitle>
           <DialogDescription className="mx-auto mt-2 max-w-[32ch] text-[13px] font-semibold leading-relaxed text-white/75">
             {isSingle ? getAwardReason(first) : "Lencana ini masuk koleksimu sejak kunjungan terakhir."}
@@ -108,7 +106,7 @@ export function NewBadgeCelebration({ onSettled }: { onSettled?: () => void }) {
                   {row.badge.icon}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-[14px] font-extrabold text-stone-800">{row.badge.name}</span>
+                  <span className="block truncate text-[14px] font-extrabold text-stone-800">{row.badge.displayName}</span>
                   <span className="block text-[12px] font-semibold leading-snug text-stone-500">{getAwardReason(row)}</span>
                 </span>
               </li>
@@ -135,7 +133,7 @@ export function NewBadgeCelebration({ onSettled }: { onSettled?: () => void }) {
 
 function toCelebratedBadges(rows: UnseenBadge[]): CelebratedBadge[] {
   return rows.flatMap((row) => {
-    const badge = findBadge(row.badgeCode);
+    const { badge } = row;
 
     return badge ? [{ ...row, badge }] : [];
   });
@@ -149,20 +147,12 @@ function markSeen(rows: UnseenBadge[]) {
   void markStudentBadgesSeen({ data: { studentBadgeIds: rows.map((row) => row.id) } }).catch(() => undefined);
 }
 
-function findBadge(badgeCode: string) {
-  const badgeId = badgeCodeToId(badgeCode);
-
-  if (badgeId === null) return null;
-
-  return badges.find((badge) => badge.id === badgeId) ?? null;
-}
-
 function getAwardReason(row: CelebratedBadge) {
   if (row.awardSource === "weekly_leaderboard" && row.rank && row.sourceWeekKey) {
     return `Peringkat #${row.rank} Leaderboard minggu ${formatWeek(row.sourceWeekKey)}.`;
   }
 
-  return getBadgeRequirementText(row.badge);
+  return row.badge.requirementText;
 }
 
 function formatWeek(weekStartDate: string) {
