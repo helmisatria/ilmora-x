@@ -12,7 +12,8 @@ export type LandingLinkEntryPoint =
   | "light_link"
   | "pricing_button"
   | "primary_link"
-  | "secondary_link";
+  | "secondary_link"
+  | "tryout_row";
 
 export function useLandingLinkAnalytics(to: LandingLinkPath, entryPoint: LandingLinkEntryPoint): {
   intent: AcquisitionIntent | undefined;

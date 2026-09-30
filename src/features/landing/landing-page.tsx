@@ -320,14 +320,18 @@ function TryoutSection({ tryouts }: { tryouts: PublicTryout[] }) {
 }
 
 function PublicTryoutRow({ tryout }: { tryout: PublicTryout }) {
+  const { intent, trackLandingLinkClick } = useLandingLinkAnalytics("/tryout", "tryout_row");
   const accessLabel = tryout.accessLevel === "free" ? "Gratis" : "Premium";
   const colorStyle = {
     "--tryout-color": tryout.categoryColor,
   } as CSSProperties;
 
   return (
-    <div
-      className="group grid gap-4 px-5 py-5 transition-colors hover:bg-[#fffcf1] sm:grid-cols-[auto_1fr_auto] sm:items-center sm:px-7"
+    <Link
+      to="/tryout"
+      search={{ intent }}
+      onClick={trackLandingLinkClick}
+      className="group grid gap-4 px-5 py-5 text-inherit no-underline transition-colors hover:bg-[#fffcf1] focus-visible:bg-[#fffcf1] focus-visible:outline-none sm:grid-cols-[auto_1fr_auto] sm:items-center sm:px-7"
       style={colorStyle}
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[color-mix(in_srgb,var(--tryout-color)_14%,white)] text-[var(--tryout-color)] shadow-[0_4px_0_color-mix(in_srgb,var(--tryout-color)_22%,white)] transition-transform group-hover:-rotate-3 group-hover:scale-105">
@@ -343,9 +347,11 @@ function PublicTryoutRow({ tryout }: { tryout: PublicTryout }) {
       <div className="flex items-center gap-3 text-[12px] font-bold text-stone-600 sm:justify-end">
         <span className="rounded-full bg-stone-100 px-3 py-1.5">{tryout.questionCount} soal</span>
         <span className="rounded-full bg-stone-100 px-3 py-1.5">{tryout.durationMinutes} menit</span>
-        <ArrowUpRightIcon />
+        <span className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5">
+          <ArrowUpRightIcon />
+        </span>
       </div>
-    </div>
+    </Link>
   );
 }
 
