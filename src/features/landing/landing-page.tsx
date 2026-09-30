@@ -38,7 +38,7 @@ export function LandingPage({
 }) {
   return (
     <main
-      className="min-h-[100dvh] overflow-x-hidden bg-[#f7faf9] text-[#202124]"
+      className="landing-page min-h-[100dvh] overflow-x-hidden bg-[#f7faf9] text-[#202124]"
       style={{ fontFamily: "'Geist', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif" }}
     >
       <BusinessStructuredData products={products} />

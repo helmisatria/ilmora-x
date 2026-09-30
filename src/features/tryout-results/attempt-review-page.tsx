@@ -205,7 +205,7 @@ export function AttemptReviewPage({ attemptId, result, search }: AttemptReviewPa
   }, [filter]);
 
   return (
-    <main className="overflow-x-hidden w-full max-w-full min-h-screen bg-[#fafafa] font-['Cabinet_Grotesk',system-ui,sans-serif]">
+    <main className="overflow-x-clip w-full max-w-full min-h-screen bg-[#fafafa] font-['Cabinet_Grotesk',system-ui,sans-serif]">
       {/* Sticky Header */}
       <header
         ref={headerRef}

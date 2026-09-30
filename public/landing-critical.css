@@ -25,13 +25,13 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-#app main {
+#app main.landing-page {
   max-width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
 }
 
-#app main > header {
+#app main.landing-page > header {
   box-sizing: border-box;
   left: 0;
   padding: 20px 16px 0;
@@ -41,7 +41,7 @@ body {
   z-index: 30;
 }
 
-#app main > header nav {
+#app main.landing-page > header nav {
   align-items: center;
   backdrop-filter: blur(40px);
   background: rgba(255, 255, 255, 0.92);
@@ -57,7 +57,7 @@ body {
   width: 100%;
 }
 
-#app main > header a {
+#app main.landing-page > header a {
   align-items: center;
   color: inherit;
   display: inline-flex;
@@ -66,18 +66,18 @@ body {
   text-decoration: none;
 }
 
-#app main > header nav > div:first-of-type {
+#app main.landing-page > header nav > div:first-of-type {
   display: none;
 }
 
-#app main > header nav > div:last-child {
+#app main.landing-page > header nav > div:last-child {
   align-items: center;
   display: flex;
   flex-shrink: 0;
   gap: 8px;
 }
 
-#app main > header nav > div:last-child a {
+#app main.landing-page > header nav > div:last-child a {
   border-radius: 9999px;
   font-size: 13px;
   font-weight: 600;
@@ -86,13 +86,13 @@ body {
   white-space: nowrap;
 }
 
-#app main > header nav > div:last-child a:first-child {
+#app main.landing-page > header nav > div:last-child a:first-child {
   background: #ffffff;
   border: 1px solid #dce9e4;
   color: #1c1917;
 }
 
-#app main > header nav > div:last-child a:last-child {
+#app main.landing-page > header nav > div:last-child a:last-child {
   background: var(--brand-primary);
   color: #ffffff;
 }
@@ -151,11 +151,11 @@ body {
   will-change: opacity, transform;
 }
 
-html.js-enabled #app main .landing-reveal {
+html.js-enabled #app main.landing-page .landing-reveal {
   animation: none;
 }
 
-#app main > header .landing-reveal {
+#app main.landing-page > header .landing-reveal {
   animation-delay: 0.04s;
 }
 
@@ -182,7 +182,7 @@ html.js-enabled #app main .landing-reveal {
 }
 
 @media (min-width: 768px) {
-  #app main > header nav > div:first-of-type {
+  #app main.landing-page > header nav > div:first-of-type {
     align-items: center;
     display: flex;
     gap: 4px;
