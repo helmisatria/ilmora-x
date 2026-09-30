@@ -15,6 +15,7 @@ import { getStudentViewer } from "../student/student-viewer.server";
 import {
   attemptOptionLetters,
   getAttemptStartState,
+  resumeActiveAttemptForStudent,
   saveAttemptForStudent,
   startOrResumeAttemptForStudent,
   submitAttemptForStudent,
@@ -99,6 +100,17 @@ export const startOrResumeAttempt = createServerFn({ method: "POST" })
     const viewer = await getStudentViewer();
 
     return startOrResumeAttemptForStudent({
+      viewer,
+      tryoutId: data.tryoutId,
+    });
+  });
+
+export const resumeActiveAttempt = createServerFn({ method: "POST" })
+  .inputValidator((input) => parseInput(tryoutIdSchema, input))
+  .handler(async ({ data }) => {
+    const viewer = await getStudentViewer();
+
+    return resumeActiveAttemptForStudent({
       viewer,
       tryoutId: data.tryoutId,
     });

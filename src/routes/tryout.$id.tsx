@@ -3,6 +3,8 @@ import { getTryoutPreparation } from "../features/tryout-attempt/student-attempt
 import { TryoutTakePage } from "../features/tryout-attempt/tryout-take-page";
 
 export const Route = createFileRoute("/tryout/$id")({
+  // Attempt state changes on submit; never render a cached activeAttemptId or daily count.
+  gcTime: 0,
   loader: async ({ params }) => {
     const tryout = await getTryoutPreparation({ data: { tryoutId: params.id } });
 

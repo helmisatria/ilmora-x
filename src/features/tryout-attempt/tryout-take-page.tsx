@@ -21,6 +21,7 @@ import {
 import { getSafeErrorMessage } from "../../lib/user-errors";
 import {
   getTryoutPreparation,
+  resumeActiveAttempt,
   saveAttempt,
   startOrResumeAttempt,
   submitAttempt,
@@ -117,7 +118,7 @@ export function TryoutTakePage({ tryout }: { tryout: TryoutPreparation }) {
     if (attemptData) return;
 
     hasAutoResumed.current = true;
-    resumeAttempt({ withCountdown: false });
+    resumeAttempt({ withCountdown: false, resumeOnly: true });
   }, [attemptData, isReady, tryout.activeAttemptId]);
 
   useEffect(() => {
@@ -259,18 +260,29 @@ export function TryoutTakePage({ tryout }: { tryout: TryoutPreparation }) {
     );
   }
 
-  const resumeAttempt = async ({ withCountdown }: { withCountdown: boolean }) => {
+  const resumeAttempt = async ({
+    withCountdown,
+    resumeOnly = false,
+  }: {
+    withCountdown: boolean;
+    resumeOnly?: boolean;
+  }) => {
     setStartError("");
 
-    let nextAttemptData: TakeAttempt;
+    let nextAttemptData: TakeAttempt | null;
 
     try {
-      nextAttemptData = await startOrResumeAttempt({ data: { tryoutId: tryout.id } });
+      nextAttemptData = resumeOnly
+        ? await resumeActiveAttempt({ data: { tryoutId: tryout.id } })
+        : await startOrResumeAttempt({ data: { tryoutId: tryout.id } });
     } catch (error) {
       setConfirmStart(false);
       setStartError(getStartErrorMessage(error));
       return;
     }
+
+    // The loader's activeAttemptId was stale (attempt already submitted), so stay on preparation.
+    if (!nextAttemptData) return;
 
     const queuedProgress = getUsableQueuedAttemptProgress(window.localStorage, nextAttemptData);
     const restoredProgress = restoreAttemptProgress({
