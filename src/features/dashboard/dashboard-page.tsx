@@ -83,7 +83,7 @@ export function DashboardPage({ summary, tryouts, announcement = null }: Dashboa
         <div className="page-lane relative -mt-4 pb-28">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <button
-              className={`btn btn-primary px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] ${hasPremiumMembership ? "col-span-full justify-self-center" : "col-span-1 md:col-span-2"}`}
+              className="btn btn-primary col-span-1 px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] md:col-span-2"
               onClick={() => navigate({ to: "/tryout" })}
               type="button"
             >
@@ -91,7 +91,21 @@ export function DashboardPage({ summary, tryouts, announcement = null }: Dashboa
               Mulai Tryout
             </button>
 
-            {!hasPremiumMembership && (
+            {hasPremiumMembership ? (
+              <Link
+                className="btn col-span-1 px-4 py-3 text-[14px] whitespace-nowrap no-underline sm:px-6 sm:py-3.5 sm:text-[15px] md:col-span-2"
+                style={{
+                  background: "#fffbeb",
+                  color: "#92400e",
+                  borderColor: "#fcd34d",
+                  borderBottomColor: "#f59e0b",
+                }}
+                to="/profile"
+              >
+                <CrownIcon />
+                Premium Aktif
+              </Link>
+            ) : (
               <button
                 className="btn col-span-1 px-4 py-3 text-[14px] whitespace-nowrap sm:px-6 sm:py-3.5 sm:text-[15px] md:col-span-2"
                 style={{

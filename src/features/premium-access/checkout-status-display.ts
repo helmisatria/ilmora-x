@@ -4,8 +4,8 @@ export function getCheckoutStatusDisplayState(
 ) {
   if (status === "paid") {
     return {
-      title: "Pembayaran berhasil",
-      description: "Akses sudah aktif. Kamu bisa kembali ke Dashboard dan mulai belajar.",
+      title: "Premium sudah aktif",
+      description: "Pembayaran berhasil. Semua tryout dan pembahasan Premium sudah terbuka untukmu.",
       accent: "#16a34a",
       icon: "success" as const,
     };
