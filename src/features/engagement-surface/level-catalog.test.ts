@@ -33,6 +33,15 @@ test("maps XP to a level at the exact thresholds", () => {
   assert.equal(getLevelForXp(1_000_000).level, 50);
 });
 
+test("maps every threshold and the EXP just below it", () => {
+  for (const [index, entry] of levels.entries()) {
+    assert.equal(getLevelForXp(entry.xp).level, entry.level);
+    if (index === 0) continue;
+
+    assert.equal(getLevelForXp(entry.xp - 1).level, levels[index - 1].level);
+  }
+});
+
 test("reports the next level and progress toward it", () => {
   assert.equal(getNextLevel(0)?.level, 2);
   assert.equal(getNextLevel(42_280), null);
