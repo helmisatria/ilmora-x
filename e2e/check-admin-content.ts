@@ -10,6 +10,11 @@ const schema = await import("../src/lib/db/schema");
 const { eq, and } = await import("drizzle-orm");
 const { createTryoutFromWorkbook, importTryoutWorkbook, updateTryoutQuestionContent, unpublishTryoutContent } = await import("../src/features/tryout-content/tryout-content-management");
 
+async function revision(id: string) {
+  const [row] = await db.select({ updatedAt: schema.tryouts.updatedAt }).from(schema.tryouts).where(eq(schema.tryouts.id, id));
+  return row.updatedAt.toISOString();
+}
+
 try {
   const [category] = await db.select().from(schema.categories).limit(1);
   const [sub] = await db.select().from(schema.subCategories).where(eq(schema.subCategories.categoryId, category.id)).limit(1);
@@ -24,7 +29,7 @@ try {
   const second = await createTryoutFromWorkbook({ tryout: secondTryout, questions: [{ ...question, questionId: assignment.questionId }] });
   let [secondAssignment] = await db.select().from(schema.tryoutQuestions).where(eq(schema.tryoutQuestions.tryoutId, second.id));
   assert.equal(secondAssignment.questionId, assignment.questionId);
-  await importTryoutWorkbook({ tryoutId: second.id, tryout: secondTryout,
+  await importTryoutWorkbook({ tryoutId: second.id, expectedUpdatedAt: await revision(second.id), tryout: secondTryout,
     questions: [{ ...question, questionId: assignment.questionId, pictureUrl: undefined, explanation: "Pembahasan khusus salinan" }] });
   [secondAssignment] = await db.select().from(schema.tryoutQuestions).where(eq(schema.tryoutQuestions.tryoutId, second.id));
   assert.notEqual(secondAssignment.questionId, assignment.questionId);
@@ -34,18 +39,18 @@ try {
   assert.equal(copied.explanation, "Pembahasan khusus salinan");
   assert.equal(copied.pictureUrl, question.pictureUrl);
   console.log("PASS shared workbook copy keeps picture and leaves source key/explanation unchanged");
-  await assert.rejects(importTryoutWorkbook({ tryoutId: second.id, tryout: { ...secondTryout, title: "This must roll back" },
+  await assert.rejects(importTryoutWorkbook({ tryoutId: second.id, expectedUpdatedAt: await revision(second.id), tryout: { ...secondTryout, title: "This must roll back" },
     questions: [{ ...question, questionId: "missing-question" }] }));
   const [afterRollback] = await db.select().from(schema.tryouts).where(eq(schema.tryouts.id, second.id));
   assert.equal(afterRollback.title, secondTryout.title);
   const [afterAssignment] = await db.select().from(schema.tryoutQuestions).where(eq(schema.tryoutQuestions.tryoutId, second.id));
   assert.equal(afterAssignment.questionId, copied.id);
   console.log("PASS failed workbook import rolls back metadata and assignments");
-  await assert.rejects(updateTryoutQuestionContent({ ...question, tryoutId: first.id, questionId: assignment.questionId, status: "draft" }), /minimal satu soal tayang/);
+  await assert.rejects(updateTryoutQuestionContent({ ...question, tryoutId: first.id, expectedUpdatedAt: await revision(first.id), questionId: assignment.questionId, status: "draft" }), /minimal satu soal tayang/);
   console.log("PASS detail cannot hide last published question");
   const [student] = await db.select().from(schema.user).where(eq(schema.user.email, "e2e-student@example.test"));
   await db.insert(schema.entitlements).values({studentUserId: student.id, source: "admin_grant", sourceId: randomUUID(),
     productType: "lifetime_tryout", contentType: "tryout", contentId: first.id, startsAt: new Date(), grantReason: "Local QA"});
-  await assert.rejects(unpublishTryoutContent(first.id), /akses selamanya/);
+  await assert.rejects(unpublishTryoutContent(first.id, await revision(first.id)), /akses selamanya/);
   console.log("PASS lifetime-owned tryout cannot be hidden");
 } finally { await closeDb(); }

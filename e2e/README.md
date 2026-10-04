@@ -38,3 +38,7 @@ node --import tsx e2e/check-admin-content.ts
 ```
 
 The second command refuses any database other than a local database named `ilmora_admin_qa`. It checks shared-question image preservation, import rollback, the last-question guard, and lifetime-owner protection. Both commands leave QA fixtures in the dedicated database for inspection. Use a fresh local database for the next run. Never point fixture setup at staging or production.
+
+### Draft concurrency handoff
+
+`node --import tsx e2e/check-admin-concurrency.ts` checks stale metadata and parallel question removal. It refuses any database except localhost `ilmora_admin_qa`. It leaves disposable QA fixtures. The draft follow-up still needs browser concurrency, competing imports, publication/bank races, and offline-workbook revision handling; see `docs/ADMIN_QA_REPORT.md`.

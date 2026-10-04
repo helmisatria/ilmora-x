@@ -60,3 +60,7 @@ Jika muncul pesan kesalahan, isian formulir tetap ada agar dapat diperbaiki. Tom
 Untuk gambar, gunakan JPG, PNG, WebP, atau GIF. Ikon try-out memakai PNG, JPG, atau WebP, maksimal 160 KB. Jika unggah gambar gagal, simpan salinan gambar dan minta pengelola aplikasi memeriksa layanan penyimpanan.
 
 Setelah mengubah isi, buka lagi try-out dan periksa jumlah soal, urutan, kunci, serta pembahasan. Sebelum peluncuran, coba juga alur peserta di lingkungan pengujian.
+
+## Saat admin lain mengubah data
+
+Jika muncul pesan bahwa admin lain sudah mengubah data, perubahan Anda belum tersimpan. Salin isian yang ingin dipertahankan ke catatan sementara, lalu muat ulang halaman. Periksa perubahan terbaru sebelum mengisi dan menyimpan lagi. Gunakan Excel terbaru agar tidak mengganti isi baru dengan file lama.

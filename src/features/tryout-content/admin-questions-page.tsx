@@ -17,6 +17,7 @@ type AccessLevel = "free" | "premium";
 type CorrectOption = "A" | "B" | "C" | "D" | "E";
 
 type QuestionForm = {
+  expectedUpdatedAt: string;
   id: string;
   categoryId: string;
   subCategoryId: string;
@@ -35,6 +36,7 @@ type QuestionForm = {
 };
 
 const emptyForm: QuestionForm = {
+  expectedUpdatedAt: "",
   id: "",
   categoryId: "",
   subCategoryId: "",
@@ -111,6 +113,7 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
 
   const editQuestion = (question: QuestionRow) => {
     setForm({
+      expectedUpdatedAt: question.updatedAt,
       id: question.id,
       categoryId: question.categoryId,
       subCategoryId: question.subCategoryId,
@@ -146,7 +149,7 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
 
     try {
       if (isEditing) {
-        await updateQuestionAdmin({ data: { ...payload, questionId: form.id } });
+        await updateQuestionAdmin({ data: { ...payload, questionId: form.id, expectedUpdatedAt: form.expectedUpdatedAt } });
       } else {
         await createQuestionAdmin({ data: payload });
       }
@@ -168,9 +171,9 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
 
     try {
       if (nextStatus === "published") {
-        await publishQuestionAdmin({ data: { questionId } });
+        await publishQuestionAdmin({ data: { questionId, expectedUpdatedAt: questions.find((question) => question.id === questionId)!.updatedAt } });
       } else {
-        await unpublishQuestionAdmin({ data: { questionId } });
+        await unpublishQuestionAdmin({ data: { questionId, expectedUpdatedAt: questions.find((question) => question.id === questionId)!.updatedAt } });
       }
 
       await refresh();

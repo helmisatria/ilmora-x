@@ -8,6 +8,7 @@ import {
   tryoutQuestions,
   tryouts,
 } from "../../lib/db/schema";
+import { withAdminContentTransaction, requireTryoutRevision, touchTryout, nextTryoutRevision, nextQuestionRevision, type ContentRevision } from "./admin-content-transaction";
 import { conflict, notFound } from "../../lib/http/errors";
 import type {
   TryoutContentInput,
@@ -42,15 +43,17 @@ export async function createTryoutContent(data: TryoutContentInput) {
   const slug = makeSlug(data.title);
 
   try {
-    await db.insert(tryouts).values({
-      slug,
-      title: data.title,
-      description: data.description,
-      icon: normalizeTryoutIcon(data.icon),
-      categoryId: data.categoryId,
-      durationMinutes: data.durationMinutes,
-      accessLevel: data.accessLevel,
-      status: "draft",
+    await withAdminContentTransaction(async (tx) => {
+      await tx.insert(tryouts).values({
+        slug,
+        title: data.title,
+        description: data.description,
+        icon: normalizeTryoutIcon(data.icon),
+        categoryId: data.categoryId,
+        durationMinutes: data.durationMinutes,
+        accessLevel: data.accessLevel,
+        status: "draft",
+    });
     });
   } catch {
     throw conflict("Judul try-out sudah dipakai. Gunakan judul lain.");
@@ -59,23 +62,24 @@ export async function createTryoutContent(data: TryoutContentInput) {
   return { ok: true };
 }
 
-export async function updateTryoutContent(data: TryoutContentInput & { tryoutId: string }) {
+export async function updateTryoutContent(data: TryoutContentInput & { tryoutId: string } & ContentRevision) {
   await ensureCategoryExists(data.categoryId);
-  await ensureTryoutExists(data.tryoutId);
+  await withAdminContentTransaction(async (tx) => {
+    await requireTryoutRevision(tx, data.tryoutId, data.expectedUpdatedAt);
 
-  await db
-    .update(tryouts)
-    .set({
-      title: data.title,
-      description: data.description,
-      icon: normalizeTryoutIcon(data.icon),
-      categoryId: data.categoryId,
-      durationMinutes: data.durationMinutes,
-      accessLevel: data.accessLevel,
-      updatedAt: new Date(),
-    })
-    .where(eq(tryouts.id, data.tryoutId));
-
+    await tx
+      .update(tryouts)
+      .set({
+        title: data.title,
+        description: data.description,
+        icon: normalizeTryoutIcon(data.icon),
+        categoryId: data.categoryId,
+        durationMinutes: data.durationMinutes,
+        accessLevel: data.accessLevel,
+        updatedAt: nextTryoutRevision,
+      })
+      .where(eq(tryouts.id, data.tryoutId));
+  });
   return { ok: true };
 }
 
@@ -87,54 +91,46 @@ function normalizeTryoutIcon(icon: string | undefined) {
   return value;
 }
 
-export async function publishTryoutContent(tryoutId: string) {
-  await ensureTryoutExists(tryoutId);
-  await ensureTryoutCanBePublished(tryoutId);
+export async function publishTryoutContent(tryoutId: string, expectedUpdatedAt: string) {
+  await withAdminContentTransaction(async (tx) => {
+    await requireTryoutRevision(tx, tryoutId, expectedUpdatedAt);
+    await ensureTryoutCanBePublished(tryoutId, tx);
 
-  await db
-    .update(tryouts)
-    .set({
-      status: "published",
-      publishedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(tryouts.id, tryoutId));
-
+    await tx
+      .update(tryouts)
+      .set({
+        status: "published",
+        publishedAt: new Date(),
+        updatedAt: nextTryoutRevision,
+      })
+      .where(eq(tryouts.id, tryoutId));
+  });
   return { ok: true };
 }
 
-export async function unpublishTryoutContent(tryoutId: string) {
-  await ensureTryoutExists(tryoutId);
-  await ensureNoLifetimeOwners(tryoutId);
+export async function unpublishTryoutContent(tryoutId: string, expectedUpdatedAt: string) {
+  await withAdminContentTransaction(async (tx) => {
+    await requireTryoutRevision(tx, tryoutId, expectedUpdatedAt);
+    await ensureNoLifetimeOwners(tryoutId, tx);
 
-  await db
-    .update(tryouts)
-    .set({
-      status: "unpublished",
-      updatedAt: new Date(),
-    })
-    .where(eq(tryouts.id, tryoutId));
-
+    await tx
+      .update(tryouts)
+      .set({
+        status: "unpublished",
+        updatedAt: nextTryoutRevision,
+      })
+      .where(eq(tryouts.id, tryoutId));
+  });
   return { ok: true };
 }
 
-export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutId: string }) {
+export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutId: string } & ContentRevision) {
   await validateTryoutWorkbookInput(data);
-  const [currentTryout] = await db
-    .select({ status: tryouts.status })
-    .from(tryouts)
-    .where(eq(tryouts.id, data.tryoutId))
-    .limit(1);
-
-  if (!currentTryout) {
-    throw notFound("Try-out tidak ditemukan.");
-  }
-
-  if (currentTryout.status === "published" && data.tryout.status !== "published") {
-    await ensureNoLifetimeOwners(data.tryoutId);
-  }
-
-  const imported = await db.transaction(async (tx) => {
+  const imported = await withAdminContentTransaction(async (tx) => {
+    const currentTryout = await requireTryoutRevision(tx, data.tryoutId, data.expectedUpdatedAt);
+    if (currentTryout.status === "published" && data.tryout.status !== "published") {
+      await ensureNoLifetimeOwners(data.tryoutId, tx);
+    }
     const resolvedData = await resolveWorkbookTaxonomy(tx, data);
     const assignedQuestionIds: string[] = [];
 
@@ -148,7 +144,7 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
         accessLevel: resolvedData.tryout.accessLevel,
         status: resolvedData.tryout.status,
         publishedAt: resolvedData.tryout.status === "published" ? new Date() : null,
-        updatedAt: new Date(),
+        updatedAt: nextTryoutRevision,
       })
       .where(eq(tryouts.id, data.tryoutId));
 
@@ -218,7 +214,7 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
           .update(questions)
           .set({
             ...toQuestionInsertValues(question),
-            updatedAt: new Date(),
+            updatedAt: nextQuestionRevision,
           })
           .where(eq(questions.id, question.questionId));
       }
@@ -246,9 +242,9 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
   return { ok: true, imported };
 }
 
-async function ensureNoLifetimeOwners(tryoutId: string) {
+async function ensureNoLifetimeOwners(tryoutId: string, tx: Pick<typeof db, "select">) {
   const now = new Date();
-  const [owner] = await db
+  const [owner] = await tx
     .select({ id: entitlements.id })
     .from(entitlements)
     .where(and(
@@ -267,7 +263,7 @@ async function ensureNoLifetimeOwners(tryoutId: string) {
 export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
   await validateTryoutWorkbookInput(data);
 
-  const created = await db.transaction(async (tx) => {
+  const created = await withAdminContentTransaction(async (tx) => {
     const resolvedData = await resolveWorkbookTaxonomy(tx, data);
     const slug = makeSlug(resolvedData.tryout.title);
 
@@ -368,19 +364,18 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
   return { ok: true, ...created };
 }
 
-export async function addTryoutQuestionContent(data: TryoutWorkbookQuestion & { tryoutId: string }) {
+export async function addTryoutQuestionContent(data: TryoutWorkbookQuestion & { tryoutId: string } & ContentRevision) {
   validateQuestionOptionE(data);
   await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
-  await db.transaction(async (tx) => {
-    const [tryout] = await tx.select({ id: tryouts.id }).from(tryouts)
-      .where(eq(tryouts.id, data.tryoutId)).for("update");
-    if (!tryout) throw notFound("Try-out tidak ditemukan.");
+  await withAdminContentTransaction(async (tx) => {
+    await requireTryoutRevision(tx, data.tryoutId, data.expectedUpdatedAt);
     await ensureQuestionOrderAvailable(tx, data.tryoutId, data.sortOrder);
     const [question] = await tx.insert(questions).values(toQuestionInsertValues(data))
       .returning({ id: questions.id });
     await tx.insert(tryoutQuestions).values({
       tryoutId: data.tryoutId, questionId: question.id, sortOrder: data.sortOrder,
     });
+    await touchTryout(tx, data.tryoutId);
   });
   return { ok: true };
 }
@@ -397,13 +392,14 @@ async function ensureQuestionOrderAvailable(
   }
 }
 
-export async function updateTryoutQuestionContent(data: TryoutQuestionContentInput) {
+export async function updateTryoutQuestionContent(data: TryoutQuestionContentInput & ContentRevision) {
   validateQuestionOptionE(data);
   await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
 
   const nextQuestion = toEditableQuestionValues(data);
 
-  await db.transaction(async (tx) => {
+  await withAdminContentTransaction(async (tx) => {
+    await requireTryoutRevision(tx, data.tryoutId, data.expectedUpdatedAt);
     await ensureQuestionOrderAvailable(tx, data.tryoutId, data.sortOrder, data.questionId);
     const [assignment] = await tx
       .select({
@@ -486,7 +482,7 @@ export async function updateTryoutQuestionContent(data: TryoutQuestionContentInp
           .update(questions)
           .set({
             ...nextQuestion,
-            updatedAt: new Date(),
+            updatedAt: nextQuestionRevision,
           })
           .where(eq(questions.id, data.questionId));
       }
@@ -515,6 +511,7 @@ export async function updateTryoutQuestionContent(data: TryoutQuestionContentInp
           where ${attempts.tryoutId} = ${data.tryoutId}
         )`,
       ));
+    await touchTryout(tx, data.tryoutId);
   });
 
   return { ok: true };
@@ -523,54 +520,48 @@ export async function updateTryoutQuestionContent(data: TryoutQuestionContentInp
 export async function removeTryoutQuestionContent({
   tryoutId,
   questionId,
+  expectedUpdatedAt,
 }: {
   tryoutId: string;
   questionId: string;
+  expectedUpdatedAt: string;
 }) {
-  const [assignment] = await db
-    .select({
-      id: tryoutQuestions.id,
-      questionStatus: questions.status,
-      tryoutStatus: tryouts.status,
-    })
-    .from(tryoutQuestions)
-    .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
-    .innerJoin(tryouts, eq(tryouts.id, tryoutQuestions.tryoutId))
-    .where(and(
-      eq(tryoutQuestions.tryoutId, tryoutId),
-      eq(tryoutQuestions.questionId, questionId),
-    ))
-    .limit(1);
+  await withAdminContentTransaction(async (tx) => {
+    await requireTryoutRevision(tx, tryoutId, expectedUpdatedAt);
+    const [assignment] = await tx
+      .select({
+        id: tryoutQuestions.id,
+        questionStatus: questions.status,
+        tryoutStatus: tryouts.status,
+      })
+      .from(tryoutQuestions)
+      .innerJoin(questions, eq(questions.id, tryoutQuestions.questionId))
+      .innerJoin(tryouts, eq(tryouts.id, tryoutQuestions.tryoutId))
+      .where(and(
+        eq(tryoutQuestions.tryoutId, tryoutId),
+        eq(tryoutQuestions.questionId, questionId),
+      ))
+      .limit(1);
 
-  if (!assignment) {
-    throw notFound("Soal tidak ada di try-out ini. Muat ulang halaman.");
-  }
+    if (!assignment) {
+      throw notFound("Soal tidak ada di try-out ini. Muat ulang halaman.");
+    }
 
-  if (assignment.tryoutStatus === "published" && assignment.questionStatus === "published") {
-    await ensurePublishedTryoutHasAnotherPublishedQuestion(db, tryoutId, questionId);
-  }
+    if (assignment.tryoutStatus === "published" && assignment.questionStatus === "published") {
+      await ensurePublishedTryoutHasAnotherPublishedQuestion(tx, tryoutId, questionId);
+    }
 
-  await db
-    .delete(tryoutQuestions)
-    .where(eq(tryoutQuestions.id, assignment.id));
+    await tx
+      .delete(tryoutQuestions)
+      .where(eq(tryoutQuestions.id, assignment.id));
 
+    await touchTryout(tx, tryoutId);
+  });
   return { ok: true };
 }
 
-async function ensureTryoutExists(tryoutId: string) {
-  const [tryout] = await db
-    .select({ id: tryouts.id })
-    .from(tryouts)
-    .where(eq(tryouts.id, tryoutId))
-    .limit(1);
-
-  if (tryout) return;
-
-  throw notFound("Try-out tidak ditemukan.");
-}
-
-async function ensureTryoutCanBePublished(tryoutId: string) {
-  const [row] = await db
+async function ensureTryoutCanBePublished(tryoutId: string, tx: Pick<typeof db, "select">) {
+  const [row] = await tx
     .select({
       count: sql<number>`count(${questions.id})`,
     })

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../lib/db/client";
 import {
@@ -7,16 +7,10 @@ import {
   questions,
   subCategories,
   topics,
-  tryouts,
-  tryoutQuestions,
 } from "../../lib/db/schema";
-import { conflict, notFound } from "../../lib/http/errors";
 import { parseInput } from "../../lib/http/validation";
 import { adminMiddleware } from "../admin/admin-access";
-import {
-  validateQuestionOptionE,
-  validateQuestionTaxonomy,
-} from "./tryout-workbook-taxonomy";
+import { createQuestionContent, updateQuestionContent, setQuestionPublication } from "./question-content-management";
 
 const questionOptionSchema = z.enum(["A", "B", "C", "D", "E"]);
 const questionAccessLevelSchema = z.enum(["free", "premium"]);
@@ -42,19 +36,13 @@ const createQuestionSchema = questionInputSchema;
 
 const updateQuestionSchema = questionInputSchema.extend({
   questionId: z.string().trim().min(1),
+  expectedUpdatedAt: z.iso.datetime(),
 });
 
 const questionIdSchema = z.object({
   questionId: z.string().trim().min(1),
+  expectedUpdatedAt: z.iso.datetime(),
 });
-
-function normalizeOptionalText(value: string | undefined) {
-  const trimmedValue = value?.trim() ?? "";
-
-  if (!trimmedValue) return null;
-
-  return trimmedValue;
-}
 
 export const listQuestionsAdmin = createServerFn({ method: "GET" }).middleware([adminMiddleware]).handler(async () => {
   const rows = await db
@@ -98,111 +86,19 @@ export const listQuestionsAdmin = createServerFn({ method: "GET" }).middleware([
 export const createQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(createQuestionSchema, input))
-  .handler(async ({ data }) => {
-    validateQuestionOptionE(data);
-    await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
-
-    await db.insert(questions).values({
-      categoryId: data.categoryId,
-      subCategoryId: data.subCategoryId,
-      topicId: data.topicId,
-      questionText: data.questionText,
-      optionA: data.optionA,
-      optionB: data.optionB,
-      optionC: data.optionC,
-      optionD: data.optionD,
-      optionE: normalizeOptionalText(data.optionE),
-      correctOption: data.correctOption,
-      explanation: data.explanation,
-      videoUrl: normalizeOptionalText(data.videoUrl),
-      pictureUrl: normalizeOptionalText(data.pictureUrl),
-      accessLevel: data.accessLevel,
-      status: "draft",
-    });
-
-    return { ok: true };
-  });
+  .handler(async ({ data }) => createQuestionContent(data));
 
 export const updateQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(updateQuestionSchema, input))
-  .handler(async ({ data }) => {
-    validateQuestionOptionE(data);
-    await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
-
-    const [existingQuestion] = await db
-      .select({ id: questions.id })
-      .from(questions)
-      .where(eq(questions.id, data.questionId))
-      .limit(1);
-
-    if (!existingQuestion) {
-      throw notFound("Soal tidak ditemukan.");
-    }
-
-    await db
-      .update(questions)
-      .set({
-        categoryId: data.categoryId,
-        subCategoryId: data.subCategoryId,
-        topicId: data.topicId,
-        questionText: data.questionText,
-        optionA: data.optionA,
-        optionB: data.optionB,
-        optionC: data.optionC,
-        optionD: data.optionD,
-        optionE: normalizeOptionalText(data.optionE),
-        correctOption: data.correctOption,
-        explanation: data.explanation,
-        videoUrl: normalizeOptionalText(data.videoUrl),
-        pictureUrl: normalizeOptionalText(data.pictureUrl),
-        accessLevel: data.accessLevel,
-        updatedAt: new Date(),
-      })
-      .where(eq(questions.id, data.questionId));
-
-    return { ok: true };
-  });
+  .handler(async ({ data }) => updateQuestionContent(data));
 
 export const publishQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(questionIdSchema, input))
-  .handler(async ({ data }) => {
-    await db
-      .update(questions)
-      .set({
-        status: "published",
-        updatedAt: new Date(),
-      })
-      .where(eq(questions.id, data.questionId));
-
-    return { ok: true };
-  });
+  .handler(async ({ data }) => setQuestionPublication({ ...data, status: "published" }));
 
 export const unpublishQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(questionIdSchema, input))
-  .handler(async ({ data }) => {
-    const [question] = await db.select({ id: questions.id }).from(questions)
-      .where(eq(questions.id, data.questionId)).limit(1);
-    if (!question) throw notFound("Soal tidak ditemukan.");
-    const [blockedTryout] = await db.select({ title: tryouts.title }).from(tryoutQuestions)
-      .innerJoin(tryouts, eq(tryouts.id, tryoutQuestions.tryoutId))
-      .where(and(eq(tryoutQuestions.questionId, data.questionId), eq(tryouts.status, "published"),
-        sql`not exists (
-          select 1 from ${tryoutQuestions} other_assignment
-          join ${questions} other_question on other_question.id = other_assignment.question_id
-          where other_assignment.tryout_id = ${tryouts.id}
-            and other_question.status = 'published' and other_question.id <> ${data.questionId}
-        )`)).limit(1);
-    if (blockedTryout) throw conflict(`Soal ini adalah satu-satunya soal tayang di "${blockedTryout.title}". Tayangkan soal lain atau sembunyikan try-out lebih dulu.`);
-    await db
-      .update(questions)
-      .set({
-        status: "unpublished",
-        updatedAt: new Date(),
-      })
-      .where(eq(questions.id, data.questionId));
-
-    return { ok: true };
-  });
+  .handler(async ({ data }) => setQuestionPublication({ ...data, status: "unpublished" }));

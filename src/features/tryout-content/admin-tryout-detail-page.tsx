@@ -26,6 +26,7 @@ type ContentStatus = "draft" | "published" | "unpublished";
 type CorrectOption = "A" | "B" | "C" | "D" | "E";
 
 type TryoutForm = {
+  expectedUpdatedAt: string;
   title: string;
   description: string;
   icon: string;
@@ -35,6 +36,7 @@ type TryoutForm = {
 };
 
 type QuestionForm = {
+  expectedUpdatedAt: string;
   questionId: string;
   sortOrder: string;
   categoryId: string;
@@ -68,6 +70,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   const tryoutId = workbook.tryout.id;
 
   const [form, setForm] = useState<TryoutForm>(() => ({
+    expectedUpdatedAt: workbook.tryout.updatedAt,
     title: workbook.tryout.title,
     description: workbook.tryout.description,
     icon: workbook.tryout.icon ?? "",
@@ -78,14 +81,15 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   const [busyAction, setBusyAction] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [previewRevision, setPreviewRevision] = useState("");
   const [workbookPreview, setWorkbookPreview] = useState<WorkbookPreview | null>(null);
   const [questionForm, setQuestionForm] = useState<QuestionForm | null>(null);
   useEffect(() => {
-    setForm({ title: workbook.tryout.title, description: workbook.tryout.description,
+    setForm({ expectedUpdatedAt: workbook.tryout.updatedAt, title: workbook.tryout.title, description: workbook.tryout.description,
       icon: workbook.tryout.icon ?? "", categoryId: workbook.tryout.categoryId,
       durationMinutes: String(workbook.tryout.durationMinutes), accessLevel: workbook.tryout.accessLevel });
   }, [workbook.tryout.id, workbook.tryout.title, workbook.tryout.description, workbook.tryout.icon,
-    workbook.tryout.categoryId, workbook.tryout.durationMinutes, workbook.tryout.accessLevel]);
+    workbook.tryout.categoryId, workbook.tryout.durationMinutes, workbook.tryout.accessLevel, workbook.tryout.updatedAt]);
   useEffect(() => {
     if (questionForm) document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
   }, [questionForm?.questionId]);
@@ -126,6 +130,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     try {
       await updateTryoutAdmin({
         data: {
+          expectedUpdatedAt: form.expectedUpdatedAt,
           title: form.title,
           description: form.description,
           icon: form.icon,
@@ -137,8 +142,8 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
       });
       await refresh();
       setSuccessMessage("Perubahan tersimpan.");
-    } catch {
-      setErrorMessage("Perubahan belum disimpan. Periksa isian lalu coba lagi.");
+    } catch (error) {
+      setErrorMessage(getSafeErrorMessage(error, "Perubahan belum disimpan. Periksa isian lalu coba lagi."));
     } finally {
       setBusyAction("");
     }
@@ -156,9 +161,9 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
     try {
       if (nextStatus === "published") {
-        await publishTryoutAdmin({ data: { tryoutId } });
+        await publishTryoutAdmin({ data: { tryoutId, expectedUpdatedAt: workbook.tryout.updatedAt } });
       } else {
-        await unpublishTryoutAdmin({ data: { tryoutId } });
+        await unpublishTryoutAdmin({ data: { tryoutId, expectedUpdatedAt: workbook.tryout.updatedAt } });
       }
       await refresh();
       setSuccessMessage("Perubahan tersimpan.");
@@ -173,6 +178,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     const category = categories.find((item) => item.id === form.categoryId) ?? categories[0];
     const subCategory = category?.subCategories[0];
     setQuestionForm({
+      expectedUpdatedAt: workbook.tryout.updatedAt,
       questionId: "", sortOrder: String(Math.max(0, ...workbook.questions.map((item) => item.sortOrder)) + 1),
       categoryId: category?.id ?? "", subCategoryId: subCategory?.id ?? "", topicId: subCategory?.topics?.[0]?.id ?? "",
       questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", optionE: "", correctOption: "A",
@@ -184,6 +190,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
   const editQuestion = (question: TryoutQuestion) => {
     setQuestionForm({
+      expectedUpdatedAt: workbook.tryout.updatedAt,
       questionId: question.questionId,
       sortOrder: String(question.sortOrder),
       categoryId: question.categoryId,
@@ -251,6 +258,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         data: {
           tryoutId,
           questionId: questionForm.questionId,
+          expectedUpdatedAt: questionForm.expectedUpdatedAt,
           sortOrder,
           categoryId: questionForm.categoryId,
           subCategoryId: questionForm.subCategoryId,
@@ -294,6 +302,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         data: {
           tryoutId,
           questionId: question.questionId,
+          expectedUpdatedAt: workbook.tryout.updatedAt,
         },
       });
 
@@ -333,6 +342,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     if (!file) return;
 
     setWorkbookPreview(null);
+    setPreviewRevision(workbook.tryout.updatedAt);
     setSuccessMessage("");
     setBusyAction("preview-import");
     setErrorMessage("");
@@ -364,6 +374,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
       await importTryoutWorkbookAdmin({
         data: {
           tryoutId,
+          expectedUpdatedAt: previewRevision,
           tryout: workbookPreview.data.tryout,
           questions: workbookPreview.data.questions,
         },

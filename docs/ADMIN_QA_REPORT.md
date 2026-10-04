@@ -1,6 +1,6 @@
 # Admin try-out QA, 4 October 2026
 
-The content flows work in the isolated local production build. This is a local release candidate, with staging integration and release checks still required.
+The initial content flows passed in the isolated local production build. This branch is a draft handoff. The follow-up concurrency changes need the remaining checks below before release.
 
 ## Scope and environment
 
@@ -60,3 +60,32 @@ Reproduction commands are in e2e/README.md. The local scripts leave test fixture
 7. README records a payment-provider launch prerequisite involving production credentials. That historical note needs live verification by the release owner. Payments and real purchases were outside this content QA.
 
 No branch was pushed, no PR was published, and no deployment or real account change was performed.
+
+## Draft PR handoff: concurrency follow-up
+
+The local execution service disconnected during implementation and recovered when the draft PR was requested. The initial validated changes remain in commit `4d32862`; a separate follow-up commit contains the concurrency work.
+
+A stale metadata edit was accepted before the fix and replaced Admin A's title with Admin B's older form. A local-only temporary delete trigger widened the removal timing window: both removals succeeded and left zero published questions. The trigger was removed after reproduction. Neither reproduction touched a live database.
+
+The follow-up adds a shared transaction-scoped PostgreSQL advisory lock to admin content operations, checks the page's `updatedAt` value before writes, advances timestamps by at least one millisecond, and invalidates try-out revisions when a shared bank question changes. It keeps publication checks and writes within the same transaction and captures revision values when opening question editors and Excel previews. Admins receive an Indonesian message to copy any unsaved content, reload, and review the latest changes.
+
+Current follow-up checks:
+
+- TypeScript, production build, and 98 unit tests passed after the API call sites were updated.
+- Existing four database checks passed again.
+- New regression script passed: stale metadata was rejected and only one of two parallel removals succeeded, leaving one published question.
+- The earlier 13 browser checks passed on the initial commit. They have not been rerun after the concurrency changes.
+- Static Excel style, instructions, dropdowns, and changed-sheet rendering were validated during the initial work; no workbook changes were made in the concurrency follow-up.
+
+Continue locally with these specific tasks:
+
+1. Rerun the browser suite on the follow-up production build, including two separate browser contexts editing the same try-out or bank question. Confirm that stale errors are visible and the unsaved input remains available to copy.
+2. Add concurrent import-versus-import, import-versus-question-edit, bank hide-versus-try-out publish, and two-bank-question-hide checks. Verify rollback, final published counts, and key/pembahasan/image persistence.
+3. Decide how to detect an old offline Excel file after reopening a fresh page. Current revision checks protect changes since opening the page/preview, but exports do not embed a source revision. An older workbook may intentionally replace newer content after confirmation. Add source revision metadata if that replacement should be rejected.
+4. Review serialization duration for 500-row imports and concurrent administrators. All admin content writes share one lock to avoid shared-question deadlocks; load capacity is not established.
+5. Review purchase-versus-hide behavior separately. Payment/admin entitlement writers do not share the content lock. Lifetime-owner checks are transaction-contained, but an in-flight purchase or grant can occur after that check. This cross-workflow policy is not solved by this draft.
+6. Reconcile the branch with the latest remote `dev` before merging. The local base was `105629d`; remote `dev` advanced during QA.
+
+For staging approval, provide the exact staging URL/environment, two designated test admin accounts, disposable content IDs, and the storage bucket/prefix where test uploads and cleanup are allowed. Do not use customer accounts or production data. No external staging write was performed.
+
+Before deployment, the release owner should record the application commit and database migration version, create a provider snapshot plus a protected logical database backup, and restore that backup into a separate disposable database to confirm it opens. Retain the previous application release and compatible schema. If rollback is required, decide whether an application-only rollback is sufficient; a database restore requires explicit approval and a plan for writes received after the backup. No production backup, restore, migration, or deployment was executed here.
