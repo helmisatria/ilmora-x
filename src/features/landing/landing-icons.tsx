@@ -252,9 +252,9 @@ export function FlaskIcon() {
   );
 }
 
-export function BookOpenIcon() {
+export function BookOpenIcon({ size = 28 }: { size?: number } = {}) {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true" {...fixedSvgSize(28)}>
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true" {...fixedSvgSize(size)}>
       <path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h4.2v15H7A2.5 2.5 0 0 0 4.5 21V6.5ZM19.5 6.5A2.5 2.5 0 0 0 17 4h-4.2v15H17a2.5 2.5 0 0 1 2.5 2V6.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
     </svg>
   );
@@ -344,18 +344,18 @@ export function NoteIcon() {
   );
 }
 
-export function ClockIcon() {
+export function ClockIcon({ size = 16 }: { size?: number } = {}) {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true" {...fixedSvgSize(16)}>
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true" {...fixedSvgSize(size)}>
       <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
       <path d="M12 8v4.5l3 1.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-export function TargetIcon() {
+export function TargetIcon({ size = 16 }: { size?: number } = {}) {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true" {...fixedSvgSize(16)}>
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true" {...fixedSvgSize(size)}>
       <circle cx="12" cy="12" r="7.5" stroke="currentColor" strokeWidth="1.8" />
       <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
       <path d="M12 4v2.5M20 12h-2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

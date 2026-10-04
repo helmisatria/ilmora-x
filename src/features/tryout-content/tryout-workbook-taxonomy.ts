@@ -25,18 +25,18 @@ export async function validateTryoutWorkbookInput(data: TryoutWorkbookInput) {
   const uniqueSortOrders = new Set(sortOrders);
 
   if (uniqueQuestionIds.size !== questionIds.length) {
-    throw conflict("A Question appears more than once in this workbook.");
+    throw conflict("Ada ID soal yang sama lebih dari sekali. Periksa kolom question_id.");
   }
 
   if (uniqueSortOrders.size !== sortOrders.length) {
-    throw conflict("Two Questions cannot use the same sort order.");
+    throw conflict("Nomor urut soal tidak boleh sama. Periksa kolom sort_order.");
   }
 
   if (data.tryout.status === "published") {
     const publishedQuestions = data.questions.filter((question) => question.status === "published");
 
     if (publishedQuestions.length === 0) {
-      throw conflict("A published Try-out needs at least one published Question.");
+      throw conflict("Try-out published harus memiliki minimal satu soal published.");
     }
   }
 
@@ -86,7 +86,7 @@ export async function ensureCategoryExists(categoryId: string) {
 
   if (category) return;
 
-  throw notFound("Category was not found.");
+  throw notFound("Kategori tidak ditemukan. Muat ulang halaman dan pilih kategori yang tersedia.");
 }
 
 export async function ensureSubCategoryBelongsToCategory(categoryId: string, subCategoryId: string) {
@@ -98,7 +98,7 @@ export async function ensureSubCategoryBelongsToCategory(categoryId: string, sub
 
   if (subCategory) return;
 
-  throw notFound("Sub-category was not found for this category.");
+  throw notFound("Subkategori tidak sesuai dengan kategori yang dipilih.");
 }
 
 export async function ensureTopicBelongsToSubCategory(subCategoryId: string, topicId: string) {
@@ -110,7 +110,7 @@ export async function ensureTopicBelongsToSubCategory(subCategoryId: string, top
 
   if (topic) return;
 
-  throw notFound("Topic was not found for this sub-category.");
+  throw notFound("Topik tidak sesuai dengan subkategori yang dipilih.");
 }
 
 export async function validateQuestionTaxonomy(categoryId: string, subCategoryId: string, topicId: string) {
@@ -123,28 +123,28 @@ export function validateQuestionOptionE(data: Pick<TryoutWorkbookQuestion, "corr
   if (data.correctOption !== "E") return;
   if (data.optionE?.trim()) return;
 
-  throw conflict("Option E is required when the correct option is E.");
+  throw conflict("Isi pilihan E karena kunci jawaban adalah E.");
 }
 
 function validateCategoryReference(data: Pick<TryoutWorkbookTryout, "categoryId" | "categoryName">) {
   if (data.categoryId?.trim()) return;
   if (data.categoryName?.trim()) return;
 
-  throw conflict("category_id or category_name is required.");
+  throw conflict("Isi category_name dengan nama kategori. ID boleh kosong.");
 }
 
 function validateSubCategoryReference(data: Pick<TryoutWorkbookQuestion, "subCategoryId" | "subCategoryName">) {
   if (data.subCategoryId?.trim()) return;
   if (data.subCategoryName?.trim()) return;
 
-  throw conflict("sub_category_id or sub_category_name is required.");
+  throw conflict("Isi sub_category_name dengan nama subkategori. ID boleh kosong.");
 }
 
 function validateTopicReference(data: Pick<TryoutWorkbookQuestion, "topicId" | "topicName">) {
   if (data.topicId?.trim()) return;
   if (data.topicName?.trim()) return;
 
-  throw conflict("topic_id or topic_name is required.");
+  throw conflict("Isi topic_name dengan nama topik. ID boleh kosong.");
 }
 
 async function resolveCategoryReference(
@@ -161,7 +161,7 @@ async function resolveCategoryReference(
   const categoryName = data.categoryName?.trim();
 
   if (!categoryName) {
-    throw conflict("category_id or category_name is required.");
+    throw conflict("Isi category_name dengan nama kategori. ID boleh kosong.");
   }
 
   const [existingCategory] = await tx
@@ -205,7 +205,7 @@ async function resolveSubCategoryReference(
   const subCategoryName = data.subCategoryName?.trim();
 
   if (!subCategoryName) {
-    throw conflict("sub_category_id or sub_category_name is required.");
+    throw conflict("Isi sub_category_name dengan nama subkategori. ID boleh kosong.");
   }
 
   const [existingSubCategory] = await tx
@@ -254,7 +254,7 @@ async function resolveTopicReference(
   const topicName = data.topicName?.trim();
 
   if (!topicName) {
-    throw conflict("topic_id or topic_name is required.");
+    throw conflict("Isi topic_name dengan nama topik. ID boleh kosong.");
   }
 
   const [existingTopic] = await tx
@@ -298,7 +298,7 @@ async function ensureCategoryExistsWithExecutor(tx: TaxonomyExecutor, categoryId
 
   if (category) return;
 
-  throw notFound("Category was not found.");
+  throw notFound("Kategori tidak ditemukan. Muat ulang halaman dan pilih kategori yang tersedia.");
 }
 
 async function ensureSubCategoryBelongsToCategoryWithExecutor(
@@ -314,7 +314,7 @@ async function ensureSubCategoryBelongsToCategoryWithExecutor(
 
   if (subCategory) return;
 
-  throw notFound("Sub-category was not found for this category.");
+  throw notFound("Subkategori tidak sesuai dengan kategori yang dipilih.");
 }
 
 async function ensureTopicBelongsToSubCategoryWithExecutor(
@@ -330,7 +330,7 @@ async function ensureTopicBelongsToSubCategoryWithExecutor(
 
   if (topic) return;
 
-  throw notFound("Topic was not found for this sub-category.");
+  throw notFound("Topik tidak sesuai dengan subkategori yang dipilih.");
 }
 
 async function makeUniqueCategorySlug(tx: TaxonomyExecutor, name: string) {

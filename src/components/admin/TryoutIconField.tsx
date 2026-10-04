@@ -24,17 +24,17 @@ export function TryoutIconField({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      onError("Try-out icon must be an image file.");
+      onError("Gunakan file gambar untuk ikon try-out.");
       return;
     }
 
     if (file.type === "image/svg+xml") {
-      onError("Use PNG, JPG, or WebP for uploaded Try-out icons.");
+      onError("Gunakan gambar PNG, JPG, atau WebP.");
       return;
     }
 
     if (file.size > maxIconUploadBytes) {
-      onError("Try-out icon upload must be 160 KB or smaller.");
+      onError("Ukuran ikon maksimal 160 KB. Pilih gambar yang lebih kecil.");
       return;
     }
 
@@ -42,7 +42,7 @@ export function TryoutIconField({
 
     reader.onload = () => {
       if (typeof reader.result !== "string") {
-        onError("Try-out icon could not be read.");
+        onError("Gambar ikon tidak dapat dibaca. Pilih gambar lain.");
         return;
       }
 
@@ -50,7 +50,7 @@ export function TryoutIconField({
     };
 
     reader.onerror = () => {
-      onError("Try-out icon could not be read.");
+      onError("Gambar ikon tidak dapat dibaca. Pilih gambar lain.");
     };
 
     reader.readAsDataURL(file);
@@ -83,7 +83,7 @@ export function TryoutIconField({
               onClick={() => onChange(option.value)}
               onMouseEnter={() => setHoveredIcon(option.value)}
               onMouseLeave={() => setHoveredIcon("")}
-              aria-label={`Use ${option.label} icon`}
+              aria-label={`Pilih ikon ${option.label}`}
             >
               <TryoutIcon icon={option.value} className="h-5 w-5" />
               <span
@@ -100,7 +100,7 @@ export function TryoutIconField({
 
       <div className="flex flex-wrap gap-3">
         <label className="admin-button-secondary cursor-pointer">
-          Upload icon
+          Unggah ikon
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"
@@ -113,7 +113,7 @@ export function TryoutIconField({
           className="admin-button-ghost"
           onClick={() => onChange("")}
         >
-          Use default
+          Gunakan ikon bawaan
         </button>
       </div>
     </div>

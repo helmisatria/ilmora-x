@@ -40,22 +40,35 @@ test("Admin can search and filter Students, then open their Evaluation", async (
   await expect(page.getByRole("heading", { name: studentName, exact: true })).toBeVisible();
 });
 
-test("Insights shows the proposed activity measures", async ({ page }) => {
+test("Insights separates recent activity from lifetime learning results", async ({ page }) => {
   await page.goto("/admin/insights");
   await expect(page.getByRole("heading", { name: "Insights" })).toBeVisible();
 
   for (const label of [
-    "New Students · 30 days",
-    "Active Students · 30 days",
-    "Premium Students · current",
-    "Free Students · current",
-    "Completed Attempts · 30 days",
-    "Answered Questions · 30 days",
+    "New students",
+    "Active students",
+    "Premium students",
+    "Free students",
+    "Completed attempts",
+    "Answered questions",
   ]) {
     await expect(page.getByText(label, { exact: true })).toBeVisible();
   }
-  await expect(page.getByRole("heading", { name: "Category Performance · 30 days" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Recent Activity · 30 days" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Category performance" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recent activity" })).toBeVisible();
+  await expect(page.getByText("All completed attempts · lifetime", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Based on [\d.]+ completed attempts?/)).toBeVisible();
+  await page.getByRole("link", { name: "Review reports" }).click();
+  await expect(page).toHaveURL(/\/admin\/reports$/);
+});
+
+test("Insights remains readable on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin/insights");
+  await expect(page.getByRole("heading", { name: "Learning activity" })).toBeVisible();
+  await page.getByRole("heading", { name: "Content library" }).scrollIntoViewIfNeeded();
+  await expect(page.getByRole("heading", { name: "Content library" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test("Monitoring reports a finalized previous week from its snapshot", async ({ page }) => {
@@ -90,7 +103,10 @@ test("profile join date matches the Admin account record and the dev switch foll
   const email = (await emailRow.innerText()).replace(/^Email\s*/i, "").trim();
   const profileJoined = (await joinedRow.innerText()).replace(/^Bergabung\s*/i, "").trim();
   const isLocal = ["localhost", "127.0.0.1"].includes(new URL(process.env.E2E_BASE_URL ?? "https://staging.ilmorax.com").hostname);
-  await expect(page.getByRole("checkbox", { name: "CONFIG TOGGLE Premium user" })).toHaveCount(isLocal ? 1 : 0);
+  const expectDevControls = process.env.E2E_EXPECT_DEV_CONTROLS === undefined
+    ? isLocal
+    : process.env.E2E_EXPECT_DEV_CONTROLS === "1";
+  await expect(page.getByRole("checkbox", { name: "CONFIG TOGGLE Premium user" })).toHaveCount(expectDevControls ? 1 : 0);
 
   await page.goto("/admin/users");
   await page.waitForLoadState("networkidle");

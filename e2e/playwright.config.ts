@@ -5,6 +5,9 @@ import { defineConfig, devices } from "@playwright/test";
 const authDir = resolve("e2e/.auth");
 const requiredStates = ["admin.json", "free-student.json"];
 const baseURL = process.env.E2E_BASE_URL ?? "https://staging.ilmorax.com";
+if (["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
+  requiredStates.push("admin-b.json");
+}
 
 if (["ilmorax.com", "www.ilmorax.com"].includes(new URL(baseURL).hostname)) {
   throw new Error("This regression suite changes overdue Checkout state. Run it on staging or a local environment.");

@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { closeDb, db } from "../src/lib/db/client";
 import {
   attemptAnswers,
+  adminMembers,
   attemptQuestionSnapshots,
   attempts,
   categories,
@@ -58,6 +59,9 @@ async function main() {
   const authDir = resolve("e2e/.auth");
   await mkdir(authDir, { recursive: true });
   const adminId = await signUp(adminEmail, "E2E Admin", resolve(authDir, "admin.json"));
+  const secondAdminEmail = "e2e-admin-b@example.test";
+  await signUp(secondAdminEmail, "E2E Admin B", resolve(authDir, "admin-b.json"));
+  await db.insert(adminMembers).values({ email: secondAdminEmail, role: "admin" });
   const studentId = await signUp(studentEmail, "E2E Student", resolve(authDir, "free-student.json"));
   await db.insert(studentProfiles).values({
     userId: studentId,

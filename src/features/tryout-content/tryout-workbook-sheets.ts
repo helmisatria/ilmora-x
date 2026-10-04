@@ -5,7 +5,7 @@ import type {
 } from "./tryout-content-types";
 
 type TryoutWorkbookSheetData = {
-  tryout: TryoutWorkbookTryout;
+  tryout: TryoutWorkbookTryout & { id: string; updatedAt: string };
   questions: Array<TryoutWorkbookQuestion & { questionId?: string }>;
 };
 
@@ -37,6 +37,7 @@ export const questionSheetHeaders = [
   "correct_option",
   "explanation",
   "video_url",
+  "picture_url",
   "access_level",
   "status",
 ] as const;
@@ -51,8 +52,8 @@ const guidelineSheetHeaders = [
 
 function makeSampleTryoutRow() {
   return {
-    title: "UKAI Try-out Sample",
-    description: "Sample Try-out description. Replace this with the real Student-facing description.",
+    title: "Contoh try-out UKAI",
+    description: "Latihan soal UKAI. Ganti deskripsi ini dengan penjelasan untuk peserta.",
     category_id: "",
     category_name: "Farmakologi",
     duration_minutes: 30,
@@ -129,11 +130,22 @@ export function makeTryoutWorkbook(
   data: TryoutWorkbookSheetData,
   categories: CategoryOption[],
 ) {
-  return makeWorkbookFromRows(XLSX, {
-    tryoutRows: [toTryoutSheetRow(data.tryout)],
-    questionRows: data.questions.map(toQuestionSheetRow),
+  const workbook = makeWorkbookFromRows(XLSX, {
+    tryoutRows: [toTryoutSheetRow({ ...data.tryout, categoryName: categories.find((item) => item.id === data.tryout.categoryId)?.name ?? data.tryout.categoryName })],
+    questionRows: data.questions.map((question) => {
+      const category = categories.find((item) => item.id === question.categoryId);
+      const subCategory = category?.subCategories?.find((item) => item.id === question.subCategoryId);
+      return toQuestionSheetRow({ ...question, categoryName: category?.name ?? question.categoryName, subCategoryName: subCategory?.name ?? question.subCategoryName,
+        topicName: subCategory?.topics?.find((item) => item.id === question.topicId)?.name ?? question.topicName });
+    }),
     categories,
   });
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{
+    version: 1, tryoutId: data.tryout.id, updatedAt: data.tryout.updatedAt,
+  }]), "_ilmorax");
+  // Keep the export's source revision away from the editable content sheets.
+  workbook.Workbook = { Sheets: workbook.SheetNames.map((name) => ({ name, Hidden: name === "_ilmorax" ? 1 : 0 })) };
+  return workbook;
 }
 
 export function makeSampleWorkbookFileName(date: Date) {
@@ -173,13 +185,19 @@ export function saveWorkbook(XLSX: typeof import("xlsx"), workbook: import("xlsx
   const blob = new Blob([workbookBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
+  saveWorkbookBlob(blob, fileName);
+}
+
+export function saveWorkbookBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
   link.href = url;
   link.download = fileName;
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function toTryoutSheetRow(tryout: TryoutWorkbookTryout) {
@@ -213,6 +231,7 @@ function toQuestionSheetRow(question: TryoutWorkbookQuestion & { questionId?: st
     correct_option: question.correctOption,
     explanation: question.explanation,
     video_url: question.videoUrl ?? "",
+    picture_url: question.pictureUrl ?? "",
     access_level: question.accessLevel,
     status: question.status,
   };
@@ -239,6 +258,19 @@ function makeWorkbookFromRows(
   },
 ) {
   const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, makeSheet(XLSX, ["langkah", "petunjuk"], [
+    { langkah: "1. Isi try-out", petunjuk: "Buka lembar tryout. Ganti baris 2 dengan judul, deskripsi, kategori, dan durasi. Isi hanya satu baris." },
+    { langkah: "2. Isi soal", petunjuk: "Buka lembar questions. Ganti seluruh soal contoh. Satu baris untuk satu soal. Nomor urut tidak boleh sama. Maksimal 500 soal." },
+    { langkah: "3. Isi nama", petunjuk: "Untuk soal baru, kosongkan kolom ID dan isi category_name, sub_category_name, serta topic_name. Nama baru akan ditambahkan saat Anda menyimpan Excel." },
+    { langkah: "4. Isi jawaban", petunjuk: "Isi pilihan A sampai D. Pilihan E boleh kosong. Isi correct_option dengan huruf jawaban benar, lalu isi explanation dengan pembahasan." },
+    { langkah: "5. Atur akses", petunjuk: "Isi access_level dengan free untuk gratis atau premium untuk berbayar. Pada soal, akses ini mengatur pembahasan dan video." },
+    { langkah: "6. Simpan draf", petunjuk: "Isi status dengan draft saat menyiapkan isi. published berarti tayang. unpublished berarti disembunyikan. Peserta hanya mengerjakan soal published." },
+    { langkah: "7. Periksa unggahan", petunjuk: "Simpan sebagai .xlsx, unggah ke admin, lalu periksa pratinjau. Jika ada kesalahan, perbaiki baris yang disebutkan dan unggah ulang. Belum ada perubahan sebelum Anda menekan Simpan." },
+    { langkah: "Mengubah try-out", petunjuk: "Unduh Excel terbaru dari try-out yang ingin diubah. Pertahankan question_id untuk soal lama. Simpan isi Excel mengganti seluruh daftar soal try-out. Soal yang barisnya dihapus akan keluar dari try-out." },
+    { langkah: "Gambar dan video", petunjuk: "Tautan video_url dan picture_url boleh kosong. Gunakan tautan lengkap https://. Pertahankan tautan gambar pada hasil unduhan agar gambar tetap ada." },
+    { langkah: "Sebelum tayang", petunjuk: "Periksa kunci jawaban, pembahasan, urutan, akses, dan jumlah soal published. Try-out published wajib punya minimal satu soal published." },
+    { langkah: "Nama kolom", petunjuk: "Jangan mengubah nama lembar tryout atau questions dan nama kolom pada baris 1. Lihat lembar guideline untuk arti setiap kolom." },
+  ]), "panduan");
 
   XLSX.utils.book_append_sheet(
     workbook,
@@ -261,53 +293,54 @@ function makeWorkbookFromRows(
 
 function makeTryoutGuidelineRows(categories: CategoryOption[]) {
   return [
-    makeGuidelineRow("tryout", "title", "Yes", "Any text", "Name shown to students and admins."),
-    makeGuidelineRow("tryout", "description", "Yes", "Any text", "Short student-facing description."),
-    makeGuidelineRow("tryout", "category_id", "Use category_id or category_name", getCategoryIdsText(categories), "Use an existing Category ID when available."),
-    makeGuidelineRow("tryout", "category_name", "Use category_id or category_name", getCategoryNamesText(categories), "Use an existing Category name or type a new one to create it during import."),
-    makeGuidelineRow("tryout", "duration_minutes", "Yes", "1-300", "Whole number of minutes."),
-    makeGuidelineRow("tryout", "access_level", "Yes", "free, premium", "Controls who can access this Try-out."),
-    makeGuidelineRow("tryout", "status", "Yes", "draft, published, unpublished", "Use draft while preparing content."),
+    makeGuidelineRow("tryout", "title", "Wajib", "Teks", "Judul try-out yang dibaca peserta dan admin. Maksimal 160 karakter."),
+    makeGuidelineRow("tryout", "description", "Wajib", "Teks", "Deskripsi singkat untuk peserta. Maksimal 500 karakter."),
+    makeGuidelineRow("tryout", "category_id", "Isi nama atau ID kategori", getCategoryIdsText(categories), "Untuk isian baru, boleh kosong. Isi category_name dengan nama kategori."),
+    makeGuidelineRow("tryout", "category_name", "Isi nama atau ID kategori", getCategoryNamesText(categories), "Isi nama kategori. Periksa ejaan. Nama baru akan ditambahkan saat menyimpan."),
+    makeGuidelineRow("tryout", "duration_minutes", "Wajib", "1-300", "Durasi dalam menit, angka bulat 1 sampai 300."),
+    makeGuidelineRow("tryout", "access_level", "Wajib", "free, premium", "free berarti gratis. premium berarti perlu akses berbayar."),
+    makeGuidelineRow("tryout", "status", "Wajib", "draft, published, unpublished", "draft untuk draf, published untuk tayang, unpublished untuk disembunyikan."),
   ];
 }
 
 function makeQuestionGuidelineRows(categories: CategoryOption[]) {
   return [
-    makeGuidelineRow("questions", "question_id", "No", "Existing Question ID", "Leave blank to create a new Question. Use the exported ID to update an existing Question."),
-    makeGuidelineRow("questions", "sort_order", "Yes", "1-1000", "Question order inside the Try-out. Must be unique."),
-    makeGuidelineRow("questions", "category_id", "Use category_id or category_name", getCategoryIdsText(categories), "Use an existing Category ID when available."),
-    makeGuidelineRow("questions", "category_name", "Use category_id or category_name", getCategoryNamesText(categories), "Use an existing Category name or type a new one to create it during import."),
-    makeGuidelineRow("questions", "sub_category_id", "Use sub_category_id or sub_category_name", getSubCategoryIdsText(categories), "Must belong to the selected category_id."),
-    makeGuidelineRow("questions", "sub_category_name", "Use sub_category_id or sub_category_name", getSubCategoryNamesText(categories), "Use an existing Sub-category name or type a new one to create it during import."),
-    makeGuidelineRow("questions", "topic_id", "Use topic_id or topic_name", getTopicIdsText(categories), "Must belong to the selected sub_category_id."),
-    makeGuidelineRow("questions", "topic_name", "Use topic_id or topic_name", getTopicNamesText(categories), "Use an existing Topic name under the selected Sub-category or type a new one to create it during import."),
-    makeGuidelineRow("questions", "question_text", "Yes", "Any text", "Question prompt shown to students."),
-    makeGuidelineRow("questions", "option_a", "Yes", "Any text", "Answer option A."),
-    makeGuidelineRow("questions", "option_b", "Yes", "Any text", "Answer option B."),
-    makeGuidelineRow("questions", "option_c", "Yes", "Any text", "Answer option C."),
-    makeGuidelineRow("questions", "option_d", "Yes", "Any text", "Answer option D."),
-    makeGuidelineRow("questions", "option_e", "Only when correct_option is E", "Any text or blank", "Leave blank when this question only has A-D options."),
-    makeGuidelineRow("questions", "correct_option", "Yes", "A, B, C, D, E", "Must match one filled option column."),
-    makeGuidelineRow("questions", "explanation", "Yes", "Any text", "Shown in the review or discussion flow."),
-    makeGuidelineRow("questions", "video_url", "No", "Valid URL or blank", "Optional supporting video URL."),
-    makeGuidelineRow("questions", "access_level", "Yes", "free, premium", "Controls who can access this Question."),
-    makeGuidelineRow("questions", "status", "Yes", "draft, published, unpublished", "Published Try-outs need published Questions."),
+    makeGuidelineRow("questions", "question_id", "Opsional", "ID dari hasil unduhan", "Kosongkan untuk soal baru. Pertahankan ID dari unduhan untuk mengubah soal lama."),
+    makeGuidelineRow("questions", "sort_order", "Wajib", "1-1000", "Nomor urut dalam try-out, angka bulat 1 sampai 1000. Setiap soal harus berbeda."),
+    makeGuidelineRow("questions", "category_id", "Isi nama atau ID kategori", getCategoryIdsText(categories), "Untuk isian baru, boleh kosong. Isi category_name dengan nama kategori."),
+    makeGuidelineRow("questions", "category_name", "Isi nama atau ID kategori", getCategoryNamesText(categories), "Isi nama kategori. Periksa ejaan. Nama baru akan ditambahkan saat menyimpan."),
+    makeGuidelineRow("questions", "sub_category_id", "Isi nama atau ID subkategori", getSubCategoryIdsText(categories), "Boleh kosong jika sub_category_name diisi. Subkategori harus sesuai dengan kategori."),
+    makeGuidelineRow("questions", "sub_category_name", "Isi nama atau ID subkategori", getSubCategoryNamesText(categories), "Isi nama subkategori di bawah kategori yang dipilih. Nama baru akan ditambahkan."),
+    makeGuidelineRow("questions", "topic_id", "Isi nama atau ID topik", getTopicIdsText(categories), "Boleh kosong jika topic_name diisi. Topik harus sesuai dengan subkategori."),
+    makeGuidelineRow("questions", "topic_name", "Isi nama atau ID topik", getTopicNamesText(categories), "Isi nama topik di bawah subkategori yang dipilih. Nama baru akan ditambahkan."),
+    makeGuidelineRow("questions", "question_text", "Wajib", "Teks", "Teks soal yang dibaca peserta."),
+    makeGuidelineRow("questions", "option_a", "Wajib", "Teks", "Pilihan jawaban A."),
+    makeGuidelineRow("questions", "option_b", "Wajib", "Teks", "Pilihan jawaban B."),
+    makeGuidelineRow("questions", "option_c", "Wajib", "Teks", "Pilihan jawaban C."),
+    makeGuidelineRow("questions", "option_d", "Wajib", "Teks", "Pilihan jawaban D."),
+    makeGuidelineRow("questions", "option_e", "Wajib jika kunci jawaban E", "Teks atau kosong", "Boleh kosong jika soal hanya punya pilihan A sampai D."),
+    makeGuidelineRow("questions", "correct_option", "Wajib", "A, B, C, D, E", "Huruf pilihan jawaban benar. Pilihan tersebut harus terisi."),
+    makeGuidelineRow("questions", "explanation", "Wajib", "Teks", "Pembahasan yang dibaca peserta setelah mengerjakan soal."),
+    makeGuidelineRow("questions", "video_url", "Opsional", "Tautan https:// atau kosong", "Tautan video pembahasan, opsional."),
+    makeGuidelineRow("questions", "picture_url", "Opsional", "Tautan https:// atau kosong", "Tautan gambar soal. Pertahankan saat mengubah hasil unduhan agar gambar tetap ada."),
+    makeGuidelineRow("questions", "access_level", "Wajib", "free, premium", "free untuk pembahasan gratis, premium untuk pembahasan berbayar."),
+    makeGuidelineRow("questions", "status", "Wajib", "draft, published, unpublished", "Peserta hanya mengerjakan soal published. Try-out published wajib punya minimal satu soal published."),
   ];
 }
 
 function makeCategoryGuidelineRows(categories: CategoryOption[]) {
   if (categories.length === 0) {
     return [
-      makeGuidelineRow("reference", "category_id", "Reference", "No existing categories loaded", "Admins can use category_name to create a Category during import."),
+      makeGuidelineRow("reference", "category_id", "Referensi", "Belum ada kategori", "Isi category_name untuk menambahkan kategori saat menyimpan Excel."),
     ];
   }
 
   return categories.flatMap((category) => {
-    const categoryRow = makeGuidelineRow("reference", "category_id", "Reference", category.id, category.name);
+    const categoryRow = makeGuidelineRow("reference", "category_id", "Referensi", category.id, category.name);
     const subCategoryRows = (category.subCategories ?? []).flatMap((subCategory) => {
-      const subCategoryRow = makeGuidelineRow("reference", "sub_category_id", "Reference", subCategory.id, `${subCategory.name} under category_id ${category.id}`);
+      const subCategoryRow = makeGuidelineRow("reference", "sub_category_id", "Referensi", subCategory.id, `${subCategory.name} dalam kategori ${category.id}`);
       const topicRows = (subCategory.topics ?? []).map((topic) => (
-        makeGuidelineRow("reference", "topic_id", "Reference", topic.id, `${topic.name} under sub_category_id ${subCategory.id}`)
+        makeGuidelineRow("reference", "topic_id", "Referensi", topic.id, `${topic.name} dalam subkategori ${subCategory.id}`)
       ));
 
       return [subCategoryRow, ...topicRows];
@@ -334,15 +367,15 @@ function makeGuidelineRow(
 }
 
 function getCategoryIdsText(categories: CategoryOption[]) {
-  if (categories.length === 0) return "Use category_name";
+  if (categories.length === 0) return "Isi category_name";
 
   return categories.map((category) => category.id).join(", ");
 }
 
 function getCategoryNamesText(categories: CategoryOption[]) {
-  if (categories.length === 0) return "Any new Category name";
+  if (categories.length === 0) return "Nama kategori baru";
 
-  return `${categories.map((category) => category.name).join(", ")} or a new Category name`;
+  return `${categories.map((category) => category.name).join(", ")} atau nama kategori baru`;
 }
 
 function getSubCategoryIdsText(categories: CategoryOption[]) {
@@ -350,7 +383,7 @@ function getSubCategoryIdsText(categories: CategoryOption[]) {
     (category.subCategories ?? []).map((subCategory) => subCategory.id)
   ));
 
-  if (subCategoryIds.length === 0) return "Use sub_category_name";
+  if (subCategoryIds.length === 0) return "Isi sub_category_name";
 
   return subCategoryIds.join(", ");
 }
@@ -360,9 +393,9 @@ function getSubCategoryNamesText(categories: CategoryOption[]) {
     (category.subCategories ?? []).map((subCategory) => subCategory.name)
   ));
 
-  if (subCategoryNames.length === 0) return "Any new Sub-category name";
+  if (subCategoryNames.length === 0) return "Nama subkategori baru";
 
-  return `${subCategoryNames.join(", ")} or a new Sub-category name`;
+  return `${subCategoryNames.join(", ")} atau nama subkategori baru`;
 }
 
 function getTopicIdsText(categories: CategoryOption[]) {
@@ -372,7 +405,7 @@ function getTopicIdsText(categories: CategoryOption[]) {
     ))
   ));
 
-  if (topicIds.length === 0) return "Use topic_name";
+  if (topicIds.length === 0) return "Isi topic_name";
 
   return topicIds.join(", ");
 }
@@ -384,9 +417,9 @@ function getTopicNamesText(categories: CategoryOption[]) {
     ))
   ));
 
-  if (topicNames.length === 0) return "Any new Topic name";
+  if (topicNames.length === 0) return "Nama topik baru";
 
-  return `${topicNames.join(", ")} or a new Topic name`;
+  return `${topicNames.join(", ")} atau nama topik baru`;
 }
 
 function getColumnWidth(

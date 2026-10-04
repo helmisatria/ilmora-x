@@ -1,3 +1,5 @@
+import { withAdminContentTransaction } from "./admin-content-transaction";
+import { workbookSourceSchema } from "./tryout-workbook-source";
 import { createServerFn } from "@tanstack/react-start";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -14,6 +16,7 @@ import { adminMiddleware } from "../admin/admin-access";
 import { normalizeTryoutAccessLevel } from "../premium-access/premium-access";
 import {
   createTryoutContent,
+  addTryoutQuestionContent,
   createTryoutFromWorkbook,
   importTryoutWorkbook,
   publishTryoutContent,
@@ -37,11 +40,11 @@ const tryoutInputSchema = z.object({
 
 const updateTryoutSchema = tryoutInputSchema.extend({
   tryoutId: z.string().trim().min(1),
+  expectedUpdatedAt: z.iso.datetime(),
 });
 
-const tryoutIdSchema = z.object({
-  tryoutId: z.string().trim().min(1),
-});
+const tryoutIdSchema = z.object({ tryoutId: z.string().trim().min(1) });
+const tryoutRevisionSchema = tryoutIdSchema.extend({ expectedUpdatedAt: z.iso.datetime() });
 
 const questionOptionSchema = z.enum(["A", "B", "C", "D", "E"]);
 const questionAccessLevelSchema = z.enum(["free", "premium"]);
@@ -64,6 +67,7 @@ const workbookQuestionSchema = z.object({
   correctOption: questionOptionSchema,
   explanation: z.string().trim().min(1),
   videoUrl: z.string().trim().optional(),
+  pictureUrl: z.string().trim().optional(),
   accessLevel: questionAccessLevelSchema,
   status: contentStatusSchema,
 });
@@ -80,6 +84,8 @@ const workbookTryoutSchema = z.object({
 
 const importTryoutWorkbookSchema = z.object({
   tryoutId: z.string().trim().min(1),
+  expectedUpdatedAt: z.iso.datetime(),
+  source: workbookSourceSchema.optional(),
   tryout: workbookTryoutSchema,
   questions: z.array(workbookQuestionSchema).max(500),
 });
@@ -91,11 +97,13 @@ const createTryoutWorkbookSchema = z.object({
 
 const updateTryoutQuestionSchema = workbookQuestionSchema.extend({
   tryoutId: z.string().trim().min(1),
+  expectedUpdatedAt: z.iso.datetime(),
   questionId: z.string().trim().min(1),
 });
 
 const removeTryoutQuestionSchema = z.object({
   tryoutId: z.string().trim().min(1),
+  expectedUpdatedAt: z.iso.datetime(),
   questionId: z.string().trim().min(1),
 });
 
@@ -144,23 +152,23 @@ export const updateTryoutAdmin = createServerFn({ method: "POST" })
 
 export const publishTryoutAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .inputValidator((input) => parseInput(tryoutIdSchema, input))
+  .inputValidator((input) => parseInput(tryoutRevisionSchema, input))
   .handler(async ({ data }) => {
-    return publishTryoutContent(data.tryoutId);
+    return publishTryoutContent(data.tryoutId, data.expectedUpdatedAt);
   });
 
 export const unpublishTryoutAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .inputValidator((input) => parseInput(tryoutIdSchema, input))
+  .inputValidator((input) => parseInput(tryoutRevisionSchema, input))
   .handler(async ({ data }) => {
-    return unpublishTryoutContent(data.tryoutId);
+    return unpublishTryoutContent(data.tryoutId, data.expectedUpdatedAt);
   });
 
 export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(tryoutIdSchema, input))
-  .handler(async ({ data }) => {
-    const [tryout] = await db
+  .handler(async ({ data }) => withAdminContentTransaction(async (tx) => {
+    const [tryout] = await tx
       .select({
         id: tryouts.id,
         slug: tryouts.slug,
@@ -171,16 +179,17 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
         durationMinutes: tryouts.durationMinutes,
         accessLevel: tryouts.accessLevel,
         status: tryouts.status,
+        updatedAt: tryouts.updatedAt,
       })
       .from(tryouts)
       .where(eq(tryouts.id, data.tryoutId))
       .limit(1);
 
     if (!tryout) {
-      throw notFound("Try-out was not found.");
+      throw notFound("Try-out tidak ditemukan.");
     }
 
-    const rows = await db
+    const rows = await tx
       .select({
         questionId: questions.id,
         sortOrder: tryoutQuestions.sortOrder,
@@ -208,6 +217,7 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
     return {
       tryout: {
         ...tryout,
+        updatedAt: tryout.updatedAt.toISOString(),
         accessLevel: normalizeTryoutAccessLevel(tryout.accessLevel),
         status: tryout.status as "draft" | "published" | "unpublished",
       },
@@ -221,7 +231,7 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
         status: row.status as "draft" | "published" | "unpublished",
       })),
     };
-  });
+  }));
 
 export const importTryoutWorkbookAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
@@ -229,6 +239,14 @@ export const importTryoutWorkbookAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     return importTryoutWorkbook(data);
   });
+
+export const addTryoutQuestionAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(workbookQuestionSchema.omit({ questionId: true }).extend({
+    tryoutId: z.string().trim().min(1),
+  expectedUpdatedAt: z.iso.datetime(),
+  }), input))
+  .handler(async ({ data }) => addTryoutQuestionContent(data));
 
 export const updateTryoutQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
