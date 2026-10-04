@@ -43,8 +43,10 @@ import { Route as AdminPaymentsRouteImport } from './routes/admin/payments'
 import { Route as AdminMonitoringRouteImport } from './routes/admin/monitoring'
 import { Route as AdminMediaRouteImport } from './routes/admin/media'
 import { Route as AdminMateriRouteImport } from './routes/admin/materi'
+import { Route as AdminLeaderboardRouteImport } from './routes/admin/leaderboard'
 import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
+import { Route as AdminBadgesRouteImport } from './routes/admin/badges'
 import { Route as AdminAnnouncementsRouteImport } from './routes/admin/announcements'
 import { Route as ResultsAttemptIdReviewRouteImport } from './routes/results.$attemptId.review'
 import { Route as CheckoutCheckoutIdStatusRouteImport } from './routes/checkout.$checkoutId.status'
@@ -228,6 +230,11 @@ const AdminMateriRoute = AdminMateriRouteImport.update({
   path: '/materi',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLeaderboardRoute = AdminLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminInsightsRoute = AdminInsightsRouteImport.update({
   id: '/insights',
   path: '/insights',
@@ -236,6 +243,11 @@ const AdminInsightsRoute = AdminInsightsRouteImport.update({
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBadgesRoute = AdminBadgesRouteImport.update({
+  id: '/badges',
+  path: '/badges',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
@@ -315,8 +327,10 @@ export interface FileRoutesByFullPath {
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/badges': typeof AdminBadgesRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
+  '/admin/leaderboard': typeof AdminLeaderboardRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/media': typeof AdminMediaRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
@@ -364,8 +378,10 @@ export interface FileRoutesByTo {
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/badges': typeof AdminBadgesRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
+  '/admin/leaderboard': typeof AdminLeaderboardRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/media': typeof AdminMediaRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
@@ -415,8 +431,10 @@ export interface FileRoutesById {
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/badges': typeof AdminBadgesRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/insights': typeof AdminInsightsRoute
+  '/admin/leaderboard': typeof AdminLeaderboardRoute
   '/admin/materi': typeof AdminMateriRoute
   '/admin/media': typeof AdminMediaRoute
   '/admin/monitoring': typeof AdminMonitoringRoute
@@ -467,8 +485,10 @@ export interface FileRouteTypes {
     | '/tentang-kami'
     | '/tryout'
     | '/admin/announcements'
+    | '/admin/badges'
     | '/admin/categories'
     | '/admin/insights'
+    | '/admin/leaderboard'
     | '/admin/materi'
     | '/admin/media'
     | '/admin/monitoring'
@@ -516,8 +536,10 @@ export interface FileRouteTypes {
     | '/tentang-kami'
     | '/tryout'
     | '/admin/announcements'
+    | '/admin/badges'
     | '/admin/categories'
     | '/admin/insights'
+    | '/admin/leaderboard'
     | '/admin/materi'
     | '/admin/media'
     | '/admin/monitoring'
@@ -566,8 +588,10 @@ export interface FileRouteTypes {
     | '/tentang-kami'
     | '/tryout'
     | '/admin/announcements'
+    | '/admin/badges'
     | '/admin/categories'
     | '/admin/insights'
+    | '/admin/leaderboard'
     | '/admin/materi'
     | '/admin/media'
     | '/admin/monitoring'
@@ -872,6 +896,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMateriRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/leaderboard': {
+      id: '/admin/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/admin/leaderboard'
+      preLoaderRoute: typeof AdminLeaderboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/insights': {
       id: '/admin/insights'
       path: '/insights'
@@ -884,6 +915,13 @@ declare module '@tanstack/react-router' {
       path: '/categories'
       fullPath: '/admin/categories'
       preLoaderRoute: typeof AdminCategoriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/badges': {
+      id: '/admin/badges'
+      path: '/badges'
+      fullPath: '/admin/badges'
+      preLoaderRoute: typeof AdminBadgesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/announcements': {
@@ -999,8 +1037,10 @@ const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
+  AdminBadgesRoute: typeof AdminBadgesRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminInsightsRoute: typeof AdminInsightsRoute
+  AdminLeaderboardRoute: typeof AdminLeaderboardRoute
   AdminMateriRoute: typeof AdminMateriRoute
   AdminMediaRoute: typeof AdminMediaRoute
   AdminMonitoringRoute: typeof AdminMonitoringRoute
@@ -1015,8 +1055,10 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAnnouncementsRoute: AdminAnnouncementsRoute,
+  AdminBadgesRoute: AdminBadgesRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminInsightsRoute: AdminInsightsRoute,
+  AdminLeaderboardRoute: AdminLeaderboardRoute,
   AdminMateriRoute: AdminMateriRoute,
   AdminMediaRoute: AdminMediaRoute,
   AdminMonitoringRoute: AdminMonitoringRoute,

@@ -1,4 +1,4 @@
-import { badges } from "./badge-catalog";
+import { badges, type Badge } from "./badge-catalog";
 import { getLevelForXp } from "./level-catalog";
 
 // 100% Club, Speed Runner and Fail Legend give large XP rewards, so they only count
@@ -48,14 +48,16 @@ export function isSpeedRunnerAttempt(attempt: DailyBadgeAttempt) {
   return usedMs <= allowedMs * SPEED_RUNNER_MAX_TIME_SHARE;
 }
 
-export function getNextEligibleDailyBadge({
+export function getNextEligibleDailyBadge<TBadge extends Badge = Badge>({
   awardedBadgeIds,
   submittedAttempts,
   totalXp,
+  badgeList = badges as TBadge[],
 }: {
   awardedBadgeIds: Set<number>;
   submittedAttempts: DailyBadgeAttempt[];
   totalXp: number;
+  badgeList?: TBadge[];
 }) {
   const level = getLevelForXp(totalXp).level;
   const streak = calculateCurrentStreak(submittedAttempts.map((attempt) => attempt.submittedAt));
@@ -64,7 +66,7 @@ export function getNextEligibleDailyBadge({
   const hasSpeedRunnerAttempt = submittedAttempts.some(isSpeedRunnerAttempt);
   const hasPerfectScoreAttempt = submittedAttempts.some(isPerfectScoreAttempt);
 
-  return badges.find((badge) => {
+  return badgeList.find((badge) => {
     if (awardedBadgeIds.has(badge.id)) return false;
     if (badge.task.toLowerCase().includes("leaderboard")) return false;
 

@@ -5,6 +5,7 @@ import { db } from "../../lib/db/client";
 import { studentBadges } from "../../lib/db/schema";
 import { parseInput } from "../../lib/http/validation";
 import { getStudentViewer } from "../student/student-viewer.server";
+import { listEffectiveBadges } from "./engagement-surface";
 
 const MAX_UNSEEN_BADGES = 20;
 
@@ -35,6 +36,7 @@ export const listUnseenStudentBadges = createServerFn({ method: "GET" }).handler
     ))
     .orderBy(asc(studentBadges.awardedAt))
     .limit(MAX_UNSEEN_BADGES);
+  const badgeByCode = new Map((await listEffectiveBadges()).map((badge) => [badge.code, badge]));
 
   return rows.map((row) => ({
     id: row.id,
@@ -43,6 +45,7 @@ export const listUnseenStudentBadges = createServerFn({ method: "GET" }).handler
     sourceWeekKey: row.sourceWeekKey,
     rewardXp: row.rewardXp,
     rank: getMetadataRank(row.metadata),
+    badge: getBadgeDisplay(badgeByCode.get(row.badgeCode)),
   }));
 });
 
@@ -64,6 +67,17 @@ export const markStudentBadgesSeen = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+// Retired Badge codes have no display, so the popup skips them.
+function getBadgeDisplay(badge: Awaited<ReturnType<typeof listEffectiveBadges>>[number] | undefined) {
+  if (!badge) return null;
+
+  return {
+    icon: badge.icon,
+    displayName: badge.displayName,
+    requirementText: badge.requirementText,
+  };
+}
 
 function getMetadataRank(metadata: unknown) {
   if (!metadata || typeof metadata !== "object") return null;

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { BottomNav, TopBar } from "../../components/Navigation";
 import { AvatarDisplay } from "../../components/AvatarDisplay";
 import { getGradeForLevel } from "../../data/users";
-import { badges } from "../engagement-surface/badge-catalog";
+import type { EffectiveBadge } from "../engagement-surface/badge-settings";
 import { getLevelForXp, getNextLevel, getXpProgress } from "../engagement-surface/level-catalog";
 import type { getPublicStudentProfile } from "./public-student-profile-functions";
 import type { listProgressSummary } from "../student/student-progress-functions";
@@ -11,16 +11,18 @@ import type { listProgressSummary } from "../student/student-progress-functions"
 export type PublicProfilePageData = {
   profile: Awaited<ReturnType<typeof getPublicStudentProfile>>;
   summary: Awaited<ReturnType<typeof listProgressSummary>>;
+  badgeCatalog: EffectiveBadge[];
 };
 
-export function PublicProfilePage({ profile, summary }: PublicProfilePageData) {
+export function PublicProfilePage({ profile, summary, badgeCatalog }: PublicProfilePageData) {
   const levelInfo = getLevelForXp(profile.xp);
   const nextLevel = getNextLevel(profile.xp);
   const xpProgress = getXpProgress(profile.xp);
   const grade = getGradeForLevel(levelInfo.level);
   const currentLevelXp = levelInfo.xp;
   const nextLevelXp = nextLevel?.xp ?? levelInfo.xp;
-  const unlockedBadgeList = badges.filter((badge) => isBadgeUnlocked(badge, profile, levelInfo.level));
+  const unlockedBadgeList = badgeCatalog.filter((badge) => profile.awardedBadgeIds.includes(badge.id));
+  const visibleBadgeCount = badgeCatalog.filter((badge) => badge.active || unlockedBadgeList.includes(badge)).length;
 
   return (
     <div
@@ -105,7 +107,7 @@ export function PublicProfilePage({ profile, summary }: PublicProfilePageData) {
           </div>
 
           <div>
-            <SectionHeader title={`Koleksi Lencana ${unlockedBadgeList.length}/${badges.length}`} />
+            <SectionHeader title={`Koleksi Lencana ${unlockedBadgeList.length}/${visibleBadgeCount}`} />
             {unlockedBadgeList.length === 0 ? (
               <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-6 text-center shadow-sm">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-primary-soft bg-primary-tint text-primary">
@@ -116,7 +118,7 @@ export function PublicProfilePage({ profile, summary }: PublicProfilePageData) {
             ) : (
               <div className="grid grid-flow-dense grid-cols-4 gap-3 sm:grid-cols-5 xl:grid-cols-6">
                 {unlockedBadgeList.map((badge) => (
-                  <BadgePreview key={badge.id} name={badge.name} icon={badge.icon} />
+                  <BadgePreview key={badge.id} name={badge.displayName} icon={badge.icon} />
                 ))}
               </div>
             )}
@@ -126,25 +128,6 @@ export function PublicProfilePage({ profile, summary }: PublicProfilePageData) {
       <BottomNav active="rank" />
     </div>
   );
-}
-
-function isBadgeUnlocked(
-  badge: (typeof badges)[number],
-  profile: Awaited<ReturnType<typeof getPublicStudentProfile>>,
-  level: number,
-) {
-  if (profile.awardedBadgeIds.includes(badge.id)) return true;
-
-  const levelMatch = badge.task.match(/Reach Level (\d+)/i);
-  const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
-  const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
-
-  if (levelMatch) return level >= Number(levelMatch[1]);
-  if (streakMatch) return profile.streak >= Number(streakMatch[1]);
-  if (tryoutMatch) return profile.uniqueTryoutCount >= Number(tryoutMatch[1]);
-  if (badge.id === 1) return profile.totalTryouts > 0;
-
-  return false;
 }
 
 function SectionHeader({ title }: { title: string }) {

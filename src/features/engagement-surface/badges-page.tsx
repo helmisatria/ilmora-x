@@ -8,7 +8,6 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { badges, getBadgeRequirementText, type Badge } from "./badge-catalog";
 import {
   badgeGroups,
   getBadgeGroupKey,
@@ -17,7 +16,8 @@ import {
   type BadgeGroupKey,
   type BadgeProgressView,
 } from "./badge-groups";
-import { getLevelForXp } from "./level-catalog";
+import type { EffectiveBadge as Badge } from "./badge-settings";
+import { getBadgeProgress, getBadgeTarget } from "./badge-progress";
 import type { listProgressSummary } from "../student/student-progress-functions";
 
 type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
@@ -35,10 +35,12 @@ function getBadgeAccent(badge: Badge) {
   return groupStyles[getBadgeGroupKey(badge)].accent;
 }
 
-export function BadgesPage({ summary }: { summary: ProgressSummary }) {
+export function BadgesPage({ summary, badgeCatalog }: { summary: ProgressSummary; badgeCatalog: Badge[] }) {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
-  const badgeProgress = getBadgeProgress(summary);
+  // A turned-off Badge only shows for Students who already earned it.
+  const badges = badgeCatalog.filter((badge) => badge.active || summary.awardedBadgeIds.includes(badge.id));
+  const badgeProgress = getBadgeProgress(badges, summary);
   const progressMap = new Map(badgeProgress.map((progress) => [progress.badgeId, progress]));
   const unlockedCount = badgeProgress.filter((progress) => progress.unlocked).length;
   const nextBadges = getNextBadges(badges, badgeProgress);
@@ -126,6 +128,7 @@ export function BadgesPage({ summary }: { summary: ProgressSummary }) {
                         progress={progress?.progress ?? 0}
                         total={progress?.total ?? 1}
                         unlocked={progress?.unlocked ?? false}
+                        pending={progress?.pending ?? false}
                         accent={style.accent}
                         onSelect={() => setSelectedBadge(badge)}
                       />
@@ -145,6 +148,7 @@ export function BadgesPage({ summary }: { summary: ProgressSummary }) {
         progress={selectedProgress?.progress ?? 0}
         total={selectedProgress?.total ?? 1}
         unlocked={selectedProgress?.unlocked ?? false}
+        pending={selectedProgress?.pending ?? false}
         accent={selectedBadge ? getBadgeAccent(selectedBadge) : groupStyles.start.accent}
         onClose={() => setSelectedBadge(null)}
       />
@@ -157,7 +161,7 @@ function NextBadgesSection({
   nextBadges,
   allUnlocked,
 }: {
-  nextBadges: ReturnType<typeof getNextBadges>;
+  nextBadges: ReturnType<typeof getNextBadges<Badge>>;
   allUnlocked: boolean;
 }) {
   return (
@@ -209,14 +213,14 @@ function NextBadgeItem({ badge, progress }: { badge: Badge; progress: BadgeProgr
           {badge.icon}
         </span>
         <div className="min-w-0">
-          <h3 className="text-[14px] font-extrabold leading-tight text-stone-800">{badge.name}</h3>
+          <h3 className="text-[14px] font-extrabold leading-tight text-stone-800">{badge.displayName}</h3>
           <div className="mt-0.5 text-[12px] font-black" style={{ color: accent }}>
-            {getBadgeStatusText(badge, progress.progress, progress.total, progress.unlocked)}
+            {getBadgeStatusText(badge, progress)}
           </div>
         </div>
       </div>
       <p className="m-0 mt-2.5 text-[13px] font-semibold leading-snug text-stone-600">
-        {getBadgeRequirementText(badge)}
+        {badge.requirementText}
       </p>
       <p className="m-0 mt-1 text-[12px] font-bold text-stone-400">
         Hadiah: {getBadgeRewardText(badge)}
@@ -234,60 +238,12 @@ function NextBadgeItem({ badge, progress }: { badge: Badge; progress: BadgeProgr
   );
 }
 
-function getBadgeProgress(summary: ProgressSummary): BadgeProgressView[] {
-  const level = getLevelForXp(summary.xp).level;
-
-  return badges.map((badge) => {
-    const target = getBadgeTarget(badge);
-    const progress = getBadgeProgressValue(badge, { level, summary });
-    const isAwarded = summary.awardedBadgeIds.includes(badge.id);
-
-    return {
-      badgeId: badge.id,
-      progress: isAwarded ? target : Math.min(progress, target),
-      total: target,
-      unlocked: isAwarded || progress >= target,
-    };
-  });
-}
-
-function getBadgeTarget(badge: Badge) {
-  const levelMatch = badge.task.match(/Reach Level (\d+)/i);
-  const streakMatch = badge.task.match(/(\d+)[-\s]Days/i);
-  const tryoutMatch = badge.task.match(/Complete (\d+) unique tryouts/i);
-  const failMatch = badge.task.match(/Reach (\d+)x fail/i);
-
-  if (levelMatch) return Number(levelMatch[1]);
-  if (streakMatch) return Number(streakMatch[1]);
-  if (tryoutMatch) return Number(tryoutMatch[1]);
-  if (failMatch) return Number(failMatch[1]);
-  if (badge.id === 1) return 1;
-
-  return 1;
-}
-
-function getBadgeProgressValue(
-  badge: Badge,
-  data: { level: number; summary: ProgressSummary },
-) {
-  // Only the server can judge these rules, so they show as unlocked once awarded.
-  if (!hasMeasurableProgress(badge)) return 0;
-  if (badge.category === "Level") return data.level;
-  if (badge.category === "Streak") {
-    if (badge.task.includes("unique tryouts")) return data.summary.uniqueTryoutCount;
-    return data.summary.streak;
-  }
-  if (badge.id === 1) return data.summary.totalAttempts > 0 ? 1 : 0;
-  if (badge.name === "Fail Legend") return data.summary.failLegendAttemptCount;
-
-  return 0;
-}
-
 function BadgeCard({
   badge,
   progress,
   total,
   unlocked,
+  pending,
   accent,
   onSelect,
 }: {
@@ -295,17 +251,18 @@ function BadgeCard({
   progress: number;
   total: number;
   unlocked: boolean;
+  pending: boolean;
   accent: string;
   onSelect: () => void;
 }) {
   const pct = total > 0 ? Math.min(progress / total, 1) : 0;
-  const statusText = getBadgeStatusText(badge, progress, total, unlocked);
+  const statusText = getBadgeStatusText(badge, { progress, total, unlocked, pending });
   const circumference = 2 * Math.PI * 37;
   const offset = circumference - circumference * pct;
 
   return (
     <button
-      aria-label={`Lihat detail lencana ${badge.name}: ${getBadgeShortRequirement(badge)}, ${statusText}`}
+      aria-label={`Lihat detail lencana ${badge.displayName}: ${getBadgeShortRequirement(badge)}, ${statusText}`}
       className="group flex min-h-[190px] w-full flex-col items-center rounded-[var(--radius-lg)] bg-white p-3 text-center shadow-sm border-2 border-stone-100 border-b-4 border-b-stone-200 transition-all duration-150 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       onClick={onSelect}
       style={{ "--tw-ring-color": accent } as CSSProperties}
@@ -342,7 +299,7 @@ function BadgeCard({
         </div>
       </div>
       <b className="mt-2 text-[12.5px] font-extrabold leading-tight text-stone-800 max-w-[14ch]">
-        {badge.name}
+        {badge.displayName}
       </b>
       <span className="mt-1 text-[11.5px] font-semibold leading-snug text-stone-500">
         {getBadgeShortRequirement(badge)}
@@ -362,6 +319,7 @@ function BadgeDetailModal({
   progress,
   total,
   unlocked,
+  pending,
   accent,
   onClose,
 }: {
@@ -369,6 +327,7 @@ function BadgeDetailModal({
   progress: number;
   total: number;
   unlocked: boolean;
+  pending: boolean;
   accent: string;
   onClose: () => void;
 }) {
@@ -377,10 +336,10 @@ function BadgeDetailModal({
   const action = getBadgeAction(badge);
   const pct = total > 0 ? Math.min(progress / total, 1) : 0;
   const progressPercent = Math.round(pct * 100);
-  const requirement = getBadgeRequirementText(badge);
-  const progressText = getBadgeStatusText(badge, progress, total, unlocked);
+  const requirement = badge.requirementText;
+  const progressText = getBadgeStatusText(badge, { progress, total, unlocked, pending });
   const rewardText = getBadgeRewardText(badge);
-  const hasProgressBar = unlocked || hasMeasurableProgress(badge);
+  const hasProgressBar = unlocked || (!pending && hasMeasurableProgress(badge));
 
   return (
     <Dialog open={Boolean(badge)} onOpenChange={(open) => !open && onClose()}>
@@ -405,15 +364,17 @@ function BadgeDetailModal({
             </div>
             <div className="min-w-0">
               <div className="mb-2 inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white/75">
-                {unlocked ? "Didapat" : "Terkunci"}
+                {unlocked ? "Didapat" : pending ? "Diproses" : "Terkunci"}
               </div>
               <DialogTitle className="text-[25px] font-black leading-none tracking-tight text-white">
-                {badge.name}
+                {badge.displayName}
               </DialogTitle>
               <DialogDescription className="mt-2 text-[13px] font-semibold leading-relaxed text-white/72">
                 {unlocked
                   ? "Selamat, lencana ini sudah jadi milikmu!"
-                  : "Penuhi syarat di bawah untuk mendapatkan lencana ini."}
+                  : pending
+                    ? "Syaratnya sudah terpenuhi. Lencana ini sedang diproses."
+                    : "Penuhi syarat di bawah untuk mendapatkan lencana ini."}
               </DialogDescription>
             </div>
           </div>
@@ -436,7 +397,7 @@ function BadgeDetailModal({
                   Progres
                 </div>
                 <div className="mt-1 text-[18px] font-black leading-none text-stone-800">
-                  {hasProgressBar ? progressText : "Diberikan otomatis"}
+                  {hasProgressBar || pending ? progressText : "Diberikan otomatis"}
                 </div>
               </div>
               {hasProgressBar && (
@@ -454,7 +415,9 @@ function BadgeDetailModal({
               </div>
             ) : (
               <p className="m-0 mt-2 text-[13px] font-semibold leading-snug text-stone-500">
-                Lencana ini otomatis masuk ke koleksimu saat syaratnya terpenuhi.
+                {pending
+                  ? "Lencana ini akan masuk ke koleksimu setelah kamu menyelesaikan Try-out berikutnya."
+                  : "Lencana ini otomatis masuk ke koleksimu saat syaratnya terpenuhi."}
               </p>
             )}
           </div>
@@ -502,11 +465,10 @@ function getBadgeRewardText(badge: Badge) {
 
 function getBadgeStatusText(
   badge: Badge,
-  progress: number,
-  total: number,
-  unlocked: boolean,
+  { progress, total, unlocked, pending }: Omit<BadgeProgressView, "badgeId">,
 ) {
   if (unlocked) return "Didapat";
+  if (pending) return "Diproses";
   if (!hasMeasurableProgress(badge)) return "Terkunci";
 
   const group = getBadgeGroupKey(badge);
@@ -518,6 +480,8 @@ function getBadgeStatusText(
 }
 
 function getBadgeShortRequirement(badge: Badge) {
+  if (badge.requirementOverride) return badge.requirementOverride;
+
   const target = getBadgeTarget(badge);
   const group = getBadgeGroupKey(badge);
 
@@ -533,7 +497,7 @@ function getBadgeShortRequirement(badge: Badge) {
   if (badge.name === "Speed Runner") return "Separuh waktu, skor di atas 80%";
   if (badge.name === "Fail Legend") return `Pantang menyerah ${target}x`;
 
-  return getBadgeRequirementText(badge);
+  return badge.requirementText;
 }
 
 function getBadgeAction(badge: Badge): null | {

@@ -7,6 +7,7 @@ export type BadgeProgressView = {
   progress: number;
   total: number;
   unlocked: boolean;
+  pending: boolean;
 };
 
 // Display-only grouping. Badge["category"] stays as-is because awarding and profiles rely on it.
@@ -39,13 +40,13 @@ export function hasMeasurableProgress(badge: Badge) {
 
 // One badge per group, so a new student (already Level 1) is not shown only Level badges.
 // Fail Legend is never suggested: nudging students to fail is not a goal.
-export function getNextBadges(badgeList: Badge[], progressList: BadgeProgressView[], limit = 3) {
+export function getNextBadges<TBadge extends Badge>(badgeList: TBadge[], progressList: BadgeProgressView[], limit = 3) {
   const progressMap = new Map(progressList.map((progress) => [progress.badgeId, progress]));
 
   return badgeList
     .filter((badge) => {
       const progress = progressMap.get(badge.id);
-      if (!progress || progress.unlocked) return false;
+      if (!progress || progress.unlocked || progress.pending) return false;
 
       return hasMeasurableProgress(badge) && badge.name !== "Fail Legend";
     })
