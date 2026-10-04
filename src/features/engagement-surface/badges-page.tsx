@@ -222,13 +222,13 @@ function NextBadgeItem({ badge, progress }: { badge: Badge; progress: BadgeProgr
       <p className="m-0 mt-2.5 text-[13px] font-semibold leading-snug text-stone-600">
         {badge.requirementText}
       </p>
-      <p className="m-0 mt-1 text-[12px] font-bold text-stone-400">
+      <p className="m-0 mt-1 mb-3 text-[12px] font-bold text-stone-400">
         Hadiah: {getBadgeRewardText(badge)}
       </p>
       {action && (
         <Link
           to={action.to}
-          className="btn btn-sm mt-3 w-full no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-800 md:mt-auto"
+          className="btn btn-sm mt-auto w-full no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-800"
         >
           {action.icon}
           {action.label}
