@@ -4,6 +4,8 @@ IlmoraX is a web-based pharmacy exam prep platform. Students take timed Try-outs
 
 For current milestone status and open work, see [Milestone closeout](docs/MILESTONE_CLOSEOUT.md). Phase 0 is finished. Midtrans is the MVP payment provider, and referral discounts are deferred. The dated proposals and older checklists remain as records of the scope at the time they were written.
 
+Admin instructions for try-outs, questions, answer keys, pembahasan, and Excel imports are in [Panduan admin](docs/ADMIN_TRYOUT_GUIDE.md). Local test evidence and release prerequisites are in [Admin QA report](docs/ADMIN_QA_REPORT.md).
+
 ## Commands
 
 ```sh

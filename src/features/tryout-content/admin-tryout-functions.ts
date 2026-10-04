@@ -14,6 +14,7 @@ import { adminMiddleware } from "../admin/admin-access";
 import { normalizeTryoutAccessLevel } from "../premium-access/premium-access";
 import {
   createTryoutContent,
+  addTryoutQuestionContent,
   createTryoutFromWorkbook,
   importTryoutWorkbook,
   publishTryoutContent,
@@ -64,6 +65,7 @@ const workbookQuestionSchema = z.object({
   correctOption: questionOptionSchema,
   explanation: z.string().trim().min(1),
   videoUrl: z.string().trim().optional(),
+  pictureUrl: z.string().trim().optional(),
   accessLevel: questionAccessLevelSchema,
   status: contentStatusSchema,
 });
@@ -177,7 +179,7 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
       .limit(1);
 
     if (!tryout) {
-      throw notFound("Try-out was not found.");
+      throw notFound("Try-out tidak ditemukan.");
     }
 
     const rows = await db
@@ -229,6 +231,13 @@ export const importTryoutWorkbookAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     return importTryoutWorkbook(data);
   });
+
+export const addTryoutQuestionAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(workbookQuestionSchema.omit({ questionId: true }).extend({
+    tryoutId: z.string().trim().min(1),
+  }), input))
+  .handler(async ({ data }) => addTryoutQuestionContent(data));
 
 export const updateTryoutQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])

@@ -53,7 +53,7 @@ export async function createTryoutContent(data: TryoutContentInput) {
       status: "draft",
     });
   } catch {
-    throw conflict("A Try-out with this title already exists.");
+    throw conflict("Judul try-out sudah dipakai. Gunakan judul lain.");
   }
 
   return { ok: true };
@@ -127,7 +127,7 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
     .limit(1);
 
   if (!currentTryout) {
-    throw notFound("Try-out was not found.");
+    throw notFound("Try-out tidak ditemukan.");
   }
 
   if (currentTryout.status === "published" && data.tryout.status !== "published") {
@@ -178,6 +178,7 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
           correctOption: questions.correctOption,
           explanation: questions.explanation,
           videoUrl: questions.videoUrl,
+          pictureUrl: questions.pictureUrl,
           accessLevel: questions.accessLevel,
           status: questions.status,
         })
@@ -186,9 +187,10 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
         .limit(1);
 
       if (!existingQuestion) {
-        throw notFound(`Question ${question.questionId} was not found.`);
+        throw notFound(`ID soal ${question.questionId} tidak ditemukan. Unduh Excel terbaru atau kosongkan question_id untuk membuat soal baru.`);
       }
 
+      if (question.pictureUrl === undefined) question.pictureUrl = existingQuestion.pictureUrl ?? "";
       const otherTryoutAssignments = await tx
         .select({ tryoutId: tryoutQuestions.tryoutId })
         .from(tryoutQuestions)
@@ -258,7 +260,7 @@ async function ensureNoLifetimeOwners(tryoutId: string) {
     .limit(1);
 
   if (owner) {
-    throw conflict("This Try-out has lifetime owners and cannot be unpublished.");
+    throw conflict("Try-out sudah dibeli untuk akses selamanya. Try-out tidak dapat disembunyikan.");
   }
 }
 
@@ -276,7 +278,7 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
       .limit(1);
 
     if (existingTryout) {
-      throw conflict("A Try-out with this title already exists.");
+      throw conflict("Judul try-out sudah dipakai. Gunakan judul lain.");
     }
 
     const [createdTryout] = await tx
@@ -321,6 +323,7 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
           correctOption: questions.correctOption,
           explanation: questions.explanation,
           videoUrl: questions.videoUrl,
+          pictureUrl: questions.pictureUrl,
           accessLevel: questions.accessLevel,
           status: questions.status,
         })
@@ -329,9 +332,10 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
         .limit(1);
 
       if (!existingQuestion) {
-        throw notFound(`Question ${question.questionId} was not found.`);
+        throw notFound(`ID soal ${question.questionId} tidak ditemukan. Unduh Excel terbaru atau kosongkan question_id untuk membuat soal baru.`);
       }
 
+      if (question.pictureUrl === undefined) question.pictureUrl = existingQuestion.pictureUrl ?? "";
       if (sameWorkbookQuestionContent(existingQuestion, question)) {
         assignedQuestionIds.push(question.questionId);
         continue;
@@ -364,6 +368,35 @@ export async function createTryoutFromWorkbook(data: TryoutWorkbookInput) {
   return { ok: true, ...created };
 }
 
+export async function addTryoutQuestionContent(data: TryoutWorkbookQuestion & { tryoutId: string }) {
+  validateQuestionOptionE(data);
+  await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
+  await db.transaction(async (tx) => {
+    const [tryout] = await tx.select({ id: tryouts.id }).from(tryouts)
+      .where(eq(tryouts.id, data.tryoutId)).for("update");
+    if (!tryout) throw notFound("Try-out tidak ditemukan.");
+    await ensureQuestionOrderAvailable(tx, data.tryoutId, data.sortOrder);
+    const [question] = await tx.insert(questions).values(toQuestionInsertValues(data))
+      .returning({ id: questions.id });
+    await tx.insert(tryoutQuestions).values({
+      tryoutId: data.tryoutId, questionId: question.id, sortOrder: data.sortOrder,
+    });
+  });
+  return { ok: true };
+}
+
+async function ensureQuestionOrderAvailable(
+  tx: Pick<typeof db, "select">, tryoutId: string, sortOrder: number, questionId?: string,
+) {
+  const [assignment] = await tx.select({ questionId: tryoutQuestions.questionId })
+    .from(tryoutQuestions).where(and(
+      eq(tryoutQuestions.tryoutId, tryoutId), eq(tryoutQuestions.sortOrder, sortOrder),
+    )).limit(1);
+  if (assignment && assignment.questionId !== questionId) {
+    throw conflict(`Nomor urut ${sortOrder} sudah dipakai. Pilih nomor lain.`);
+  }
+}
+
 export async function updateTryoutQuestionContent(data: TryoutQuestionContentInput) {
   validateQuestionOptionE(data);
   await validateQuestionTaxonomy(data.categoryId, data.subCategoryId, data.topicId);
@@ -371,6 +404,7 @@ export async function updateTryoutQuestionContent(data: TryoutQuestionContentInp
   const nextQuestion = toEditableQuestionValues(data);
 
   await db.transaction(async (tx) => {
+    await ensureQuestionOrderAvailable(tx, data.tryoutId, data.sortOrder, data.questionId);
     const [assignment] = await tx
       .select({
         id: tryoutQuestions.id,
@@ -383,7 +417,7 @@ export async function updateTryoutQuestionContent(data: TryoutQuestionContentInp
       .limit(1);
 
     if (!assignment) {
-      throw notFound("Question was not assigned to this Try-out.");
+      throw notFound("Soal tidak ada di try-out ini. Muat ulang halaman.");
     }
 
     const [existingQuestion] = await tx
@@ -410,7 +444,7 @@ export async function updateTryoutQuestionContent(data: TryoutQuestionContentInp
       .limit(1);
 
     if (!existingQuestion) {
-      throw notFound("Question was not found.");
+      throw notFound("Soal tidak ditemukan.");
     }
 
     const [tryout] = await tx
@@ -420,7 +454,7 @@ export async function updateTryoutQuestionContent(data: TryoutQuestionContentInp
       .limit(1);
 
     if (!tryout) {
-      throw notFound("Try-out was not found.");
+      throw notFound("Try-out tidak ditemukan.");
     }
 
     if (tryout.status === "published" && nextQuestion.status !== "published") {
@@ -509,7 +543,7 @@ export async function removeTryoutQuestionContent({
     .limit(1);
 
   if (!assignment) {
-    throw notFound("Question was not assigned to this Try-out.");
+    throw notFound("Soal tidak ada di try-out ini. Muat ulang halaman.");
   }
 
   if (assignment.tryoutStatus === "published" && assignment.questionStatus === "published") {
@@ -532,7 +566,7 @@ async function ensureTryoutExists(tryoutId: string) {
 
   if (tryout) return;
 
-  throw notFound("Try-out was not found.");
+  throw notFound("Try-out tidak ditemukan.");
 }
 
 async function ensureTryoutCanBePublished(tryoutId: string) {
@@ -549,7 +583,7 @@ async function ensureTryoutCanBePublished(tryoutId: string) {
 
   if (Number(row?.count ?? 0) > 0) return;
 
-  throw conflict("A published Try-out needs at least one published Question.");
+  throw conflict("Try-out yang tayang harus memiliki minimal satu soal tayang. Tayangkan soal lain atau sembunyikan try-out lebih dulu.");
 }
 
 async function ensurePublishedTryoutHasAnotherPublishedQuestion(
@@ -569,7 +603,7 @@ async function ensurePublishedTryoutHasAnotherPublishedQuestion(
 
   if (Number(row?.count ?? 0) > 0) return;
 
-  throw conflict("A published Try-out needs at least one published Question.");
+  throw conflict("Try-out yang tayang harus memiliki minimal satu soal tayang. Tayangkan soal lain atau sembunyikan try-out lebih dulu.");
 }
 
 function makeSlug(value: string) {

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../lib/db/client";
 import {
@@ -7,8 +7,10 @@ import {
   questions,
   subCategories,
   topics,
+  tryouts,
+  tryoutQuestions,
 } from "../../lib/db/schema";
-import { notFound } from "../../lib/http/errors";
+import { conflict, notFound } from "../../lib/http/errors";
 import { parseInput } from "../../lib/http/validation";
 import { adminMiddleware } from "../admin/admin-access";
 import {
@@ -135,7 +137,7 @@ export const updateQuestionAdmin = createServerFn({ method: "POST" })
       .limit(1);
 
     if (!existingQuestion) {
-      throw notFound("Question was not found.");
+      throw notFound("Soal tidak ditemukan.");
     }
 
     await db
@@ -181,6 +183,19 @@ export const unpublishQuestionAdmin = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(questionIdSchema, input))
   .handler(async ({ data }) => {
+    const [question] = await db.select({ id: questions.id }).from(questions)
+      .where(eq(questions.id, data.questionId)).limit(1);
+    if (!question) throw notFound("Soal tidak ditemukan.");
+    const [blockedTryout] = await db.select({ title: tryouts.title }).from(tryoutQuestions)
+      .innerJoin(tryouts, eq(tryouts.id, tryoutQuestions.tryoutId))
+      .where(and(eq(tryoutQuestions.questionId, data.questionId), eq(tryouts.status, "published"),
+        sql`not exists (
+          select 1 from ${tryoutQuestions} other_assignment
+          join ${questions} other_question on other_question.id = other_assignment.question_id
+          where other_assignment.tryout_id = ${tryouts.id}
+            and other_question.status = 'published' and other_question.id <> ${data.questionId}
+        )`)).limit(1);
+    if (blockedTryout) throw conflict(`Soal ini adalah satu-satunya soal tayang di "${blockedTryout.title}". Tayangkan soal lain atau sembunyikan try-out lebih dulu.`);
     await db
       .update(questions)
       .set({

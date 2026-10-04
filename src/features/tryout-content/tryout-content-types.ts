@@ -50,6 +50,7 @@ export type TryoutWorkbookQuestion = {
   correctOption: QuestionOption;
   explanation: string;
   videoUrl?: string;
+  pictureUrl?: string;
   accessLevel: QuestionAccessLevel;
   status: ContentStatus;
 };

@@ -1,11 +1,12 @@
 import { useRouter } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useId, useMemo, useState } from "react";
 import { QuestionPictureField } from "../../components/admin/QuestionPictureField";
 import { TryoutIconField } from "../../components/admin/TryoutIconField";
 import { getSafeErrorMessage } from "../../lib/user-errors";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
   getTryoutWorkbookAdmin,
+  addTryoutQuestionAdmin,
   importTryoutWorkbookAdmin,
   publishTryoutAdmin,
   removeTryoutQuestionAdmin,
@@ -62,6 +63,8 @@ export type AdminTryoutDetailPageData = {
 
 export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetailPageData) {
   const router = useRouter();
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => setIsHydrated(true), []);
   const tryoutId = workbook.tryout.id;
 
   const [form, setForm] = useState<TryoutForm>(() => ({
@@ -73,9 +76,19 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     accessLevel: workbook.tryout.accessLevel,
   }));
   const [busyAction, setBusyAction] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [workbookPreview, setWorkbookPreview] = useState<WorkbookPreview | null>(null);
   const [questionForm, setQuestionForm] = useState<QuestionForm | null>(null);
+  useEffect(() => {
+    setForm({ title: workbook.tryout.title, description: workbook.tryout.description,
+      icon: workbook.tryout.icon ?? "", categoryId: workbook.tryout.categoryId,
+      durationMinutes: String(workbook.tryout.durationMinutes), accessLevel: workbook.tryout.accessLevel });
+  }, [workbook.tryout.id, workbook.tryout.title, workbook.tryout.description, workbook.tryout.icon,
+    workbook.tryout.categoryId, workbook.tryout.durationMinutes, workbook.tryout.accessLevel]);
+  useEffect(() => {
+    if (questionForm) document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
+  }, [questionForm?.questionId]);
   const publishedQuestionCount = workbook.questions.filter((question) => question.status === "published").length;
 
   const selectedSubCategories = useMemo(() => {
@@ -97,15 +110,16 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     const durationMinutes = Number(form.durationMinutes);
 
     if (!form.title.trim() || !form.description.trim() || !form.categoryId) {
-      setErrorMessage("Title, description, and category are required.");
+      setErrorMessage("Isi judul, deskripsi, dan kategori.");
       return;
     }
 
     if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 300) {
-      setErrorMessage("Duration must be between 1 and 300 minutes.");
+      setErrorMessage("Isi durasi dengan angka bulat 1 sampai 300 menit.");
       return;
     }
 
+    setSuccessMessage("");
     setBusyAction("save");
     setErrorMessage("");
 
@@ -122,8 +136,9 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         },
       });
       await refresh();
+      setSuccessMessage("Perubahan tersimpan.");
     } catch {
-      setErrorMessage("Try-out was not saved. Check for duplicate titles or invalid fields.");
+      setErrorMessage("Perubahan belum disimpan. Periksa isian lalu coba lagi.");
     } finally {
       setBusyAction("");
     }
@@ -131,10 +146,11 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
   const setPublication = async (nextStatus: "published" | "unpublished") => {
     if (nextStatus === "published" && publishedQuestionCount === 0) {
-      setErrorMessage("Publish at least one Question before publishing this Try-out.");
+      setErrorMessage("Tayangkan minimal satu soal sebelum menayangkan try-out ini.");
       return;
     }
 
+    setSuccessMessage("");
     setBusyAction("publish");
     setErrorMessage("");
 
@@ -145,11 +161,25 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         await unpublishTryoutAdmin({ data: { tryoutId } });
       }
       await refresh();
+      setSuccessMessage("Perubahan tersimpan.");
     } catch (error) {
-      setErrorMessage(getSafeErrorMessage(error, "Publication status was not updated."));
+      setErrorMessage(getSafeErrorMessage(error, "Status belum berubah. Coba lagi."));
     } finally {
       setBusyAction("");
     }
+  };
+
+  const addQuestion = () => {
+    const category = categories.find((item) => item.id === form.categoryId) ?? categories[0];
+    const subCategory = category?.subCategories[0];
+    setQuestionForm({
+      questionId: "", sortOrder: String(Math.max(0, ...workbook.questions.map((item) => item.sortOrder)) + 1),
+      categoryId: category?.id ?? "", subCategoryId: subCategory?.id ?? "", topicId: subCategory?.topics?.[0]?.id ?? "",
+      questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", optionE: "", correctOption: "A",
+      explanation: "", videoUrl: "", pictureUrl: "", accessLevel: "free", status: "draft",
+    });
+    setErrorMessage("");
+    document.getElementById("question-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const editQuestion = (question: TryoutQuestion) => {
@@ -211,11 +241,13 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
       return;
     }
 
+    setSuccessMessage("");
     setBusyAction(`question-save:${questionForm.questionId}`);
     setErrorMessage("");
 
     try {
-      await updateTryoutQuestionAdmin({
+      const save = questionForm.questionId ? updateTryoutQuestionAdmin : addTryoutQuestionAdmin;
+      await save({
         data: {
           tryoutId,
           questionId: questionForm.questionId,
@@ -240,18 +272,20 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
       setQuestionForm(null);
       await refresh();
-    } catch {
-      setErrorMessage("Question was not saved. Check for duplicate sort order or invalid fields.");
+      setSuccessMessage("Perubahan tersimpan.");
+    } catch (error) {
+      setErrorMessage(getSafeErrorMessage(error, "Soal belum disimpan. Periksa nomor urut dan isian."));
     } finally {
       setBusyAction("");
     }
   };
 
   const deleteQuestion = async (question: TryoutQuestion) => {
-    const confirmed = window.confirm("Remove this Question from this Try-out?");
+    const confirmed = window.confirm("Keluarkan soal ini dari try-out? Soal tetap ada di bank soal. Riwayat jawaban peserta tetap tersimpan.");
 
     if (!confirmed) return;
 
+    setSuccessMessage("");
     setBusyAction(`question-delete:${question.questionId}`);
     setErrorMessage("");
 
@@ -268,14 +302,16 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
       }
 
       await refresh();
-    } catch {
-      setErrorMessage("Question was not removed from this Try-out.");
+      setSuccessMessage("Perubahan tersimpan.");
+    } catch (error) {
+      setErrorMessage(getSafeErrorMessage(error, "Soal belum dikeluarkan. Coba lagi."));
     } finally {
       setBusyAction("");
     }
   };
 
   const downloadWorkbook = async () => {
+    setSuccessMessage("");
     setBusyAction("download");
     setErrorMessage("");
 
@@ -287,7 +323,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
       tryoutWorkbookSheets.saveWorkbook(XLSX, exportedWorkbook, fileName);
     } catch {
-      setErrorMessage("Try-out workbook was not downloaded.");
+      setErrorMessage("File Excel belum terunduh. Coba lagi.");
     } finally {
       setBusyAction("");
     }
@@ -296,6 +332,8 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   const importWorkbook = async (file: File | undefined) => {
     if (!file) return;
 
+    setWorkbookPreview(null);
+    setSuccessMessage("");
     setBusyAction("preview-import");
     setErrorMessage("");
 
@@ -309,7 +347,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         taxonomyActions: result.taxonomyActions,
       });
     } catch {
-      setErrorMessage("Workbook could not be read. Upload a valid .xlsx file.");
+      setErrorMessage("File tidak dapat dibaca. Gunakan file .xlsx dari contoh Excel atau hasil unduhan.");
     } finally {
       setBusyAction("");
     }
@@ -318,6 +356,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   const confirmWorkbookImport = async () => {
     if (!workbookPreview?.data || workbookPreview.issues.length > 0) return;
 
+    setSuccessMessage("");
     setBusyAction("import");
     setErrorMessage("");
 
@@ -329,10 +368,12 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
           questions: workbookPreview.data.questions,
         },
       });
+      setQuestionForm(null);
       setWorkbookPreview(null);
       await refresh();
+      setSuccessMessage("Perubahan tersimpan.");
     } catch (error) {
-      setErrorMessage(getSafeErrorMessage(error, "Try-out workbook was not imported. Check for server-side validation errors."));
+      setErrorMessage(getSafeErrorMessage(error, "Excel belum disimpan. Periksa isian lalu coba lagi."));
     } finally {
       setBusyAction("");
     }
@@ -348,9 +389,9 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
   return (
     <main className="admin-shell page-enter">
-      <div className="admin-lane">
+      <fieldset className="admin-lane min-w-0" disabled={!isHydrated || Boolean(busyAction)} data-admin-ready={isHydrated}>
         <header className="admin-header">
-          <a href="/admin/tryouts" className="admin-back-link">Try-outs</a>
+          <a href="/admin/tryouts" className="admin-back-link">Try-out</a>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="admin-title">{workbook.tryout.title}</h1>
             <StatusPill status={workbook.tryout.status} />
@@ -358,25 +399,26 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
           <p className="admin-description">{workbook.tryout.description}</p>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="admin-meta-tag first:before:hidden">{categories.find((c) => c.id === workbook.tryout.categoryId)?.name ?? workbook.tryout.categoryId}</span>
-            <span className="admin-meta-tag">{workbook.tryout.durationMinutes} min</span>
-            <span className="admin-meta-tag capitalize">{workbook.tryout.accessLevel}</span>
-            <span className="admin-meta-tag">{workbook.questions.length} questions</span>
+            <span className="admin-meta-tag">{workbook.tryout.durationMinutes} menit</span>
+            <span className="admin-meta-tag capitalize">{workbook.tryout.accessLevel === "free" ? "Gratis" : "Premium"}</span>
+            <span className="admin-meta-tag">{workbook.questions.length} soal</span>
           </div>
         </header>
 
-        {errorMessage && (
-          <p className="admin-alert">
+        {successMessage && <p role="status" className="mt-4 text-sm text-emerald-700">{successMessage}</p>}
+        {errorMessage && !workbookPreview && !questionForm && (
+          <p role="alert" className="admin-alert">
             {errorMessage}
           </p>
         )}
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Edit Try-out</h2>
+            <h2 className="admin-panel-title">Ubah try-out</h2>
           </div>
 
           <div className="grid gap-5 p-5 sm:p-6">
-            <Field label="Title">
+            <Field label="Judul">
               <input
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -385,16 +427,16 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
               />
             </Field>
 
-            <Field label="Description">
+            <Field label="Deskripsi">
               <textarea
                 value={form.description}
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
                 className="admin-control min-h-24"
-                placeholder="Short description shown to Students before starting."
+                placeholder="Penjelasan singkat untuk peserta sebelum mengerjakan try-out."
               />
             </Field>
 
-            <Field label="Icon">
+            <Field label="Ikon">
               <TryoutIconField
                 value={form.icon}
                 accent={categories.find((category) => category.id === form.categoryId)?.color ?? "#205072"}
@@ -405,7 +447,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
             </Field>
 
             <div className="grid gap-5 sm:grid-cols-3">
-              <Field label="Category">
+              <Field label="Kategori">
                 <select
                   value={form.categoryId}
                   onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
@@ -419,7 +461,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                 </select>
               </Field>
 
-              <Field label="Duration">
+              <Field label="Durasi dalam menit">
                 <input
                   value={form.durationMinutes}
                   onChange={(event) => setForm({ ...form, durationMinutes: event.target.value })}
@@ -428,46 +470,47 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                 />
               </Field>
 
-              <Field label="Access">
+              <Field label="Akses">
                 <select
                   value={form.accessLevel}
                   onChange={(event) => setForm({ ...form, accessLevel: event.target.value as AccessLevel })}
                   className="admin-control"
                 >
-                  <option value="free">Free</option>
+                  <option value="free">Gratis</option>
                   <option value="premium">Premium</option>
                 </select>
               </Field>
             </div>
 
+            <p className="text-sm text-stone-600">{publishedQuestionCount} dari {workbook.questions.length} soal sudah tayang. Peserta hanya mengerjakan soal berstatus Tayang. Simpan perubahan judul dan durasi sebelum menayangkan.</p>
             <div className="flex flex-wrap gap-3 pt-1">
               <button
                 onClick={saveTryout}
-                disabled={busyAction === "save" || !hasChanges}
+                disabled={Boolean(busyAction) || !hasChanges}
                 className="admin-button-primary"
                 type="button"
               >
-                {busyAction === "save" ? "Saving..." : "Save changes"}
+                {busyAction === "save" ? "Menyimpan..." : "Simpan perubahan"}
               </button>
               {workbook.tryout.status === "published" ? (
                 <button
                   onClick={() => setPublication("unpublished")}
-                  disabled={busyAction === "publish"}
+                  disabled={Boolean(busyAction)}
                   className="admin-button-ghost text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                   type="button"
                 >
                   <EyeOffIcon className="w-3.5 h-3.5" />
-                  Unpublish
+                  Sembunyikan
                 </button>
               ) : (
                 <button
                   onClick={() => setPublication("published")}
-                  disabled={busyAction === "publish"}
+                  disabled={Boolean(busyAction) || hasChanges}
                   className="admin-button-success"
                   type="button"
                 >
                   <EyeIcon className="w-3.5 h-3.5" />
-                  Publish
+                  Tayangkan
                 </button>
               )}
             </div>
@@ -477,9 +520,9 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         {workbookPreview && (
           <WorkbookPreviewPanel
             preview={workbookPreview}
-            busy={busyAction === "import"}
+            busy={Boolean(busyAction)}
             errorMessage={errorMessage}
-            confirmLabel="Import workbook"
+            confirmLabel="Simpan isi Excel"
             onCancel={() => setWorkbookPreview(null)}
             onConfirm={confirmWorkbookImport}
           />
@@ -487,37 +530,40 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Excel Import / Export</h2>
+            <h2 className="admin-panel-title">Kelola lewat Excel</h2>
           </div>
 
+          <p className="px-5 pt-4 text-sm text-stone-600">Unduh Excel terbaru sebelum mengubah soal. Saat disimpan, Excel mengganti seluruh daftar soal try-out ini. Soal yang tidak ada di Excel akan keluar dari try-out. Riwayat peserta tetap tersimpan.</p>
           <div className="flex flex-wrap gap-3 p-5 sm:p-6">
             <button
               onClick={downloadWorkbook}
-              disabled={busyAction === "download"}
+              disabled={Boolean(busyAction)}
               className="admin-button-secondary"
               type="button"
             >
               <DownloadIcon className="w-4 h-4" />
-              Download workbook
+              Unduh Excel
             </button>
             <FileUpload
               accept=".xlsx"
-              busy={busyAction === "import"}
-              placeholder="Upload workbook"
+              busy={Boolean(busyAction)}
+              placeholder="Unggah Excel"
               onFileSelect={(file) => importWorkbook(file)}
             />
           </div>
         </section>
 
         {questionForm && (
-          <section className="admin-panel mt-6">
+          <section id="question-editor" className="admin-panel mt-6">
             <div className="admin-panel-header">
-              <h2 className="admin-panel-title">Edit Question</h2>
+              <h2 className="admin-panel-title">{questionForm.questionId ? "Ubah soal" : "Tambah soal"}</h2>
+              {errorMessage && <p role="alert" className="admin-alert">{errorMessage}</p>}
             </div>
 
             <div className="grid gap-5 p-5 sm:p-6">
+              <p className="text-sm text-stone-600">Jika daftar subkategori atau topik kosong, <a href="/admin/categories" className="underline">tambahkan di halaman Kategori</a> lebih dulu.</p>
               <div className="grid gap-5 sm:grid-cols-[120px_1fr_1fr_1fr]">
-                <Field label="Order">
+                <Field label="Nomor urut">
                   <input
                     value={questionForm.sortOrder}
                     onChange={(event) => setQuestionForm({ ...questionForm, sortOrder: event.target.value })}
@@ -526,7 +572,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                   />
                 </Field>
 
-                <Field label="Category">
+                <Field label="Kategori">
                   <select
                     value={questionForm.categoryId}
                     onChange={(event) => updateQuestionCategory(event.target.value)}
@@ -540,7 +586,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                   </select>
                 </Field>
 
-                <Field label="Sub-category">
+                <Field label="Subkategori">
                   <select
                     value={questionForm.subCategoryId}
                     onChange={(event) => updateQuestionSubCategory(event.target.value)}
@@ -554,7 +600,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                   </select>
                 </Field>
 
-                <Field label="Topic">
+                <Field label="Topik">
                   <select
                     value={questionForm.topicId}
                     onChange={(event) => setQuestionForm({ ...questionForm, topicId: event.target.value })}
@@ -569,7 +615,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                 </Field>
               </div>
 
-              <Field label="Question">
+              <Field label="Teks soal">
                 <textarea
                   value={questionForm.questionText}
                   onChange={(event) => setQuestionForm({ ...questionForm, questionText: event.target.value })}
@@ -578,13 +624,13 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
               </Field>
 
               <div className="grid gap-5 md:grid-cols-2">
-                <TextInput label="Option A" value={questionForm.optionA} onChange={(optionA) => setQuestionForm({ ...questionForm, optionA })} />
-                <TextInput label="Option B" value={questionForm.optionB} onChange={(optionB) => setQuestionForm({ ...questionForm, optionB })} />
-                <TextInput label="Option C" value={questionForm.optionC} onChange={(optionC) => setQuestionForm({ ...questionForm, optionC })} />
-                <TextInput label="Option D" value={questionForm.optionD} onChange={(optionD) => setQuestionForm({ ...questionForm, optionD })} />
-                <TextInput label="Option E" value={questionForm.optionE} onChange={(optionE) => setQuestionForm({ ...questionForm, optionE })} />
+                <TextInput label="Pilihan A" value={questionForm.optionA} onChange={(optionA) => setQuestionForm({ ...questionForm, optionA })} />
+                <TextInput label="Pilihan B" value={questionForm.optionB} onChange={(optionB) => setQuestionForm({ ...questionForm, optionB })} />
+                <TextInput label="Pilihan C" value={questionForm.optionC} onChange={(optionC) => setQuestionForm({ ...questionForm, optionC })} />
+                <TextInput label="Pilihan D" value={questionForm.optionD} onChange={(optionD) => setQuestionForm({ ...questionForm, optionD })} />
+                <TextInput label="Pilihan E, opsional" value={questionForm.optionE} onChange={(optionE) => setQuestionForm({ ...questionForm, optionE })} />
 
-                <Field label="Correct option">
+                <Field label="Kunci jawaban">
                   <select
                     value={questionForm.correctOption}
                     onChange={(event) => setQuestionForm({ ...questionForm, correctOption: event.target.value as CorrectOption })}
@@ -599,7 +645,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                 </Field>
               </div>
 
-              <Field label="Explanation">
+              <Field label="Pembahasan">
                 <textarea
                   value={questionForm.explanation}
                   onChange={(event) => setQuestionForm({ ...questionForm, explanation: event.target.value })}
@@ -608,15 +654,15 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
               </Field>
 
               <div className="grid gap-5 md:grid-cols-3">
-                <TextInput label="Video URL" value={questionForm.videoUrl} onChange={(videoUrl) => setQuestionForm({ ...questionForm, videoUrl })} />
+                <TextInput label="Tautan video pembahasan, opsional" value={questionForm.videoUrl} onChange={(videoUrl) => setQuestionForm({ ...questionForm, videoUrl })} />
 
-                <Field label="Access">
+                <Field label="Akses">
                   <select
                     value={questionForm.accessLevel}
                     onChange={(event) => setQuestionForm({ ...questionForm, accessLevel: event.target.value as AccessLevel })}
                     className="admin-control"
                   >
-                    <option value="free">Free</option>
+                    <option value="free">Gratis</option>
                     <option value="premium">Premium</option>
                   </select>
                 </Field>
@@ -627,16 +673,16 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                     onChange={(event) => setQuestionForm({ ...questionForm, status: event.target.value as ContentStatus })}
                     className="admin-control"
                   >
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="unpublished">Unpublished</option>
+                    <option value="draft">Draf</option>
+                    <option value="published">Tayang</option>
+                    <option value="unpublished">Disembunyikan</option>
                   </select>
                 </Field>
               </div>
 
               <QuestionPictureField
                 value={questionForm.pictureUrl}
-                busy={busyAction === `question-save:${questionForm.questionId}`}
+                busy={Boolean(busyAction)}
                 onChange={(pictureUrl) => setQuestionForm({ ...questionForm, pictureUrl })}
                 onError={setErrorMessage}
               />
@@ -644,18 +690,19 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
               <div className="flex flex-wrap gap-3 pt-1">
                 <button
                   onClick={saveQuestion}
-                  disabled={busyAction === `question-save:${questionForm.questionId}`}
+                  disabled={Boolean(busyAction)}
                   className="admin-button-primary"
                   type="button"
                 >
-                  {busyAction === `question-save:${questionForm.questionId}` ? "Saving..." : "Save Question"}
+                  {busyAction === `question-save:${questionForm.questionId}` ? "Menyimpan..." : "Simpan soal"}
                 </button>
                 <button
+                  disabled={Boolean(busyAction)}
                   onClick={() => setQuestionForm(null)}
                   className="admin-button-secondary"
                   type="button"
                 >
-                  Cancel
+                  Batal
                 </button>
               </div>
             </div>
@@ -664,13 +711,14 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
 
         <section className="admin-panel mt-6">
           <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Questions ({workbook.questions.length})</h2>
+            <h2 className="admin-panel-title">Soal ({workbook.questions.length})</h2>
+            <button type="button" className="admin-button-primary" onClick={addQuestion} disabled={Boolean(busyAction) || Boolean(questionForm)}>Tambah soal</button>
           </div>
 
           <div>
             {workbook.questions.length === 0 && (
               <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-stone-400">No questions assigned yet. Import a workbook to add questions.</p>
+                <p className="text-sm font-semibold text-stone-400">Belum ada soal. Klik Tambah soal atau unggah Excel.</p>
               </div>
             )}
 
@@ -686,11 +734,11 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                     </h3>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="admin-meta-tag first:before:hidden">{question.categoryId}</span>
-                    <span className="admin-meta-tag">{question.subCategoryId}</span>
-                    <span className="admin-meta-tag">{question.topicId}</span>
-                    <span className="admin-meta-tag capitalize">{question.accessLevel}</span>
-                    <span className="admin-meta-tag">Answer: {question.correctOption}</span>
+                    <span className="admin-meta-tag first:before:hidden">{categories.find((item) => item.id === question.categoryId)?.name ?? question.categoryId}</span>
+                    <span className="admin-meta-tag">{categories.flatMap((item) => item.subCategories).find((item) => item.id === question.subCategoryId)?.name ?? question.subCategoryId}</span>
+                    <span className="admin-meta-tag">{categories.flatMap((item) => item.subCategories.flatMap((sub) => sub.topics)).find((item) => item.id === question.topicId)?.name ?? question.topicId}</span>
+                    <span className="admin-meta-tag capitalize">{question.accessLevel === "free" ? "Gratis" : "Premium"}</span>
+                    <span className="admin-meta-tag">Kunci jawaban: {question.correctOption}</span>
                     <StatusPill status={question.status} />
                   </div>
                   {question.explanation && (
@@ -700,21 +748,22 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                 <div className="admin-list-actions">
                   <div className="admin-list-actions-bar">
                     <button
+                      disabled={Boolean(busyAction)}
                       onClick={() => editQuestion(question)}
                       className="admin-button-ghost"
                       type="button"
                     >
                       <PencilIcon className="w-3.5 h-3.5" />
-                      Edit
+                      Ubah
                     </button>
                     <button
                       onClick={() => deleteQuestion(question)}
-                      disabled={busyAction === `question-delete:${question.questionId}`}
+                      disabled={Boolean(busyAction)}
                       className="admin-button-ghost text-red-600 hover:bg-red-50 hover:text-red-700"
                       type="button"
                     >
                       <TrashIcon className="w-3.5 h-3.5" />
-                      Delete
+                      Keluarkan
                     </button>
                   </div>
                 </div>
@@ -722,17 +771,20 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
             ))}
           </div>
         </section>
-      </div>
+      </fieldset>
     </main>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const id = useId();
+  const isControl = isValidElement(children) && typeof children.type === "string";
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-bold text-stone-700">{label}</span>
-      {children}
-    </label>
+    <div className="block">
+      {isControl ? <label htmlFor={id} className="mb-2 block text-sm font-bold text-stone-700">{label}</label>
+        : <span className="mb-2 block text-sm font-bold text-stone-700">{label}</span>}
+      {isControl ? cloneElement(children as React.ReactElement<{ id?: string }>, { id }) : children}
+    </div>
   );
 }
 
@@ -760,15 +812,15 @@ function StatusPill({ status }: { status: ContentStatus }) {
   const config = {
     draft: {
       className: "border-stone-200 bg-stone-100 text-stone-600",
-      label: "Draft",
+      label: "Draf",
     },
     published: {
       className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      label: "Published",
+      label: "Tayang",
     },
     unpublished: {
       className: "border-amber-200 bg-amber-50 text-amber-700",
-      label: "Unpublished",
+      label: "Disembunyikan",
     },
   };
 
@@ -830,23 +882,23 @@ function EyeOffIcon({ className }: { className?: string }) {
 
 function getQuestionValidationMessage(form: QuestionForm, sortOrder: number) {
   if (!Number.isInteger(sortOrder) || sortOrder < 1 || sortOrder > 1000) {
-    return "Order must be an integer from 1 to 1000.";
+    return "Nomor urut must be an integer from 1 to 1000.";
   }
 
   if (!form.categoryId || !form.subCategoryId || !form.topicId) {
-    return "Category, sub-category, and topic are required.";
+    return "Pilih kategori, subkategori, dan topik.";
   }
 
   if (!form.questionText.trim() || !form.explanation.trim()) {
-    return "Question and explanation are required.";
+    return "Isi teks soal dan pembahasan.";
   }
 
   if (!form.optionA.trim() || !form.optionB.trim() || !form.optionC.trim() || !form.optionD.trim()) {
-    return "Options A, B, C, and D are required.";
+    return "Isi pilihan jawaban A, B, C, dan D.";
   }
 
   if (form.correctOption === "E" && !form.optionE.trim()) {
-    return "Option E is required when the correct option is E.";
+    return "Isi pilihan E karena kunci jawaban adalah E.";
   }
 
   return "";

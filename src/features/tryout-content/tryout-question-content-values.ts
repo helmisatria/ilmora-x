@@ -17,6 +17,7 @@ export function sameWorkbookQuestionContent(
     correctOption: string;
     explanation: string;
     videoUrl: string | null;
+    pictureUrl: string | null;
     accessLevel: string;
     status: string;
   },
@@ -35,6 +36,7 @@ export function sameWorkbookQuestionContent(
     existingQuestion.correctOption === workbookQuestion.correctOption &&
     existingQuestion.explanation === workbookQuestion.explanation &&
     (existingQuestion.videoUrl ?? "") === (workbookQuestion.videoUrl ?? "") &&
+    (existingQuestion.pictureUrl ?? "") === (workbookQuestion.pictureUrl ?? "") &&
     existingQuestion.accessLevel === workbookQuestion.accessLevel &&
     existingQuestion.status === workbookQuestion.status
   );
@@ -54,6 +56,7 @@ export function toQuestionInsertValues(question: TryoutWorkbookQuestion) {
     correctOption: question.correctOption,
     explanation: question.explanation,
     videoUrl: normalizeOptionalText(question.videoUrl),
+    pictureUrl: normalizeOptionalText(question.pictureUrl),
     accessLevel: question.accessLevel,
     status: question.status,
   };

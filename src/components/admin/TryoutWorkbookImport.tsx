@@ -37,7 +37,7 @@ export function WorkbookPreviewPanel({
     <section className="admin-panel mt-6">
       <div className="admin-panel-header">
         <div>
-          <h2 className="admin-panel-title">Workbook preview</h2>
+          <h2 className="admin-panel-title">Periksa isi Excel</h2>
           <p className="mt-1 text-xs font-semibold text-stone-400">{preview.fileName}</p>
         </div>
       </div>
@@ -45,7 +45,7 @@ export function WorkbookPreviewPanel({
       <div className="grid gap-5 p-5 sm:p-6">
         {preview.issues.length > 0 && (
           <div className="rounded-[var(--radius-md)] border-2 border-rose-200 bg-rose-50 p-4">
-            <h3 className="text-sm font-bold text-rose-800">Fix these rows before importing</h3>
+            <h3 className="text-sm font-bold text-rose-800">Perbaiki baris berikut, lalu unggah ulang</h3>
             <div className="mt-3 grid gap-2">
               {preview.issues.map((issue, index) => (
                 <p key={`${issue.sheet}:${issue.row}:${issue.field}:${index}`} className="m-0 text-sm font-semibold text-rose-700">
@@ -57,7 +57,7 @@ export function WorkbookPreviewPanel({
         )}
 
         {errorMessage && (
-          <p className="admin-alert">
+          <p role="alert" className="admin-alert">
             {errorMessage}
           </p>
         )}
@@ -66,20 +66,20 @@ export function WorkbookPreviewPanel({
           <div className="grid gap-4">
             <div className="rounded-[var(--radius-md)] border-2 border-stone-100 bg-stone-50 p-4">
               <p className="admin-kicker">Try-out</p>
-              <h3 className="mt-1 text-lg font-bold tracking-tight text-stone-800">{preview.data.tryout.title || "Untitled Try-out"}</h3>
+              <h3 className="mt-1 text-lg font-bold tracking-tight text-stone-800">{preview.data.tryout.title || "Judul belum diisi"}</h3>
               <p className="mt-1 text-sm font-semibold text-stone-500">
-                {getCategoryLabel(preview.data.tryout)} · {preview.data.tryout.durationMinutes || 0} min · {preview.data.tryout.status}
+                {getCategoryLabel(preview.data.tryout)} · {preview.data.tryout.durationMinutes || 0} menit · {preview.data.tryout.status}
               </p>
             </div>
 
             {preview.taxonomyActions.length > 0 && (
               <div className="rounded-[var(--radius-md)] border-2 border-amber-200 bg-amber-50 p-4">
-                <h3 className="text-sm font-bold text-amber-900">Taxonomy changes on import</h3>
+                <h3 className="text-sm font-bold text-amber-900">Kategori, subkategori, dan topik dari Excel</h3>
                 <div className="mt-3 grid gap-2">
                   {preview.taxonomyActions.map((action, index) => (
                     <p key={`${action.field}:${action.name}:${action.parentName}:${index}`} className="m-0 text-sm font-semibold text-amber-800">
-                      {action.mode === "create" ? "Create" : "Reuse"} {getTaxonomyActionLabel(action.field)} "{action.name}"
-                      {action.parentName ? ` under "${action.parentName}"` : ""}
+                      {action.mode === "create" ? "Tambahkan" : "Gunakan"} {getTaxonomyActionLabel(action.field)} "{action.name}"
+                      {action.parentName ? ` di bawah "${action.parentName}"` : ""}
                     </p>
                   ))}
                 </div>
@@ -88,17 +88,18 @@ export function WorkbookPreviewPanel({
 
             <div>
               <p className="mb-3 text-sm font-bold text-stone-700">
-                Questions ({preview.data.questions.length})
+                Soal ({preview.data.questions.length})
               </p>
               <div className="grid gap-2">
                 {questionPreview.map((question) => (
                   <div key={`${question.sortOrder}:${question.questionText}`} className="rounded-[var(--radius-sm)] border border-stone-100 bg-white p-3">
                     <p className="m-0 line-clamp-2 text-sm font-bold leading-snug text-stone-800">
-                      {question.sortOrder}. {question.questionText || "Untitled Question"}
+                      {question.sortOrder}. {question.questionText || "Teks soal belum diisi"}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-stone-400">
-                      {getQuestionTaxonomyPath(question)} · Answer {question.correctOption}
+                      {getQuestionTaxonomyPath(question)} · Kunci {question.correctOption}
                     </p>
+                    <p className="mt-2 text-sm text-stone-600">Pembahasan: {question.explanation || "Belum diisi"}</p>
                     <div className="mt-3 grid gap-1.5">
                       {getQuestionOptions(question).map((option) => (
                         <div
@@ -119,16 +120,17 @@ export function WorkbookPreviewPanel({
               </div>
               {preview.data.questions.length > questionPreview.length && (
                 <p className="mt-2 text-xs font-semibold text-stone-400">
-                  +{preview.data.questions.length - questionPreview.length} more Questions
+                  +{preview.data.questions.length - questionPreview.length} soal lainnya
                 </p>
               )}
             </div>
           </div>
         )}
 
+        {canImport && preview.data && <p className="text-sm text-stone-600">{preview.data.tryout.status === "published" ? "Try-out akan langsung tayang setelah disimpan." : "Try-out belum tayang setelah disimpan."} {preview.data.questions.filter((question) => question.status === "published").length} dari {preview.data.questions.length} soal berstatus tayang.</p>}
         <div className="flex flex-wrap gap-3">
-          <button onClick={onCancel} className="admin-button-secondary" type="button">
-            Cancel
+          <button disabled={busy} onClick={onCancel} className="admin-button-secondary" type="button">
+            Batal
           </button>
           <button
             onClick={onConfirm}
@@ -136,7 +138,7 @@ export function WorkbookPreviewPanel({
             className="admin-button-primary"
             type="button"
           >
-            {busy ? "Importing..." : confirmLabel}
+            {busy ? "Memproses Excel..." : confirmLabel}
           </button>
         </div>
       </div>
@@ -156,6 +158,7 @@ export function FileUpload({
   onFileSelect: (file: File) => Promise<void> | void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [fileError, setFileError] = useState("");
   const [fileName, setFileName] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -164,7 +167,11 @@ export function FileUpload({
   const selectFile = async (file: File | undefined) => {
     if (!file) return;
     if (isUnavailable) return;
-    if (!isAcceptedFile(file, accept)) return;
+    if (!isAcceptedFile(file, accept)) {
+      setFileError("Gunakan file .xlsx. Unduh contoh Excel dari halaman ini.");
+      return;
+    }
+    setFileError("");
 
     setFileName(file.name);
 
@@ -226,6 +233,7 @@ export function FileUpload({
       onDrop={handleDrop}
       className={`admin-file-upload ${isUnavailable ? "pointer-events-none opacity-50" : ""} ${fileName ? "admin-file-upload-active" : ""} ${isDragging ? "border-primary bg-primary-tint text-primary-dark" : ""}`}
     >
+      {fileError && <span role="alert">{fileError}</span>}
       <UploadIcon className="w-4 h-4 shrink-0" />
       <span className="truncate">{getUploadLabel({ isDragging, isUploading, fileName, placeholder })}</span>
       <input
@@ -241,15 +249,15 @@ export function FileUpload({
 }
 
 function getCategoryLabel(item: { categoryId: string; categoryName?: string }) {
-  return item.categoryId || item.categoryName || "No category";
+  return item.categoryId || item.categoryName || "Kategori belum diisi";
 }
 
 function getSubCategoryLabel(item: { subCategoryId: string; subCategoryName?: string }) {
-  return item.subCategoryId || item.subCategoryName || "No sub-category";
+  return item.subCategoryId || item.subCategoryName || "Subkategori belum diisi";
 }
 
 function getTopicLabel(item: { topicId: string; topicName?: string }) {
-  return item.topicId || item.topicName || "No topic";
+  return item.topicId || item.topicName || "Topik belum diisi";
 }
 
 function getQuestionTaxonomyPath(question: TryoutWorkbookQuestion) {
@@ -261,14 +269,14 @@ function getQuestionTaxonomyPath(question: TryoutWorkbookQuestion) {
 }
 
 function getTaxonomyActionLabel(field: WorkbookTaxonomyAction["field"]) {
-  if (field === "category_name") return "Category";
-  if (field === "sub_category_name") return "Sub-category";
+  if (field === "category_name") return "Kategori";
+  if (field === "sub_category_name") return "Subkategori";
 
-  return "Topic";
+  return "Topik";
 }
 
 function formatWorkbookIssue(issue: WorkbookValidationIssue) {
-  const rowLabel = issue.row ? ` row ${issue.row}` : "";
+  const rowLabel = issue.row ? ` baris ${issue.row}` : "";
   const fieldLabel = issue.field ? ` / ${issue.field}` : "";
 
   return `${issue.sheet}${rowLabel}${fieldLabel}: ${issue.message}`;
@@ -285,8 +293,8 @@ function getUploadLabel({
   fileName: string;
   placeholder: string;
 }) {
-  if (isDragging) return "Drop .xlsx here";
-  if (isUploading) return "Importing...";
+  if (isDragging) return "Lepaskan file .xlsx di sini";
+  if (isUploading) return "Memproses Excel...";
   if (fileName) return fileName;
 
   return placeholder;

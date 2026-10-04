@@ -72,6 +72,7 @@ type QuestionSheetRow = {
   correct_option?: string;
   explanation?: string;
   video_url?: string;
+  picture_url?: string;
   access_level?: string;
   status?: string;
 };
@@ -125,7 +126,14 @@ const requiredQuestionSheetHeaders = [
   "status",
 ] as const;
 
+function isWebUrl(value: string) {
+  try { return ["https:", "http:"].includes(new URL(value).protocol); } catch { return false; }
+}
+
 export async function readTryoutWorkbook(file: File, categories: CategoryOption[]) {
+  if (!file.name.toLowerCase().endsWith(".xlsx") || file.size > 10 * 1024 * 1024) {
+    return { data: null, issues: [{ sheet: "workbook" as const, message: "Gunakan file .xlsx dengan ukuran maksimal 10 MB." }], taxonomyActions: [] };
+  }
   const XLSX = await import("xlsx");
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer);
@@ -135,11 +143,11 @@ export async function readTryoutWorkbook(file: File, categories: CategoryOption[
   const taxonomyActions: WorkbookTaxonomyAction[] = [];
 
   if (!tryoutSheet) {
-    issues.push({ sheet: "workbook", message: "Missing tryout sheet." });
+    issues.push({ sheet: "workbook", message: "Lembar tryout tidak ada. Gunakan contoh Excel dari halaman admin." });
   }
 
   if (!questionsSheet) {
-    issues.push({ sheet: "workbook", message: "Missing questions sheet." });
+    issues.push({ sheet: "workbook", message: "Lembar questions tidak ada. Gunakan contoh Excel dari halaman admin." });
   }
 
   if (!tryoutSheet || !questionsSheet) {
@@ -149,13 +157,15 @@ export async function readTryoutWorkbook(file: File, categories: CategoryOption[
   addMissingHeaderIssues("tryout", getSheetHeaders(XLSX, tryoutSheet), requiredTryoutSheetHeaders, issues);
   addMissingHeaderIssues("questions", getSheetHeaders(XLSX, questionsSheet), requiredQuestionSheetHeaders, issues);
 
-  const [tryoutRow] = XLSX.utils.sheet_to_json<TryoutSheetRow>(tryoutSheet, { defval: "" });
+  const tryoutRows = XLSX.utils.sheet_to_json<TryoutSheetRow>(tryoutSheet, { defval: "" });
+  const [tryoutRow] = tryoutRows;
+  if (tryoutRows.length > 1) issues.push({ sheet: "tryout", message: "Isi hanya satu baris try-out. Hapus baris tambahan." });
   const questionRows = XLSX.utils
     .sheet_to_json<QuestionSheetRow>(questionsSheet, { defval: "" })
     .filter((row) => !isEmptyQuestionRow(row));
 
   if (!tryoutRow) {
-    issues.push({ sheet: "tryout", row: 2, message: "Try-out sheet must include one row." });
+    issues.push({ sheet: "tryout", row: 2, message: "Isi satu baris try-out pada baris 2." });
     return { data: null, issues, taxonomyActions };
   }
 
@@ -164,6 +174,10 @@ export async function readTryoutWorkbook(file: File, categories: CategoryOption[
     questions: questionRows.map(toTryoutWorkbookQuestion),
   };
 
+  if (questionRows.length > 500) issues.push({ sheet: "questions", message: "Maksimal 500 soal per try-out. Pisahkan soal ke try-out lain." });
+  if (data.tryout.status === "published" && !data.questions.some((question) => question.status === "published")) {
+    issues.push({ sheet: "tryout", row: 2, field: "status", message: "Try-out published harus memiliki minimal satu soal published. Gunakan draft saat masih menyiapkan soal." });
+  }
   validateTryoutRow(tryoutRow, data.tryout, categories, issues, taxonomyActions);
   validateQuestionRows(questionRows, data.questions, categories, issues, taxonomyActions);
 
@@ -193,7 +207,7 @@ function addMissingHeaderIssues(
       sheet,
       row: 1,
       field: header,
-      message: `Missing ${header} column.`,
+      message: `Kolom ${header} tidak ada. Unduh contoh Excel terbaru dan pertahankan nama kolom.`,
     });
   }
 }
@@ -213,7 +227,7 @@ function toTryoutWorkbookTryout(row: TryoutSheetRow): TryoutWorkbookTryout {
 function toTryoutWorkbookQuestion(row: QuestionSheetRow, index: number): TryoutWorkbookQuestion {
   return {
     questionId: optionalTextValue(row.question_id),
-    sortOrder: numberValue(row.sort_order) || index + 1,
+    sortOrder: numberValue(row.sort_order),
     categoryId: textValue(row.category_id),
     categoryName: optionalTextValue(row.category_name),
     subCategoryId: textValue(row.sub_category_id),
@@ -229,6 +243,7 @@ function toTryoutWorkbookQuestion(row: QuestionSheetRow, index: number): TryoutW
     correctOption: normalizeCorrectOption(row.correct_option),
     explanation: textValue(row.explanation),
     videoUrl: optionalTextValue(row.video_url),
+    pictureUrl: row.picture_url === undefined ? undefined : textValue(row.picture_url),
     accessLevel: normalizeQuestionAccessLevel(row.access_level),
     status: normalizeContentStatus(row.status),
   };
@@ -244,19 +259,21 @@ function validateTryoutRow(
   for (const field of requiredTryoutFields) {
     if (textValue(raw[field])) continue;
 
-    issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field, message: `${field} is required.` });
+    issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field, message: `Kolom ${field} wajib diisi. Lihat lembar panduan untuk contoh isian.` });
   }
 
+  if (tryout.title.length > 160) issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field: "title", message: "Judul maksimal 160 karakter." });
+  if (tryout.description.length > 500) issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field: "description", message: "Deskripsi maksimal 500 karakter." });
   if (!Number.isInteger(tryout.durationMinutes) || tryout.durationMinutes < 1 || tryout.durationMinutes > 300) {
-    issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field: "duration_minutes", message: "duration_minutes must be an integer from 1 to 300." });
+    issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field: "duration_minutes", message: "Isi durasi dengan angka bulat 1 sampai 300 menit." });
   }
 
   if (!isAccessLevel(raw.access_level)) {
-    issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field: "access_level", message: "access_level must be free or premium." });
+    issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field: "access_level", message: "Isi free untuk gratis atau premium untuk akses berbayar." });
   }
 
   if (!isContentStatus(raw.status)) {
-    issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field: "status", message: "status must be draft, published, or unpublished." });
+    issues.push({ sheet: "tryout", row: getRowNumber(raw, 2), field: "status", message: "Isi draft untuk draf, published untuk tayang, atau unpublished untuk disembunyikan." });
   }
 
   resolveCategoryReference({
@@ -282,7 +299,7 @@ function validateQuestionRows(
   const questionTexts = new Map<string, number>();
 
   if (questions.length === 0) {
-    issues.push({ sheet: "questions", row: 2, message: "At least one Question row is required." });
+    issues.push({ sheet: "questions", row: 2, message: "Isi minimal satu soal pada lembar questions." });
     return;
   }
 
@@ -302,11 +319,11 @@ function validateQuestionRows(
     for (const field of requiredQuestionFields) {
       if (textValue(raw[field])) continue;
 
-      issues.push({ sheet: "questions", row: rowNumber, field, message: `${field} is required.` });
+      issues.push({ sheet: "questions", row: rowNumber, field, message: `Kolom ${field} wajib diisi. Lihat lembar panduan untuk contoh isian.` });
     }
 
     if (!Number.isInteger(question.sortOrder) || question.sortOrder < 1 || question.sortOrder > 1000) {
-      issues.push({ sheet: "questions", row: rowNumber, field: "sort_order", message: "sort_order must be an integer from 1 to 1000." });
+      issues.push({ sheet: "questions", row: rowNumber, field: "sort_order", message: "Isi nomor urut dengan angka bulat 1 sampai 1000." });
     }
 
     const subCategory = resolveSubCategoryReference({
@@ -327,21 +344,25 @@ function validateQuestionRows(
     });
 
     if (!isCorrectOption(raw.correct_option)) {
-      issues.push({ sheet: "questions", row: rowNumber, field: "correct_option", message: "correct_option must be A, B, C, D, or E." });
+      issues.push({ sheet: "questions", row: rowNumber, field: "correct_option", message: "Isi kunci jawaban A, B, C, D, atau E." });
     }
 
     if (question.correctOption === "E" && !question.optionE) {
-      issues.push({ sheet: "questions", row: rowNumber, field: "option_e", message: "option_e is required when correct_option is E." });
+      issues.push({ sheet: "questions", row: rowNumber, field: "option_e", message: "Isi pilihan E karena kunci jawaban adalah E." });
     }
 
     if (!isAccessLevel(raw.access_level)) {
-      issues.push({ sheet: "questions", row: rowNumber, field: "access_level", message: "access_level must be free or premium." });
+      issues.push({ sheet: "questions", row: rowNumber, field: "access_level", message: "Isi free untuk gratis atau premium untuk akses berbayar." });
     }
 
     if (!isContentStatus(raw.status)) {
-      issues.push({ sheet: "questions", row: rowNumber, field: "status", message: "status must be draft, published, or unpublished." });
+      issues.push({ sheet: "questions", row: rowNumber, field: "status", message: "Isi draft untuk draf, published untuk tayang, atau unpublished untuk disembunyikan." });
     }
 
+    for (const field of ["video_url", "picture_url"] as const) {
+      const value = textValue(raw[field]);
+      if (value && !isWebUrl(value)) issues.push({ sheet: "questions", row: rowNumber, field, message: "Isi tautan lengkap yang diawali https:// atau http://, atau kosongkan." });
+    }
     addDuplicateIssue(question.questionId, questionIds, rowNumber, "question_id", issues);
     addDuplicateIssue(String(question.sortOrder), sortOrders, rowNumber, "sort_order", issues);
     addDuplicateIssue(question.questionText.toLowerCase(), questionTexts, rowNumber, "question_text", issues);
@@ -368,7 +389,7 @@ function addDuplicateIssue(
     sheet: "questions",
     row: rowNumber,
     field,
-    message: `${field} duplicates row ${existingRow}.`,
+    message: `Isian ${field} sama dengan baris ${existingRow}. Gunakan isian yang berbeda.`,
   });
 }
 
@@ -394,12 +415,12 @@ function resolveCategoryReference({
 
     if (category) return category;
 
-    issues.push({ sheet, row, field: "category_id", message: "category_id does not match an existing Category." });
+    issues.push({ sheet, row, field: "category_id", message: "ID kategori tidak ditemukan. Kosongkan category_id lalu isi category_name." });
     return null;
   }
 
   if (!categoryName) {
-    issues.push({ sheet, row, field: "category_name", message: "category_id or category_name is required." });
+    issues.push({ sheet, row, field: "category_name", message: "Isi nama kategori pada category_name. ID boleh kosong." });
     return null;
   }
 
@@ -441,7 +462,7 @@ function resolveSubCategoryReference({
 
   if (subCategoryId) {
     if (!category.id) {
-      issues.push({ sheet: "questions", row, field: "sub_category_id", message: "Use sub_category_name when category_name will create a new Category." });
+      issues.push({ sheet: "questions", row, field: "sub_category_id", message: "Kosongkan sub_category_id. Isi sub_category_name karena kategori ini baru." });
       return null;
     }
 
@@ -449,12 +470,12 @@ function resolveSubCategoryReference({
 
     if (subCategory) return subCategory;
 
-    issues.push({ sheet: "questions", row, field: "sub_category_id", message: "sub_category_id does not belong to category_id." });
+    issues.push({ sheet: "questions", row, field: "sub_category_id", message: "Subkategori tidak sesuai dengan kategori. Periksa nama atau ID subkategori." });
     return null;
   }
 
   if (!subCategoryName) {
-    issues.push({ sheet: "questions", row, field: "sub_category_name", message: "sub_category_id or sub_category_name is required." });
+    issues.push({ sheet: "questions", row, field: "sub_category_name", message: "Isi nama subkategori pada sub_category_name. ID boleh kosong." });
     return null;
   }
 
@@ -497,18 +518,18 @@ function resolveTopicReference({
 
   if (topicId) {
     if (!subCategory.id) {
-      issues.push({ sheet: "questions", row, field: "topic_id", message: "Use topic_name when sub_category_name will create a new Sub-category." });
+      issues.push({ sheet: "questions", row, field: "topic_id", message: "Kosongkan topic_id. Isi topic_name karena subkategori ini baru." });
       return;
     }
 
     if (subCategory.topics?.some((item) => item.id === topicId)) return;
 
-    issues.push({ sheet: "questions", row, field: "topic_id", message: "topic_id does not belong to sub_category_id." });
+    issues.push({ sheet: "questions", row, field: "topic_id", message: "Topik tidak sesuai dengan subkategori. Periksa nama atau ID topik." });
     return;
   }
 
   if (!topicName) {
-    issues.push({ sheet: "questions", row, field: "topic_name", message: "topic_id or topic_name is required." });
+    issues.push({ sheet: "questions", row, field: "topic_name", message: "Isi nama topik pada topic_name. ID boleh kosong." });
     return;
   }
 
