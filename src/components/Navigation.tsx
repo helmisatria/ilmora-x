@@ -119,7 +119,7 @@ export function TopBar({
 }
 
 interface BottomNavProps {
-  active: "learn" | "tryout" | "rank" | "badge";
+  active: "learn" | "tryout" | "rank" | "badge" | "profile";
 }
 
 export function BottomNav({ active }: BottomNavProps) {
@@ -128,11 +128,13 @@ export function BottomNav({ active }: BottomNavProps) {
     { k: "tryout", label: "Tryout", icon: <BookIcon />, to: "/tryout" as const, accent: "#0ea5e9", bg: "#e0f2fe" },
     { k: "rank", label: "Peringkat", icon: <TrophyIcon />, to: "/leaderboard" as const, accent: "#f59e0b", bg: "#fef3c7" },
     { k: "badge", label: "Lencana", icon: <BadgeIcon />, to: "/badges" as const, accent: "#fb7185", bg: "#ffe4e6" },
+    { k: "profile", label: "Profil", icon: <ProfileIcon />, to: "/profile" as const, accent: "#7c3aed", bg: "#ede9fe" },
   ] as const;
 
   return (
     <nav
-      className="fixed bottom-3 left-1/2 z-30 flex w-[calc(100%-24px)] max-w-[440px] -translate-x-1/2 justify-around rounded-[var(--radius-xl)] border-2 border-b-4 px-1.5 py-2 shadow-xl md:max-w-[620px] md:justify-center md:gap-2"
+      aria-label="Navigasi utama"
+      className="fixed bottom-3 left-1/2 z-30 grid w-[calc(100%-24px)] max-w-[440px] -translate-x-1/2 grid-cols-5 gap-1 rounded-[var(--radius-xl)] border-2 border-b-4 px-1.5 py-2 shadow-xl md:max-w-[620px] md:gap-2"
       style={{
         background:
           "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(239,250,247,0.95) 52%, rgba(255,248,235,0.95) 100%)",
@@ -147,6 +149,7 @@ export function BottomNav({ active }: BottomNavProps) {
           <Link
             key={item.k}
             to={item.to}
+            aria-current={isActive ? "page" : undefined}
             className={`bottom-nav-a ${isActive ? "active" : ""}`}
             style={{
               color: isActive ? item.accent : undefined,
@@ -228,6 +231,15 @@ function HomeIcon() {
     <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" aria-hidden="true">
       <path d="m4 10 8-6 8 6v10H5.8A1.8 1.8 0 0 1 4 18.2V10Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M9 20v-6h6v6" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ProfileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" aria-hidden="true">
+      <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" />
+      <path d="M4 21v-2a8 8 0 0 1 16 0v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
