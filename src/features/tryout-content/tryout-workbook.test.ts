@@ -76,9 +76,11 @@ test("images, key, pembahasan and taxonomy names survive workbook round trip", a
   assert.ok(result.data);
   result.data.questions[0].pictureUrl = "https://example.test/question.png";
   result.data.questions[0].questionId = "old-question";
-  const exported = makeTryoutWorkbook(XLSX, result.data, []);
+  const id = "source-tryout";
+  const updatedAt = "2026-10-04T11:00:00.000Z";
+  const exported = makeTryoutWorkbook(XLSX, { ...result.data, tryout: { ...result.data.tryout, id, updatedAt } }, []);
   const imported = await readTryoutWorkbook(file(exported), []);
-  assert.deepEqual(imported.data, result.data);
+  assert.deepEqual(imported.data, { ...result.data, source: { version: 1, tryoutId: id, updatedAt } });
   const values = toQuestionInsertValues(imported.data!.questions[0]);
   assert.equal(values.pictureUrl, "https://example.test/question.png");
   assert.equal(values.correctOption, "B");
@@ -96,4 +98,40 @@ test("legacy workbook does not tell the importer to erase an existing image", as
   });
   assert.deepEqual(result.issues, []);
   assert.equal(result.data?.questions[0].pictureUrl, undefined);
+});
+
+test("exports bind replacements to their tryout and revision while samples remain valid for creation", async () => {
+  const result = await sample();
+  assert.ok(result.data);
+  const target = { id: "source-tryout", updatedAt: "2026-10-04T11:00:00.000Z" };
+  const exported = makeTryoutWorkbook(XLSX, { ...result.data, tryout: { ...result.data.tryout, ...target } }, []);
+  const current = await readTryoutWorkbook(file(exported), [], target);
+  assert.deepEqual(current.issues, []);
+  assert.deepEqual(current.data?.source, { version: 1, tryoutId: target.id, updatedAt: target.updatedAt });
+  assert.equal(exported.Workbook?.Sheets?.find(sheet => sheet.name === "_ilmorax")?.Hidden, 1);
+
+  const stale = await readTryoutWorkbook(file(exported), [], { ...target, updatedAt: "2026-10-04T11:00:00.001Z" });
+  assert.ok(stale.issues.some(issue => issue.message.includes("sudah tertinggal")));
+  const wrongTryout = await readTryoutWorkbook(file(exported), [], { ...target, id: "other-tryout" });
+  assert.ok(wrongTryout.issues.some(issue => issue.message.includes("try-out lain")));
+  const legacy = await readTryoutWorkbook(file(makeSampleWorkbook(XLSX, [])), [], target);
+  assert.ok(legacy.issues.some(issue => issue.message.includes("belum memiliki versi sumber")));
+  assert.deepEqual(result.issues, []);
+});
+
+test("malformed or duplicated source metadata cannot be imported", async () => {
+  const result = await sample();
+  assert.ok(result.data);
+  const target = { id: "source-tryout", updatedAt: "2026-10-04T11:00:00.000Z" };
+  for (const sourceRows of [
+    [{ version: 1, tryoutId: target.id, updatedAt: "invalid" }],
+    [{ version: 99, tryoutId: target.id, updatedAt: target.updatedAt }],
+    [{ version: 1, tryoutId: "", updatedAt: target.updatedAt }],
+    [1, 2].map(() => ({ version: 1, tryoutId: target.id, updatedAt: target.updatedAt })),
+  ]) {
+    const book = makeTryoutWorkbook(XLSX, { ...result.data, tryout: { ...result.data.tryout, ...target } }, []);
+    book.Sheets._ilmorax = XLSX.utils.json_to_sheet(sourceRows);
+    const imported = await readTryoutWorkbook(file(book), [], target);
+    assert.ok(imported.issues.some(issue => issue.message.includes("tidak dapat dibaca")));
+  }
 });

@@ -8,7 +8,11 @@ if (!process.env.DATABASE_URL || !["localhost", "127.0.0.1"].includes(new URL(pr
 const { db, closeDb } = await import("../src/lib/db/client");
 const schema = await import("../src/lib/db/schema");
 const { eq, and } = await import("drizzle-orm");
-const { createTryoutFromWorkbook, importTryoutWorkbook, updateTryoutQuestionContent, unpublishTryoutContent } = await import("../src/features/tryout-content/tryout-content-management");
+const { createTryoutFromWorkbook, importTryoutWorkbook: replaceWorkbook, updateTryoutQuestionContent, unpublishTryoutContent } = await import("../src/features/tryout-content/tryout-content-management");
+
+function importTryoutWorkbook(data: Parameters<typeof replaceWorkbook>[0]) {
+  return replaceWorkbook({ ...data, source: { version: 1, tryoutId: data.tryoutId, updatedAt: data.expectedUpdatedAt } });
+}
 
 async function revision(id: string) {
   const [row] = await db.select({ updatedAt: schema.tryouts.updatedAt }).from(schema.tryouts).where(eq(schema.tryouts.id, id));

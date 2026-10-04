@@ -327,7 +327,8 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     try {
       const latestCategories = await listCategoryOptionsAdmin();
       const XLSX = await import("xlsx");
-      const exportedWorkbook = tryoutWorkbookSheets.makeTryoutWorkbook(XLSX, workbook, latestCategories);
+      const latestWorkbook = await getTryoutWorkbookAdmin({ data: { tryoutId } });
+      const exportedWorkbook = tryoutWorkbookSheets.makeTryoutWorkbook(XLSX, latestWorkbook, latestCategories);
       const fileName = tryoutWorkbookSheets.makeTryoutWorkbookFileName(workbook.tryout.slug, new Date());
 
       tryoutWorkbookSheets.saveWorkbook(XLSX, exportedWorkbook, fileName);
@@ -348,7 +349,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     setErrorMessage("");
 
     try {
-      const result = await tryoutWorkbook.readTryoutWorkbook(file, categories);
+      const result = await tryoutWorkbook.readTryoutWorkbook(file, categories, workbook.tryout);
 
       setWorkbookPreview({
         fileName: file.name,
@@ -375,6 +376,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         data: {
           tryoutId,
           expectedUpdatedAt: previewRevision,
+          source: workbookPreview.data.source,
           tryout: workbookPreview.data.tryout,
           questions: workbookPreview.data.questions,
         },

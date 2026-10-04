@@ -1,4 +1,5 @@
 import { withAdminContentTransaction } from "./admin-content-transaction";
+import { workbookSourceSchema } from "./tryout-workbook-source";
 import { createServerFn } from "@tanstack/react-start";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -84,6 +85,7 @@ const workbookTryoutSchema = z.object({
 const importTryoutWorkbookSchema = z.object({
   tryoutId: z.string().trim().min(1),
   expectedUpdatedAt: z.iso.datetime(),
+  source: workbookSourceSchema.optional(),
   tryout: workbookTryoutSchema,
   questions: z.array(workbookQuestionSchema).max(500),
 });

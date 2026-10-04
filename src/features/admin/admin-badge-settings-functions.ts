@@ -8,7 +8,7 @@ import { parseInput } from "../../lib/http/validation";
 import { getBadgeRequirementText } from "../engagement-surface/badge-catalog";
 import { canDeactivateBadge } from "../engagement-surface/badge-settings";
 import { listEffectiveBadges } from "../engagement-surface/engagement-surface";
-import { superAdminMiddleware } from "./admin-access";
+import { adminMiddleware } from "./admin-access";
 import { listSettingsAudit, recordSettingsAudit, type SettingsAuditChange } from "./admin-settings-audit";
 
 // Empty text and a null reward mean "use the catalog value".
@@ -21,7 +21,7 @@ const badgeSettingsSchema = z.object({
 });
 
 export const listBadgeSettingsAdmin = createServerFn({ method: "GET" })
-  .middleware([superAdminMiddleware])
+  .middleware([adminMiddleware])
   .handler(async () => {
     const [effectiveBadges, earnedRows, audit] = await Promise.all([
       listEffectiveBadges(),
@@ -58,7 +58,7 @@ export const listBadgeSettingsAdmin = createServerFn({ method: "GET" })
   });
 
 export const updateBadgeSettingsAdmin = createServerFn({ method: "POST" })
-  .middleware([superAdminMiddleware])
+  .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(badgeSettingsSchema, input))
   .handler(async ({ data, context }) => {
     const badge = (await listEffectiveBadges()).find((item) => item.code === data.badgeCode);

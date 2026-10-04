@@ -17,21 +17,23 @@ jobs:
         env:
           POSTGRES_USER: e2e
           POSTGRES_PASSWORD: e2e
-          POSTGRES_DB: ilmora_e2e
+          POSTGRES_DB: ilmora_admin_qa
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U e2e -d ilmora_e2e"
+          --health-cmd "pg_isready -U e2e -d ilmora_admin_qa"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgres://e2e:e2e@127.0.0.1:5432/ilmora_e2e
+      DATABASE_URL: postgres://e2e:e2e@127.0.0.1:5432/ilmora_admin_qa
       BETTER_AUTH_URL: http://127.0.0.1:8090
       APP_URL: http://127.0.0.1:8090
       E2E_BASE_URL: http://127.0.0.1:8090
       ADMIN_EMAILS: e2e-admin@example.test
       E2E_REQUIRE_AUTH: "1"
+      E2E_EXPECT_DEV_CONTROLS: "0"
+      RAILWAY_ENVIRONMENT_NAME: staging
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -48,15 +50,23 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm db:seed
+      - name: Check unit tests and production build
+        run: |
+          pnpm test
+          pnpm build
       - name: Start app and prepare browser sessions
         run: |
-          pnpm exec vite dev --host 127.0.0.1 > e2e-app.log 2>&1 &
+          HOST=127.0.0.1 PORT=8090 pnpm start > e2e-app.log 2>&1 &
           for attempt in {1..60}; do
             if curl --fail --silent "$E2E_BASE_URL/api/healthz" > /dev/null; then break; fi
             sleep 2
           done
           curl --fail --silent "$E2E_BASE_URL/api/healthz" > /dev/null
           pnpm exec tsx e2e/prepare-local.ts
+      - name: Check admin content transactions
+        run: |
+          pnpm exec tsx e2e/check-admin-content.ts
+          pnpm exec tsx e2e/check-admin-concurrency.ts
       - name: Run regression
         run: pnpm test:e2e:full
       - name: Upload failure report

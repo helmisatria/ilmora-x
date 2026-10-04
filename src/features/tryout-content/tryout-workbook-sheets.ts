@@ -5,7 +5,7 @@ import type {
 } from "./tryout-content-types";
 
 type TryoutWorkbookSheetData = {
-  tryout: TryoutWorkbookTryout;
+  tryout: TryoutWorkbookTryout & { id: string; updatedAt: string };
   questions: Array<TryoutWorkbookQuestion & { questionId?: string }>;
 };
 
@@ -130,7 +130,7 @@ export function makeTryoutWorkbook(
   data: TryoutWorkbookSheetData,
   categories: CategoryOption[],
 ) {
-  return makeWorkbookFromRows(XLSX, {
+  const workbook = makeWorkbookFromRows(XLSX, {
     tryoutRows: [toTryoutSheetRow({ ...data.tryout, categoryName: categories.find((item) => item.id === data.tryout.categoryId)?.name ?? data.tryout.categoryName })],
     questionRows: data.questions.map((question) => {
       const category = categories.find((item) => item.id === question.categoryId);
@@ -140,6 +140,12 @@ export function makeTryoutWorkbook(
     }),
     categories,
   });
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{
+    version: 1, tryoutId: data.tryout.id, updatedAt: data.tryout.updatedAt,
+  }]), "_ilmorax");
+  // Keep the export's source revision away from the editable content sheets.
+  workbook.Workbook = { Sheets: workbook.SheetNames.map((name) => ({ name, Hidden: name === "_ilmorax" ? 1 : 0 })) };
+  return workbook;
 }
 
 export function makeSampleWorkbookFileName(date: Date) {

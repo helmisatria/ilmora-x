@@ -1,5 +1,6 @@
 import { normalizeTryoutAccessLevel as normalizeDomainTryoutAccessLevel } from "../premium-access/premium-access";
 import { questionSheetHeaders } from "./tryout-workbook-sheets";
+import { getWorkbookSourceError, workbookSourceSchema } from "./tryout-workbook-source";
 import type {
   CategoryOption,
   ContentStatus,
@@ -8,6 +9,7 @@ import type {
   TryoutAccessLevel,
   TryoutWorkbookQuestion,
   TryoutWorkbookTryout,
+  TryoutWorkbookInput,
 } from "./tryout-content-types";
 
 export type {
@@ -21,10 +23,7 @@ export type {
   TryoutWorkbookTryout,
 };
 
-export type TryoutWorkbookData = {
-  tryout: TryoutWorkbookTryout;
-  questions: TryoutWorkbookQuestion[];
-};
+export type TryoutWorkbookData = TryoutWorkbookInput;
 
 export type WorkbookValidationIssue = {
   sheet: "tryout" | "questions" | "workbook";
@@ -130,7 +129,9 @@ function isWebUrl(value: string) {
   try { return ["https:", "http:"].includes(new URL(value).protocol); } catch { return false; }
 }
 
-export async function readTryoutWorkbook(file: File, categories: CategoryOption[]) {
+export async function readTryoutWorkbook(
+  file: File, categories: CategoryOption[], target?: { id: string; updatedAt: string },
+) {
   if (!file.name.toLowerCase().endsWith(".xlsx") || file.size > 10 * 1024 * 1024) {
     return { data: null, issues: [{ sheet: "workbook" as const, message: "Gunakan file .xlsx dengan ukuran maksimal 10 MB." }], taxonomyActions: [] };
   }
@@ -169,10 +170,25 @@ export async function readTryoutWorkbook(file: File, categories: CategoryOption[
     return { data: null, issues, taxonomyActions };
   }
 
-  const data = {
+  const data: TryoutWorkbookData = {
     tryout: toTryoutWorkbookTryout(tryoutRow),
     questions: questionRows.map(toTryoutWorkbookQuestion),
   };
+
+  const sourceSheet = workbook.Sheets._ilmorax;
+  if (sourceSheet) {
+    const rows = XLSX.utils.sheet_to_json(sourceSheet);
+    const parsed = workbookSourceSchema.safeParse(rows[0]);
+    if (rows.length !== 1 || !parsed.success) {
+      issues.push({ sheet: "workbook", message: "Versi sumber file Excel tidak dapat dibaca. Unduh Excel terbaru dari try-out ini." });
+    } else {
+      data.source = parsed.data;
+    }
+  }
+  if (target) {
+    const sourceError = getWorkbookSourceError(data.source, target);
+    if (sourceError) issues.push({ sheet: "workbook", message: sourceError });
+  }
 
   if (questionRows.length > 500) issues.push({ sheet: "questions", message: "Maksimal 500 soal per try-out. Pisahkan soal ke try-out lain." });
   if (data.tryout.status === "published" && !data.questions.some((question) => question.status === "published")) {

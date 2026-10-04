@@ -360,19 +360,19 @@ function LearningLoopSection() {
     {
       title: "Kerjakan dengan timer",
       body: "Jawab seperti saat ujian dan tandai soal yang masih meragukan.",
-      icon: <ClockIcon />,
+      icon: <ClockIcon size={28} />,
       tone: "bg-[#e8f7ff] text-[#1878a8] shadow-[#b8dff1]",
     },
     {
       title: "Periksa jawaban",
       body: "Lihat jawaban benar, pembahasan, dan materi yang perlu dibaca lagi.",
-      icon: <BookOpenIcon />,
+      icon: <BookOpenIcon size={28} />,
       tone: "bg-[#fff0ee] text-[#bd4f50] shadow-[#f1c2bd]",
     },
     {
       title: "Ulangi topik lemah",
       body: "Gunakan akurasi per topik untuk memilih latihan berikutnya.",
-      icon: <TargetIcon />,
+      icon: <TargetIcon size={28} />,
       tone: "bg-[#eaf9e4] text-[#438d31] shadow-[#c7e7bc]",
     },
   ];

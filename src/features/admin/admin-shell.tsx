@@ -29,8 +29,8 @@ const adminSections = [
   { label: "Kategori", to: "/admin/categories", description: "Kelola kategori, subkategori, dan topik soal.", icon: TagsIcon },
   { label: "Polls", to: "/admin/polls", description: "Live classroom Poll Sessions, rounds, and history.", icon: SignalIcon },
   { label: "Reports", to: "/admin/reports", description: "Question reports from Students.", icon: FlagIcon },
-  { label: "Badges", to: "/admin/badges", description: "Badge names, requirement text, EXP rewards, and on/off for Super Admins.", icon: BadgeIcon },
-  { label: "Leaderboard", to: "/admin/leaderboard", description: "Weekly participant threshold for Top-N Badges, for Super Admins.", icon: TrophyIcon },
+  { label: "Badges", to: "/admin/badges", description: "Badge names, requirement text, EXP rewards, and on/off settings.", icon: BadgeIcon },
+  { label: "Leaderboard", to: "/admin/leaderboard", description: "Weekly participant threshold for Top-N Badges.", icon: TrophyIcon },
   { label: "Insights", to: "/admin/insights", description: "Basic platform metrics for Milestone 1.", icon: ChartIcon },
   { label: "Monitoring", to: "/admin/monitoring", description: "pg-boss queue and schedule status for Super Admins.", icon: MonitorIcon },
 ] as const;

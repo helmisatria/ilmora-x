@@ -56,8 +56,15 @@ export type TryoutWorkbookQuestion = {
 };
 
 export type TryoutWorkbookInput = {
+  source?: TryoutWorkbookSource;
   tryout: TryoutWorkbookTryout;
   questions: TryoutWorkbookQuestion[];
+};
+
+export type TryoutWorkbookSource = {
+  version: 1;
+  tryoutId: string;
+  updatedAt: string;
 };
 
 export type TryoutQuestionContentInput = {

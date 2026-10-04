@@ -10,6 +10,7 @@ import {
 } from "../../lib/db/schema";
 import { withAdminContentTransaction, requireTryoutRevision, touchTryout, nextTryoutRevision, nextQuestionRevision, type ContentRevision } from "./admin-content-transaction";
 import { conflict, notFound } from "../../lib/http/errors";
+import { getWorkbookSourceError } from "./tryout-workbook-source";
 import type {
   TryoutContentInput,
   TryoutQuestionContentInput,
@@ -128,6 +129,10 @@ export async function importTryoutWorkbook(data: TryoutWorkbookInput & { tryoutI
   await validateTryoutWorkbookInput(data);
   const imported = await withAdminContentTransaction(async (tx) => {
     const currentTryout = await requireTryoutRevision(tx, data.tryoutId, data.expectedUpdatedAt);
+    const sourceError = getWorkbookSourceError(data.source, {
+      id: currentTryout.id, updatedAt: currentTryout.updatedAt.toISOString(),
+    });
+    if (sourceError) throw conflict(sourceError);
     if (currentTryout.status === "published" && data.tryout.status !== "published") {
       await ensureNoLifetimeOwners(data.tryoutId, tx);
     }

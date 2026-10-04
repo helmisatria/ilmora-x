@@ -39,7 +39,7 @@ Untuk beberapa soal, klik Kelola soal pada try-out, lalu Ubah pada soal. Periksa
 
 Untuk banyak soal, unduh Excel terbaru dari try-out tersebut. Pertahankan question_id pada soal lama. Kosongkan question_id hanya pada soal baru. Pertahankan picture_url agar gambar tetap ada. Unggah file pada halaman try-out yang sama, periksa pratinjau, lalu klik Simpan isi Excel.
 
-Simpan isi Excel mengganti seluruh daftar soal dalam try-out itu. Soal yang tidak ada di Excel akan keluar dari try-out. Unduh salinan terbaru sebelum mulai mengubah. Perubahan judul, durasi, akses, dan status dalam Excel juga berlaku setelah disimpan.
+Simpan isi Excel mengganti seluruh daftar soal dalam try-out itu. Soal yang tidak ada di Excel akan keluar dari try-out. Unduh salinan terbaru sebelum mulai mengubah. File dari unduhan lama ditolak jika isi try-out sudah berubah, termasuk setelah halaman dimuat ulang. File contoh atau file lama tanpa versi sumber juga tidak dapat mengganti try-out yang sudah ada. Unduh Excel terbaru dari try-out tersebut, lalu pindahkan perubahan Anda ke salinan baru. Perubahan judul, durasi, akses, dan status dalam Excel juga berlaku setelah disimpan.
 
 Saat soal dipakai oleh beberapa try-out, perubahan lewat Kelola soal atau Excel membuat salinan untuk try-out yang diubah. Try-out lain tetap memakai isi semula. Perubahan langsung lewat Bank soal berlaku untuk semua try-out yang memakai soal tersebut.
 
@@ -63,4 +63,4 @@ Setelah mengubah isi, buka lagi try-out dan periksa jumlah soal, urutan, kunci, 
 
 ## Saat admin lain mengubah data
 
-Jika muncul pesan bahwa admin lain sudah mengubah data, perubahan Anda belum tersimpan. Salin isian yang ingin dipertahankan ke catatan sementara, lalu muat ulang halaman. Periksa perubahan terbaru sebelum mengisi dan menyimpan lagi. Gunakan Excel terbaru agar tidak mengganti isi baru dengan file lama.
+Jika muncul pesan bahwa admin lain sudah mengubah data, perubahan Anda belum tersimpan. Salin isian yang ingin dipertahankan ke catatan sementara, lalu muat ulang halaman. Periksa perubahan terbaru sebelum mengisi dan menyimpan lagi. Jika file Excel ditolak karena sudah tertinggal, unduh Excel terbaru dan pindahkan perubahan Anda ke file baru. Jangan menghapus lembar tersembunyi pada hasil unduhan.

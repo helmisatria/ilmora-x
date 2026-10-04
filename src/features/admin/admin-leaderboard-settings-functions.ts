@@ -6,7 +6,7 @@ import { leaderboardSettings, user } from "../../lib/db/schema";
 import { parseInput } from "../../lib/http/validation";
 import { getWeeklyParticipantThreshold } from "../leaderboard/leaderboard";
 import { DEFAULT_WEEKLY_PARTICIPANT_THRESHOLD } from "../leaderboard/leaderboard-settings";
-import { superAdminMiddleware } from "./admin-access";
+import { adminMiddleware } from "./admin-access";
 import { listSettingsAudit, recordSettingsAudit } from "./admin-settings-audit";
 
 const SETTINGS_ROW_ID = "default";
@@ -17,7 +17,7 @@ const leaderboardSettingsSchema = z.object({
 });
 
 export const getLeaderboardSettingsAdmin = createServerFn({ method: "GET" })
-  .middleware([superAdminMiddleware])
+  .middleware([adminMiddleware])
   .handler(async () => {
     const [setting] = await db
       .select({
@@ -43,7 +43,7 @@ export const getLeaderboardSettingsAdmin = createServerFn({ method: "GET" })
   });
 
 export const updateLeaderboardSettingsAdmin = createServerFn({ method: "POST" })
-  .middleware([superAdminMiddleware])
+  .middleware([adminMiddleware])
   .inputValidator((input) => parseInput(leaderboardSettingsSchema, input))
   .handler(async ({ data, context }) => {
     await db.transaction(async (tx) => {
