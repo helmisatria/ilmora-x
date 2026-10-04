@@ -50,13 +50,21 @@ export type TryoutWorkbookQuestion = {
   correctOption: QuestionOption;
   explanation: string;
   videoUrl?: string;
+  pictureUrl?: string;
   accessLevel: QuestionAccessLevel;
   status: ContentStatus;
 };
 
 export type TryoutWorkbookInput = {
+  source?: TryoutWorkbookSource;
   tryout: TryoutWorkbookTryout;
   questions: TryoutWorkbookQuestion[];
+};
+
+export type TryoutWorkbookSource = {
+  version: 1;
+  tryoutId: string;
+  updatedAt: string;
 };
 
 export type TryoutQuestionContentInput = {

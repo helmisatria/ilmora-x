@@ -1,5 +1,5 @@
 import type { ChangeEvent, DragEvent } from "react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 type QuestionPictureFieldProps = {
   label?: string;
@@ -10,12 +10,13 @@ type QuestionPictureFieldProps = {
 };
 
 export function QuestionPictureField({
-  label = "Picture URL",
+  label = "Gambar soal, opsional",
   value,
   busy = false,
   onChange,
   onError,
 }: QuestionPictureFieldProps) {
+  const fieldId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -26,7 +27,7 @@ export function QuestionPictureField({
     if (isUnavailable) return;
 
     if (!file.type.startsWith("image/")) {
-      onError("Upload an image file.");
+      onError("Gunakan file gambar JPG, PNG, WebP, atau GIF.");
       return;
     }
 
@@ -43,18 +44,18 @@ export function QuestionPictureField({
       const result = await response.json().catch(() => null);
 
       if (!response.ok) {
-        onError(result?.message ?? "Image was not uploaded.");
+        onError(result?.message ?? "Gambar belum terunggah. Coba lagi.");
         return;
       }
 
       if (result.mediaType !== "image") {
-        onError("Upload an image file.");
+        onError("Gunakan file gambar JPG, PNG, WebP, atau GIF.");
         return;
       }
 
       onChange(result.url);
     } catch {
-      onError("Image was not uploaded.");
+      onError("Gambar belum terunggah. Coba lagi.");
     } finally {
       setIsUploading(false);
     }
@@ -93,7 +94,7 @@ export function QuestionPictureField({
 
   return (
     <div>
-      <span className="mb-2 block text-sm font-bold text-stone-700">{label}</span>
+      <label htmlFor={fieldId} className="mb-2 block text-sm font-bold text-stone-700">{label}</label>
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -102,10 +103,11 @@ export function QuestionPictureField({
       >
         <div className="flex flex-col gap-3 sm:flex-row">
           <input
+            id={fieldId}
             value={value}
             onChange={(event) => onChange(event.target.value)}
             className="admin-control min-w-0 flex-1"
-            placeholder="Paste an image link from Media"
+            placeholder="Tempel tautan gambar atau unggah gambar"
           />
           <button
             type="button"
@@ -127,7 +129,7 @@ export function QuestionPictureField({
         </div>
 
         {isDragging && (
-          <p className="mt-2 text-xs font-bold text-primary-dark">Drop image to fill {label}.</p>
+          <p className="mt-2 text-xs font-bold text-primary-dark">Lepaskan gambar di sini.</p>
         )}
       </div>
 
@@ -135,7 +137,7 @@ export function QuestionPictureField({
         <div className="mt-3 rounded-[var(--radius-md)] border-2 border-stone-100 bg-stone-50 p-3">
           <img
             src={value}
-            alt={`${label} preview`}
+            alt={`Pratinjau ${label}`}
             className="max-h-56 w-full rounded-[var(--radius-sm)] object-contain"
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -152,7 +154,7 @@ export function QuestionPictureField({
               onClick={() => onChange("")}
               className="admin-button-ghost text-rose-600 hover:bg-rose-50 hover:text-rose-700"
             >
-              Clear
+              Hapus gambar
             </button>
           </div>
         </div>
@@ -168,10 +170,10 @@ function getUploadButtonLabel({
   isUploading: boolean;
   hasValue: boolean;
 }) {
-  if (isUploading) return "Uploading...";
-  if (hasValue) return "Replace image";
+  if (isUploading) return "Mengunggah...";
+  if (hasValue) return "Ganti gambar";
 
-  return "Upload image";
+  return "Unggah gambar";
 }
 
 function UploadIcon({ className }: { className?: string }) {

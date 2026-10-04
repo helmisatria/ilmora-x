@@ -21,15 +21,16 @@ import { cn } from "../../utils/cn";
 
 const adminSections = [
   { label: "Users", to: "/admin/users", description: "Student accounts, status, and profile details.", icon: UsersIcon },
-  { label: "Try-outs", to: "/admin/tryouts", description: "Assessment setup, publishing, and question assignment.", icon: BookIcon },
+  { label: "Try-out", to: "/admin/tryouts", description: "Buat try-out, kelola soal, dan tayangkan saat siap.", icon: BookIcon },
+  { label: "Bank soal", to: "/admin/questions", description: "Kelola soal, kunci jawaban, dan pembahasan yang dipakai di beberapa try-out.", icon: BookIcon },
   { label: "Payments", to: "/admin/payments", description: "Products, Coupons, manual grants, and checkout repair.", icon: PaymentIcon },
   { label: "Announcements", to: "/admin/announcements", description: "Modal announcement for the landing page and Student dashboard.", icon: MegaphoneIcon },
   { label: "Media", to: "/admin/media", description: "Reusable image and video links for Question review content.", icon: MediaIcon },
-  { label: "Categories", to: "/admin/categories", description: "Three-level curriculum taxonomy for Questions and Materi links.", icon: TagsIcon },
+  { label: "Kategori", to: "/admin/categories", description: "Kelola kategori, subkategori, dan topik soal.", icon: TagsIcon },
   { label: "Polls", to: "/admin/polls", description: "Live classroom Poll Sessions, rounds, and history.", icon: SignalIcon },
   { label: "Reports", to: "/admin/reports", description: "Question reports from Students.", icon: FlagIcon },
-  { label: "Badges", to: "/admin/badges", description: "Badge names, requirement text, EXP rewards, and on/off for Super Admins.", icon: BadgeIcon },
-  { label: "Leaderboard", to: "/admin/leaderboard", description: "Weekly participant threshold for Top-N Badges, for Super Admins.", icon: TrophyIcon },
+  { label: "Badges", to: "/admin/badges", description: "Badge names, requirement text, EXP rewards, and on/off settings.", icon: BadgeIcon },
+  { label: "Leaderboard", to: "/admin/leaderboard", description: "Weekly participant threshold for Top-N Badges.", icon: TrophyIcon },
   { label: "Insights", to: "/admin/insights", description: "Basic platform metrics for Milestone 1.", icon: ChartIcon },
   { label: "Monitoring", to: "/admin/monitoring", description: "pg-boss queue and schedule status for Super Admins.", icon: MonitorIcon },
 ] as const;

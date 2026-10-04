@@ -2,6 +2,7 @@
 
 import { createRootRoute, HeadContent, Outlet, Scripts, redirect } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import type { ReactNode } from "react";
 import { Toaster } from "sonner";
 import { AppProvider } from "../data/provider";
 import { getCurrentViewer } from "../lib/auth-functions";
@@ -107,6 +108,7 @@ export const Route = createRootRoute({
     ],
   }),
   component: RootComponent,
+  shellComponent: RootDocument,
   notFoundComponent: () => (
     <div className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eef8f6_0%,#fbfaf7_48%,#f7f3ea_100%)]">
       <div
@@ -139,9 +141,7 @@ export const Route = createRootRoute({
   ),
 });
 
-function RootComponent() {
-  const { viewer } = Route.useRouteContext();
-
+function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
@@ -155,15 +155,7 @@ function RootComponent() {
         />
       </head>
       <body className="antialiased">
-        <ProductAnalyticsProvider>
-          <ProductAnalyticsIdentity viewer={viewer} />
-          <AppProvider viewer={viewer}>
-            <div id="app" className="view">
-              <Outlet />
-            </div>
-            <Toaster richColors position="top-right" />
-          </AppProvider>
-        </ProductAnalyticsProvider>
+        {children}
         <Scripts />
         <TanStackRouterDevtools position="bottom-right" />
       </body>
@@ -171,9 +163,25 @@ function RootComponent() {
   );
 }
 
+function RootComponent() {
+  const { viewer } = Route.useRouteContext();
+
+  return (
+    <ProductAnalyticsProvider>
+      <ProductAnalyticsIdentity viewer={viewer} />
+      <AppProvider viewer={viewer}>
+        <div id="app" className="view">
+          <Outlet />
+        </div>
+        <Toaster richColors position="top-right" />
+      </AppProvider>
+    </ProductAnalyticsProvider>
+  );
+}
+
 function NotFoundIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="28" height="28" className="h-7 w-7" fill="none" aria-hidden="true">
       <path d="M10.5 10.5h.1M14.5 10.5h.1M9 16c1.8-1.4 4.2-1.4 6 0" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
       <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
     </svg>
@@ -212,7 +220,7 @@ function ErrorMessagePage({ message }: { message: string }) {
 
 function ErrorIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="28" height="28" className="h-7 w-7" fill="none" aria-hidden="true">
       <path d="M12 3v1M12 20v1M5 17l2 2m10-2-2 2M4 9h16" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
       <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2.2" />
     </svg>
