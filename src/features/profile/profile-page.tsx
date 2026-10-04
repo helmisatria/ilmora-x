@@ -256,7 +256,7 @@ export function ProfilePage({ summary, badgeCatalog, viewer }: ProfilePageData) 
         </div>
       </div>
 
-      <BottomNav active="learn" />
+      <BottomNav active="profile" />
     </main>
   );
 }
