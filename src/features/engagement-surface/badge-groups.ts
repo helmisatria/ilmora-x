@@ -7,6 +7,7 @@ export type BadgeProgressView = {
   progress: number;
   total: number;
   unlocked: boolean;
+  pending: boolean;
 };
 
 // Display-only grouping. Badge["category"] stays as-is because awarding and profiles rely on it.
@@ -45,7 +46,7 @@ export function getNextBadges<TBadge extends Badge>(badgeList: TBadge[], progres
   return badgeList
     .filter((badge) => {
       const progress = progressMap.get(badge.id);
-      if (!progress || progress.unlocked) return false;
+      if (!progress || progress.unlocked || progress.pending) return false;
 
       return hasMeasurableProgress(badge) && badge.name !== "Fail Legend";
     })

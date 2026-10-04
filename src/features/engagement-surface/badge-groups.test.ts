@@ -28,6 +28,7 @@ test("next badges are the locked, measurable ones closest to unlocking, one per 
     progress: 0,
     total: 5,
     unlocked: false,
+    pending: false,
   }));
   const set = (id: number, value: Partial<BadgeProgressView>) =>
     Object.assign(progress.find((item) => item.badgeId === id)!, value);
@@ -38,6 +39,7 @@ test("next badges are the locked, measurable ones closest to unlocking, one per 
   set(18, { progress: 2, total: 7 });
   set(13, { progress: 0, total: 1 });
   set(26, { progress: 4, total: 5 });
+  set(3, { progress: 6, total: 6, pending: true });
 
   const next = getNextBadges(badges, progress).map((item) => item.badge.id);
 
@@ -50,6 +52,7 @@ test("a brand-new student sees one badge per group, not only Level badges", () =
     progress: getBadgeGroupKey(badge) === "level" ? 1 : 0,
     total: Number(badge.task.match(/\d+/)?.[0] ?? 1),
     unlocked: false,
+    pending: false,
   }));
 
   const next = getNextBadges(badges, progress).map((item) => item.badge.name);
@@ -63,6 +66,7 @@ test("next badges is empty when only server-judged badges are locked", () => {
     progress: 1,
     total: 1,
     unlocked: hasMeasurableProgress(badge) && badge.name !== "Fail Legend",
+    pending: false,
   }));
 
   assert.deepEqual(getNextBadges(badges, progress), []);
