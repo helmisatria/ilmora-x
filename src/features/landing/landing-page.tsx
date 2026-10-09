@@ -16,6 +16,7 @@ import {
   SparkIcon,
   TargetIcon,
 } from "./landing-icons";
+import { LegalLinks } from "./legal-page";
 import { useLandingLinkAnalytics } from "./landing-link-analytics";
 import { PublicNavigation } from "./public-navigation";
 
@@ -617,6 +618,7 @@ function SiteFooter() {
           <Link to="/tentang-kami" className="text-stone-600 no-underline hover:text-[var(--brand-primary)]">
             Tentang kami
           </Link>
+          <LegalLinks />
         </div>
       </div>
     </footer>

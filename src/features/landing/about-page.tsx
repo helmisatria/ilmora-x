@@ -13,6 +13,7 @@ import {
   TargetBadgeIcon,
   UsersIcon,
 } from "./landing-icons";
+import { LegalLinks } from "./legal-page";
 import { PublicNavigation } from "./public-navigation";
 
 const learningPrinciples = [
@@ -340,6 +341,7 @@ function AboutFooter() {
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <a href={`mailto:${businessDetails.email}`} className="text-stone-600 no-underline hover:text-[var(--brand-primary)]">{businessDetails.email}</a>
           <Link to="/" className="text-stone-600 no-underline hover:text-[var(--brand-primary)]">Beranda</Link>
+          <LegalLinks />
         </div>
       </div>
     </footer>

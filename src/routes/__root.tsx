@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { createRootRoute, HeadContent, Outlet, Scripts, redirect } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, redirect, useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
@@ -17,6 +17,8 @@ const SITE_URL = "https://ilmorax.com";
 const SITE_NAME = "IlmoraX";
 const DEFAULT_TITLE = "IlmoraX | Try-out UKAI untuk Calon Apoteker";
 const DEFAULT_DESCRIPTION = "Latihan soal UKAI dengan timer, pembahasan, dan analisis hasil untuk membantu calon apoteker menentukan materi yang perlu dipelajari lagi.";
+const OG_IMAGE_URL = `${SITE_URL}/og-image.jpg`;
+const OG_IMAGE_ALT = "IlmoraX: Makin siap hadapi UKAI. Maskot burung hantu apoteker dengan timer ujian, topik lemah, dan pembahasan.";
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -77,11 +79,18 @@ export const Route = createRootRoute({
       { property: "og:title", content: DEFAULT_TITLE },
       { property: "og:description", content: DEFAULT_DESCRIPTION },
       { property: "og:locale", content: "id_ID" },
-      
+      { property: "og:image", content: OG_IMAGE_URL },
+      { property: "og:image:type", content: "image/jpeg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: OG_IMAGE_ALT },
+
       // Twitter Card
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: DEFAULT_TITLE },
       { name: "twitter:description", content: DEFAULT_DESCRIPTION },
+      { name: "twitter:image", content: OG_IMAGE_URL },
+      { name: "twitter:image:alt", content: OG_IMAGE_ALT },
       
       // Additional SEO
       { name: "keywords", content: "UKAI, apoteker, farmasi, latihan UKAI, tryout farmasi, simulasi UKAI, belajar farmasi, calon apoteker" },
@@ -102,9 +111,6 @@ export const Route = createRootRoute({
       { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16x16.png" },
       { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
       { rel: "manifest", href: "/site.webmanifest" },
-      
-      // Canonical
-      { rel: "canonical", href: SITE_URL },
     ],
   }),
   component: RootComponent,
@@ -142,12 +148,16 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const canonicalUrl = useRouterState({ select: (state) => getCanonicalUrl(state.location.pathname) });
+
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
         <link rel="stylesheet" href="/landing-critical.css" />
         <link rel="stylesheet" href={appCss} />
         <HeadContent />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:url" content={canonicalUrl} />
         <script
           dangerouslySetInnerHTML={{
             __html: "document.documentElement.classList.add('js-enabled')",
@@ -161,6 +171,13 @@ function RootDocument({ children }: { children: ReactNode }) {
       </body>
     </html>
   );
+}
+
+// Each page points search engines at its own URL on the main domain, without query strings.
+function getCanonicalUrl(pathname: string) {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+
+  return `${SITE_URL}${path === "/" ? "" : path}`;
 }
 
 function RootComponent() {
