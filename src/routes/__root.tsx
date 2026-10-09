@@ -18,7 +18,7 @@ const SITE_NAME = "IlmoraX";
 const DEFAULT_TITLE = "IlmoraX | Try-out UKAI untuk Calon Apoteker";
 const DEFAULT_DESCRIPTION = "Latihan soal UKAI dengan timer, pembahasan, dan analisis hasil untuk membantu calon apoteker menentukan materi yang perlu dipelajari lagi.";
 const OG_IMAGE_URL = `${SITE_URL}/og-image.jpg`;
-const OG_IMAGE_ALT = "IlmoraX: Makin siap hadapi UKAI. Maskot burung hantu apoteker dengan timer ujian, topik lemah, dan pembahasan.";
+const OG_IMAGE_ALT = "IlmoraX: Cari tahu topik UKAI yang masih lemah. Try-out bertimer dengan akurasi per topik dan pembahasan jawaban.";
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
