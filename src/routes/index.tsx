@@ -43,6 +43,10 @@ const fallbackProducts = [
   },
 ] satisfies MembershipProduct[];
 
+const LANDING_SHARE_TITLE = "IlmoraX | Cari tahu topik UKAI yang masih lemah";
+const LANDING_DESCRIPTION =
+  "Kerjakan try-out UKAI bertimer, lalu cek akurasi per topik dan pembahasan jawabanmu. Mulai gratis.";
+
 export const Route = createFileRoute("/")({
   loader: async () => {
     const [products, tryouts, announcement] = await Promise.all([
@@ -59,21 +63,12 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "IlmoraX - Simulasi UKAI yang Terasa Seperti Ujian Asli" },
-      {
-        name: "description",
-        content:
-          "IlmoraX membantu calon apoteker mulai dari try-out, tahu kekurangan, lalu belajar dari pembahasan yang paling relevan.",
-      },
-      {
-        property: "og:title",
-        content: "IlmoraX - Simulasi UKAI yang Terasa Seperti Ujian Asli",
-      },
-      {
-        property: "og:description",
-        content:
-          "Mulai dari try-out, ketahui bagian yang masih lemah, lalu isi kekurangannya lewat pembahasan yang tepat.",
-      },
+      { title: "IlmoraX | Try-out UKAI untuk calon apoteker" },
+      { name: "description", content: LANDING_DESCRIPTION },
+      { property: "og:title", content: LANDING_SHARE_TITLE },
+      { property: "og:description", content: LANDING_DESCRIPTION },
+      { name: "twitter:title", content: LANDING_SHARE_TITLE },
+      { name: "twitter:description", content: LANDING_DESCRIPTION },
     ],
   }),
   component: LandingRoute,
