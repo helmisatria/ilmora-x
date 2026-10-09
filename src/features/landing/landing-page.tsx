@@ -13,6 +13,7 @@ import {
   BookOpenIcon,
   CheckCircleIcon,
   ClockIcon,
+  GiftIcon,
   SparkIcon,
   TargetIcon,
 } from "./landing-icons";
@@ -127,17 +128,17 @@ function HeroSection() {
       <div className="pointer-events-none absolute -left-20 top-28 h-48 w-48 rounded-full border-[28px] border-white/45" />
       <div className="pointer-events-none absolute -right-14 bottom-10 h-36 w-36 rotate-12 rounded-[36px] bg-[#ff8c87]/15" />
 
-      <div className="relative mx-auto grid w-full max-w-[1180px] items-center gap-12 lg:grid-cols-[1.04fr_0.96fr] lg:gap-16">
+      <div className="relative mx-auto grid w-full max-w-[1180px] grid-cols-1 items-center gap-12 lg:grid-cols-[1.04fr_0.96fr] lg:gap-16">
         <Reveal>
           <div className="inline-flex items-center gap-2 rounded-full border border-[#acdcd2] bg-white/80 px-3.5 py-2 text-[12px] font-black text-[var(--brand-primary)] shadow-[0_5px_0_#cdece5] backdrop-blur-sm">
             <span className="text-[#18aa8e]"><SparkIcon /></span>
-            Latihan UKAI untuk calon apoteker
+            Try-out UKAI untuk calon apoteker
           </div>
-          <h1 className="mt-5 max-w-[12ch] text-[clamp(3rem,6vw,5.4rem)] font-[780] leading-[0.92] tracking-[-0.055em]">
-            Makin siap hadapi UKAI.
+          <h1 className="mt-5 max-w-[15ch] text-[clamp(2.75rem,5.2vw,4.75rem)] font-[780] leading-[0.92] tracking-[-0.055em]">
+            Cari tahu topik UKAI yang masih lemah.
           </h1>
           <p className="mt-6 max-w-[34ch] text-[17px] leading-[1.7] text-stone-600 sm:text-[18px]">
-            Kerjakan try-out, temukan topik lemah, lalu pilih latihan berikutnya.
+            Kerjakan try-out bertimer, lalu cek akurasi per topik dan pembahasan jawabanmu.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <TryoutLink entryPoint="hero_primary">Lihat try-out</TryoutLink>
@@ -147,15 +148,12 @@ function HeroSection() {
 
         <Reveal className="relative lg:justify-self-end">
           <div className="relative mx-auto w-full max-w-[540px] px-1 py-10 sm:px-8 sm:py-12">
-            <FloatingBadge className="left-0 top-8 -rotate-3" tone="amber" icon={<ClockIcon />}>
-              Timer ujian
-            </FloatingBadge>
-            <FloatingBadge className="right-0 top-16 rotate-3" tone="mint" icon={<TargetIcon />}>
-              Topik lemah terlihat
+            <FloatingBadge className="left-0 top-8 -rotate-3" tone="amber" icon={<GiftIcon />}>
+              Mulai gratis
             </FloatingBadge>
             <MascotHeroVisual />
-            <FloatingBadge className="bottom-5 right-4 -rotate-2" tone="coral" icon={<BookOpenIcon />}>
-              Pembahasan jelas
+            <FloatingBadge className="bottom-5 right-4 -rotate-2" tone="coral" icon={<TargetIcon />}>
+              Akurasi per topik
             </FloatingBadge>
           </div>
         </Reveal>
