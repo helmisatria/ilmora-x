@@ -1,4 +1,9 @@
 import "dotenv/config";
+import { sql } from "drizzle-orm";
+import type { Database } from "../db/client";
+
+const DATABASE_READY_ATTEMPTS = 6;
+const DATABASE_READY_DELAY_MS = 5_000;
 
 type ScriptOptions = {
   help: boolean;
@@ -21,6 +26,7 @@ async function main() {
   ]);
 
   closeDatabase = dbClient.closeDb;
+  await waitForDatabase(dbClient.db);
 
   const startedAt = new Date();
   const result = options.weekStartDate
@@ -36,6 +42,33 @@ async function main() {
     durationMs: finishedAt.getTime() - startedAt.getTime(),
     ...result,
   }));
+}
+
+// The cron can start while Postgres is still waking up, so retry the first connection.
+async function waitForDatabase(db: Database) {
+  for (let attempt = 1; attempt <= DATABASE_READY_ATTEMPTS; attempt += 1) {
+    try {
+      await db.execute(sql`SELECT 1`);
+      return;
+    } catch (error) {
+      if (attempt === DATABASE_READY_ATTEMPTS) throw error;
+
+      console.warn(JSON.stringify({
+        job: "finalise-weekly-leaderboard",
+        waitingForDatabase: true,
+        attempt,
+        error: describeError(error),
+      }));
+      await new Promise((resolve) => setTimeout(resolve, DATABASE_READY_DELAY_MS));
+    }
+  }
+}
+
+function describeError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  if (error.cause) return `${error.message} (cause: ${describeError(error.cause)})`;
+
+  return error.message;
 }
 
 function parseOptions(args: string[]): ScriptOptions {
@@ -99,7 +132,7 @@ main()
     console.error(JSON.stringify({
       job: "finalise-weekly-leaderboard",
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: describeError(error),
     }));
 
     process.exitCode = 1;
