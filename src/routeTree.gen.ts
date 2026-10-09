@@ -11,10 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TryoutRouteImport } from './routes/tryout'
 import { Route as TentangKamiRouteImport } from './routes/tentang-kami'
+import { Route as SyaratKetentuanRouteImport } from './routes/syarat-ketentuan'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PremiumRouteImport } from './routes/premium'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as KebijakanPrivasiRouteImport } from './routes/kebijakan-privasi'
 import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
@@ -70,6 +72,11 @@ const TentangKamiRoute = TentangKamiRouteImport.update({
   path: '/tentang-kami',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SyaratKetentuanRoute = SyaratKetentuanRouteImport.update({
+  id: '/syarat-ketentuan',
+  path: '/syarat-ketentuan',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProgressRoute = ProgressRouteImport.update({
   id: '/progress',
   path: '/progress',
@@ -88,6 +95,11 @@ const PremiumRoute = PremiumRouteImport.update({
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KebijakanPrivasiRoute = KebijakanPrivasiRouteImport.update({
+  id: '/kebijakan-privasi',
+  path: '/kebijakan-privasi',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EvaluationRoute = EvaluationRouteImport.update({
@@ -320,10 +332,12 @@ export interface FileRoutesByFullPath {
   '/coming-soon': typeof ComingSoonRoute
   '/dashboard': typeof DashboardRoute
   '/evaluation': typeof EvaluationRoute
+  '/kebijakan-privasi': typeof KebijakanPrivasiRoute
   '/leaderboard': typeof LeaderboardRoute
   '/premium': typeof PremiumRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
+  '/syarat-ketentuan': typeof SyaratKetentuanRoute
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/announcements': typeof AdminAnnouncementsRoute
@@ -371,10 +385,12 @@ export interface FileRoutesByTo {
   '/coming-soon': typeof ComingSoonRoute
   '/dashboard': typeof DashboardRoute
   '/evaluation': typeof EvaluationRoute
+  '/kebijakan-privasi': typeof KebijakanPrivasiRoute
   '/leaderboard': typeof LeaderboardRoute
   '/premium': typeof PremiumRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
+  '/syarat-ketentuan': typeof SyaratKetentuanRoute
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/announcements': typeof AdminAnnouncementsRoute
@@ -424,10 +440,12 @@ export interface FileRoutesById {
   '/coming-soon': typeof ComingSoonRoute
   '/dashboard': typeof DashboardRoute
   '/evaluation': typeof EvaluationRoute
+  '/kebijakan-privasi': typeof KebijakanPrivasiRoute
   '/leaderboard': typeof LeaderboardRoute
   '/premium': typeof PremiumRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
+  '/syarat-ketentuan': typeof SyaratKetentuanRoute
   '/tentang-kami': typeof TentangKamiRoute
   '/tryout': typeof TryoutRouteWithChildren
   '/admin/announcements': typeof AdminAnnouncementsRoute
@@ -478,10 +496,12 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/dashboard'
     | '/evaluation'
+    | '/kebijakan-privasi'
     | '/leaderboard'
     | '/premium'
     | '/profile'
     | '/progress'
+    | '/syarat-ketentuan'
     | '/tentang-kami'
     | '/tryout'
     | '/admin/announcements'
@@ -529,10 +549,12 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/dashboard'
     | '/evaluation'
+    | '/kebijakan-privasi'
     | '/leaderboard'
     | '/premium'
     | '/profile'
     | '/progress'
+    | '/syarat-ketentuan'
     | '/tentang-kami'
     | '/tryout'
     | '/admin/announcements'
@@ -581,10 +603,12 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/dashboard'
     | '/evaluation'
+    | '/kebijakan-privasi'
     | '/leaderboard'
     | '/premium'
     | '/profile'
     | '/progress'
+    | '/syarat-ketentuan'
     | '/tentang-kami'
     | '/tryout'
     | '/admin/announcements'
@@ -634,10 +658,12 @@ export interface RootRouteChildren {
   ComingSoonRoute: typeof ComingSoonRoute
   DashboardRoute: typeof DashboardRoute
   EvaluationRoute: typeof EvaluationRoute
+  KebijakanPrivasiRoute: typeof KebijakanPrivasiRoute
   LeaderboardRoute: typeof LeaderboardRoute
   PremiumRoute: typeof PremiumRoute
   ProfileRoute: typeof ProfileRouteWithChildren
   ProgressRoute: typeof ProgressRoute
+  SyaratKetentuanRoute: typeof SyaratKetentuanRoute
   TentangKamiRoute: typeof TentangKamiRoute
   TryoutRoute: typeof TryoutRouteWithChildren
   ApiHealthzRoute: typeof ApiHealthzRoute
@@ -672,6 +698,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TentangKamiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/syarat-ketentuan': {
+      id: '/syarat-ketentuan'
+      path: '/syarat-ketentuan'
+      fullPath: '/syarat-ketentuan'
+      preLoaderRoute: typeof SyaratKetentuanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/progress': {
       id: '/progress'
       path: '/progress'
@@ -698,6 +731,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kebijakan-privasi': {
+      id: '/kebijakan-privasi'
+      path: '/kebijakan-privasi'
+      fullPath: '/kebijakan-privasi'
+      preLoaderRoute: typeof KebijakanPrivasiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/evaluation': {
@@ -1139,10 +1179,12 @@ const rootRouteChildren: RootRouteChildren = {
   ComingSoonRoute: ComingSoonRoute,
   DashboardRoute: DashboardRoute,
   EvaluationRoute: EvaluationRoute,
+  KebijakanPrivasiRoute: KebijakanPrivasiRoute,
   LeaderboardRoute: LeaderboardRoute,
   PremiumRoute: PremiumRoute,
   ProfileRoute: ProfileRouteWithChildren,
   ProgressRoute: ProgressRoute,
+  SyaratKetentuanRoute: SyaratKetentuanRoute,
   TentangKamiRoute: TentangKamiRoute,
   TryoutRoute: TryoutRouteWithChildren,
   ApiHealthzRoute: ApiHealthzRoute,
