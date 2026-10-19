@@ -97,7 +97,7 @@ export async function listWeeklyLeaderboardEntriesForWeek(
       displayName: studentProfiles.displayName,
       photoUrl: studentProfiles.photoUrl,
       xp: sql<number>`sum(${attempts.xpEarned})`,
-      lastXpAttemptSubmittedAt: sql<Date>`max(${attempts.submittedAt})`,
+      lastXpAttemptSubmittedAt: sql<Date>`max(${attempts.submittedAt})`.mapWith(attempts.submittedAt),
     })
     .from(attempts)
     .innerJoin(user, eq(user.id, attempts.studentUserId))
@@ -187,7 +187,7 @@ async function listRankedStudentsForWeek(
     .select({
       studentUserId: attempts.studentUserId,
       xp: sql<number>`sum(${attempts.xpEarned})`,
-      lastXpAttemptSubmittedAt: sql<Date>`max(${attempts.submittedAt})`,
+      lastXpAttemptSubmittedAt: sql<Date>`max(${attempts.submittedAt})`.mapWith(attempts.submittedAt),
     })
     .from(attempts)
     .innerJoin(user, eq(user.id, attempts.studentUserId))
