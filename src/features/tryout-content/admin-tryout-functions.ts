@@ -21,6 +21,7 @@ import {
   importTryoutWorkbook,
   publishTryoutContent,
   removeTryoutQuestionContent,
+  saveTryoutCatalogOrder,
   unpublishTryoutContent,
   updateTryoutContent,
   updateTryoutQuestionContent,
@@ -41,6 +42,10 @@ const tryoutInputSchema = z.object({
 const updateTryoutSchema = tryoutInputSchema.extend({
   tryoutId: z.string().trim().min(1),
   expectedUpdatedAt: z.iso.datetime(),
+});
+
+const tryoutCatalogOrderSchema = z.object({
+  tryoutIds: z.array(z.string().trim().min(1)).max(500),
 });
 
 const tryoutIdSchema = z.object({ tryoutId: z.string().trim().min(1) });
@@ -119,6 +124,7 @@ export const listTryoutsAdmin = createServerFn({ method: "GET" }).middleware([ad
       categoryName: categories.name,
       durationMinutes: tryouts.durationMinutes,
       accessLevel: tryouts.accessLevel,
+      catalogOrder: tryouts.catalogOrder,
       status: tryouts.status,
       publishedAt: tryouts.publishedAt,
       updatedAt: tryouts.updatedAt,
@@ -148,6 +154,13 @@ export const updateTryoutAdmin = createServerFn({ method: "POST" })
   .inputValidator((input) => parseInput(updateTryoutSchema, input))
   .handler(async ({ data }) => {
     return updateTryoutContent(data);
+  });
+
+export const saveTryoutCatalogOrderAdmin = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator((input) => parseInput(tryoutCatalogOrderSchema, input))
+  .handler(async ({ data }) => {
+    return saveTryoutCatalogOrder(data.tryoutIds);
   });
 
 export const publishTryoutAdmin = createServerFn({ method: "POST" })

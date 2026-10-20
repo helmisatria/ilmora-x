@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { TryoutIcon, tryoutIconOptions } from "../TryoutIcon";
 
 const maxIconUploadBytes = 160 * 1024;
@@ -18,8 +17,6 @@ export function TryoutIconField({
   onChange,
   onError,
 }: TryoutIconFieldProps) {
-  const [hoveredIcon, setHoveredIcon] = useState("");
-
   const uploadIcon = (file: File | undefined) => {
     if (!file) return;
 
@@ -57,64 +54,65 @@ export function TryoutIconField({
   };
 
   return (
-    <div className="grid gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2"
-          style={{
-            color: accent,
-            background: `${accent}18`,
-            borderColor: `${accent}28`,
-          }}
-        >
-          <TryoutIcon icon={value || null} tryoutId={tryoutId} />
-        </div>
+    <div className="flex flex-wrap items-start gap-4">
+      <div
+        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2"
+        style={{
+          color: accent,
+          background: `${accent}18`,
+          borderColor: `${accent}28`,
+        }}
+        aria-hidden="true"
+      >
+        <TryoutIcon icon={value || null} tryoutId={tryoutId} />
+      </div>
 
-        <div className="flex flex-wrap gap-2">
+      <div className="grid min-w-0 flex-1 gap-3">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Ikon bawaan">
           {tryoutIconOptions.map((option) => (
             <button
               key={option.value}
               type="button"
-              className={`relative flex h-10 w-10 items-center justify-center rounded-xl border-2 transition-colors ${
+              className={`group relative flex h-10 w-10 items-center justify-center rounded-xl border-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                 value === option.value
                   ? "border-primary bg-primary-tint text-primary"
                   : "border-stone-200 bg-white text-stone-500 hover:border-primary-soft hover:bg-primary-tint"
               }`}
               onClick={() => onChange(option.value)}
-              onMouseEnter={() => setHoveredIcon(option.value)}
-              onMouseLeave={() => setHoveredIcon("")}
               aria-label={`Pilih ikon ${option.label}`}
+              aria-pressed={value === option.value}
             >
               <TryoutIcon icon={option.value} className="h-5 w-5" />
               <span
-                className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-900 px-2 py-1 text-[11px] font-bold text-white shadow-sm transition-opacity ${
-                  hoveredIcon === option.value ? "opacity-100" : "opacity-0"
-                }`}
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-900 px-2 py-1 text-[11px] font-bold text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
               >
                 {option.label}
               </span>
             </button>
           ))}
         </div>
-      </div>
 
-      <div className="flex flex-wrap gap-3">
-        <label className="admin-button-secondary cursor-pointer">
-          Unggah ikon
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="sr-only"
-            onChange={(event) => uploadIcon(event.target.files?.[0])}
-          />
-        </label>
-        <button
-          type="button"
-          className="admin-button-ghost"
-          onClick={() => onChange("")}
-        >
-          Gunakan ikon bawaan
-        </button>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <label className="admin-button-secondary cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary">
+            Unggah ikon
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="sr-only"
+              onChange={(event) => {
+                uploadIcon(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          {value && (
+            <button type="button" className="admin-button-ghost" onClick={() => onChange("")}>
+              Gunakan ikon bawaan
+            </button>
+          )}
+          <span className="text-xs font-medium text-stone-400">PNG, JPG, atau WebP. Maks. 160 KB.</span>
+        </div>
       </div>
     </div>
   );

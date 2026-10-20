@@ -72,7 +72,7 @@ export function AdminShell() {
                         isActive={isActive}
                         tooltip={section.label}
                         className={cn(
-                          "h-8 rounded-[var(--radius-sm)] px-2.5 text-[13px] font-bold text-stone-600",
+                          "h-8 rounded-[var(--radius-sm)] px-2.5 text-[13px] font-bold text-stone-600 transition-colors duration-150 ease-out",
                           "hover:bg-primary-tint hover:text-primary-dark",
                           "data-[active=true]:border data-[active=true]:border-primary/10 data-[active=true]:bg-primary-soft data-[active=true]:text-primary-dark",
                         )}

@@ -7,6 +7,7 @@ type QuestionPictureFieldProps = {
   busy?: boolean;
   onChange: (value: string) => void;
   onError: (message: string) => void;
+  compact?: boolean;
 };
 
 export function QuestionPictureField({
@@ -15,6 +16,7 @@ export function QuestionPictureField({
   busy = false,
   onChange,
   onError,
+  compact = false,
 }: QuestionPictureFieldProps) {
   const fieldId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -94,14 +96,14 @@ export function QuestionPictureField({
 
   return (
     <div>
-      <label htmlFor={fieldId} className="mb-2 block text-sm font-bold text-stone-700">{label}</label>
+      <label htmlFor={fieldId} className={compact ? "mb-1.5 block text-xs font-bold text-stone-600" : "mb-2 block text-sm font-bold text-stone-700"}>{label}</label>
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`rounded-[var(--radius-lg)] border-2 border-stone-200 bg-white p-3 transition ${isDragging ? "border-primary bg-primary-tint" : ""}`}
+        className={`${compact ? "rounded-xl border border-dashed border-stone-300 bg-white p-2" : "rounded-[var(--radius-lg)] border-2 border-stone-200 bg-white p-3"} transition ${isDragging ? "border-primary bg-primary-tint" : ""}`}
       >
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div className={`flex flex-col sm:flex-row ${compact ? "gap-2" : "gap-3"}`}>
           <input
             id={fieldId}
             value={value}

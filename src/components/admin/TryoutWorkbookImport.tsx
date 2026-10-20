@@ -150,11 +150,13 @@ export function FileUpload({
   accept,
   busy,
   placeholder,
+  dropHint,
   onFileSelect,
 }: {
   accept: string;
   busy: boolean;
   placeholder: string;
+  dropHint?: string;
   onFileSelect: (file: File) => Promise<void> | void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -222,28 +224,33 @@ export function FileUpload({
   };
 
   return (
-    <div
-      role="button"
-      tabIndex={isUnavailable ? -1 : 0}
-      aria-disabled={isUnavailable}
-      onClick={() => inputRef.current?.click()}
-      onKeyDown={handleKeyDown}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`admin-file-upload ${isUnavailable ? "pointer-events-none opacity-50" : ""} ${fileName ? "admin-file-upload-active" : ""} ${isDragging ? "border-primary bg-primary-tint text-primary-dark" : ""}`}
-    >
-      {fileError && <span role="alert">{fileError}</span>}
-      <UploadIcon className="w-4 h-4 shrink-0" />
-      <span className="truncate">{getUploadLabel({ isDragging, isUploading, fileName, placeholder })}</span>
-      <input
-        ref={inputRef}
-        onChange={handleChange}
-        disabled={isUnavailable}
-        className="sr-only"
-        type="file"
-        accept={accept}
-      />
+    <div className="grid min-w-0 gap-1.5">
+      <div
+        role="button"
+        tabIndex={isUnavailable ? -1 : 0}
+        aria-disabled={isUnavailable}
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={handleKeyDown}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`admin-file-upload ${isUnavailable ? "pointer-events-none opacity-50" : ""} ${fileName ? "admin-file-upload-active" : ""} ${isDragging ? "border-primary bg-primary-tint text-primary-dark" : ""}`}
+      >
+        <UploadIcon className="w-4 h-4 shrink-0" />
+        <span className="truncate">{getUploadLabel({ isDragging, isUploading, fileName, placeholder })}</span>
+        {dropHint && !fileName && !isDragging && !isUploading && (
+          <span className="hidden truncate font-medium text-stone-400 sm:inline">{dropHint}</span>
+        )}
+        <input
+          ref={inputRef}
+          onChange={handleChange}
+          disabled={isUnavailable}
+          className="sr-only"
+          type="file"
+          accept={accept}
+        />
+      </div>
+      {fileError && <p role="alert" className="text-xs font-semibold text-red-700">{fileError}</p>}
     </div>
   );
 }

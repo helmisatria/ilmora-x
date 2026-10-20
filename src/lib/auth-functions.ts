@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { resolveInstitution } from "../data/institutions";
 import { avatarOptions, defaultAvatar } from "./avatar";
 import { db } from "./db/client";
 import { user } from "./db/schema";
@@ -221,7 +222,7 @@ export const completeProfile = createServerFn({ method: "POST" })
         const profile = {
           userId: session.user.id,
           displayName: data.displayName,
-          institution: data.institution,
+          institution: resolveInstitution(data.institution),
           phone: data.phone || null,
           avatar: nextAvatar,
           photoUrl: data.photoUrl || session.user.image || null,

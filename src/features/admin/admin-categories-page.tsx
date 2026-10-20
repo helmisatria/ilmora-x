@@ -437,6 +437,7 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
               accept=".xlsx"
               busy={busyAction === "taxonomy-preview" || busyAction === "taxonomy-import"}
               placeholder="Upload workbook"
+              dropHint="or drop it here"
               onFileSelect={previewTaxonomyWorkbook}
             />
           </div>

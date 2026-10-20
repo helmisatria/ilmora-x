@@ -1,7 +1,8 @@
 import { getSafeErrorMessage } from "../../lib/user-errors";
 import { useRouter } from "@tanstack/react-router";
-import { cloneElement, isValidElement, useEffect, useId, useMemo, useState } from "react";
-import { QuestionPictureField } from "../../components/admin/QuestionPictureField";
+import { useEffect, useRef, useState } from "react";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
+import { useUnsavedChangesGuard } from "../../components/admin/useUnsavedChangesGuard";
 import {
   createQuestionAdmin,
   listQuestionsAdmin,
@@ -10,29 +11,14 @@ import {
   updateQuestionAdmin,
 } from "./admin-question-functions";
 import { listCategoryOptionsAdmin } from "../admin/admin-taxonomy-functions";
+import { QuestionEditor, type QuestionSaveMode } from "./question-editor";
+import { isSameQuestion, makeNextQuestion, type QuestionEditorValues } from "./question-editor-form";
 
 type CategoryOption = Awaited<ReturnType<typeof listCategoryOptionsAdmin>>[number];
 type QuestionRow = Awaited<ReturnType<typeof listQuestionsAdmin>>[number];
-type AccessLevel = "free" | "premium";
-type CorrectOption = "A" | "B" | "C" | "D" | "E";
-
-type QuestionForm = {
+type QuestionForm = QuestionEditorValues & {
   expectedUpdatedAt: string;
   id: string;
-  categoryId: string;
-  subCategoryId: string;
-  topicId: string;
-  questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  optionE: string;
-  correctOption: CorrectOption;
-  explanation: string;
-  videoUrl: string;
-  pictureUrl: string;
-  accessLevel: AccessLevel;
 };
 
 const emptyForm: QuestionForm = {
@@ -54,7 +40,7 @@ const emptyForm: QuestionForm = {
   accessLevel: "free",
 };
 
-const correctOptions: CorrectOption[] = ["A", "B", "C", "D", "E"];
+const ARRIVAL_EASING = "cubic-bezier(0.23, 1, 0.32, 1)";
 
 export type AdminQuestionsPageData = {
   categories: CategoryOption[];
@@ -65,19 +51,23 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
   const router = useRouter();
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => setIsHydrated(true), []);
-  const [form, setForm] = useState(() => createInitialForm(categories));
+  const [form, setForm] = useState<QuestionForm>(() => createInitialForm(categories));
+  const [savedForm, setSavedForm] = useState(form);
+  // Remounts the editor so its validation and preview start fresh.
+  const [editorKey, setEditorKey] = useState(0);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const bankRef = useRef<HTMLElement>(null);
+  const arrivalRef = useRef<Animation | null>(null);
   const [busyAction, setBusyAction] = useState("");
   const [search, setSearch] = useState("");
   const filteredQuestions = questions.filter((question) => [question.questionText, question.categoryName, question.subCategoryName, question.topicName].join(" ").toLowerCase().includes(search.trim().toLowerCase()));
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [errorTarget, setErrorTarget] = useState<"editor" | "bank">("editor");
+  const isDirty = !isSameQuestion(form, savedForm);
+  useUnsavedChangesGuard(isDirty);
 
-  const selectedSubCategories = useMemo(() => {
-    return categories.find((category) => category.id === form.categoryId)?.subCategories ?? [];
-  }, [categories, form.categoryId]);
-  const selectedTopics = useMemo(() => {
-    return selectedSubCategories.find((subCategory) => subCategory.id === form.subCategoryId)?.topics ?? [];
-  }, [selectedSubCategories, form.subCategoryId]);
+  useEffect(() => () => arrivalRef.current?.cancel(), []);
 
   const isEditing = form.id.length > 0;
 
@@ -85,34 +75,60 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
     await router.invalidate();
   };
 
-  const resetForm = () => {
-    setForm(createInitialForm(categories));
+  const loadForm = (nextForm: QuestionForm) => {
+    setForm(nextForm);
+    setSavedForm(nextForm);
+    setEditorKey((key) => key + 1);
     setErrorMessage("");
   };
 
-  const updateCategory = (categoryId: string) => {
-    const subCategory = categories.find((category) => category.id === categoryId)?.subCategories[0];
+  const resetForm = () => loadForm(createInitialForm(categories));
 
-    setForm({
-      ...form,
-      categoryId,
-      subCategoryId: subCategory?.id ?? "",
-      topicId: subCategory?.topics?.[0]?.id ?? "",
+  // Jump straight to the panel, then play a short arrival cue so the jump stays easy to follow.
+  // Keyboard activation (click detail 0) skips the cue to stay instant.
+  const revealPanel = (panel: HTMLElement | null, viaKeyboard: boolean) => {
+    if (!panel) return;
+
+    arrivalRef.current?.cancel();
+    arrivalRef.current = null;
+    panel.scrollIntoView({ block: "start", behavior: "instant" });
+    if (viaKeyboard || typeof panel.animate !== "function") return;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    arrivalRef.current = panel.animate(
+      reduceMotion
+        ? [{ opacity: 0.6 }, { opacity: 1 }]
+        : [{ opacity: 0.6, transform: "translateY(10px)" }, { opacity: 1, transform: "translateY(0)" }],
+      { duration: reduceMotion ? 120 : 200, easing: ARRIVAL_EASING },
+    );
+  };
+
+  const focusEditor = (viaKeyboard: boolean) => {
+    requestAnimationFrame(() => {
+      editorRef.current?.querySelector<HTMLTextAreaElement>("textarea")?.focus({ preventScroll: true });
+      revealPanel(editorRef.current, viaKeyboard);
     });
   };
 
-  const updateSubCategory = (subCategoryId: string) => {
-    const topicId = selectedSubCategories.find((subCategory) => subCategory.id === subCategoryId)?.topics?.[0]?.id ?? "";
-
-    setForm({
-      ...form,
-      subCategoryId,
-      topicId,
-    });
+  const focusBank = (viaKeyboard: boolean) => {
+    bankRef.current?.focus({ preventScroll: true });
+    revealPanel(bankRef.current, viaKeyboard);
   };
 
-  const editQuestion = (question: QuestionRow) => {
-    setForm({
+  const canDiscardChanges = () => !isDirty || window.confirm("Buang perubahan soal yang belum disimpan?");
+
+  const startNewQuestion = (viaKeyboard: boolean) => {
+    if (!canDiscardChanges()) return;
+
+    resetForm();
+    setSuccessMessage("");
+    focusEditor(viaKeyboard);
+  };
+
+  const editQuestion = (question: QuestionRow, viaKeyboard: boolean) => {
+    if (!canDiscardChanges()) return;
+
+    const nextForm: QuestionForm = {
       expectedUpdatedAt: question.updatedAt,
       id: question.id,
       categoryId: question.categoryId,
@@ -129,20 +145,19 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
       videoUrl: question.videoUrl ?? "",
       pictureUrl: question.pictureUrl ?? "",
       accessLevel: question.accessLevel,
-    });
-    setErrorMessage("");
+    };
+    loadForm(nextForm);
+    setSuccessMessage("");
+    focusEditor(viaKeyboard);
   };
 
-  const saveQuestion = async () => {
-    const validationMessage = getQuestionValidationMessage(form);
+  // The editor validates before calling this.
+  const saveQuestion = async (mode: QuestionSaveMode) => {
+    if (busyAction) return;
 
-    if (validationMessage) {
-      setErrorMessage(validationMessage);
-      return;
-    }
-
+    setErrorTarget("editor");
     setSuccessMessage("");
-    setBusyAction("save");
+    setBusyAction(mode);
     setErrorMessage("");
 
     const payload = toQuestionPayload(form);
@@ -154,9 +169,18 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
         await createQuestionAdmin({ data: payload });
       }
 
-      resetForm();
       await refresh();
+      if (!isEditing) setSearch("");
       setSuccessMessage("Perubahan tersimpan.");
+
+      if (mode === "save-next") {
+        loadForm({ ...makeNextQuestion(form), expectedUpdatedAt: "", id: "" });
+        focusEditor(true);
+        return;
+      }
+
+      resetForm();
+      focusBank(false);
     } catch (error) {
       setErrorMessage(getSafeErrorMessage(error, "Soal belum disimpan. Periksa kategori, subkategori, topik, dan isian wajib."));
     } finally {
@@ -165,6 +189,7 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
   };
 
   const setPublication = async (questionId: string, nextStatus: "published" | "unpublished") => {
+    setErrorTarget("bank");
     setSuccessMessage("");
     setBusyAction(`publish:${questionId}`);
     setErrorMessage("");
@@ -190,200 +215,100 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
       <fieldset className="admin-lane min-w-0" disabled={!isHydrated || Boolean(busyAction)} data-admin-ready={isHydrated}>
         <Header />
 
-        {successMessage && <p role="status" className="mt-4 text-sm text-emerald-700">{successMessage}</p>}
-        {errorMessage && (
-          <p role="alert" className="admin-alert">
-            {errorMessage}
-          </p>
-        )}
-
-        <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">{isEditing ? "Ubah soal" : "Buat soal"}</h2>
-          </div>
-
-          <div className="grid gap-5 p-5 sm:p-6">
-            <p className="text-sm text-stone-600">Jika daftar kategori, subkategori, atau topik kosong, <a href="/admin/categories" className="underline">tambahkan di halaman Kategori</a> lebih dulu.</p>
-            <div className="grid gap-5 md:grid-cols-3">
-              <Field label="Kategori">
-                <select
-                  value={form.categoryId}
-                  onChange={(event) => updateCategory(event.target.value)}
-                  className="admin-control"
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Subkategori">
-                <select
-                  value={form.subCategoryId}
-                  onChange={(event) => updateSubCategory(event.target.value)}
-                  className="admin-control"
-                >
-                  {selectedSubCategories.map((subCategory) => (
-                    <option key={subCategory.id} value={subCategory.id}>
-                      {subCategory.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Topik">
-                <select
-                  value={form.topicId}
-                  onChange={(event) => setForm({ ...form, topicId: event.target.value })}
-                  className="admin-control"
-                >
-                  {selectedTopics.map((topic) => (
-                    <option key={topic.id} value={topic.id}>
-                      {topic.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-
-            <Field label="Teks soal">
-              <textarea
-                value={form.questionText}
-                onChange={(event) => setForm({ ...form, questionText: event.target.value })}
-                className="admin-control min-h-28"
-                placeholder="Tulis soal seperti yang akan dibaca peserta."
-              />
-            </Field>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <TextInput label="Pilihan A" value={form.optionA} onChange={(optionA) => setForm({ ...form, optionA })} />
-              <TextInput label="Pilihan B" value={form.optionB} onChange={(optionB) => setForm({ ...form, optionB })} />
-              <TextInput label="Pilihan C" value={form.optionC} onChange={(optionC) => setForm({ ...form, optionC })} />
-              <TextInput label="Pilihan D" value={form.optionD} onChange={(optionD) => setForm({ ...form, optionD })} />
-              <TextInput label="Pilihan E, opsional" value={form.optionE} onChange={(optionE) => setForm({ ...form, optionE })} />
-
-              <Field label="Kunci jawaban">
-                <select
-                  value={form.correctOption}
-                  onChange={(event) => setForm({ ...form, correctOption: event.target.value as CorrectOption })}
-                  className="admin-control"
-                >
-                  {correctOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-
-            <Field label="Pembahasan">
-              <textarea
-                value={form.explanation}
-                onChange={(event) => setForm({ ...form, explanation: event.target.value })}
-                className="admin-control min-h-28"
-                placeholder="Jelaskan alasan jawaban benar agar peserta dapat belajar."
-              />
-            </Field>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <TextInput label="Tautan video pembahasan, opsional" value={form.videoUrl} onChange={(videoUrl) => setForm({ ...form, videoUrl })} />
-              <Field label="Akses">
-                <select
-                  value={form.accessLevel}
-                  onChange={(event) => setForm({ ...form, accessLevel: event.target.value as AccessLevel })}
-                  className="admin-control"
-                >
-                  <option value="free">Gratis</option>
-                  <option value="premium">Premium</option>
-                </select>
-              </Field>
-            </div>
-
-            <QuestionPictureField
-              value={form.pictureUrl}
-              busy={Boolean(busyAction)}
-              onChange={(pictureUrl) => setForm({ ...form, pictureUrl })}
-              onError={setErrorMessage}
-            />
-
-            <div className="flex flex-wrap gap-3 pt-1">
-              <button
-                onClick={saveQuestion}
-                disabled={Boolean(busyAction)}
-                className="admin-button-primary"
-                type="button"
-              >
-                {isEditing ? "Simpan perubahan" : "Buat soal"}
-              </button>
-              {isEditing && (
-                <button
-                  disabled={Boolean(busyAction)}
-                  onClick={resetForm}
-                  className="admin-button-secondary"
-                  type="button"
-                >
-                  Batal
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Bank soal</h2>
-            <label>Cari soal<input className="admin-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Teks soal, kategori, atau topik" /></label>
-          </div>
+        <section ref={bankRef} id="question-bank" tabIndex={-1} className="admin-panel mt-6 scroll-mt-20 sm:scroll-mt-6" aria-labelledby="question-bank-title">
+          <AdminPanelHeader
+            id="question-bank-title"
+            title="Bank soal"
+            badge={<span className="admin-count" aria-live="polite">{search.trim() ? `${filteredQuestions.length} / ${questions.length}` : questions.length}</span>}
+            description="Cari teks soal, kategori, subkategori, atau topik."
+            actions={
+              <>
+                <label className="relative block w-full sm:w-48 lg:w-64">
+                  <span className="sr-only">Cari soal</span>
+                  <SearchIcon />
+                  <input type="search" className="admin-control pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Teks soal, kategori, atau topik" />
+                </label>
+                <button type="button" onClick={(event) => startNewQuestion(event.detail === 0)} className="admin-button-primary">Tambah soal</button>
+              </>
+            }
+          />
+          {successMessage && <p role="status" className="border-b border-stone-100 p-4 text-xs font-semibold text-emerald-700">{successMessage}</p>}
+          {errorMessage && errorTarget === "bank" && <p role="alert" className="admin-alert mx-4 mb-3">{errorMessage}</p>}
 
           <div>
             {filteredQuestions.map((question) => (
-              <div key={question.id} className="admin-list-row">
-                <div className="admin-list-content">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <h3 className="text-[15px] font-bold text-stone-800 tracking-tight line-clamp-2">{question.questionText}</h3>
-                    <StatusPill status={question.status} />
+              <div key={question.id} className={`admin-list-row flex flex-col gap-2 border-t border-stone-100 px-3 py-2.5 transition-colors duration-150 first:border-t-0 last:rounded-b-xl sm:flex-row sm:items-center sm:gap-3 sm:px-4 ${form.id === question.id ? "bg-primary-tint" : "hover:bg-stone-50/70"}`}>
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-100 bg-stone-50 text-stone-500" aria-hidden="true">
+                    <QuestionIcon />
                   </div>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="admin-meta-tag first:before:hidden">{question.categoryName}</span>
-                    <span className="admin-meta-tag">{question.subCategoryName}</span>
-                    <span className="admin-meta-tag">{question.topicName}</span>
-                    <span className="admin-meta-tag">Kunci {question.correctOption}</span>
-                    <span className="admin-meta-tag capitalize">{question.accessLevel === "free" ? "Gratis" : "Premium"}</span>
+                  <div className="admin-list-content">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="line-clamp-2 break-words text-[13.5px] font-bold leading-5 text-stone-800">{question.questionText}</h3>
+                      <StatusPill status={question.status} />
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                      <span className={`admin-meta-tag ${question.accessLevel === "free" ? "text-emerald-700" : "text-amber-700"}`}>{question.accessLevel === "free" ? "Gratis" : "Premium"}</span>
+                      <span className="admin-meta-tag">{question.categoryName}</span>
+                      <span className="admin-meta-tag">{question.subCategoryName}</span>
+                      <span className="admin-meta-tag">{question.topicName}</span>
+                      <span className="admin-meta-tag">Kunci {question.correctOption}</span>
+                      <span className="admin-meta-tag">Diubah {formatDate(question.updatedAt)}</span>
+                    </div>
                   </div>
                 </div>
-
-                <div className="admin-list-actions">
-                  <p className="text-xs font-semibold text-stone-400 shrink-0">Diubah {formatDate(question.updatedAt)}</p>
+                <div className="admin-list-actions pl-12 sm:pl-0">
                   <div className="admin-list-actions-bar">
-                    <button
-                      disabled={Boolean(busyAction)}
-                      onClick={() => editQuestion(question)}
-                      className="admin-button-ghost"
-                      type="button"
-                    >
-                      <PencilIcon className="w-3.5 h-3.5" />
+                    <button disabled={Boolean(busyAction)} onClick={(event) => editQuestion(question, event.detail === 0)} className="admin-button-ghost" type="button">
+                      <PencilIcon className="h-3.5 w-3.5" />
                       Ubah
                     </button>
-                    <PublicationButton
-                      question={question}
-                      busy={Boolean(busyAction)}
-                      onChange={setPublication}
-                    />
+                    <PublicationButton question={question} busy={Boolean(busyAction)} onChange={setPublication} />
                   </div>
                 </div>
               </div>
             ))}
-
             {filteredQuestions.length === 0 && (
-              <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-stone-400">{questions.length === 0 ? "Belum ada soal. Isi formulir untuk membuat soal pertama." : "Tidak ada soal yang cocok. Coba kata lain."}</p>
+              <div className="rounded-b-xl p-8 text-center">
+                <p className="text-sm font-semibold text-stone-500">{questions.length === 0 ? "Belum ada soal. Tambahkan soal pertama lewat formulir." : "Tidak ada soal yang cocok. Coba kata lain."}</p>
+                {search.trim() && <button type="button" onClick={() => setSearch("")} className="admin-button-ghost mt-3">Hapus pencarian</button>}
               </div>
             )}
           </div>
         </section>
+
+        <div ref={editorRef} className="scroll-mt-20 sm:scroll-mt-6">
+          <QuestionEditor
+            key={editorKey}
+            layout="panel"
+            title={isEditing ? "Ubah soal" : "Buat soal"}
+            description={isEditing
+              ? "Perubahan berlaku untuk semua try-out yang memakai soal ini."
+              : "Soal baru disimpan sebagai draf. Tayangkan saat soal siap digunakan."}
+            headerActions={<a href="#question-bank" className="insights-link" onClick={(event) => {
+              event.preventDefault();
+              focusBank(event.detail === 0);
+            }}>Kembali ke bank soal ↑</a>}
+            values={form}
+            initialValues={savedForm}
+            categories={categories}
+            saveLabel={isEditing ? "Simpan perubahan" : "Buat soal"}
+            savingMode={busyAction === "save" || busyAction === "save-next" ? busyAction : null}
+            busy={Boolean(busyAction)}
+            serverMessage={errorTarget === "editor" ? errorMessage : ""}
+            allowSaveAndNext={!isEditing}
+            onChange={(values) => setForm({ ...form, ...values })}
+            onSave={saveQuestion}
+            onCancel={isEditing || isDirty ? () => {
+              resetForm();
+              focusBank(false);
+            } : undefined}
+            onPictureError={(message) => {
+              setErrorTarget("editor");
+              setErrorMessage(message);
+            }}
+          />
+        </div>
       </fieldset>
     </main>
   );
@@ -393,43 +318,11 @@ function Header() {
   return (
     <header className="admin-header">
       <a href="/admin" className="admin-back-link">Admin</a>
-      <h1 className="admin-title">Soal</h1>
+      <h1 className="admin-title">Bank soal</h1>
       <p className="admin-description">
         Kelola soal yang dapat dipakai di beberapa try-out. Perubahan di bank soal berlaku untuk semua try-out yang memakai soal tersebut.
       </p>
     </header>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  const id = useId();
-  const isControl = isValidElement(children) && typeof children.type === "string";
-  return (
-    <div className="block">
-      {isControl ? <label htmlFor={id} className="mb-2 block text-sm font-bold text-stone-700">{label}</label>
-        : <span className="mb-2 block text-sm font-bold text-stone-700">{label}</span>}
-      {isControl ? cloneElement(children as React.ReactElement<{ id?: string }>, { id }) : children}
-    </div>
-  );
-}
-
-function TextInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Field label={label}>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="admin-control"
-      />
-    </Field>
   );
 }
 
@@ -494,6 +387,22 @@ function StatusPill({ status }: { status: QuestionRow["status"] }) {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" fill="none" aria-hidden="true">
+      <path d="m20 20-4.2-4.2M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function QuestionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 13h8M8 17h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function PencilIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
@@ -532,26 +441,6 @@ function createInitialForm(categories: CategoryOption[]) {
     subCategoryId: firstSubCategory?.id ?? "",
     topicId: firstTopic?.id ?? "",
   };
-}
-
-function getQuestionValidationMessage(form: QuestionForm) {
-  if (!form.categoryId || !form.subCategoryId || !form.topicId) {
-    return "Pilih kategori, subkategori, dan topik.";
-  }
-
-  if (!form.questionText.trim() || !form.explanation.trim()) {
-    return "Isi teks soal dan pembahasan.";
-  }
-
-  if (!form.optionA.trim() || !form.optionB.trim() || !form.optionC.trim() || !form.optionD.trim()) {
-    return "Isi pilihan jawaban A, B, C, dan D.";
-  }
-
-  if (form.correctOption === "E" && !form.optionE.trim()) {
-    return "Isi pilihan E karena kunci jawaban adalah E.";
-  }
-
-  return "";
 }
 
 function toQuestionPayload(form: QuestionForm) {
