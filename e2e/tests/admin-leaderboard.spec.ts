@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
+import { gotoHydrated } from "../support/navigation";
 
 const adminState = resolve("e2e/.auth/admin-b.json");
 const studentState = resolve("e2e/.auth/free-student.json");
@@ -8,7 +9,7 @@ test.skip(!existsSync(adminState) || !existsSync(studentState), "Requires the lo
 test.use({ storageState: existsSync(adminState) ? adminState : undefined });
 
 test("ordinary Admin can save and reset Leaderboard settings, while Students cannot save", async ({ page, playwright }) => {
-  await page.goto("/admin/leaderboard");
+  await gotoHydrated(page, "/admin/leaderboard");
   await expect(page.getByRole("heading", { name: "Leaderboard settings", exact: true })).toBeVisible();
   const threshold = page.getByLabel("New threshold", { exact: true });
   const reset = page.getByRole("button", { name: /^Use (env var|default)/ });

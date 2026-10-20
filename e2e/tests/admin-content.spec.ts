@@ -3,15 +3,16 @@ import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import * as XLSX from "xlsx";
 import { makeSampleWorkbook } from "../../src/features/tryout-content/tryout-workbook-sheets";
+import { gotoHydrated } from "../support/navigation";
 
 const state = resolve("e2e/.auth/admin.json");
-const baseURL = process.env.E2E_BASE_URL ?? "https://staging.ilmorax.com";
+const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:8095";
 // These tests create and edit content. Never run against a deployed database.
 test.skip(!["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname) || !existsSync(state), "Requires local app and local admin session.");
 test.use({ storageState: existsSync(state) ? state : undefined });
 
 async function createTryout(page: Page, title: string) {
-  await page.goto("/admin/tryouts");
+  await gotoHydrated(page, "/admin/tryouts");
   await expect(page.locator("[data-admin-ready=true]")).toBeVisible();
   await page.getByLabel("Judul", { exact: true }).fill(title);
   await page.getByLabel("Deskripsi", { exact: true }).fill("Latihan admin lokal");
@@ -75,7 +76,7 @@ test("manual create, required fields, answer and pembahasan persist, cancel and 
   page.once("dialog", (dialog) => dialog.accept());
   await row.getByRole("button", { name: "Keluarkan", exact: true }).click();
   await expect(page.getByRole("alert")).toHaveText(/minimal satu soal tayang/);
-  await page.goto("/admin/questions");
+  await gotoHydrated(page, "/admin/questions");
   await expect(page.locator("[data-admin-ready=true]")).toBeVisible();
   await page.getByLabel("Cari soal").fill(`Soal manual ${run}`);
   const bankRow = page.locator(".admin-list-row");

@@ -21,10 +21,7 @@ if (["ilmorax.com", "www.ilmorax.com"].includes(new URL(baseURL).hostname)) {
 const target = new URL(routes[role], baseURL);
 const authDir = resolve("e2e/.auth");
 const authFile = resolve(authDir, `${role}.json`);
-const browser = await chromium.launch({
-  headless: false,
-  executablePath: process.env.E2E_CHROMIUM_EXECUTABLE_PATH || undefined,
-});
+const browser = await chromium.launch({ headless: false });
 
 try {
   const context = await browser.newContext({ timezoneId: "Asia/Jakarta" });

@@ -1,14 +1,14 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
+import { gotoHydrated } from "../support/navigation";
 
 const authFile = resolve("e2e/.auth/admin.json");
 test.skip(!existsSync(authFile), "Capture an Admin session with pnpm test:e2e:auth admin.");
 test.use({ storageState: authFile });
 
 test("Admin can search and filter Students, then open their Evaluation", async ({ page }) => {
-  await page.goto("/admin/users");
-  await page.waitForLoadState("networkidle");
+  await gotoHydrated(page, "/admin/users");
   const panel = page.locator("section.admin-panel").filter({
     has: page.getByRole("heading", { name: "Students", exact: true }),
   });
@@ -102,19 +102,19 @@ test("profile join date matches the Admin account record and the dev switch foll
   const joinedRow = page.getByText("Bergabung", { exact: true }).locator("..");
   const email = (await emailRow.innerText()).replace(/^Email\s*/i, "").trim();
   const profileJoined = (await joinedRow.innerText()).replace(/^Bergabung\s*/i, "").trim();
-  const isLocal = ["localhost", "127.0.0.1"].includes(new URL(process.env.E2E_BASE_URL ?? "https://staging.ilmorax.com").hostname);
+  const isLocal = ["localhost", "127.0.0.1"].includes(new URL(test.info().project.use.baseURL!).hostname);
   const expectDevControls = process.env.E2E_EXPECT_DEV_CONTROLS === undefined
     ? isLocal
     : process.env.E2E_EXPECT_DEV_CONTROLS === "1";
   await expect(page.getByRole("checkbox", { name: "CONFIG TOGGLE Premium user" })).toHaveCount(expectDevControls ? 1 : 0);
 
-  await page.goto("/admin/users");
-  await page.waitForLoadState("networkidle");
+  await gotoHydrated(page, "/admin/users");
   const panel = page.locator("section.admin-panel").filter({
     has: page.getByRole("heading", { name: "Students", exact: true }),
   });
   await panel.getByRole("searchbox", { name: "Search Students by name or email" }).fill(email);
-  const account = panel.locator(".admin-list-row");
+  // The search matches on tokens, so a shared fixture domain also matches other accounts.
+  const account = panel.locator(".admin-list-row").filter({ hasText: email });
   await expect(account).toHaveCount(1);
   const adminJoined = await account.getByText(/^Joined /).innerText();
   expect(dateParts(profileJoined)).toEqual(dateParts(adminJoined));
