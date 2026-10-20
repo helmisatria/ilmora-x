@@ -16,8 +16,8 @@ async function createTryout(page: Page, title: string) {
   await page.getByLabel("Judul", { exact: true }).fill(title);
   await page.getByLabel("Deskripsi", { exact: true }).fill("Latihan admin lokal");
   await page.getByRole("button", { name: "Buat try-out", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Perubahan tersimpan.");
-  await page.locator(".admin-list-row").filter({ has: page.getByRole("heading", { name: title, exact: true }) }).getByRole("link", { name: "Kelola soal" }).click();
+  // Creating opens the new try-out so the admin can add questions right away.
+  await expect(page).toHaveURL(/\/admin\/tryouts\/[^/]+$/);
   await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
 }
 

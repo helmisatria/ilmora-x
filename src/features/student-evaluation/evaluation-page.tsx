@@ -1,107 +1,64 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BottomNav, TopBar } from "../../components/Navigation";
 import { restoreReturnScroll, saveReturnScroll } from "../../lib/return-scroll";
+import { getDashboardPalette } from "../dashboard/dashboard-view-model";
 import type { listProgressSummary } from "../student/student-progress-functions";
+import {
+  getAccuracyPct,
+  getAccuracyTone,
+  getFocusTopics,
+  getScoreTrend,
+  sortCategoriesByWeakness,
+  STRONG_ACCURACY,
+  type AccuracyTone,
+} from "./evaluation-insights";
 
 type ProgressSummary = Awaited<ReturnType<typeof listProgressSummary>>;
 type EvaluationCategory = ProgressSummary["categories"][number];
 type EvaluationAttempt = ProgressSummary["attempts"][number];
 
+const VISIBLE_ATTEMPTS = 5;
+
+const toneStyles: Record<AccuracyTone, { color: string; label: string }> = {
+  strong: { color: "#16a34a", label: "Kuat" },
+  medium: { color: "#d97706", label: "Cukup" },
+  weak: { color: "#e11d48", label: "Perlu fokus" },
+};
+
 export function EvaluationPage({ summary }: { summary: ProgressSummary }) {
-  const hasPremiumMembership = summary.hasPremiumEvaluation;
-  const totalQuestions = summary.totalQuestions;
-  const totalCorrect = summary.totalCorrect;
-  const totalWrong = totalQuestions - totalCorrect;
-  const pctCorrect = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-  const recommendation = getRecommendation(summary);
+  const palette = getDashboardPalette();
+  const isPremium = summary.hasPremiumEvaluation;
+  const hasData = summary.totalQuestions > 0;
 
   useEffect(() => {
     restoreReturnScroll("evaluation");
   }, []);
 
   return (
-    <main
-      className="app-shell overflow-x-hidden"
-      style={{
-        background:
-          "linear-gradient(180deg, #eef8f6 0%, #f6fbfa 44%, #f7f3ea 100%)",
-      }}
-    >
-      <div
-        className="relative overflow-hidden pb-8"
-        style={{
-          background:
-            "radial-gradient(900px 340px at 8% -18%, rgba(32,80,114,0.22), transparent 62%), radial-gradient(720px 340px at 94% -12%, #f59e0b20, transparent 68%), linear-gradient(180deg, #eef8f6 0%, #fbfaf7 100%)",
-        }}
-      >
+    <main className="app-shell overflow-x-hidden" style={{ background: palette.page }}>
+      <div className="relative overflow-hidden pb-8" style={{ background: palette.header }}>
         <TopBar progress={{ xp: summary.xp, streak: summary.streak }} />
-        <div className="page-lane pt-7">
+        <div className="page-lane pt-5 sm:pt-7 lg:pt-10">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">
-                Evaluation Dashboard
-              </div>
-              <h1 className="mt-2 max-w-[22ch] text-[28px] font-bold leading-tight tracking-tight text-stone-800">
-                Baca pola performa belajarmu
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">Evaluasi</div>
+              <h1 className="mt-1 max-w-[18ch] text-[24px] font-bold leading-tight tracking-tight text-stone-800 sm:text-[34px] lg:text-[44px]">
+                Performa belajarmu
               </h1>
-              <p className="m-0 mt-3 max-w-[34ch] text-[14px] font-medium leading-relaxed text-stone-500">
-                Lihat akurasi, kategori kuat, dan area yang perlu jadi prioritas latihan berikutnya.
+              <p className="m-0 mt-1.5 max-w-[44ch] text-[13px] font-medium leading-snug text-stone-500 sm:mt-3 sm:text-[15px] sm:leading-relaxed">
+                Lihat seberapa akurat jawabanmu dan topik mana yang perlu dilatih berikutnya.
               </p>
             </div>
-            <span className="rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-500">
-              {hasPremiumMembership ? "Premium ON" : "Free"}
-            </span>
+            <MembershipBadge isPremium={isPremium} />
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3 grid-flow-dense">
-            <SummaryCard label="Soal Dikerjakan" value={String(totalQuestions)} accent="#205072" icon={<DocumentIcon />} />
-            <SummaryCard label="Jawaban Benar" value={String(totalCorrect)} accent="#22c55e" icon={<CheckCircleIcon />} />
-            <SummaryCard label="Jawaban Salah" value={String(totalWrong)} accent="#fb7185" icon={<XCircleIcon />} />
-            <SummaryCard label="Akurasi" value={`${pctCorrect}%`} accent="#f59e0b" icon={<TargetIcon />} />
-          </div>
+          {hasData && <AccuracyPanel summary={summary} isPremium={isPremium} />}
         </div>
       </div>
 
       <div className="page-lane relative -mt-4 pb-28">
-        <InsightPanel
-          pctCorrect={pctCorrect}
-          recommendation={recommendation}
-          isPremium={hasPremiumMembership}
-        />
-
-        <div className="mt-6">
-          <SectionHeader title="Breakdown Kategori" />
-          <div className="grid gap-4">
-            {summary.categories.map((category) => (
-              <CategoryCard
-                key={category.name}
-                category={category}
-                isPremium={hasPremiumMembership}
-              />
-            ))}
-
-            {summary.categories.length === 0 && (
-              <EmptyPanel message="Belum ada data kategori. Selesaikan Try-out pertama untuk membuka analisis." />
-            )}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <SectionHeader title="Riwayat Try-out" />
-          {!hasPremiumMembership ? (
-            <LockedAttempts />
-          ) : (
-            <div className="grid gap-3">
-              {summary.attempts.map((attempt) => (
-                <AttemptRow key={attempt.id} attempt={attempt} />
-              ))}
-              {summary.attempts.length === 0 && (
-                <EmptyPanel message="Belum ada Attempt tersubmit." />
-              )}
-            </div>
-          )}
-        </div>
+        {hasData ? <EvaluationContent summary={summary} isPremium={isPremium} /> : <EmptyEvaluation isPremium={isPremium} />}
       </div>
 
       <BottomNav active="learn" />
@@ -109,166 +66,427 @@ export function EvaluationPage({ summary }: { summary: ProgressSummary }) {
   );
 }
 
-function InsightPanel({
-  pctCorrect,
-  recommendation,
-  isPremium,
-}: {
-  pctCorrect: number;
-  recommendation: string;
-  isPremium: boolean;
-}) {
+function EvaluationContent({ summary, isPremium }: { summary: ProgressSummary; isPremium: boolean }) {
+  const categories = sortCategoriesByWeakness([...summary.categories]);
+  const focusTopics = isPremium ? getFocusTopics(summary.categories) : [];
+  const trend = getScoreTrend(summary.attempts);
+
   return (
-    <div
-      className="rounded-[var(--radius-xl)] border-2 border-b-4 p-5 shadow-sm"
-      style={{
-        background:
-          "linear-gradient(135deg, rgba(235,250,247,0.98) 0%, rgba(255,252,245,0.98) 100%)",
-        borderColor: "#cfe7df",
-        borderBottomColor: "#a9d1c6",
-      }}
-    >
-      <div className="flex items-start gap-3">
-        <IconTile icon={<SparkIcon />} accent="#205072" />
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">
-            Rekomendasi
-          </div>
-          <h2 className="mt-1 text-xl font-bold leading-tight tracking-tight text-stone-800">
-            Rekomendasi belajar
-          </h2>
-          <p className="m-0 mt-2 max-w-[31ch] text-[13.5px] font-medium leading-relaxed text-stone-500">
-            Akurasi keseluruhanmu {pctCorrect}%. {recommendation}
-          </p>
-        </div>
-      </div>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-6">
+        {isPremium && trend.scores.length >= 2 && (
+          <section>
+            <SectionHeader title="Tren skor" />
+            <TrendCard scores={trend.scores} delta={trend.delta} />
+          </section>
+        )}
 
-      {!isPremium && (
-        <Link to="/premium" className="btn mt-4 w-full" style={{ background: "#2f281c", color: "#fff7ed", borderBottomColor: "#a16207" }}>
-          Buka Analisis Premium
-        </Link>
-      )}
-    </div>
-  );
-}
-
-function CategoryCard({
-  category,
-  isPremium,
-}: {
-  category: EvaluationCategory;
-  isPremium: boolean;
-}) {
-  const categoryTotal = category.total;
-  const categoryCorrect = category.correct;
-  const categoryPct = categoryTotal > 0 ? Math.round((categoryCorrect / categoryTotal) * 100) : 0;
-  return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm">
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <b className="text-base font-bold text-stone-800">{category.name}</b>
-            <div className="mt-1 text-xs font-semibold text-stone-500">
-              {categoryCorrect}/{categoryTotal} soal benar
-            </div>
-          </div>
-          <ScorePill value={categoryPct} />
-        </div>
-      </div>
-
-      <div className={`relative border-t border-stone-100 bg-stone-50/70 px-3 py-3 sm:px-4 ${!isPremium ? "select-none" : ""}`}>
-        {isPremium ? (
-          <div className="grid gap-2.5">
-            {category.subCategories.map((subcategory, index) => (
-              <SubcategoryRow
-                key={subcategory.name}
-                subcategory={subcategory}
-                isLast={index === category.subCategories.length - 1}
-              />
+        <section>
+          <SectionHeader title="Per kategori" hint="Terlemah di atas" />
+          <div className="grid gap-3">
+            {categories.map((category, index) => (
+              <CategoryCard key={category.id} category={category} isPremium={isPremium} defaultOpen={index === 0} />
             ))}
           </div>
+        </section>
+      </div>
+
+      <div className="grid gap-6">
+        {isPremium ? (
+          <section>
+            <SectionHeader title="Topik yang perlu diperkuat" />
+            <FocusTopics topics={focusTopics} />
+          </section>
         ) : (
-          <div className="flex min-h-20 items-center justify-center rounded-b-[var(--radius-lg)] bg-amber-50/86 px-5">
-            <Link to="/premium" className="btn btn-sm" style={{ background: "#2f281c", color: "#fff7ed", borderBottomColor: "#a16207" }}>
-              Unlock Breakdown
-            </Link>
-          </div>
+          <PremiumUpsell />
+        )}
+
+        <section>
+          <SectionHeader title="Langkah berikutnya" />
+          <NextSteps summary={summary} focusTopic={isPremium ? focusTopics[0]?.name ?? null : categories[0]?.name ?? null} />
+        </section>
+
+        {isPremium && (
+          <section>
+            <SectionHeader title="Riwayat try-out" />
+            <AttemptHistory attempts={summary.attempts} />
+          </section>
         )}
       </div>
     </div>
   );
 }
 
-function SubcategoryRow({
-  subcategory,
-  isLast,
-}: {
-  subcategory: EvaluationCategory["subCategories"][number];
-  isLast: boolean;
-}) {
-  const pct = subcategory.total > 0 ? Math.round((subcategory.correct / subcategory.total) * 100) : 0;
-  const branchClassName = isLast ? "h-1/2" : "h-full";
+function MembershipBadge({ isPremium }: { isPremium: boolean }) {
+  if (isPremium) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 border-amber-300 bg-amber-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+        <CrownIcon className="h-3.5 w-3.5" />
+        Premium
+      </span>
+    );
+  }
 
   return (
-    <div className="relative pl-5">
-      <span className={`absolute left-1.5 top-0 w-px rounded-full bg-stone-200 ${branchClassName}`} aria-hidden="true" />
-      <span className="absolute left-1.5 top-1/2 h-px w-3 -translate-y-1/2 bg-stone-200" aria-hidden="true" />
-      <div className="grid gap-2 rounded-[var(--radius-md)] border border-stone-100 bg-white/90 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-          <div className="min-w-0">
-            <div className="truncate text-sm font-extrabold text-stone-700">{subcategory.name}</div>
-            <div className="mt-0.5 text-xs font-semibold text-stone-400">
-              {subcategory.correct}/{subcategory.total} soal benar
+    <span className="shrink-0 rounded-full border-2 border-stone-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-500">
+      Free
+    </span>
+  );
+}
+
+function AccuracyPanel({ summary, isPremium }: { summary: ProgressSummary; isPremium: boolean }) {
+  const totalWrong = summary.totalQuestions - summary.totalCorrect;
+  const accuracy = getAccuracyPct({ correct: summary.totalCorrect, total: summary.totalQuestions });
+  const tone = getAccuracyTone(accuracy);
+  const { delta } = getScoreTrend(summary.attempts);
+
+  return (
+    <div
+      className="mt-5 rounded-[var(--radius-xl)] border-2 border-b-4 p-4 shadow-sm sm:p-5"
+      style={{
+        background: "linear-gradient(135deg, rgba(235,250,247,0.98) 0%, rgba(255,252,245,0.98) 100%)",
+        borderColor: "#cfe7df",
+        borderBottomColor: "#a9d1c6",
+      }}
+    >
+      <div className="flex items-center gap-4">
+        <AccuracyRing pct={accuracy} tone={tone} />
+        <div className="min-w-0">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">Akurasi keseluruhan</div>
+          <div className="mt-1 text-lg font-bold leading-tight tracking-tight text-stone-800">{getAccuracyHeadline(tone)}</div>
+          <p className="m-0 mt-1 text-[12.5px] font-medium leading-snug text-stone-500">
+            {summary.totalCorrect} benar dan {totalWrong} salah dari {summary.totalQuestions} soal.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2.5">
+        <StatCard icon={<ChartIcon />} label="Try-out" value={String(summary.totalAttempts)} accent="#205072" />
+        <StatCard icon={<CheckIcon />} label="Soal benar" value={String(summary.totalCorrect)} accent="#16a34a" />
+        <TrendStat isPremium={isPremium} delta={delta} />
+      </div>
+    </div>
+  );
+}
+
+function getAccuracyHeadline(tone: AccuracyTone) {
+  if (tone === "strong") return "Sudah kuat, pertahankan";
+  if (tone === "medium") return "Cukup baik, terus naikkan";
+  return "Masih perlu banyak latihan";
+}
+
+function AccuracyRing({ pct, tone }: { pct: number; tone: AccuracyTone }) {
+  const color = toneStyles[tone].color;
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <div className="relative h-[92px] w-[92px] shrink-0" role="img" aria-label={`Akurasi ${pct} persen`}>
+      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="50" cy="50" r={radius} fill="none" stroke="#ffffff" strokeWidth="10" />
+        <circle cx="50" cy="50" r={radius} fill="none" stroke={`${color}26`} strokeWidth="10" />
+        <circle
+          cx="50"
+          cy="50"
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${(pct / 100) * circumference} ${circumference}`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-[22px] font-bold tracking-tight text-stone-800">
+        {pct}%
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  accent: string;
+}) {
+  return (
+    <div
+      className="rounded-[var(--radius-lg)] border-2 border-b-4 p-3 shadow-sm"
+      style={{
+        background: `linear-gradient(180deg, ${accent}12 0%, rgba(255,255,255,0.92) 72%)`,
+        borderColor: `${accent}22`,
+        borderBottomColor: `${accent}36`,
+      }}
+    >
+      <IconTile icon={icon} accent={accent} />
+      <div className="mt-2.5 text-lg font-bold leading-none tracking-tight text-stone-800">{value}</div>
+      <div className="mt-1 text-[10.5px] font-semibold leading-tight text-stone-400">{label}</div>
+    </div>
+  );
+}
+
+function TrendStat({ isPremium, delta }: { isPremium: boolean; delta: number | null }) {
+  if (!isPremium) {
+    return <StatCard icon={<LockIcon />} label="Tren skor" value="Premium" accent="#f59e0b" />;
+  }
+
+  if (delta === null) {
+    return <StatCard icon={<TrendIcon />} label="Tren skor" value="-" accent="#0ea5e9" />;
+  }
+
+  const accent = delta >= 0 ? "#16a34a" : "#e11d48";
+  const sign = delta > 0 ? "+" : "";
+
+  return <StatCard icon={<TrendIcon />} label="Skor vs sebelumnya" value={`${sign}${delta}`} accent={accent} />;
+}
+
+function TrendCard({ scores, delta }: { scores: number[]; delta: number | null }) {
+  const latest = scores[scores.length - 1] ?? 0;
+
+  return (
+    <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[12.5px] font-bold text-stone-800">{scores.length} try-out terakhir</div>
+          <div className="mt-0.5 text-xs font-medium text-stone-400">{describeTrend(delta)}</div>
+        </div>
+        <ScorePill value={latest} />
+      </div>
+
+      <div className="mt-4 flex h-24 items-end gap-1.5 sm:gap-2" role="img" aria-label={`Skor try-out terakhir: ${scores.join(", ")} persen`}>
+        {scores.map((score, index) => {
+          const color = toneStyles[getAccuracyTone(score)].color;
+
+          return (
+            <div key={index} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
+              <span className="text-[10px] font-bold text-stone-500">{score}</span>
+              <div
+                className="w-full rounded-t-md"
+                style={{ height: `${Math.max(score, 4)}%`, background: color, opacity: index === scores.length - 1 ? 1 : 0.55 }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function describeTrend(delta: number | null) {
+  if (delta === null || delta === 0) return "Skor terakhir sama dengan sebelumnya";
+  if (delta > 0) return `Naik ${delta} poin dari try-out sebelumnya`;
+
+  return `Turun ${Math.abs(delta)} poin dari try-out sebelumnya`;
+}
+
+function CategoryCard({
+  category,
+  isPremium,
+  defaultOpen,
+}: {
+  category: EvaluationCategory;
+  isPremium: boolean;
+  defaultOpen: boolean;
+}) {
+  const pct = getAccuracyPct(category);
+  const hasDetails = isPremium && category.subCategories.length > 0;
+
+  return (
+    <details
+      className="group overflow-hidden rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white shadow-sm"
+      open={hasDetails && defaultOpen}
+    >
+      <summary
+        className={`list-none p-4 [&::-webkit-details-marker]:hidden ${hasDetails ? "cursor-pointer" : "pointer-events-none"}`}
+        tabIndex={hasDetails ? 0 : -1}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <span className="mt-1.5 h-3 w-3 shrink-0 rounded-full" style={{ background: category.color }} aria-hidden="true" />
+            <div className="min-w-0">
+              <b className="block break-words text-[15px] font-bold leading-tight text-stone-800">{category.name}</b>
+              <div className="mt-1 text-xs font-medium text-stone-400">
+                {category.correct}/{category.total} soal benar
+              </div>
             </div>
           </div>
-          <ScorePill value={pct} compact />
+          <div className="flex shrink-0 items-center gap-2">
+            <ScorePill value={pct} />
+            {hasDetails && (
+              <ChevronIcon className="h-5 w-5 text-stone-300 transition-transform duration-200 group-open:rotate-90" />
+            )}
+          </div>
         </div>
-        <div className="grid gap-1.5 border-t border-stone-100 pt-2">
-          {subcategory.topics.map((topic) => (
-            <TopicScoreRow key={topic.id} topic={topic} />
+        <ProgressBar pct={pct} className="mt-3" />
+        {hasDetails && (
+          <div className="mt-2 text-[11px] font-semibold text-primary">
+            <span className="group-open:hidden">Lihat {category.subCategories.length} subkategori</span>
+            <span className="hidden group-open:inline">Sembunyikan</span>
+          </div>
+        )}
+      </summary>
+
+      {hasDetails && (
+        <div className="grid gap-2.5 border-t border-stone-100 bg-stone-50/70 p-3">
+          {sortCategoriesByWeakness([...category.subCategories]).map((subCategory) => (
+            <SubcategoryBlock key={subCategory.id} subCategory={subCategory} />
           ))}
         </div>
-      </div>
-    </div>
+      )}
+    </details>
   );
 }
 
-function TopicScoreRow({ topic }: { topic: EvaluationCategory["subCategories"][number]["topics"][number] }) {
-  const pct = topic.total > 0 ? Math.round((topic.correct / topic.total) * 100) : 0;
+function SubcategoryBlock({ subCategory }: { subCategory: EvaluationCategory["subCategories"][number] }) {
+  const pct = getAccuracyPct(subCategory);
+  const topics = sortCategoriesByWeakness([...subCategory.topics]);
+  // A lone topic named like its Sub-category adds nothing, so only show the Sub-category row.
+  const showTopics = topics.length > 1 || (topics.length === 1 && topics[0]?.name !== subCategory.name);
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md bg-stone-50 px-3 py-2">
-      <div className="min-w-0">
-        <div className="truncate text-xs font-extrabold text-stone-600">{topic.name}</div>
-        <div className="mt-0.5 text-[11px] font-semibold text-stone-400">
-          {topic.correct}/{topic.total} soal benar
+    <div className="rounded-[var(--radius-md)] border border-stone-100 bg-white p-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="break-words text-sm font-bold leading-tight text-stone-700">{subCategory.name}</div>
+          <div className="mt-0.5 text-xs font-medium text-stone-400">
+            {subCategory.correct}/{subCategory.total} soal benar
+          </div>
         </div>
+        <ScorePill value={pct} compact />
       </div>
-      <ScorePill value={pct} compact />
+
+      {showTopics && (
+        <ul className="m-0 mt-3 grid list-none gap-2.5 border-t border-stone-100 p-0 pt-3">
+          {topics.map((topic) => {
+            const topicPct = getAccuracyPct(topic);
+
+            return (
+              <li key={topic.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 break-words text-xs font-semibold text-stone-600">{topic.name}</span>
+                  <span className="shrink-0 text-[11px] font-bold" style={{ color: toneStyles[getAccuracyTone(topicPct)].color }}>
+                    {topic.correct}/{topic.total} ({topicPct}%)
+                  </span>
+                </div>
+                <ProgressBar pct={topicPct} className="mt-1.5" thin />
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
 
-function LockedAttempts() {
-  return (
-    <div className="rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-5 text-center text-amber-50 shadow-sm">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[var(--radius-md)] border-2 border-amber-300/45 bg-amber-400/15 text-amber-200">
-        <TimelineIcon />
+function FocusTopics({ topics }: { topics: ReturnType<typeof getFocusTopics> }) {
+  if (topics.length === 0) {
+    return (
+      <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border-2 border-success/25 border-b-4 border-b-success/40 bg-success/5 p-4 shadow-sm">
+        <IconTile icon={<CheckIcon />} accent="#16a34a" />
+        <p className="m-0 text-sm font-semibold leading-relaxed text-stone-600">
+          Semua topik sudah di atas {STRONG_ACCURACY}%. Pertahankan dengan try-out baru.
+        </p>
       </div>
-      <h2 className="mt-4 text-xl font-bold tracking-tight text-amber-50">Riwayat lengkap untuk Premium</h2>
-      <p className="mx-auto mt-2 max-w-[30ch] text-sm font-medium leading-relaxed text-amber-100/72">
-        Buka tren try-out, XP, dan kualitas skor dari waktu ke waktu.
-      </p>
-      <Link to="/premium" className="btn mt-4 w-full" style={{ background: "#f5b544", color: "#2f281c", borderBottomColor: "#b45309" }}>
-        Upgrade ke Premium
+    );
+  }
+
+  return (
+    <ol className="m-0 grid list-none gap-3 p-0">
+      {topics.map((topic, index) => (
+        <li
+          key={topic.id}
+          className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-4 shadow-sm"
+        >
+          <div className="flex items-start gap-3">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border-2 text-sm font-bold"
+              style={{ color: topic.color, background: `${topic.color}18`, borderColor: `${topic.color}33` }}
+            >
+              {index + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <b className="block break-words text-[15px] font-bold leading-tight text-stone-800">{topic.name}</b>
+              <div className="mt-1 break-words text-xs font-medium text-stone-400">
+                {topic.subCategoryName} / {topic.categoryName}
+              </div>
+            </div>
+            <ScorePill value={topic.pct} compact />
+          </div>
+          <ProgressBar pct={topic.pct} className="mt-3" thin />
+          <div className="mt-1.5 text-[11px] font-semibold text-stone-400">
+            {topic.correct} benar dari {topic.total} soal
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function NextSteps({ summary, focusTopic }: { summary: ProgressSummary; focusTopic: string | null }) {
+  const latestAttempt = summary.attempts[0];
+  const latestWrong = latestAttempt ? latestAttempt.totalQuestions - latestAttempt.correctCount : 0;
+
+  return (
+    <div className="grid gap-3">
+      <Link to="/tryout" className="card shadow-sm no-underline">
+        <IconTile icon={<BookIcon />} accent="#205072" size="lg" />
+        <div className="min-w-0 flex-1">
+          <b className="block text-[15px] font-bold leading-tight text-stone-800">
+            {focusTopic ? `Latih ${focusTopic}` : "Kerjakan try-out baru"}
+          </b>
+          <div className="mt-1 text-xs font-medium leading-snug text-stone-400">
+            {focusTopic ? "Pilih try-out yang memuat materi ini lalu cek lagi akurasinya." : "Jaga ritme dan bandingkan skormu."}
+          </div>
+        </div>
+        <ChevronIcon className="h-5 w-5 shrink-0 text-stone-300" />
       </Link>
+
+      {latestAttempt && latestWrong > 0 && (
+        <Link
+          to="/results/$attemptId/review"
+          params={{ attemptId: latestAttempt.id }}
+          search={{ returnTo: "evaluation" }}
+          onClick={() => saveReturnScroll("evaluation")}
+          className="card shadow-sm no-underline"
+        >
+          <IconTile icon={<ReviewIcon />} accent="#f59e0b" size="lg" />
+          <div className="min-w-0 flex-1">
+            <b className="block text-[15px] font-bold leading-tight text-stone-800">Review {latestWrong} soal salah</b>
+            <div className="mt-1 truncate text-xs font-medium text-stone-400">{latestAttempt.tryoutTitle}</div>
+          </div>
+          <ChevronIcon className="h-5 w-5 shrink-0 text-stone-300" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function AttemptHistory({ attempts }: { attempts: EvaluationAttempt[] }) {
+  const [showAll, setShowAll] = useState(false);
+  const visibleAttempts = showAll ? attempts : attempts.slice(0, VISIBLE_ATTEMPTS);
+  const hiddenCount = attempts.length - visibleAttempts.length;
+
+  return (
+    <div className="grid gap-3">
+      {visibleAttempts.map((attempt) => (
+        <AttemptRow key={attempt.id} attempt={attempt} />
+      ))}
+      {hiddenCount > 0 && (
+        <button type="button" className="btn btn-white btn-sm w-full" onClick={() => setShowAll(true)}>
+          Tampilkan {hiddenCount} lainnya
+        </button>
+      )}
     </div>
   );
 }
 
 function AttemptRow({ attempt }: { attempt: EvaluationAttempt }) {
-  const accent = attempt.score >= 70 ? "#22c55e" : "#fb7185";
-  const answerSummary = `${attempt.correctCount}/${attempt.totalQuestions} benar`;
+  const accent = toneStyles[getAccuracyTone(attempt.score)].color;
 
   return (
     <Link
@@ -276,88 +494,163 @@ function AttemptRow({ attempt }: { attempt: EvaluationAttempt }) {
       params={{ attemptId: attempt.id }}
       search={{ returnTo: "evaluation" }}
       onClick={() => saveReturnScroll("evaluation")}
-      className="group flex items-center gap-4 rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-4 text-stone-800 no-underline shadow-sm transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
+      className="flex items-center gap-3.5 rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-3.5 text-stone-800 no-underline shadow-sm transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
     >
       <div
         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold"
-        style={{
-          color: accent,
-          background: `${accent}12`,
-          borderColor: `${accent}35`,
-        }}
+        style={{ color: accent, background: `${accent}12`, borderColor: `${accent}35` }}
       >
         {attempt.score}%
       </div>
       <div className="min-w-0 flex-1">
         <b className="block truncate text-[15px] font-bold text-stone-800">{attempt.tryoutTitle}</b>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-stone-400">
-          <span>Try-out ke-{attempt.attemptNumber}</span>
-          {attempt.submittedAt && <span>{formatDate(attempt.submittedAt)}</span>}
-          <span className="font-bold text-stone-500">{answerSummary}</span>
+        <div className="mt-0.5 text-xs font-medium text-stone-400">
+          Try-out ke-{attempt.attemptNumber}
+          {attempt.submittedAt ? ` · ${formatDate(attempt.submittedAt)}` : ""}
+        </div>
+        <div className="mt-0.5 text-xs font-semibold text-stone-500">
+          {attempt.correctCount}/{attempt.totalQuestions} benar
+          <span className="font-bold text-amber"> · +{attempt.xpEarned} XP</span>
         </div>
       </div>
-      <div className="shrink-0 text-right">
-        <div className="text-sm font-bold text-amber">+{attempt.xpEarned} XP</div>
-        <div className="mt-0.5 text-[11px] font-bold text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          Review
-        </div>
-      </div>
+      <ChevronIcon className="h-5 w-5 shrink-0 text-stone-300" />
     </Link>
   );
 }
 
-function EmptyPanel({ message }: { message: string }) {
+function PremiumUpsell() {
   return (
-    <div className="rounded-[var(--radius-lg)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-5 text-center shadow-sm">
-      <p className="m-0 text-sm font-semibold leading-relaxed text-stone-400">{message}</p>
+    <section className="relative overflow-hidden rounded-[var(--radius-xl)] border-2 border-b-4 border-amber-300 border-b-amber-600 bg-[#2f281c] p-5 text-amber-50 shadow-sm">
+      <div
+        className="absolute inset-0 opacity-90"
+        style={{
+          background:
+            "radial-gradient(320px 180px at 90% 0%, rgba(245,158,11,0.28), transparent 70%), radial-gradient(260px 180px at 0% 100%, rgba(20,184,166,0.18), transparent 72%)",
+        }}
+      />
+      <div className="relative">
+        <div className="flex items-start gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] border-2 border-amber-300/45 bg-amber-400/15 text-amber-200">
+            <CrownIcon className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/75">Premium</div>
+            <h2 className="mt-1 text-[18px] font-bold leading-tight text-amber-50">Temukan topik yang bikin nilaimu turun</h2>
+          </div>
+        </div>
+
+        <ul className="m-0 mt-4 grid list-none gap-2 p-0 text-sm font-medium text-amber-100/85">
+          {[
+            "Skor per subkategori dan topik",
+            "Daftar topik terlemah untuk dilatih",
+            "Tren skor dan riwayat semua try-out",
+          ].map((item) => (
+            <li key={item} className="flex items-center gap-2">
+              <CheckIcon className="h-4 w-4 shrink-0 text-amber-300" />
+              {item}
+            </li>
+          ))}
+        </ul>
+
+        <Link
+          to="/premium"
+          className="btn mt-5 w-full"
+          style={{ background: "#f5b544", color: "#2f281c", borderBottomColor: "#b45309" }}
+        >
+          Unlock Breakdown Lengkap
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function EmptyEvaluation({ isPremium }: { isPremium: boolean }) {
+  return (
+    <div className="rounded-[var(--radius-xl)] border-2 border-stone-100 border-b-4 border-b-stone-200 bg-white p-6 text-center shadow-sm">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[var(--radius-lg)] border-2 border-primary-soft bg-primary-tint text-primary">
+        <ChartIcon className="h-8 w-8" />
+      </div>
+      <h2 className="mt-4 text-xl font-bold tracking-tight text-stone-800">Belum ada data evaluasi</h2>
+      <p className="mx-auto mt-2 max-w-[34ch] text-sm font-medium leading-relaxed text-stone-500">
+        Selesaikan try-out pertamamu. Setelah itu kamu bisa melihat akurasi dan topik yang perlu dilatih.
+      </p>
+      <Link to="/tryout" className="btn btn-primary mt-5 w-full sm:w-auto">
+        <BookIcon />
+        Mulai Try-out
+      </Link>
+
+      <ul className="m-0 mt-6 grid list-none gap-2.5 p-0 text-left sm:grid-cols-3">
+        {[
+          { title: "Akurasi", text: "Persentase jawaban benar per kategori.", accent: "#205072" },
+          { title: "Topik lemah", text: "Topik yang perlu kamu latih dulu.", accent: "#f59e0b", premium: true },
+          { title: "Tren skor", text: "Naik atau turun dari try-out ke try-out.", accent: "#0ea5e9", premium: true },
+        ].map((item) => (
+          <li
+            key={item.title}
+            className="rounded-[var(--radius-md)] border-2 bg-stone-50/70 p-3.5"
+            style={{ borderColor: `${item.accent}22` }}
+          >
+            <div className="flex items-center gap-2 text-[13px] font-bold text-stone-700">
+              <span className="h-2 w-2 rounded-full" style={{ background: item.accent }} aria-hidden="true" />
+              {item.title}
+              {item.premium && !isPremium && (
+                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
+                  Premium
+                </span>
+              )}
+            </div>
+            <div className="mt-1 text-xs font-medium leading-snug text-stone-400">{item.text}</div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-function getRecommendation(summary: ProgressSummary) {
-  if (summary.totalQuestions === 0) {
-    return "Mulai dari Try-out gratis untuk membangun baseline performa.";
-  }
+function ProgressBar({ pct, className = "", thin = false }: { pct: number; className?: string; thin?: boolean }) {
+  const color = toneStyles[getAccuracyTone(pct)].color;
 
-  const weakestTopic = summary.categories
-    .flatMap((category) => category.subCategories.flatMap((subCategory) => (
-      subCategory.topics.map((topic) => ({
-        ...topic,
-        subCategoryName: subCategory.name,
-        categoryName: category.name,
-        accuracy: topic.total > 0 ? topic.correct / topic.total : 1,
-      }))
-    )))
-    .filter((topic) => topic.total > 0)
-    .sort((a, b) => a.accuracy - b.accuracy)[0];
+  return (
+    <div className={`overflow-hidden rounded-full bg-stone-100 ${thin ? "h-1.5" : "h-2.5"} ${className}`} aria-hidden="true">
+      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+    </div>
+  );
+}
 
-  if (weakestTopic) {
-    return `Prioritaskan ${weakestTopic.name} di ${weakestTopic.subCategoryName} / ${weakestTopic.categoryName}.`;
-  }
+function ScorePill({ value, compact = false }: { value: number; compact?: boolean }) {
+  const color = toneStyles[getAccuracyTone(value)].color;
 
-  const weakestSubCategory = summary.categories
-    .flatMap((category) => category.subCategories.map((subCategory) => ({
-      ...subCategory,
-      categoryName: category.name,
-      accuracy: subCategory.total > 0 ? subCategory.correct / subCategory.total : 1,
-    })))
-    .filter((subCategory) => subCategory.total > 0)
-    .sort((a, b) => a.accuracy - b.accuracy)[0];
+  return (
+    <span
+      className={`shrink-0 rounded-full border-2 font-bold ${compact ? "px-2.5 py-0.5 text-xs" : "px-3 py-1 text-sm"}`}
+      style={{ color, background: `${color}12`, borderColor: `${color}40` }}
+    >
+      {value}%
+    </span>
+  );
+}
 
-  if (weakestSubCategory) {
-    return `Prioritaskan ${weakestSubCategory.name} di ${weakestSubCategory.categoryName}.`;
-  }
+function SectionHeader({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <h2 className="m-0 text-[13px] font-semibold uppercase tracking-wide text-stone-500">{title}</h2>
+      <div className="h-px flex-1 bg-stone-200" />
+      {hint && <span className="text-[11px] font-semibold text-stone-400">{hint}</span>}
+    </div>
+  );
+}
 
-  const weakestCategory = summary.categories
-    .filter((category) => category.total > 0)
-    .map((category) => ({ ...category, accuracy: category.correct / category.total }))
-    .sort((a, b) => a.accuracy - b.accuracy)[0];
+function IconTile({ icon, accent, size = "sm" }: { icon: React.ReactNode; accent: string; size?: "sm" | "lg" }) {
+  const boxSize = size === "lg" ? "h-14 w-14 rounded-[var(--radius-md)]" : "h-9 w-9 rounded-xl";
 
-  if (weakestCategory) {
-    return `Prioritaskan kategori ${weakestCategory.name}.`;
-  }
-
-  return "Lanjutkan retake untuk memperjelas area prioritas.";
+  return (
+    <div
+      className={`${boxSize} flex shrink-0 items-center justify-center border-2`}
+      style={{ color: accent, background: `${accent}18`, borderColor: `${accent}30` }}
+    >
+      {icon}
+    </div>
+  );
 }
 
 function formatDate(value: string) {
@@ -368,129 +661,71 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function SummaryCard({
-  label,
-  value,
-  accent,
-  icon,
-}: {
-  label: string;
-  value: string;
-  accent: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div
-      className="rounded-[var(--radius-lg)] border-2 border-b-4 p-4 shadow-sm"
-      style={{
-        background: `linear-gradient(180deg, ${accent}12 0%, rgba(255,255,255,0.92) 72%)`,
-        borderColor: `${accent}22`,
-        borderBottomColor: `${accent}36`,
-      }}
-    >
-      <SmallIconTile icon={icon} accent={accent} />
-      <div className="mt-3 text-[22px] font-bold leading-none tracking-tight text-stone-800">{value}</div>
-      <div className="mt-1 text-[10.5px] font-semibold leading-tight text-stone-400">{label}</div>
-    </div>
-  );
-}
+type IconProps = { className?: string };
 
-function ScorePill({ value, compact = false }: { value: number; compact?: boolean }) {
+function ChartIcon({ className = "h-5 w-5" }: IconProps) {
   return (
-    <span className={`shrink-0 rounded-full border-2 border-brand-sky bg-primary-tint font-bold text-primary-dark ${compact ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm"}`}>
-      {value}%
-    </span>
-  );
-}
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <div className="mb-3 flex items-center gap-2">
-      <span className="text-[13px] font-semibold uppercase tracking-wide text-stone-500">{title}</span>
-      <div className="h-px flex-1 bg-stone-200" />
-    </div>
-  );
-}
-
-function IconTile({ icon, accent }: { icon: React.ReactNode; accent: string }) {
-  return (
-    <div
-      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] border-2"
-      style={{
-        color: accent,
-        background: `${accent}18`,
-        borderColor: `${accent}33`,
-      }}
-    >
-      {icon}
-    </div>
-  );
-}
-
-function SmallIconTile({ icon, accent }: { icon: React.ReactNode; accent: string }) {
-  return (
-    <div
-      className="flex h-9 w-9 items-center justify-center rounded-xl border-2"
-      style={{
-        color: accent,
-        background: `${accent}18`,
-        borderColor: `${accent}30`,
-      }}
-    >
-      {icon}
-    </div>
-  );
-}
-
-function DocumentIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-      <path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M14 3v5h5M8 13h8M8 17h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function CheckCircleIcon() {
+function CheckIcon({ className = "h-5 w-5" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
       <path d="m8.5 12 2.2 2.2 4.8-5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function XCircleIcon() {
+function TrendIcon({ className = "h-5 w-5" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="m4 16 5-5 4 4 7-8M15 7h5v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function LockIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M7 11V8a5 5 0 0 1 10 0v3M6.8 11h10.4c1 0 1.8.8 1.8 1.8v5.4c0 1-.8 1.8-1.8 1.8H6.8c-1 0-1.8-.8-1.8-1.8v-5.4c0-1 .8-1.8 1.8-1.8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CrownIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="m4 8 4 3.5L12 5l4 6.5L20 8l-1.5 10h-13L4 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function BookIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M5 4.8A2.8 2.8 0 0 1 7.8 2H19v17H7.8A2.8 2.8 0 0 0 5 21.8v-17Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 18.2A2.8 2.8 0 0 1 7.8 15H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ReviewIcon({ className = "h-6 w-6" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
       <path d="m9 9 6 6M15 9l-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
     </svg>
   );
 }
 
-function TargetIcon() {
+function ChevronIcon({ className = "h-5 w-5" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-      <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 12h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function SparkIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
-      <path d="M12 3 14.2 8.8 20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function TimelineIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
-      <path d="M6 5v14M18 5v14M6 8h7a3 3 0 0 1 0 6H6M18 16h-7a3 3 0 0 1 0-6h7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

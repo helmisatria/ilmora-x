@@ -5,7 +5,7 @@ export const institutions = [
   "Universitas Airlangga (UNAIR)",
   "Universitas Brawijaya (UB)",
   "Universitas Padjadjaran (UNPAD)",
-  "Universitas Diponegoro",
+  "Universitas Diponegoro (UNDIP)",
   "Universitas Hasanuddin (UNHAS)",
   "Universitas Sumatera Utara (USU)",
   "Universitas Andalas (UNAND)",
@@ -29,7 +29,7 @@ export const institutions = [
   "Universitas Sanata Dharma (USD)",
   "Universitas Katolik Widya Mandala Surabaya (UKWMS)",
   "Universitas Muslim Indonesia (UMI)",
-  "Universitas Islam Indonesia",
+  "Universitas Islam Indonesia (UII)",
   "Universitas Esa Unggul Jakarta (UEU)",
   "Universitas 17 Agustus 1945 Jakarta (UTA)",
   "Universitas Jenderal Achmad Yani Bandung (UNJANI)",
@@ -41,9 +41,23 @@ export const institutions = [
   "Universitas Mahasarasvati Denpasar (UNMAS)",
   "Universitas Megarezky (UNIMERZ)",
   "Universitas Setia Budi (USB)",
-  "Universitas Sriwijaya",
+  "Universitas Sriwijaya (UNSRI)",
   "Universitas Tjut Nyak Dhien (UTND)",
   "Universitas Wahid Hasyim (UNWAHAS)",
+  "Universitas Sebelas Maret (UNS)",
+  "Universitas Syiah Kuala (USK)",
+  "Universitas Riau (UNRI)",
+  "Universitas Sam Ratulangi (UNSRAT)",
+  "Universitas Islam Bandung (UNISBA)",
+  "Universitas Pakuan (UNPAK)",
+  "Universitas Mataram (UNRAM)",
+  "Universitas Lampung (UNILA)",
+  "Universitas Jambi (UNJA)",
+  "Universitas Tadulako (UNTAD)",
+  "Universitas Negeri Gorontalo (UNG)",
+  "Universitas Islam Sultan Agung (UNISSULA)",
+  "Universitas Islam Negeri Alauddin Makassar",
+  "Institut Teknologi Sumatera (ITERA)",
   "Institut Sains dan Teknologi Nasional (ISTN)",
   "Institut Kesehatan Deli Husada Deli Tua",
   "Institut Kesehatan Medistra Lubuk Pakam",
@@ -60,3 +74,25 @@ export const institutions = [
   "STIKES Borneo Lestari",
   "Akademi Farmasi Hang Tuah",
 ];
+
+// Maps a typed name, a name without its abbreviation, or an abbreviation to the listed
+// spelling, so "uns" and "Universitas Sebelas Maret" are stored the same way.
+export function resolveInstitution(value: string) {
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  const query = cleaned.toLowerCase();
+
+  for (const institution of institutions) {
+    const match = institution.match(/^(.*?)\s*\(([^)]+)\)$/);
+    const aliases = match ? [institution, match[1], match[2]] : [institution];
+
+    if (aliases.some((alias) => alias.toLowerCase() === query)) {
+      return institution;
+    }
+  }
+
+  return cleaned;
+}
+
+export function isListedInstitution(value: string) {
+  return institutions.includes(resolveInstitution(value));
+}

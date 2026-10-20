@@ -4,6 +4,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts, redirect, useRouterState
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
+import { NavigationProgress } from "../components/navigation-progress";
 import { AppProvider } from "../data/provider";
 import { getCurrentViewer } from "../lib/auth-functions";
 import { getAcquisitionIntent } from "../lib/product-analytics";
@@ -187,6 +188,7 @@ function RootComponent() {
     <ProductAnalyticsProvider>
       <ProductAnalyticsIdentity viewer={viewer} />
       <AppProvider viewer={viewer}>
+        <NavigationProgress />
         <div id="app" className="view">
           <Outlet />
         </div>
