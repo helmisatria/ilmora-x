@@ -471,7 +471,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
       <fieldset className="admin-lane min-w-0" disabled={!isHydrated || Boolean(busyAction)} data-admin-ready={isHydrated}>
         <header className="admin-header flex flex-col gap-4 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <a href="/admin/tryouts" className="admin-back-link">← Try-out</a>
+            <a href="/admin/tryouts" className="admin-back-link">Try-out</a>
             <div className="mt-2 flex min-w-0 items-center gap-3">
               <div
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
