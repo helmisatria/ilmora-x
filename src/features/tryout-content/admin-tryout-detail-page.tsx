@@ -1,7 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
-import { cloneElement, isValidElement, useEffect, useId, useMemo, useState } from "react";
-import { QuestionPictureField } from "../../components/admin/QuestionPictureField";
-import { TryoutIconField } from "../../components/admin/TryoutIconField";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
+import { useUnsavedChangesGuard } from "../../components/admin/useUnsavedChangesGuard";
+import { TryoutIcon } from "../../components/TryoutIcon";
 import { getSafeErrorMessage } from "../../lib/user-errors";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import {
@@ -15,53 +16,75 @@ import {
   updateTryoutAdmin,
 } from "./admin-tryout-functions";
 import { listCategoryOptionsAdmin } from "../admin/admin-taxonomy-functions";
+import { QuestionEditor, type QuestionSaveMode } from "./question-editor";
+import {
+  getNextSortOrder,
+  getServerFieldError,
+  isSameQuestion,
+  makeNextQuestion,
+  type ContentStatus,
+  type QuestionEditorValues,
+  type QuestionFieldErrors,
+} from "./question-editor-form";
+import { getTryoutServerFieldError, validateTryoutDetails, type TryoutDetailsErrors, type TryoutDetailsValues } from "./tryout-details-form";
+import { TryoutDetailsFields } from "./tryout-details-fields";
 import * as tryoutWorkbook from "./tryout-workbook";
 import * as tryoutWorkbookSheets from "./tryout-workbook-sheets";
 
 type TryoutWorkbook = Awaited<ReturnType<typeof getTryoutWorkbookAdmin>>;
 type TryoutQuestion = TryoutWorkbook["questions"][number];
 type CategoryRow = Awaited<ReturnType<typeof listCategoryOptionsAdmin>>[number];
-type AccessLevel = "free" | "premium";
-type ContentStatus = "draft" | "published" | "unpublished";
-type CorrectOption = "A" | "B" | "C" | "D" | "E";
 
-type TryoutForm = {
-  expectedUpdatedAt: string;
-  title: string;
-  description: string;
-  icon: string;
-  categoryId: string;
-  durationMinutes: string;
-  accessLevel: AccessLevel;
-};
+type TryoutForm = TryoutDetailsValues & { expectedUpdatedAt: string };
 
-type QuestionForm = {
-  expectedUpdatedAt: string;
+type QuestionDraft = {
+  // Remounts the editor so focus and validation start fresh.
+  key: number;
   questionId: string;
-  sortOrder: string;
-  categoryId: string;
-  subCategoryId: string;
-  topicId: string;
-  questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  optionE: string;
-  correctOption: CorrectOption;
-  explanation: string;
-  videoUrl: string;
-  pictureUrl: string;
-  accessLevel: AccessLevel;
-  status: ContentStatus;
+  expectedUpdatedAt: string;
+  values: QuestionEditorValues;
+  initialValues: QuestionEditorValues;
 };
 
-const correctOptions: CorrectOption[] = ["A", "B", "C", "D", "E"];
+const discardQuestionMessage = "Buang perubahan soal yang belum disimpan?";
 
 export type AdminTryoutDetailPageData = {
   workbook: TryoutWorkbook;
   categories: CategoryRow[];
 };
+
+function toTryoutForm(tryout: TryoutWorkbook["tryout"]): TryoutForm {
+  return {
+    expectedUpdatedAt: tryout.updatedAt,
+    title: tryout.title,
+    description: tryout.description,
+    icon: tryout.icon ?? "",
+    categoryId: tryout.categoryId,
+    durationMinutes: String(tryout.durationMinutes),
+    accessLevel: tryout.accessLevel,
+  };
+}
+
+function toQuestionValues(question: TryoutQuestion): QuestionEditorValues {
+  return {
+    sortOrder: String(question.sortOrder),
+    categoryId: question.categoryId,
+    subCategoryId: question.subCategoryId,
+    topicId: question.topicId,
+    questionText: question.questionText,
+    optionA: question.optionA,
+    optionB: question.optionB,
+    optionC: question.optionC,
+    optionD: question.optionD,
+    optionE: question.optionE ?? "",
+    correctOption: question.correctOption,
+    explanation: question.explanation,
+    videoUrl: question.videoUrl ?? "",
+    pictureUrl: question.pictureUrl ?? "",
+    accessLevel: question.accessLevel,
+    status: question.status,
+  };
+}
 
 export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetailPageData) {
   const router = useRouter();
@@ -69,57 +92,85 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   useEffect(() => setIsHydrated(true), []);
   const tryoutId = workbook.tryout.id;
 
-  const [form, setForm] = useState<TryoutForm>(() => ({
-    expectedUpdatedAt: workbook.tryout.updatedAt,
-    title: workbook.tryout.title,
-    description: workbook.tryout.description,
-    icon: workbook.tryout.icon ?? "",
-    categoryId: workbook.tryout.categoryId,
-    durationMinutes: String(workbook.tryout.durationMinutes),
-    accessLevel: workbook.tryout.accessLevel,
-  }));
+  const [form, setForm] = useState<TryoutForm>(() => toTryoutForm(workbook.tryout));
+  const [showDetailsValidation, setShowDetailsValidation] = useState(false);
+  const [detailsServerErrors, setDetailsServerErrors] = useState<TryoutDetailsErrors>({});
   const [busyAction, setBusyAction] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [previewRevision, setPreviewRevision] = useState("");
   const [workbookPreview, setWorkbookPreview] = useState<WorkbookPreview | null>(null);
-  const [questionForm, setQuestionForm] = useState<QuestionForm | null>(null);
+  const [questionDraft, setQuestionDraft] = useState<QuestionDraft | null>(null);
+  const [questionServerErrors, setQuestionServerErrors] = useState<QuestionFieldErrors>({});
+  const [nextQuestion, setNextQuestion] = useState<{ saved: QuestionEditorValues; savedFromRevision: string } | null>(null);
+  const [questionSearch, setQuestionSearch] = useState("");
+  const draftKey = useRef(0);
   useEffect(() => {
-    setForm({ expectedUpdatedAt: workbook.tryout.updatedAt, title: workbook.tryout.title, description: workbook.tryout.description,
-      icon: workbook.tryout.icon ?? "", categoryId: workbook.tryout.categoryId,
-      durationMinutes: String(workbook.tryout.durationMinutes), accessLevel: workbook.tryout.accessLevel });
+    setForm(toTryoutForm(workbook.tryout));
   }, [workbook.tryout.id, workbook.tryout.title, workbook.tryout.description, workbook.tryout.icon,
     workbook.tryout.categoryId, workbook.tryout.durationMinutes, workbook.tryout.accessLevel, workbook.tryout.updatedAt]);
   useEffect(() => {
-    if (questionForm) document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
-  }, [questionForm?.questionId]);
+    if (!successMessage) return;
+
+    const timeout = window.setTimeout(() => setSuccessMessage(""), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [successMessage]);
+  useEffect(() => {
+    if (questionDraft) document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
+  }, [questionDraft?.key]);
+  // "Simpan & tambah lagi" opens the next blank question only after the
+  // refreshed workbook arrives, so it carries the latest revision and number.
+  useEffect(() => {
+    if (!nextQuestion || workbook.tryout.updatedAt === nextQuestion.savedFromRevision) return;
+
+    openQuestion("", makeNextQuestion(nextQuestion.saved, getNextSortOrder(workbook.questions.map((item) => item.sortOrder))));
+    setNextQuestion(null);
+  }, [nextQuestion, workbook.tryout.updatedAt]);
+  const { categoryNames, subCategoryNames, topicNames } = useMemo(() => {
+    const subCategories = categories.flatMap((category) => category.subCategories);
+
+    return {
+      categoryNames: new Map(categories.map((category) => [category.id, category.name])),
+      subCategoryNames: new Map(subCategories.map((subCategory) => [subCategory.id, subCategory.name])),
+      topicNames: new Map(subCategories.flatMap((subCategory) => subCategory.topics).map((topic) => [topic.id, topic.name])),
+    };
+  }, [categories]);
   const publishedQuestionCount = workbook.questions.filter((question) => question.status === "published").length;
 
-  const selectedSubCategories = useMemo(() => {
-    if (!questionForm) return [];
-
-    return categories.find((category) => category.id === questionForm.categoryId)?.subCategories ?? [];
-  }, [categories, questionForm]);
-  const selectedTopics = useMemo(() => {
-    if (!questionForm) return [];
-
-    return selectedSubCategories.find((subCategory) => subCategory.id === questionForm.subCategoryId)?.topics ?? [];
-  }, [selectedSubCategories, questionForm]);
+  const detailsValidation = validateTryoutDetails(form);
+  const detailsErrors: TryoutDetailsErrors = { ...(showDetailsValidation ? detailsValidation.errors : {}), ...detailsServerErrors };
+  const hasChanges =
+    form.title !== workbook.tryout.title ||
+    form.description !== workbook.tryout.description ||
+    form.icon !== (workbook.tryout.icon ?? "") ||
+    form.categoryId !== workbook.tryout.categoryId ||
+    form.durationMinutes.trim() !== String(workbook.tryout.durationMinutes) ||
+    form.accessLevel !== workbook.tryout.accessLevel;
+  const isQuestionDirty = Boolean(questionDraft && !isSameQuestion(questionDraft.values, questionDraft.initialValues));
+  useUnsavedChangesGuard(hasChanges || isQuestionDirty);
 
   const refresh = async () => {
     await router.invalidate();
   };
 
+  const updateForm = (patch: Partial<TryoutDetailsValues>) => {
+    setForm({ ...form, ...patch });
+    setDetailsServerErrors({});
+  };
+
+  const focusDetailsField = (field: string) => {
+    const control = document.querySelector<HTMLElement>(`#details [data-field="${field}"]`);
+    control?.focus({ preventScroll: true });
+    control?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+
   const saveTryout = async () => {
-    const durationMinutes = Number(form.durationMinutes);
+    if (busyAction) return;
 
-    if (!form.title.trim() || !form.description.trim() || !form.categoryId) {
-      setErrorMessage("Isi judul, deskripsi, dan kategori.");
-      return;
-    }
-
-    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 300) {
-      setErrorMessage("Isi durasi dengan angka bulat 1 sampai 300 menit.");
+    if (detailsValidation.firstInvalidField) {
+      setShowDetailsValidation(true);
+      setErrorMessage(detailsValidation.summary);
+      focusDetailsField(detailsValidation.firstInvalidField);
       return;
     }
 
@@ -135,15 +186,18 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
           description: form.description,
           icon: form.icon,
           categoryId: form.categoryId,
-          durationMinutes,
+          durationMinutes: Number(form.durationMinutes),
           accessLevel: form.accessLevel,
           tryoutId,
         },
       });
       await refresh();
+      setShowDetailsValidation(false);
       setSuccessMessage("Perubahan tersimpan.");
     } catch (error) {
-      setErrorMessage(getSafeErrorMessage(error, "Perubahan belum disimpan. Periksa isian lalu coba lagi."));
+      const message = getSafeErrorMessage(error, "Perubahan belum disimpan. Periksa isian lalu coba lagi.");
+      setErrorMessage(message);
+      setDetailsServerErrors(getTryoutServerFieldError(message));
     } finally {
       setBusyAction("");
     }
@@ -174,115 +228,89 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     }
   };
 
+  const canLeaveQuestion = () => !isQuestionDirty || window.confirm(discardQuestionMessage);
+
+  const openQuestion = (questionId: string, values: QuestionEditorValues) => {
+    draftKey.current += 1;
+    setQuestionDraft({
+      key: draftKey.current,
+      questionId,
+      expectedUpdatedAt: workbook.tryout.updatedAt,
+      values,
+      initialValues: values,
+    });
+    setQuestionServerErrors({});
+    setErrorMessage("");
+  };
+
+  const closeQuestion = () => {
+    setQuestionDraft(null);
+    setQuestionServerErrors({});
+    setErrorMessage("");
+  };
+
   const addQuestion = () => {
+    if (!canLeaveQuestion()) return;
+
     const category = categories.find((item) => item.id === form.categoryId) ?? categories[0];
     const subCategory = category?.subCategories[0];
-    setQuestionForm({
-      expectedUpdatedAt: workbook.tryout.updatedAt,
-      questionId: "", sortOrder: String(Math.max(0, ...workbook.questions.map((item) => item.sortOrder)) + 1),
+    openQuestion("", {
+      sortOrder: String(getNextSortOrder(workbook.questions.map((item) => item.sortOrder))),
       categoryId: category?.id ?? "", subCategoryId: subCategory?.id ?? "", topicId: subCategory?.topics?.[0]?.id ?? "",
       questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", optionE: "", correctOption: "A",
       explanation: "", videoUrl: "", pictureUrl: "", accessLevel: "free", status: "draft",
     });
-    setErrorMessage("");
-    document.getElementById("question-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const editQuestion = (question: TryoutQuestion) => {
-    setQuestionForm({
-      expectedUpdatedAt: workbook.tryout.updatedAt,
-      questionId: question.questionId,
-      sortOrder: String(question.sortOrder),
-      categoryId: question.categoryId,
-      subCategoryId: question.subCategoryId,
-      topicId: question.topicId,
-      questionText: question.questionText,
-      optionA: question.optionA,
-      optionB: question.optionB,
-      optionC: question.optionC,
-      optionD: question.optionD,
-      optionE: question.optionE ?? "",
-      correctOption: question.correctOption,
-      explanation: question.explanation,
-      videoUrl: question.videoUrl ?? "",
-      pictureUrl: question.pictureUrl ?? "",
-      accessLevel: question.accessLevel,
-      status: question.status,
-    });
-    setErrorMessage("");
+    if (!canLeaveQuestion()) return;
+
+    openQuestion(question.questionId, toQuestionValues(question));
   };
 
-  const updateQuestionCategory = (categoryId: string) => {
-    if (!questionForm) return;
+  const saveQuestion = async (mode: QuestionSaveMode) => {
+    if (!questionDraft || busyAction) return;
 
-    const subCategory = categories.find((category) => category.id === categoryId)?.subCategories[0];
-
-    setQuestionForm({
-      ...questionForm,
-      categoryId,
-      subCategoryId: subCategory?.id ?? "",
-      topicId: subCategory?.topics?.[0]?.id ?? "",
-    });
-  };
-
-  const updateQuestionSubCategory = (subCategoryId: string) => {
-    if (!questionForm) return;
-
-    const topicId = selectedSubCategories.find((subCategory) => subCategory.id === subCategoryId)?.topics?.[0]?.id ?? "";
-
-    setQuestionForm({
-      ...questionForm,
-      subCategoryId,
-      topicId,
-    });
-  };
-
-  const saveQuestion = async () => {
-    if (!questionForm) return;
-
-    const sortOrder = Number(questionForm.sortOrder);
-    const validationMessage = getQuestionValidationMessage(questionForm, sortOrder);
-
-    if (validationMessage) {
-      setErrorMessage(validationMessage);
-      return;
-    }
-
+    const { values } = questionDraft;
     setSuccessMessage("");
-    setBusyAction(`question-save:${questionForm.questionId}`);
+    setBusyAction(`question-${mode}`);
     setErrorMessage("");
+    setQuestionServerErrors({});
 
     try {
-      const save = questionForm.questionId ? updateTryoutQuestionAdmin : addTryoutQuestionAdmin;
+      const save = questionDraft.questionId ? updateTryoutQuestionAdmin : addTryoutQuestionAdmin;
       await save({
         data: {
           tryoutId,
-          questionId: questionForm.questionId,
-          expectedUpdatedAt: questionForm.expectedUpdatedAt,
-          sortOrder,
-          categoryId: questionForm.categoryId,
-          subCategoryId: questionForm.subCategoryId,
-          topicId: questionForm.topicId,
-          questionText: questionForm.questionText,
-          optionA: questionForm.optionA,
-          optionB: questionForm.optionB,
-          optionC: questionForm.optionC,
-          optionD: questionForm.optionD,
-          optionE: questionForm.optionE,
-          correctOption: questionForm.correctOption,
-          explanation: questionForm.explanation,
-          videoUrl: questionForm.videoUrl,
-          pictureUrl: questionForm.pictureUrl,
-          accessLevel: questionForm.accessLevel,
-          status: questionForm.status,
+          questionId: questionDraft.questionId,
+          expectedUpdatedAt: questionDraft.expectedUpdatedAt,
+          sortOrder: Number(values.sortOrder),
+          categoryId: values.categoryId,
+          subCategoryId: values.subCategoryId,
+          topicId: values.topicId,
+          questionText: values.questionText,
+          optionA: values.optionA,
+          optionB: values.optionB,
+          optionC: values.optionC,
+          optionD: values.optionD,
+          optionE: values.optionE,
+          correctOption: values.correctOption,
+          explanation: values.explanation,
+          videoUrl: values.videoUrl,
+          pictureUrl: values.pictureUrl,
+          accessLevel: values.accessLevel,
+          status: values.status ?? "draft",
         },
       });
 
-      setQuestionForm(null);
+      setQuestionDraft(null);
+      if (mode === "save-next") setNextQuestion({ saved: values, savedFromRevision: workbook.tryout.updatedAt });
       await refresh();
       setSuccessMessage("Perubahan tersimpan.");
     } catch (error) {
-      setErrorMessage(getSafeErrorMessage(error, "Soal belum disimpan. Periksa nomor urut dan isian."));
+      const message = getSafeErrorMessage(error, "Soal belum disimpan. Periksa nomor urut dan isian.");
+      setErrorMessage(message);
+      setQuestionServerErrors(getServerFieldError(message));
     } finally {
       setBusyAction("");
     }
@@ -306,8 +334,8 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
         },
       });
 
-      if (questionForm?.questionId === question.questionId) {
-        setQuestionForm(null);
+      if (questionDraft?.questionId === question.questionId) {
+        setQuestionDraft(null);
       }
 
       await refresh();
@@ -381,7 +409,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
           questions: workbookPreview.data.questions,
         },
       });
-      setQuestionForm(null);
+      setQuestionDraft(null);
       setWorkbookPreview(null);
       await refresh();
       setSuccessMessage("Perubahan tersimpan.");
@@ -392,127 +420,97 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     }
   };
 
-  const hasChanges =
-    form.title !== workbook.tryout.title ||
-    form.description !== workbook.tryout.description ||
-    form.icon !== (workbook.tryout.icon ?? "") ||
-    form.categoryId !== workbook.tryout.categoryId ||
-    Number(form.durationMinutes) !== workbook.tryout.durationMinutes ||
-    form.accessLevel !== workbook.tryout.accessLevel;
+  const resetTryoutForm = () => {
+    setForm(toTryoutForm(workbook.tryout));
+    setShowDetailsValidation(false);
+    setDetailsServerErrors({});
+    setErrorMessage("");
+  };
+
+  const isPublished = workbook.tryout.status === "published";
+  const tryoutCategory = categories.find((category) => category.id === workbook.tryout.categoryId);
+  const accent = tryoutCategory?.color ?? "#205072";
+  const draftQuestionCount = workbook.questions.filter((question) => question.status === "draft").length;
+  const hiddenQuestionCount = workbook.questions.filter((question) => question.status === "unpublished").length;
+  const normalizedSearch = questionSearch.trim().toLowerCase();
+  const visibleQuestions = normalizedSearch
+    ? workbook.questions.filter((question) =>
+        `${question.questionText} ${question.explanation}`.toLowerCase().includes(normalizedSearch))
+    : workbook.questions;
+  const isNewQuestion = Boolean(questionDraft && !questionDraft.questionId);
+  const showPageError = Boolean(errorMessage) && !workbookPreview && !questionDraft;
+  const publishHint = getPublishHint({ isPublished, hasChanges, publishedQuestionCount });
+
+  const questionEditor = questionDraft && (
+    <QuestionEditor
+      key={questionDraft.key}
+      layout="inline"
+      title={questionDraft.questionId ? `Ubah soal nomor ${questionDraft.initialValues.sortOrder}` : "Soal baru"}
+      values={questionDraft.values}
+      initialValues={questionDraft.initialValues}
+      categories={categories}
+      saveLabel="Simpan soal"
+      savingMode={busyAction === "question-save" ? "save" : busyAction === "question-save-next" ? "save-next" : null}
+      busy={Boolean(busyAction)}
+      serverMessage={errorMessage}
+      serverFieldErrors={questionServerErrors}
+      autoFocus
+      allowSaveAndNext={!questionDraft.questionId}
+      onChange={(values) => {
+        setQuestionDraft({ ...questionDraft, values });
+        setQuestionServerErrors({});
+      }}
+      onSave={saveQuestion}
+      onCancel={closeQuestion}
+      onPictureError={setErrorMessage}
+    />
+  );
 
   return (
     <main className="admin-shell page-enter">
       <fieldset className="admin-lane min-w-0" disabled={!isHydrated || Boolean(busyAction)} data-admin-ready={isHydrated}>
-        <header className="admin-header">
-          <a href="/admin/tryouts" className="admin-back-link">Try-out</a>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="admin-title">{workbook.tryout.title}</h1>
-            <StatusPill status={workbook.tryout.status} />
-          </div>
-          <p className="admin-description">{workbook.tryout.description}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="admin-meta-tag first:before:hidden">{categories.find((c) => c.id === workbook.tryout.categoryId)?.name ?? workbook.tryout.categoryId}</span>
-            <span className="admin-meta-tag">{workbook.tryout.durationMinutes} menit</span>
-            <span className="admin-meta-tag capitalize">{workbook.tryout.accessLevel === "free" ? "Gratis" : "Premium"}</span>
-            <span className="admin-meta-tag">{workbook.questions.length} soal</span>
-          </div>
-        </header>
-
-        {successMessage && <p role="status" className="mt-4 text-sm text-emerald-700">{successMessage}</p>}
-        {errorMessage && !workbookPreview && !questionForm && (
-          <p role="alert" className="admin-alert">
-            {errorMessage}
-          </p>
-        )}
-
-        <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Ubah try-out</h2>
-          </div>
-
-          <div className="grid gap-5 p-5 sm:p-6">
-            <Field label="Judul">
-              <input
-                value={form.title}
-                onChange={(event) => setForm({ ...form, title: event.target.value })}
-                className="admin-control"
-                placeholder="UKAI Try-out 1"
-              />
-            </Field>
-
-            <Field label="Deskripsi">
-              <textarea
-                value={form.description}
-                onChange={(event) => setForm({ ...form, description: event.target.value })}
-                className="admin-control min-h-24"
-                placeholder="Penjelasan singkat untuk peserta sebelum mengerjakan try-out."
-              />
-            </Field>
-
-            <Field label="Ikon">
-              <TryoutIconField
-                value={form.icon}
-                accent={categories.find((category) => category.id === form.categoryId)?.color ?? "#205072"}
-                tryoutId={tryoutId}
-                onChange={(icon) => setForm({ ...form, icon })}
-                onError={setErrorMessage}
-              />
-            </Field>
-
-            <div className="grid gap-5 sm:grid-cols-3">
-              <Field label="Kategori">
-                <select
-                  value={form.categoryId}
-                  onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
-                  className="admin-control"
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Durasi dalam menit">
-                <input
-                  value={form.durationMinutes}
-                  onChange={(event) => setForm({ ...form, durationMinutes: event.target.value })}
-                  className="admin-control"
-                  inputMode="numeric"
-                />
-              </Field>
-
-              <Field label="Akses">
-                <select
-                  value={form.accessLevel}
-                  onChange={(event) => setForm({ ...form, accessLevel: event.target.value as AccessLevel })}
-                  className="admin-control"
-                >
-                  <option value="free">Gratis</option>
-                  <option value="premium">Premium</option>
-                </select>
-              </Field>
-            </div>
-
-            <p className="text-sm text-stone-600">{publishedQuestionCount} dari {workbook.questions.length} soal sudah tayang. Peserta hanya mengerjakan soal berstatus Tayang. Simpan perubahan judul dan durasi sebelum menayangkan.</p>
-            <div className="flex flex-wrap gap-3 pt-1">
-              <button
-                onClick={saveTryout}
-                disabled={Boolean(busyAction) || !hasChanges}
-                className="admin-button-primary"
-                type="button"
+        <header className="admin-header flex flex-col gap-4 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <a href="/admin/tryouts" className="admin-back-link">Try-out</a>
+            <div className="mt-2 flex min-w-0 items-center gap-3">
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
+                style={{ color: accent, background: `${accent}14`, borderColor: `${accent}26` }}
+                aria-hidden="true"
               >
-                {busyAction === "save" ? "Menyimpan..." : "Simpan perubahan"}
-              </button>
-              {workbook.tryout.status === "published" ? (
+                <TryoutIcon icon={workbook.tryout.icon} tryoutId={tryoutId} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                  <h1 className="admin-title min-w-0 break-words">{workbook.tryout.title}</h1>
+                  <StatusPill status={workbook.tryout.status} />
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                  <span className={`admin-meta-tag ${workbook.tryout.accessLevel === "free" ? "text-emerald-700" : "text-amber-700"}`}>
+                    {workbook.tryout.accessLevel === "free" ? "Gratis" : "Premium"}
+                  </span>
+                  <span className="admin-meta-tag">{tryoutCategory?.name ?? workbook.tryout.categoryId}</span>
+                  <span className="admin-meta-tag">{workbook.tryout.durationMinutes} menit</span>
+                  <span className="admin-meta-tag">{workbook.questions.length} soal</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 flex-col gap-1.5 sm:items-end">
+            <div className="flex flex-wrap items-center gap-2">
+              <a href="#details" className="admin-button-secondary">
+                <PencilIcon className="h-3.5 w-3.5" />
+                Ubah detail
+              </a>
+              {isPublished ? (
                 <button
                   onClick={() => setPublication("unpublished")}
                   disabled={Boolean(busyAction)}
-                  className="admin-button-ghost text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                  className="admin-button-secondary text-amber-700 hover:border-amber-200 hover:bg-amber-50"
                   type="button"
                 >
-                  <EyeOffIcon className="w-3.5 h-3.5" />
+                  <EyeOffIcon className="h-3.5 w-3.5" />
                   Sembunyikan
                 </button>
               ) : (
@@ -522,11 +520,165 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                   className="admin-button-success"
                   type="button"
                 >
-                  <EyeIcon className="w-3.5 h-3.5" />
+                  <EyeIcon className="h-3.5 w-3.5" />
                   Tayangkan
                 </button>
               )}
             </div>
+            <p className={`text-xs font-medium ${publishHint.tone === "warning" ? "text-amber-700" : "text-stone-500"}`}>{publishHint.text}</p>
+          </div>
+        </header>
+
+        <section className="admin-panel mt-6" aria-labelledby="questions-title">
+          <AdminPanelHeader
+            id="questions-title"
+            title="Soal"
+            badge={<span className="admin-count">{workbook.questions.length}</span>}
+            description={
+              workbook.questions.length === 0
+                ? "Peserta hanya mengerjakan soal berstatus Tayang."
+                : `${publishedQuestionCount} tayang, ${draftQuestionCount} draf, ${hiddenQuestionCount} disembunyikan. Peserta hanya mengerjakan soal Tayang.`
+            }
+            actions={
+              <>
+                {workbook.questions.length > 0 && (
+                  <label className="relative block w-full sm:w-56">
+                    <span className="sr-only">Cari soal</span>
+                    <SearchIcon />
+                    <input
+                      type="search"
+                      className="admin-control pl-9"
+                      value={questionSearch}
+                      onChange={(event) => setQuestionSearch(event.target.value)}
+                      placeholder="Cari teks soal"
+                    />
+                  </label>
+                )}
+                <button type="button" className="admin-button-primary" onClick={addQuestion} disabled={Boolean(busyAction)}>
+                  <PlusIcon className="h-3.5 w-3.5" />
+                  Tambah soal
+                </button>
+              </>
+            }
+          />
+
+          <div>
+            {isNewQuestion && questionEditor}
+
+            {workbook.questions.length === 0 && !isNewQuestion && (
+              <div className="px-4 py-10 text-center">
+                <p className="text-sm font-bold text-stone-700">Belum ada soal</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs font-medium text-stone-500">
+                  Tambah soal satu per satu, atau <a href="#excel" className="font-bold text-primary underline">unggah Excel</a> untuk banyak soal sekaligus.
+                </p>
+                <button type="button" className="admin-button-primary mt-4" onClick={addQuestion} disabled={Boolean(busyAction)}>
+                  <PlusIcon className="h-3.5 w-3.5" />
+                  Tambah soal pertama
+                </button>
+              </div>
+            )}
+
+            {workbook.questions.length > 0 && visibleQuestions.length === 0 && (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm font-semibold text-stone-500">Tidak ada soal yang cocok dengan "{questionSearch.trim()}".</p>
+                <button type="button" className="admin-button-ghost mt-2" onClick={() => setQuestionSearch("")}>
+                  Hapus pencarian
+                </button>
+              </div>
+            )}
+
+            {visibleQuestions.map((question, index) => {
+              if (questionDraft?.questionId && questionDraft.questionId === question.questionId) {
+                return <div key={question.questionId}>{questionEditor}</div>;
+              }
+
+              return (
+                <div
+                  key={question.questionId ?? `q-${index}`}
+                  className="admin-list-row flex flex-col gap-2 border-t border-stone-100 px-3 py-3 first:border-t-0 last:rounded-b-xl sm:flex-row sm:items-start sm:gap-3 sm:px-4"
+                >
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-xs font-bold tabular-nums text-stone-500">
+                      {question.sortOrder}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="line-clamp-2 text-[13.5px] font-semibold leading-snug text-stone-800">{question.questionText}</h3>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <StatusPill status={question.status} />
+                        <span className={`admin-meta-tag first:before:hidden ${question.accessLevel === "free" ? "text-emerald-700" : "text-amber-700"}`}>
+                          {question.accessLevel === "free" ? "Gratis" : "Premium"}
+                        </span>
+                        <span className="admin-meta-tag font-bold text-stone-700">Kunci jawaban: {question.correctOption}</span>
+                        <span className="admin-meta-tag min-w-0 max-w-full">
+                          <span className="truncate">{[
+                            categoryNames.get(question.categoryId) ?? question.categoryId,
+                            subCategoryNames.get(question.subCategoryId) ?? question.subCategoryId,
+                            topicNames.get(question.topicId) ?? question.topicId,
+                          ].join(" / ")}</span>
+                        </span>
+                      </div>
+                      {question.explanation && (
+                        <p className="mt-1 line-clamp-1 text-xs text-stone-400">
+                          <span className="font-semibold text-stone-500">Pembahasan:</span> {question.explanation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="admin-list-actions-bar shrink-0 pl-10 sm:pl-0">
+                    <button
+                      disabled={Boolean(busyAction)}
+                      onClick={() => editQuestion(question)}
+                      className="admin-button-ghost"
+                      type="button"
+                    >
+                      <PencilIcon className="h-3.5 w-3.5" />
+                      Ubah
+                    </button>
+                    <button
+                      onClick={() => deleteQuestion(question)}
+                      disabled={Boolean(busyAction)}
+                      className="admin-button-ghost text-red-600 hover:bg-red-50 hover:text-red-700"
+                      type="button"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                      Keluarkan
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section id="excel" className="admin-panel mt-6 scroll-mt-4" aria-labelledby="excel-title">
+          <AdminPanelHeader
+            id="excel-title"
+            title="Kelola lewat Excel"
+            description="Unduh Excel terbaru, ubah soalnya, lalu unggah. Kamu bisa cek pratinjau sebelum menyimpan."
+          />
+          <div className="grid gap-3 p-4">
+            <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+              <button
+                onClick={downloadWorkbook}
+                disabled={Boolean(busyAction)}
+                className="admin-button-secondary"
+                type="button"
+              >
+                <DownloadIcon className="h-4 w-4" />
+                Unduh Excel
+              </button>
+              <FileUpload
+                accept=".xlsx"
+                busy={Boolean(busyAction)}
+                placeholder="Unggah Excel"
+                dropHint="atau seret file ke sini"
+                onFileSelect={(file) => importWorkbook(file)}
+              />
+            </div>
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+              Excel mengganti seluruh daftar soal try-out ini. Soal yang tidak ada di Excel keluar dari try-out. Riwayat peserta tetap tersimpan.
+            </p>
           </div>
         </section>
 
@@ -541,283 +693,100 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
           />
         )}
 
-        <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Kelola lewat Excel</h2>
-          </div>
+        <section id="details" className="admin-panel mt-6 scroll-mt-4" aria-labelledby="details-title">
+          <AdminPanelHeader
+            id="details-title"
+            title="Detail try-out"
+            badge={hasChanges && <span className="admin-status-pill border-amber-200 bg-amber-50 text-amber-700">Belum disimpan</span>}
+            description="Judul, ikon, dan info yang dilihat peserta di katalog."
+          />
 
-          <p className="px-5 pt-4 text-sm text-stone-600">Unduh Excel terbaru sebelum mengubah soal. Saat disimpan, Excel mengganti seluruh daftar soal try-out ini. Soal yang tidak ada di Excel akan keluar dari try-out. Riwayat peserta tetap tersimpan.</p>
-          <div className="flex flex-wrap gap-3 p-5 sm:p-6">
-            <button
-              onClick={downloadWorkbook}
-              disabled={Boolean(busyAction)}
-              className="admin-button-secondary"
-              type="button"
-            >
-              <DownloadIcon className="w-4 h-4" />
-              Unduh Excel
-            </button>
-            <FileUpload
-              accept=".xlsx"
-              busy={Boolean(busyAction)}
-              placeholder="Unggah Excel"
-              onFileSelect={(file) => importWorkbook(file)}
+          <div
+            className="grid gap-4 p-4"
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
+
+              event.preventDefault();
+              if (hasChanges) saveTryout();
+            }}
+          >
+            <TryoutDetailsFields
+              values={form}
+              errors={detailsErrors}
+              categories={categories}
+              tryoutId={tryoutId}
+              onChange={updateForm}
+              onIconError={setErrorMessage}
             />
-          </div>
-        </section>
 
-        {questionForm && (
-          <section id="question-editor" className="admin-panel mt-6">
-            <div className="admin-panel-header">
-              <h2 className="admin-panel-title">{questionForm.questionId ? "Ubah soal" : "Tambah soal"}</h2>
-              {errorMessage && <p role="alert" className="admin-alert">{errorMessage}</p>}
-            </div>
-
-            <div className="grid gap-5 p-5 sm:p-6">
-              <p className="text-sm text-stone-600">Jika daftar subkategori atau topik kosong, <a href="/admin/categories" className="underline">tambahkan di halaman Kategori</a> lebih dulu.</p>
-              <div className="grid gap-5 sm:grid-cols-[120px_1fr_1fr_1fr]">
-                <Field label="Nomor urut">
-                  <input
-                    value={questionForm.sortOrder}
-                    onChange={(event) => setQuestionForm({ ...questionForm, sortOrder: event.target.value })}
-                    className="admin-control"
-                    inputMode="numeric"
-                  />
-                </Field>
-
-                <Field label="Kategori">
-                  <select
-                    value={questionForm.categoryId}
-                    onChange={(event) => updateQuestionCategory(event.target.value)}
-                    className="admin-control"
-                  >
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Subkategori">
-                  <select
-                    value={questionForm.subCategoryId}
-                    onChange={(event) => updateQuestionSubCategory(event.target.value)}
-                    className="admin-control"
-                  >
-                    {selectedSubCategories.map((subCategory) => (
-                      <option key={subCategory.id} value={subCategory.id}>
-                        {subCategory.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Topik">
-                  <select
-                    value={questionForm.topicId}
-                    onChange={(event) => setQuestionForm({ ...questionForm, topicId: event.target.value })}
-                    className="admin-control"
-                  >
-                    {selectedTopics.map((topic) => (
-                      <option key={topic.id} value={topic.id}>
-                        {topic.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-
-              <Field label="Teks soal">
-                <textarea
-                  value={questionForm.questionText}
-                  onChange={(event) => setQuestionForm({ ...questionForm, questionText: event.target.value })}
-                  className="admin-control min-h-28"
-                />
-              </Field>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                <TextInput label="Pilihan A" value={questionForm.optionA} onChange={(optionA) => setQuestionForm({ ...questionForm, optionA })} />
-                <TextInput label="Pilihan B" value={questionForm.optionB} onChange={(optionB) => setQuestionForm({ ...questionForm, optionB })} />
-                <TextInput label="Pilihan C" value={questionForm.optionC} onChange={(optionC) => setQuestionForm({ ...questionForm, optionC })} />
-                <TextInput label="Pilihan D" value={questionForm.optionD} onChange={(optionD) => setQuestionForm({ ...questionForm, optionD })} />
-                <TextInput label="Pilihan E, opsional" value={questionForm.optionE} onChange={(optionE) => setQuestionForm({ ...questionForm, optionE })} />
-
-                <Field label="Kunci jawaban">
-                  <select
-                    value={questionForm.correctOption}
-                    onChange={(event) => setQuestionForm({ ...questionForm, correctOption: event.target.value as CorrectOption })}
-                    className="admin-control"
-                  >
-                    {correctOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-
-              <Field label="Pembahasan">
-                <textarea
-                  value={questionForm.explanation}
-                  onChange={(event) => setQuestionForm({ ...questionForm, explanation: event.target.value })}
-                  className="admin-control min-h-28"
-                />
-              </Field>
-
-              <div className="grid gap-5 md:grid-cols-3">
-                <TextInput label="Tautan video pembahasan, opsional" value={questionForm.videoUrl} onChange={(videoUrl) => setQuestionForm({ ...questionForm, videoUrl })} />
-
-                <Field label="Akses">
-                  <select
-                    value={questionForm.accessLevel}
-                    onChange={(event) => setQuestionForm({ ...questionForm, accessLevel: event.target.value as AccessLevel })}
-                    className="admin-control"
-                  >
-                    <option value="free">Gratis</option>
-                    <option value="premium">Premium</option>
-                  </select>
-                </Field>
-
-                <Field label="Status">
-                  <select
-                    value={questionForm.status}
-                    onChange={(event) => setQuestionForm({ ...questionForm, status: event.target.value as ContentStatus })}
-                    className="admin-control"
-                  >
-                    <option value="draft">Draf</option>
-                    <option value="published">Tayang</option>
-                    <option value="unpublished">Disembunyikan</option>
-                  </select>
-                </Field>
-              </div>
-
-              <QuestionPictureField
-                value={questionForm.pictureUrl}
-                busy={Boolean(busyAction)}
-                onChange={(pictureUrl) => setQuestionForm({ ...questionForm, pictureUrl })}
-                onError={setErrorMessage}
-              />
-
-              <div className="flex flex-wrap gap-3 pt-1">
-                <button
-                  onClick={saveQuestion}
-                  disabled={Boolean(busyAction)}
-                  className="admin-button-primary"
-                  type="button"
-                >
-                  {busyAction === `question-save:${questionForm.questionId}` ? "Menyimpan..." : "Simpan soal"}
+            <div className="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4">
+              <button
+                onClick={saveTryout}
+                disabled={Boolean(busyAction) || !hasChanges}
+                className="admin-button-primary"
+                type="button"
+              >
+                {busyAction === "save" ? "Menyimpan..." : "Simpan perubahan"}
+              </button>
+              {hasChanges && (
+                <button onClick={resetTryoutForm} disabled={Boolean(busyAction)} className="admin-button-ghost" type="button">
+                  Batalkan perubahan
                 </button>
-                <button
-                  disabled={Boolean(busyAction)}
-                  onClick={() => setQuestionForm(null)}
-                  className="admin-button-secondary"
-                  type="button"
-                >
-                  Batal
-                </button>
-              </div>
+              )}
             </div>
-          </section>
-        )}
-
-        <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Soal ({workbook.questions.length})</h2>
-            <button type="button" className="admin-button-primary" onClick={addQuestion} disabled={Boolean(busyAction) || Boolean(questionForm)}>Tambah soal</button>
-          </div>
-
-          <div>
-            {workbook.questions.length === 0 && (
-              <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-stone-400">Belum ada soal. Klik Tambah soal atau unggah Excel.</p>
-              </div>
-            )}
-
-            {workbook.questions.map((question, index) => (
-              <div key={question.questionId ?? `q-${index}`} className="admin-list-row">
-                <div className="admin-list-content">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-500">
-                      {question.sortOrder}
-                    </span>
-                    <h3 className="text-[15px] font-bold text-stone-800 tracking-tight leading-snug">
-                      {question.questionText}
-                    </h3>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="admin-meta-tag first:before:hidden">{categories.find((item) => item.id === question.categoryId)?.name ?? question.categoryId}</span>
-                    <span className="admin-meta-tag">{categories.flatMap((item) => item.subCategories).find((item) => item.id === question.subCategoryId)?.name ?? question.subCategoryId}</span>
-                    <span className="admin-meta-tag">{categories.flatMap((item) => item.subCategories.flatMap((sub) => sub.topics)).find((item) => item.id === question.topicId)?.name ?? question.topicId}</span>
-                    <span className="admin-meta-tag capitalize">{question.accessLevel === "free" ? "Gratis" : "Premium"}</span>
-                    <span className="admin-meta-tag">Kunci jawaban: {question.correctOption}</span>
-                    <StatusPill status={question.status} />
-                  </div>
-                  {question.explanation && (
-                    <p className="mt-1.5 text-sm text-stone-400 line-clamp-2">{question.explanation}</p>
-                  )}
-                </div>
-                <div className="admin-list-actions">
-                  <div className="admin-list-actions-bar">
-                    <button
-                      disabled={Boolean(busyAction)}
-                      onClick={() => editQuestion(question)}
-                      className="admin-button-ghost"
-                      type="button"
-                    >
-                      <PencilIcon className="w-3.5 h-3.5" />
-                      Ubah
-                    </button>
-                    <button
-                      onClick={() => deleteQuestion(question)}
-                      disabled={Boolean(busyAction)}
-                      className="admin-button-ghost text-red-600 hover:bg-red-50 hover:text-red-700"
-                      type="button"
-                    >
-                      <TrashIcon className="w-3.5 h-3.5" />
-                      Keluarkan
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </section>
       </fieldset>
+
+      {(successMessage || showPageError) && (
+        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex justify-center sm:inset-x-auto sm:right-6 sm:bottom-6">
+          {showPageError ? (
+            <div role="alert" className="pointer-events-auto flex max-w-md items-start gap-3 rounded-xl border border-red-200 bg-white px-4 py-3 text-[13px] font-semibold text-red-700 shadow-lg">
+              <span className="min-w-0 flex-1">{errorMessage}</span>
+              <button type="button" className="shrink-0 text-xs font-bold text-stone-400 hover:text-stone-600" onClick={() => setErrorMessage("")}>
+                Tutup
+              </button>
+            </div>
+          ) : (
+            <p role="status" className="pointer-events-auto rounded-xl border border-emerald-200 bg-white px-4 py-3 text-[13px] font-semibold text-emerald-700 shadow-lg">
+              {successMessage}
+            </p>
+          )}
+        </div>
+      )}
     </main>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  const id = useId();
-  const isControl = isValidElement(children) && typeof children.type === "string";
+function getPublishHint({
+  isPublished,
+  hasChanges,
+  publishedQuestionCount,
+}: {
+  isPublished: boolean;
+  hasChanges: boolean;
+  publishedQuestionCount: number;
+}): { text: string; tone: "muted" | "warning" } {
+  if (isPublished) return { text: "Peserta bisa melihat dan mengerjakan try-out ini.", tone: "muted" };
+  if (hasChanges) return { text: "Simpan perubahan detail dulu sebelum menayangkan.", tone: "warning" };
+  if (publishedQuestionCount === 0) return { text: "Tayangkan minimal satu soal dulu.", tone: "warning" };
+
+  return { text: `${publishedQuestionCount} soal tayang siap dikerjakan peserta.`, tone: "muted" };
+}
+
+function SearchIcon() {
   return (
-    <div className="block">
-      {isControl ? <label htmlFor={id} className="mb-2 block text-sm font-bold text-stone-700">{label}</label>
-        : <span className="mb-2 block text-sm font-bold text-stone-700">{label}</span>}
-      {isControl ? cloneElement(children as React.ReactElement<{ id?: string }>, { id }) : children}
-    </div>
+    <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" fill="none" aria-hidden="true">
+      <path d="m20 20-4.2-4.2M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   );
 }
 
-function TextInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function PlusIcon({ className }: { className?: string }) {
   return (
-    <Field label={label}>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="admin-control"
-      />
-    </Field>
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -869,8 +838,8 @@ function TrashIcon({ className }: { className?: string }) {
 function DownloadIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M12 15V3m0 0L7 8m5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 17.5V20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5M7 15l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 3v12m0 0-5-5m5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -891,28 +860,4 @@ function EyeOffIcon({ className }: { className?: string }) {
       <path d="M1 1 23 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-}
-
-function getQuestionValidationMessage(form: QuestionForm, sortOrder: number) {
-  if (!Number.isInteger(sortOrder) || sortOrder < 1 || sortOrder > 1000) {
-    return "Nomor urut must be an integer from 1 to 1000.";
-  }
-
-  if (!form.categoryId || !form.subCategoryId || !form.topicId) {
-    return "Pilih kategori, subkategori, dan topik.";
-  }
-
-  if (!form.questionText.trim() || !form.explanation.trim()) {
-    return "Isi teks soal dan pembahasan.";
-  }
-
-  if (!form.optionA.trim() || !form.optionB.trim() || !form.optionC.trim() || !form.optionD.trim()) {
-    return "Isi pilihan jawaban A, B, C, dan D.";
-  }
-
-  if (form.correctOption === "E" && !form.optionE.trim()) {
-    return "Isi pilihan E karena kunci jawaban adalah E.";
-  }
-
-  return "";
 }

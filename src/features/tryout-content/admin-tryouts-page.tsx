@@ -1,7 +1,8 @@
 import { Link, Outlet, useLocation, useRouter } from "@tanstack/react-router";
-import { cloneElement, isValidElement, useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { TryoutIcon } from "../../components/TryoutIcon";
-import { TryoutIconField } from "../../components/admin/TryoutIconField";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
+import { useUnsavedChangesGuard } from "../../components/admin/useUnsavedChangesGuard";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import { getSafeErrorMessage } from "../../lib/user-errors";
 import {
@@ -11,23 +12,15 @@ import {
   listTryoutsAdmin,
 } from "./admin-tryout-functions";
 import { listCategoryOptionsAdmin } from "../admin/admin-taxonomy-functions";
+import { AdminTryoutCatalogOrder } from "./admin-tryout-catalog-order";
+import { TryoutDetailsFields } from "./tryout-details-fields";
+import { getTryoutServerFieldError, validateTryoutDetails, type TryoutDetailsErrors, type TryoutDetailsValues } from "./tryout-details-form";
 import * as tryoutWorkbook from "./tryout-workbook";
 import * as tryoutWorkbookSheets from "./tryout-workbook-sheets";
 
 type CategoryRow = Awaited<ReturnType<typeof listCategoryOptionsAdmin>>[number];
 type TryoutRow = Awaited<ReturnType<typeof listTryoutsAdmin>>[number];
-type AccessLevel = "free" | "premium";
-
-type TryoutForm = {
-  title: string;
-  description: string;
-  icon: string;
-  categoryId: string;
-  durationMinutes: string;
-  accessLevel: AccessLevel;
-};
-
-const emptyForm: TryoutForm = {
+const emptyForm: TryoutDetailsValues = {
   title: "",
   description: "",
   icon: "",
@@ -56,7 +49,15 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [workbookPreview, setWorkbookPreview] = useState<WorkbookPreview | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
+  const [serverErrors, setServerErrors] = useState<TryoutDetailsErrors>({});
   const isIndexRoute = location.pathname.replace(/\/+$/, "") === "/admin/tryouts";
+  const validation = validateTryoutDetails(form);
+  const errors: TryoutDetailsErrors = { ...(showValidation ? validation.errors : {}), ...serverErrors };
+  const isDirty = Boolean(form.title.trim() || form.description.trim() || form.icon) ||
+    form.durationMinutes !== emptyForm.durationMinutes || form.accessLevel !== emptyForm.accessLevel;
+  // This page stays mounted under the detail route, so only guard the list itself.
+  useUnsavedChangesGuard(isIndexRoute && isDirty && !busyAction);
 
   const refresh = async () => {
     await router.invalidate();
@@ -67,19 +68,30 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
       ...emptyForm,
       categoryId: categories[0]?.id ?? "",
     });
+    setShowValidation(false);
+    setServerErrors({});
     setErrorMessage("");
   };
 
+  const updateForm = (patch: Partial<TryoutDetailsValues>) => {
+    setForm({ ...form, ...patch });
+    setServerErrors({});
+  };
+
+  const focusCreateField = (field: string) => {
+    const control = document.querySelector<HTMLElement>(`#create-tryout [data-field="${field}"]`);
+    control?.focus({ preventScroll: true });
+    control?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+
+  // A new try-out has no questions yet, so open it right away to add them.
   const saveTryout = async () => {
-    const durationMinutes = Number(form.durationMinutes);
+    if (busyAction) return;
 
-    if (!form.title.trim() || !form.description.trim() || !form.categoryId) {
-      setErrorMessage("Isi judul, deskripsi, dan kategori.");
-      return;
-    }
-
-    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 300) {
-      setErrorMessage("Isi durasi dengan angka bulat 1 sampai 300 menit.");
+    if (validation.firstInvalidField) {
+      setShowValidation(true);
+      setErrorMessage(validation.summary);
+      focusCreateField(validation.firstInvalidField);
       return;
     }
 
@@ -92,17 +104,19 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
       description: form.description,
       icon: form.icon,
       categoryId: form.categoryId,
-      durationMinutes,
+      durationMinutes: Number(form.durationMinutes),
       accessLevel: form.accessLevel,
     };
 
     try {
-      await createTryoutAdmin({ data: payload });
+      const { tryoutId } = await createTryoutAdmin({ data: payload });
       resetForm();
-      await refresh();
-      setSuccessMessage("Perubahan tersimpan.");
-    } catch {
-      setErrorMessage("Try-out belum dibuat. Periksa isian dan gunakan judul yang berbeda.");
+      await router.navigate({ to: "/admin/tryouts/$id", params: { id: tryoutId } });
+    } catch (error) {
+      const message = getSafeErrorMessage(error, "Try-out belum dibuat. Periksa isian dan gunakan judul yang berbeda.");
+      setErrorMessage(message);
+      setServerErrors(getTryoutServerFieldError(message));
+      focusCreateField("title");
     } finally {
       setBusyAction("");
     }
@@ -208,6 +222,9 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
           <p className="admin-description">
             Buat try-out, tambahkan soal dan pembahasan, lalu tayangkan saat siap.
           </p>
+          {tryouts.some((tryout) => tryout.status === "published") && (
+            <a href="#catalog-order" className="insights-link mt-3">Atur urutan di katalog peserta ↓</a>
+          )}
         </header>
 
         {successMessage && <p role="status" className="mt-4 text-sm text-emerald-700">{successMessage}</p>}
@@ -218,84 +235,47 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
         )}
 
         {categories.length === 0 && <p className="admin-alert">Belum ada kategori. <a href="/admin/categories" className="underline">Tambahkan kategori</a> sebelum membuat try-out lewat formulir. Anda juga dapat mengisi nama kategori di Excel.</p>}
-        <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Buat try-out</h2>
-          </div>
+        <section id="create-tryout" className="admin-panel mt-6 scroll-mt-6">
+          <AdminPanelHeader
+            title="Buat try-out"
+            badge={isDirty && <span className="admin-status-pill border-amber-200 bg-amber-50 text-amber-700">Belum disimpan</span>}
+            description="Isi detail dasar. Setelah dibuat, halaman try-out terbuka untuk menambah soal."
+          />
 
-          <div className="grid gap-5 p-5 sm:p-6">
-            <Field label="Judul">
-              <input
-                value={form.title}
-                onChange={(event) => setForm({ ...form, title: event.target.value })}
-                className="admin-control"
-                placeholder="UKAI Try-out 1"
-              />
-            </Field>
+          <div
+            className="grid gap-4 p-4"
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
 
-            <Field label="Deskripsi">
-              <textarea
-                value={form.description}
-                onChange={(event) => setForm({ ...form, description: event.target.value })}
-                className="admin-control min-h-24"
-                placeholder="Penjelasan singkat untuk peserta sebelum mengerjakan try-out."
-              />
-            </Field>
+              event.preventDefault();
+              saveTryout();
+            }}
+          >
+            <TryoutDetailsFields
+              values={form}
+              errors={errors}
+              categories={categories}
+              onChange={updateForm}
+              onIconError={setErrorMessage}
+            />
 
-            <Field label="Ikon">
-              <TryoutIconField
-                value={form.icon}
-                accent={categories.find((category) => category.id === form.categoryId)?.color ?? "#205072"}
-                onChange={(icon) => setForm({ ...form, icon })}
-                onError={setErrorMessage}
-              />
-            </Field>
-
-            <div className="grid gap-5 sm:grid-cols-3">
-              <Field label="Kategori">
-                <select
-                  value={form.categoryId}
-                  onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
-                  className="admin-control"
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Durasi dalam menit">
-                <input
-                  value={form.durationMinutes}
-                  onChange={(event) => setForm({ ...form, durationMinutes: event.target.value })}
-                  className="admin-control"
-                  inputMode="numeric"
-                />
-              </Field>
-
-              <Field label="Akses">
-                <select
-                  value={form.accessLevel}
-                  onChange={(event) => setForm({ ...form, accessLevel: event.target.value as AccessLevel })}
-                  className="admin-control"
-                >
-                  <option value="free">Gratis</option>
-                  <option value="premium">Premium</option>
-                </select>
-              </Field>
-            </div>
-
-            <div className="flex flex-wrap gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4">
               <button
                 onClick={saveTryout}
                 disabled={Boolean(busyAction)}
                 className="admin-button-primary"
                 type="button"
               >
-                Buat try-out
+                {busyAction === "save" ? "Membuat..." : "Buat try-out"}
               </button>
+              {isDirty && (
+                <button onClick={resetForm} disabled={Boolean(busyAction)} className="admin-button-ghost" type="button">
+                  Kosongkan
+                </button>
+              )}
+              <span className="ml-auto hidden text-[11px] font-medium text-stone-400 md:inline">
+                <kbd className="admin-kbd">Ctrl/⌘ Enter</kbd> buat
+              </span>
             </div>
           </div>
         </section>
@@ -312,17 +292,13 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
         )}
 
         <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Buat dari Excel</h2>
-          </div>
+          <AdminPanelHeader
+            title="Buat dari Excel"
+            description="Unduh contoh, baca lembar panduan, isi lembar tryout dan questions, lalu unggah. Kamu bisa cek pratinjau sebelum menyimpan."
+          />
 
-          <div className="grid gap-5 p-5 sm:p-6 sm:grid-cols-[1fr_auto]">
+          <div className="grid gap-3 p-4 sm:grid-cols-[auto_1fr] sm:items-center">
             <div>
-              <p className="text-sm font-semibold text-stone-600 leading-relaxed">
-                Unduh contoh Excel. Baca lembar panduan, ganti isi lembar tryout dan questions, lalu unggah. Periksa pratinjau sebelum menyimpan.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-start">
               <button
                 onClick={downloadSampleWorkbook}
                 disabled={Boolean(busyAction)}
@@ -332,46 +308,66 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
                 <DownloadIcon className="w-4 h-4" />
                 Unduh contoh Excel
               </button>
-              <FileUpload
+            </div>
+            <FileUpload
                 accept=".xlsx"
                 busy={Boolean(busyAction)}
                 placeholder="Unggah Excel"
+                dropHint="atau seret file ke sini"
                 onFileSelect={(file) => importNewWorkbook(file)}
               />
-            </div>
           </div>
         </section>
 
+        <AdminTryoutCatalogOrder tryouts={tryouts} />
+
         <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Daftar try-out</h2>
-            <label>Cari try-out<input className="admin-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Judul atau kategori" /></label>
-          </div>
+          <AdminPanelHeader
+            title="Daftar try-out"
+            badge={<span className="admin-count">{tryouts.length}</span>}
+            description="Semua try-out, termasuk draf dan yang disembunyikan."
+            actions={
+              <label className="relative block w-full sm:w-64">
+                <span className="sr-only">Cari try-out</span>
+                <SearchIcon />
+                <input
+                  type="search"
+                  className="admin-control pl-9"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Cari judul atau kategori"
+                />
+              </label>
+            }
+          />
 
           <div>
             {filteredTryouts.map((tryout) => (
-              <div key={tryout.id} className="admin-list-row">
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-stone-100 bg-stone-50 text-stone-500"
-                  aria-hidden="true"
-                >
-                  <TryoutIcon icon={tryout.icon} tryoutId={tryout.id} />
-                </div>
-                <div className="admin-list-content">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <h3 className="text-[15px] font-bold text-stone-800 tracking-tight">{tryout.title}</h3>
-                    <StatusPill status={tryout.status} />
+              <div key={tryout.id} className="admin-list-row flex flex-col gap-2 border-t border-stone-100 px-3 py-2.5 transition-colors duration-150 first:border-t-0 last:rounded-b-xl hover:bg-stone-50/70 sm:flex-row sm:items-center sm:gap-3 sm:px-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-100 bg-stone-50 text-stone-500"
+                    aria-hidden="true"
+                  >
+                    <TryoutIcon icon={tryout.icon} tryoutId={tryout.id} />
                   </div>
-                  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-stone-500">{tryout.description}</p>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="admin-meta-tag first:before:hidden">{tryout.categoryName}</span>
-                    <span className="admin-meta-tag">{tryout.durationMinutes} menit</span>
-                    <span className="admin-meta-tag capitalize">{tryout.accessLevel === "free" ? "Gratis" : "Premium"}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <h3 className="truncate text-[13.5px] font-bold text-stone-800">{tryout.title}</h3>
+                      <StatusPill status={tryout.status} />
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                      <span className={`admin-meta-tag ${tryout.accessLevel === "free" ? "text-emerald-700" : "text-amber-700"}`}>
+                        {tryout.accessLevel === "free" ? "Gratis" : "Premium"}
+                      </span>
+                      <span className="admin-meta-tag">{tryout.categoryName}</span>
+                      <span className="admin-meta-tag">{tryout.durationMinutes} menit</span>
+                      <span className="admin-meta-tag">Diubah {formatDate(tryout.updatedAt)}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="admin-list-actions">
-                  <p className="text-xs font-semibold text-stone-400 shrink-0">Diubah {formatDate(tryout.updatedAt)}</p>
+                <div className="flex shrink-0 items-center gap-0.5 pl-12 sm:pl-0">
                   <div className="admin-list-actions-bar">
                     <Link
                       to="/admin/tryouts/$id"
@@ -407,18 +403,6 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  const id = useId();
-  const isControl = isValidElement(children) && typeof children.type === "string";
-  return (
-    <div className="block">
-      {isControl ? <label htmlFor={id} className="mb-2 block text-sm font-bold text-stone-700">{label}</label>
-        : <span className="mb-2 block text-sm font-bold text-stone-700">{label}</span>}
-      {isControl ? cloneElement(children as React.ReactElement<{ id?: string }>, { id }) : children}
-    </div>
-  );
-}
-
 function StatusPill({ status }: { status: TryoutRow["status"] }) {
   const config = {
     draft: {
@@ -447,8 +431,16 @@ function StatusPill({ status }: { status: TryoutRow["status"] }) {
 function DownloadIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M12 15V3m0 0L7 8m5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 17.5V20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2.5M7 15l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 3v12m0 0-5-5m5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" fill="none" aria-hidden="true">
+      <path d="m20 20-4.2-4.2M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { BrandMark } from "../../components/brand-mark";
-import { institutions } from "../../data/institutions";
+import { institutions, isListedInstitution, resolveInstitution } from "../../data/institutions";
 import { completeProfile, getCurrentViewer } from "../../lib/auth-functions";
 import {
   productAnalyticsEvents,
@@ -43,7 +43,7 @@ export function CompleteProfilePage({
       const result = await completeProfile({
         data: {
           displayName: name,
-          institution,
+          institution: resolveInstitution(institution),
           phone,
           photoUrl,
           analyticsIntent: intent,
@@ -161,8 +161,8 @@ export function CompleteProfilePage({
 function InstitutionAutocomplete({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const matches = useMemo(() => getInstitutionMatches(value), [value]);
-  const hasMatches = matches.length > 0;
+  const options = useMemo(() => getInstitutionOptions(value), [value]);
+  const hasOptions = options.length > 0;
 
   useEffect(() => {
     setActiveIndex(0);
@@ -184,12 +184,12 @@ function InstitutionAutocomplete({ value, onChange }: { value: string; onChange:
       return;
     }
 
-    if (!hasMatches) return;
+    if (!hasOptions) return;
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setIsOpen(true);
-      setActiveIndex((index) => Math.min(index + 1, matches.length - 1));
+      setActiveIndex((index) => Math.min(index + 1, options.length - 1));
       return;
     }
 
@@ -202,7 +202,7 @@ function InstitutionAutocomplete({ value, onChange }: { value: string; onChange:
 
     if (event.key === "Enter" && isOpen) {
       event.preventDefault();
-      selectInstitution(matches[activeIndex]);
+      selectInstitution(options[activeIndex].value);
     }
   };
 
@@ -226,33 +226,48 @@ function InstitutionAutocomplete({ value, onChange }: { value: string; onChange:
         className="w-full px-4 py-3.5 rounded-[var(--radius-md)] border-2 border-stone-200 font-semibold text-base bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
       />
 
-      {isOpen && hasMatches && (
+      <p className="m-0 mt-2 text-xs font-semibold text-stone-400">
+        Tidak ada di daftar? Ketik nama lengkap institusimu.
+      </p>
+
+      {isOpen && hasOptions && (
         <div
           id="institution-options"
           role="listbox"
           className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-[var(--radius-md)] border-2 border-stone-200 bg-white p-2 shadow-xl"
         >
-          {matches.map((institution, index) => (
+          {options.map((option, index) => (
             <button
               type="button"
-              key={institution}
+              key={option.label}
               role="option"
               aria-selected={index === activeIndex}
               onMouseDown={(event) => {
                 event.preventDefault();
-                selectInstitution(institution);
+                selectInstitution(option.value);
               }}
               className={`block w-full rounded-[var(--radius-sm)] px-3 py-2.5 text-left text-sm font-bold transition-colors ${
                 index === activeIndex ? "bg-primary text-white" : "bg-white text-stone-700 hover:bg-primary-tint"
               }`}
             >
-              {institution}
+              {option.label}
             </button>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function getInstitutionOptions(query: string) {
+  const matches = getInstitutionMatches(query).map((institution) => ({ label: institution, value: institution }));
+  const typedValue = resolveInstitution(query);
+
+  if (!typedValue || isListedInstitution(typedValue)) {
+    return matches;
+  }
+
+  return [...matches, { label: `Gunakan "${typedValue}"`, value: typedValue }];
 }
 
 function getInstitutionMatches(query: string) {

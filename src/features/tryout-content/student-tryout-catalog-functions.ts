@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../lib/db/client";
 import {
   categories,
@@ -11,6 +11,14 @@ import {
 import { normalizeTryoutAccessLevel } from "../premium-access/premium-access";
 import { getTryoutEntitlementAccess } from "../premium-access/payment-service";
 import { getStudentViewer } from "../student/student-viewer.server";
+
+// Admin-set order first, then free, then newest. Postgres sorts nulls last.
+const catalogOrder = [
+  asc(tryouts.catalogOrder),
+  sql`case when ${tryouts.accessLevel} = 'free' then 0 else 1 end`,
+  desc(tryouts.publishedAt),
+  asc(tryouts.title),
+];
 
 export const listPublicPublishedTryouts = createServerFn({ method: "GET" }).handler(async () => {
   const rows = await db
@@ -36,7 +44,7 @@ export const listPublicPublishedTryouts = createServerFn({ method: "GET" }).hand
     )
     .where(eq(tryouts.status, "published"))
     .groupBy(tryouts.id, categories.id)
-    .orderBy(desc(tryouts.publishedAt), tryouts.title)
+    .orderBy(...catalogOrder)
     .limit(4);
 
   return rows.map((row) => ({
@@ -77,7 +85,7 @@ export const listPublishedTryouts = createServerFn({ method: "GET" }).handler(as
         tryouts.id,
         categories.id,
       )
-      .orderBy(desc(tryouts.publishedAt), tryouts.title),
+      .orderBy(...catalogOrder),
     db
       .select({
         id: products.id,

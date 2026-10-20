@@ -159,8 +159,10 @@ export const tryouts = pgTable("tryouts", {
   accessLevel: text("access_level").notNull(),
   status: text("status").notNull().default("draft"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
+  catalogOrder: integer("catalog_order"),
   ...timestamps,
 }, (table) => [
+  check("tryouts_catalog_order_check", sql`${table.catalogOrder} >= 1`),
   check("tryouts_access_level_check", sql`${table.accessLevel} in ('free', 'premium')`),
   check("tryouts_status_check", sql`${table.status} in ('draft', 'published', 'unpublished')`),
   check("tryouts_duration_check", sql`${table.durationMinutes} between 1 and 300`),

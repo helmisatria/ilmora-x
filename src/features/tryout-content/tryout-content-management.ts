@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "../../lib/db/client";
 import {
   attemptQuestionSnapshots,
@@ -43,9 +43,11 @@ export async function createTryoutContent(data: TryoutContentInput) {
 
   const slug = makeSlug(data.title);
 
+  let tryoutId = "";
+
   try {
-    await withAdminContentTransaction(async (tx) => {
-      await tx.insert(tryouts).values({
+    tryoutId = await withAdminContentTransaction(async (tx) => {
+      const [created] = await tx.insert(tryouts).values({
         slug,
         title: data.title,
         description: data.description,
@@ -54,13 +56,15 @@ export async function createTryoutContent(data: TryoutContentInput) {
         durationMinutes: data.durationMinutes,
         accessLevel: data.accessLevel,
         status: "draft",
-    });
+      }).returning({ id: tryouts.id });
+
+      return created.id;
     });
   } catch {
     throw conflict("Judul try-out sudah dipakai. Gunakan judul lain.");
   }
 
-  return { ok: true };
+  return { ok: true, tryoutId };
 }
 
 export async function updateTryoutContent(data: TryoutContentInput & { tryoutId: string } & ContentRevision) {
@@ -80,6 +84,30 @@ export async function updateTryoutContent(data: TryoutContentInput & { tryoutId:
         updatedAt: nextTryoutRevision,
       })
       .where(eq(tryouts.id, data.tryoutId));
+  });
+  return { ok: true };
+}
+
+// Saves the student catalog order. An empty list returns every Try-out to the automatic order.
+// Order is not Try-out content, so it does not bump updatedAt or invalidate open edit forms.
+export async function saveTryoutCatalogOrder(tryoutIds: string[]) {
+  await withAdminContentTransaction(async (tx) => {
+    const published = await tx
+      .select({ id: tryouts.id })
+      .from(tryouts)
+      .where(eq(tryouts.status, "published"));
+    const publishedIds = new Set(published.map((row) => row.id));
+    const isCurrentList = new Set(tryoutIds).size === tryoutIds.length && tryoutIds.every((id) => publishedIds.has(id));
+
+    if (!isCurrentList) {
+      throw conflict("Daftar try-out tayang sudah berubah. Muat ulang halaman lalu atur lagi.");
+    }
+
+    await tx.update(tryouts).set({ catalogOrder: null }).where(isNotNull(tryouts.catalogOrder));
+
+    for (const [index, tryoutId] of tryoutIds.entries()) {
+      await tx.update(tryouts).set({ catalogOrder: index + 1 }).where(eq(tryouts.id, tryoutId));
+    }
   });
   return { ok: true };
 }
