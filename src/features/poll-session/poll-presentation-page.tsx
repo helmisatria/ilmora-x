@@ -57,13 +57,10 @@ export function PollPresentationPage({ detail }: { detail: PollSessionDetail }) 
     <main className="poll-present">
       <div className="poll-present-inner">
         <header className="poll-present-head">
-          <div className="poll-present-id">
-            <div className="poll-present-brand">
-              <i />
-              IlmoraX · Live Poll
-            </div>
-            <h1 className="poll-present-title">{detail.session.title}</h1>
-          </div>
+          <h1 className="poll-present-brand">
+            <i />
+            IlmoraX · Live Poll
+          </h1>
 
           <div className="poll-present-code">
             <span className="poll-present-eyebrow">Kode Poll</span>
