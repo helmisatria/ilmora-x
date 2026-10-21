@@ -57,9 +57,9 @@ import { Route as ApiMidtransWebhookRouteImport } from './routes/api/midtrans/we
 import { Route as ApiMediaMediaIdRouteImport } from './routes/api/media.$mediaId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAdminQuestionPictureRouteImport } from './routes/api/admin/question-picture'
+import { Route as AdminPollsPresentationRouteImport } from './routes/admin_.polls_.presentation'
 import { Route as AdminUsersStudentIdRouteImport } from './routes/admin/users.$studentId'
 import { Route as AdminTryoutsIdRouteImport } from './routes/admin/tryouts.$id'
-import { Route as AdminPollsPresentationRouteImport } from './routes/admin/polls_.presentation'
 import { Route as ApiAdminMediaUploadRouteImport } from './routes/api/admin/media/upload'
 
 const TryoutRoute = TryoutRouteImport.update({
@@ -303,6 +303,11 @@ const ApiAdminQuestionPictureRoute = ApiAdminQuestionPictureRouteImport.update({
   path: '/api/admin/question-picture',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPollsPresentationRoute = AdminPollsPresentationRouteImport.update({
+  id: '/admin_/polls_/presentation',
+  path: '/admin/polls/presentation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersStudentIdRoute = AdminUsersStudentIdRouteImport.update({
   id: '/$studentId',
   path: '/$studentId',
@@ -312,11 +317,6 @@ const AdminTryoutsIdRoute = AdminTryoutsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AdminTryoutsRoute,
-} as any)
-const AdminPollsPresentationRoute = AdminPollsPresentationRouteImport.update({
-  id: '/polls_/presentation',
-  path: '/polls/presentation',
-  getParentRoute: () => AdminRoute,
 } as any)
 const ApiAdminMediaUploadRoute = ApiAdminMediaUploadRouteImport.update({
   id: '/api/admin/media/upload',
@@ -366,9 +366,9 @@ export interface FileRoutesByFullPath {
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
   '/checkout/': typeof CheckoutIndexRoute
-  '/admin/polls/presentation': typeof AdminPollsPresentationRoute
   '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
   '/admin/users/$studentId': typeof AdminUsersStudentIdRoute
+  '/admin/polls/presentation': typeof AdminPollsPresentationRoute
   '/api/admin/question-picture': typeof ApiAdminQuestionPictureRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
@@ -419,9 +419,9 @@ export interface FileRoutesByTo {
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
   '/checkout': typeof CheckoutIndexRoute
-  '/admin/polls/presentation': typeof AdminPollsPresentationRoute
   '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
   '/admin/users/$studentId': typeof AdminUsersStudentIdRoute
+  '/admin/polls/presentation': typeof AdminPollsPresentationRoute
   '/api/admin/question-picture': typeof ApiAdminQuestionPictureRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
@@ -474,9 +474,9 @@ export interface FileRoutesById {
   '/results/$attemptId': typeof ResultsAttemptIdRouteWithChildren
   '/tryout/$id': typeof TryoutIdRoute
   '/checkout/': typeof CheckoutIndexRoute
-  '/admin/polls_/presentation': typeof AdminPollsPresentationRoute
   '/admin/tryouts/$id': typeof AdminTryoutsIdRoute
   '/admin/users/$studentId': typeof AdminUsersStudentIdRoute
+  '/admin_/polls_/presentation': typeof AdminPollsPresentationRoute
   '/api/admin/question-picture': typeof ApiAdminQuestionPictureRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
@@ -530,9 +530,9 @@ export interface FileRouteTypes {
     | '/results/$attemptId'
     | '/tryout/$id'
     | '/checkout/'
-    | '/admin/polls/presentation'
     | '/admin/tryouts/$id'
     | '/admin/users/$studentId'
+    | '/admin/polls/presentation'
     | '/api/admin/question-picture'
     | '/api/auth/$'
     | '/api/media/$mediaId'
@@ -583,9 +583,9 @@ export interface FileRouteTypes {
     | '/results/$attemptId'
     | '/tryout/$id'
     | '/checkout'
-    | '/admin/polls/presentation'
     | '/admin/tryouts/$id'
     | '/admin/users/$studentId'
+    | '/admin/polls/presentation'
     | '/api/admin/question-picture'
     | '/api/auth/$'
     | '/api/media/$mediaId'
@@ -637,9 +637,9 @@ export interface FileRouteTypes {
     | '/results/$attemptId'
     | '/tryout/$id'
     | '/checkout/'
-    | '/admin/polls_/presentation'
     | '/admin/tryouts/$id'
     | '/admin/users/$studentId'
+    | '/admin_/polls_/presentation'
     | '/api/admin/question-picture'
     | '/api/auth/$'
     | '/api/media/$mediaId'
@@ -674,6 +674,7 @@ export interface RootRouteChildren {
   PollCodeRoute: typeof PollCodeRoute
   PollJoinRoute: typeof PollJoinRoute
   ResultsAttemptIdRoute: typeof ResultsAttemptIdRouteWithChildren
+  AdminPollsPresentationRoute: typeof AdminPollsPresentationRoute
   ApiAdminQuestionPictureRoute: typeof ApiAdminQuestionPictureRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiMediaMediaIdRoute: typeof ApiMediaMediaIdRoute
@@ -1020,6 +1021,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminQuestionPictureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/polls_/presentation': {
+      id: '/admin_/polls_/presentation'
+      path: '/admin/polls/presentation'
+      fullPath: '/admin/polls/presentation'
+      preLoaderRoute: typeof AdminPollsPresentationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users/$studentId': {
       id: '/admin/users/$studentId'
       path: '/$studentId'
@@ -1033,13 +1041,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/tryouts/$id'
       preLoaderRoute: typeof AdminTryoutsIdRouteImport
       parentRoute: typeof AdminTryoutsRoute
-    }
-    '/admin/polls_/presentation': {
-      id: '/admin/polls_/presentation'
-      path: '/polls/presentation'
-      fullPath: '/admin/polls/presentation'
-      preLoaderRoute: typeof AdminPollsPresentationRouteImport
-      parentRoute: typeof AdminRoute
     }
     '/api/admin/media/upload': {
       id: '/api/admin/media/upload'
@@ -1090,7 +1091,6 @@ interface AdminRouteChildren {
   AdminReportsRoute: typeof AdminReportsRoute
   AdminTryoutsRoute: typeof AdminTryoutsRouteWithChildren
   AdminUsersRoute: typeof AdminUsersRouteWithChildren
-  AdminPollsPresentationRoute: typeof AdminPollsPresentationRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -1108,7 +1108,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminReportsRoute: AdminReportsRoute,
   AdminTryoutsRoute: AdminTryoutsRouteWithChildren,
   AdminUsersRoute: AdminUsersRouteWithChildren,
-  AdminPollsPresentationRoute: AdminPollsPresentationRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -1195,6 +1194,7 @@ const rootRouteChildren: RootRouteChildren = {
   PollCodeRoute: PollCodeRoute,
   PollJoinRoute: PollJoinRoute,
   ResultsAttemptIdRoute: ResultsAttemptIdRouteWithChildren,
+  AdminPollsPresentationRoute: AdminPollsPresentationRoute,
   ApiAdminQuestionPictureRoute: ApiAdminQuestionPictureRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiMediaMediaIdRoute: ApiMediaMediaIdRoute,

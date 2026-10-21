@@ -15,7 +15,6 @@ import {
   skipPollRoundPlanItemAdmin,
 } from "./poll-admin-functions";
 import {
-  formatPollCountdown,
   formatPollDateTime,
   formatPollPlanTimestamp,
   getPollRoundOptionText,
@@ -28,15 +27,21 @@ import {
   savePollPlanWorkbook,
 } from "./admin-poll-workbook";
 import { subscribeToPollUpdates } from "./poll-live-client";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 import { getSafeErrorMessage } from "../../lib/user-errors";
+import "./poll-cockpit.css";
 
 const pollOptions = ["A", "B", "C", "D", "E"] as const;
+const TIMER_MIN_SECONDS = 5;
+const TIMER_MAX_SECONDS = 600;
+
 export const adminPollsSearchSchema = z.object({
   sessionId: z.string().optional(),
 });
 
 type PollOption = (typeof pollOptions)[number];
 type PollSessionList = Awaited<ReturnType<typeof listPollSessionsAdmin>>;
+type PollSessionSummary = PollSessionList[number];
 type PollSessionDetail = Awaited<ReturnType<typeof getPollSessionAdmin>>;
 type PollRound = PollSessionDetail["rounds"][number];
 type PollPlanItem = PollSessionDetail["planItems"][number];
@@ -46,10 +51,22 @@ export type AdminPollsPageData = {
   detail: PollSessionDetail | null;
 };
 
+type StageMode = "voting" | "revealed" | "composing" | "closed" | "empty";
+
+type ConfirmState = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+};
+
 export function AdminPollsPage({ sessions, detail }: AdminPollsPageData) {
   const router = useRouter();
   const navigate = useNavigate();
   const [title, setTitle] = useState(makeDefaultPollSessionTitle());
+  const [creatingSession, setCreatingSession] = useState(false);
+  const [composingRound, setComposingRound] = useState(false);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [correctOption, setCorrectOption] = useState<PollOption>("A");
   const [roundLabel, setRoundLabel] = useState("");
   const [timerSeconds, setTimerSeconds] = useState("");
@@ -62,16 +79,61 @@ export function AdminPollsPage({ sessions, detail }: AdminPollsPageData) {
   const [selectedPlanItemId, setSelectedPlanItemId] = useState("");
   const [busyAction, setBusyAction] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [copiedSessionId, setCopiedSessionId] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+
   const activeRound = detail?.rounds.find((round) => round.status === "open") ?? null;
   const latestRound = detail?.rounds.at(-1) ?? null;
   const visibleRound = activeRound ?? latestRound ?? null;
   const selectedSessionId = detail?.session.id ?? "";
-  const selectedSessionStatus = detail?.session.status ?? "";
   const selectedPlanItem = detail?.planItems.find((item) => item.id === selectedPlanItemId) ?? null;
+  const plannedItems = detail?.planItems.filter((item) => item.status === "planned") ?? [];
+  const startedPlanCount = detail?.planItems.filter((item) => item.status === "started").length ?? 0;
+  const skippedPlanCount = detail?.planItems.filter((item) => item.status === "skipped").length ?? 0;
+  const joinedCount = detail?.participants.length ?? 0;
+  const visibleSessions = sessions.filter((session) => !session.archivedAt || session.id === selectedSessionId);
+
+  const stageMode: StageMode = !detail
+    ? "empty"
+    : detail.session.status !== "open"
+      ? "closed"
+      : activeRound
+        ? "voting"
+        : composingRound
+          ? "composing"
+          : latestRound
+            ? "revealed"
+            : "composing";
+
+  const rosterRound = stageMode === "composing" ? null : visibleRound;
+  const answeredCount = rosterRound?.totalAnswers ?? 0;
+  const correctCount = visibleRound?.answers.filter((answer) => answer.isCorrect).length ?? 0;
+  const pendingParticipants = detail?.participants.filter(
+    (participant) => !(rosterRound?.answers.some((answer) => answer.participantId === participant.id) ?? false),
+  ) ?? [];
+
+  const timerValue = timerSeconds === "" ? null : Number(timerSeconds);
+  const timerInvalid = timerValue !== null && (timerValue < TIMER_MIN_SECONDS || timerValue > TIMER_MAX_SECONDS);
+  const optionValues = [optionA, optionB, optionC, optionD, optionE];
+  const hasAnyContent = [questionText, ...optionValues].some((value) => value.trim().length > 0);
+  const hasRequiredContent = Boolean(
+    questionText.trim()
+    && optionA.trim()
+    && optionB.trim()
+    && optionC.trim()
+    && optionD.trim()
+    && (correctOption !== "E" || optionE.trim()),
+  );
+  const canStartWithContent = hasRequiredContent && !timerInvalid;
+  const canStartWithoutContent = !hasAnyContent && !timerInvalid;
 
   useEffect(() => {
-    if (!selectedSessionId || selectedSessionStatus !== "open") return;
+    setComposingRound(false);
+    setSelectedPlanItemId("");
+  }, [selectedSessionId]);
+
+  useEffect(() => {
+    if (!selectedSessionId || detail?.session.status !== "open") return;
 
     const unsubscribe = subscribeToPollUpdates({
       sessionId: selectedSessionId,
@@ -87,19 +149,30 @@ export function AdminPollsPage({ sessions, detail }: AdminPollsPageData) {
       unsubscribe();
       window.clearInterval(fallbackId);
     };
-  }, [selectedSessionId, selectedSessionStatus, router]);
+  }, [selectedSessionId, detail?.session.status, router]);
 
   useEffect(() => {
-    if (!activeRound?.timerSeconds) return;
+    if (!activeRound?.timerSeconds) {
+      setCountdownSeconds(null);
+      return;
+    }
 
     const openedAt = new Date(activeRound.openedAt).getTime();
-    const expiresAt = openedAt + activeRound.timerSeconds * 1000;
-    const delayMs = Math.max(expiresAt - Date.now(), 0);
+    const totalMs = activeRound.timerSeconds * 1000;
+    const update = () => {
+      setCountdownSeconds(Math.max(Math.ceil((openedAt + totalMs - Date.now()) / 1000), 0));
+    };
+
+    update();
+    const intervalId = window.setInterval(update, 1000);
     const timeoutId = window.setTimeout(() => {
       router.invalidate();
-    }, delayMs + 250);
+    }, Math.max(openedAt + totalMs - Date.now(), 0) + 250);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
   }, [activeRound?.id, activeRound?.openedAt, activeRound?.timerSeconds, router]);
 
   const runAction = async (actionName: string, action: () => Promise<unknown>) => {
@@ -120,38 +193,39 @@ export function AdminPollsPage({ sessions, detail }: AdminPollsPageData) {
     await runAction("create-session", async () => {
       const nextDetail = await createPollSessionAdmin({ data: { title, accessMode: "open_guest" } });
       setTitle(makeDefaultPollSessionTitle());
+      setCreatingSession(false);
       await navigate({ to: "/admin/polls", search: { sessionId: nextDetail.session.id } });
     });
   };
 
-  const createRound = async () => {
+  const createRound = async ({ withContent }: { withContent: boolean }) => {
     if (!detail) return;
 
     await runAction("create-round", async () => {
-      await createPollRoundAdmin({
-        data: {
-          sessionId: detail.session.id,
-          planItemId: selectedPlanItemId || undefined,
-          label: roundLabel,
-          questionText,
-          optionA,
-          optionB,
-          optionC,
-          optionD,
-          optionE,
-          correctOption,
-          timerSeconds: timerSeconds ? Number(timerSeconds) : null,
-        },
-      });
-      setRoundLabel("");
-      setTimerSeconds("");
-      setQuestionText("");
-      setOptionA("");
-      setOptionB("");
-      setOptionC("");
-      setOptionD("");
-      setOptionE("");
-      setSelectedPlanItemId("");
+      const data = withContent
+        ? {
+            sessionId: detail.session.id,
+            planItemId: selectedPlanItemId || undefined,
+            label: roundLabel,
+            questionText,
+            optionA,
+            optionB,
+            optionC,
+            optionD,
+            optionE,
+            correctOption,
+            timerSeconds: timerValue,
+          }
+        : {
+            sessionId: detail.session.id,
+            label: roundLabel,
+            correctOption,
+            timerSeconds: timerValue,
+          };
+
+      await createPollRoundAdmin({ data });
+      clearRoundForm();
+      setComposingRound(false);
     });
   };
 
@@ -166,6 +240,7 @@ export function AdminPollsPage({ sessions, detail }: AdminPollsPageData) {
     setOptionE(item.optionE ?? "");
     setCorrectOption(item.correctOption);
     setTimerSeconds(item.timerSeconds ? String(item.timerSeconds) : "");
+    setComposingRound(true);
   };
 
   const clearRoundForm = () => {
@@ -224,6 +299,25 @@ export function AdminPollsPage({ sessions, detail }: AdminPollsPageData) {
     await runAction("close-round", () => closePollRoundAdmin({ data: { roundId } }));
   };
 
+  const requestCloseRound = () => {
+    if (!activeRound) return;
+
+    if (activeRound.totalAnswers === 0) {
+      setConfirm({
+        title: "Tutup round tanpa jawaban?",
+        description: "Belum ada peserta yang menjawab round ini. Setelah ditutup, jawaban tidak bisa masuk lagi.",
+        confirmLabel: "Tutup round",
+        onConfirm: () => {
+          setConfirm(null);
+          void closeRound(activeRound.id);
+        },
+      });
+      return;
+    }
+
+    void closeRound(activeRound.id);
+  };
+
   const correctRound = async (roundId: string, nextCorrectOption: PollOption) => {
     await runAction(`correct-${roundId}`, () => correctPollRoundAdmin({ data: { roundId, correctOption: nextCorrectOption } }));
   };
@@ -232,6 +326,22 @@ export function AdminPollsPage({ sessions, detail }: AdminPollsPageData) {
     if (!detail) return;
 
     await runAction("close-session", () => closePollSessionAdmin({ data: { sessionId: detail.session.id } }));
+  };
+
+  const requestCloseSession = () => {
+    if (!detail) return;
+
+    setConfirm({
+      title: "Akhiri sesi ini?",
+      description: activeRound
+        ? "Round yang sedang berjalan akan ditutup dan tidak ada jawaban baru yang masuk. Sesi bisa dibuka lagi nanti."
+        : "Peserta tidak bisa menjawab lagi setelah sesi ditutup. Sesi bisa dibuka lagi nanti.",
+      confirmLabel: "Akhiri sesi",
+      onConfirm: () => {
+        setConfirm(null);
+        void closeSession();
+      },
+    });
   };
 
   const reopenSession = async () => {
@@ -243,349 +353,723 @@ export function AdminPollsPage({ sessions, detail }: AdminPollsPageData) {
   const archiveSession = async () => {
     if (!detail) return;
 
-    await runAction("archive-session", () => archivePollSessionAdmin({
-      data: {
-        sessionId: detail.session.id,
-        archived: detail.session.archivedAt === null,
-      },
-    }));
+    await runAction("archive-session", async () => {
+      await archivePollSessionAdmin({
+        data: {
+          sessionId: detail.session.id,
+          archived: detail.session.archivedAt === null,
+        },
+      });
+    });
   };
 
   const copyStudentUrl = async () => {
     if (!detail) return;
     if (typeof window === "undefined") return;
 
-    const studentUrl = `${window.location.origin}/poll/${detail.session.code}`;
+    const studentUrl = getStudentPollUrl(detail.session.code);
 
     try {
       await window.navigator.clipboard.writeText(studentUrl);
-      setCopiedSessionId(detail.session.id);
-      window.setTimeout(() => setCopiedSessionId(""), 1800);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
     } catch {
-      setErrorMessage("Poll URL was not copied. Copy it from the share field.");
+      setErrorMessage("Kode Poll tidak tersalin. Salin manual dari tautan di bawah kode.");
     }
   };
 
   return (
-    <main className="admin-shell">
-      <div className="admin-lane">
-        <header className="admin-header flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <a href="/admin" className="admin-back-link">Admin</a>
-            <h1 className="admin-title">Poll Sessions</h1>
-            <p className="admin-description">Run live A/B/C/D/E classroom rounds with session-local scores and history.</p>
-          </div>
-          <button className="admin-button-primary w-fit" onClick={createSession} disabled={busyAction === "create-session"} type="button">
-            Start Session
-          </button>
-        </header>
+    <main className="admin-shell page-enter">
+      <div className="admin-lane poll-lane">
+        <AdminPageHeader
+          title="Poll Sessions"
+          description="Jalankan round live, bagikan Kode Poll, dan buka jawaban saat kelas siap."
+        />
 
-        {errorMessage && <p className="admin-alert mt-6">{errorMessage}</p>}
+        {errorMessage && <p className="admin-alert mt-4">{errorMessage}</p>}
 
-        <section className="admin-panel mt-6 p-5">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px] lg:items-end">
-            <label className="block">
-              <span className="admin-kicker">New session title</span>
-              <input value={title} onChange={(event) => setTitle(event.target.value)} className="admin-control mt-2" />
-            </label>
-            <button className="admin-button-secondary h-12" onClick={createSession} disabled={busyAction === "create-session"} type="button">
-              Create
-            </button>
-          </div>
-        </section>
+        <div className="poll-cockpit mt-4">
+          <aside className="poll-rail">
+            <div className="poll-rail-head">
+              <h2>Sesi Poll</h2>
+              <span>{visibleSessions.length}</span>
+            </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-          <SessionList sessions={sessions} selectedSessionId={detail?.session.id ?? ""} />
-
-          {detail ? (
-            <section className="grid gap-5">
-              <div
-                className="relative overflow-hidden rounded-[var(--radius-xl)] border-2 border-amber-300 border-b-4 border-b-amber-600 bg-[#2f281c] p-6 text-amber-50 shadow-sm"
-              >
-                <div
-                  className="absolute inset-0 opacity-90"
-                  style={{
-                    background:
-                      "radial-gradient(420px 220px at 88% 0%, rgba(245,158,11,0.34), transparent 70%), radial-gradient(320px 210px at 0% 100%, rgba(20,184,166,0.18), transparent 72%)",
-                  }}
+            <div className="poll-rail-list">
+              {visibleSessions.map((session) => (
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  isActive={session.id === selectedSessionId}
                 />
-                <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-200/80">
-                      <span className={`h-1.5 w-1.5 rounded-full ${detail.session.status === "open" ? "bg-green-400" : "bg-amber-300"}`} />
-                      {detail.session.status === "open" ? "Live classroom" : "History"}
-                    </div>
-                    <h2 className="mt-2.5 text-[28px] font-black leading-tight tracking-tight text-amber-50 sm:text-3xl">
-                      {detail.session.title}
-                    </h2>
-                    <p className="mt-2 text-sm font-semibold text-amber-100/70">
-                      {detail.participants.length} peserta · {detail.rounds.length} rounds · {formatPollDateTime(detail.session.openedAt)}
-                    </p>
-                  </div>
-                  <div className="shrink-0 rounded-[var(--radius-lg)] border-2 border-amber-300/40 bg-amber-200/10 p-4 text-center lg:w-[260px]">
-                    <div className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-200/70">Kode Poll</div>
-                    <div className="mt-1.5 text-[42px] font-black leading-none tracking-[0.2em] text-amber-50">{detail.session.code}</div>
-                    <div className="mt-3 flex items-center gap-2 rounded-[var(--radius-md)] border border-amber-200/20 bg-black/15 px-3 py-2">
-                      <span className="min-w-0 flex-1 truncate text-left text-[11px] font-bold text-amber-100/70">
-                        {getStudentPollUrl(detail.session.code)}
-                      </span>
-                    </div>
+              ))}
+              {visibleSessions.length === 0 && (
+                <p className="poll-roster-empty">Belum ada sesi. Buat sesi pertama di bawah.</p>
+              )}
+            </div>
+
+            <div className="poll-rail-foot">
+              {creatingSession ? (
+                <div className="poll-new-form">
+                  <input
+                    aria-label="Judul sesi baru"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void createSession();
+                      if (event.key === "Escape") setCreatingSession(false);
+                    }}
+                    autoFocus
+                  />
+                  <div className="poll-new-actions">
                     <button
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-amber-300 px-3 py-2.5 text-xs font-black text-stone-900 shadow-[inset_0_-2px_0_rgba(180,83,9,0.5)] transition-all hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[inset_0_-2px_0_rgba(180,83,9,0.5),0_4px_12px_rgba(245,158,11,0.25)] active:translate-y-0 active:shadow-[inset_0_-2px_0_rgba(180,83,9,0.5)]"
-                      onClick={copyStudentUrl}
+                      className="poll-btn-dark"
+                      onClick={createSession}
+                      disabled={busyAction === "create-session" || title.trim().length === 0}
                       type="button"
                     >
-                      {copiedSessionId === detail.session.id ? (
-                        <>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                          Copy student URL
-                        </>
-                      )}
+                      {busyAction === "create-session" ? "Membuat..." : "Buat sesi"}
+                    </button>
+                    <button className="poll-btn-plain" onClick={() => setCreatingSession(false)} type="button">
+                      Batal
                     </button>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <button className="poll-new" onClick={() => setCreatingSession(true)} type="button">
+                  + Sesi baru
+                </button>
+              )}
 
-              <PollPlanPanel
-                detail={detail}
-                busyAction={busyAction}
-                selectedPlanItemId={selectedPlanItemId}
-                onDownloadTemplate={downloadPlanTemplate}
-                onImportWorkbook={importPlanWorkbook}
-                onLoadPlanItem={loadPlanItem}
-                onSkipPlanItem={skipPlanItem}
+              {detail && (
+                <details className="poll-setup">
+                  <summary>Persiapan sesi</summary>
+                  <div className="poll-setup-body">
+                    <div className="poll-setup-row">
+                      <button
+                        className="poll-btn-plain"
+                        onClick={downloadPlanTemplate}
+                        disabled={busyAction === "download-plan-template"}
+                        type="button"
+                      >
+                        Unduh template
+                      </button>
+                      <FileUpload
+                        accept=".xlsx"
+                        busy={busyAction === "import-plan" || detail.session.status !== "open"}
+                        placeholder="Unggah rencana"
+                        onFileSelect={importPlanWorkbook}
+                      />
+                    </div>
+
+                    <p className="poll-plan-note">
+                      {plannedItems.length} antre · {startedPlanCount} dimulai · {skippedPlanCount} dilewati
+                    </p>
+
+                    {plannedItems.length > 0 && (
+                      <div className="poll-plan-list">
+                        {plannedItems.map((item) => (
+                          <div className="poll-plan-item" key={item.id}>
+                            <span>
+                              Baris {item.sortOrder} · {item.correctOption}
+                              {item.timerSeconds ? ` · ${item.timerSeconds}s` : ""}
+                            </span>
+                            <p>{item.label || item.questionText}</p>
+                            <div>
+                              <button onClick={() => loadPlanItem(item)} type="button">
+                                Muat
+                              </button>
+                              <button
+                                onClick={() => skipPlanItem(item)}
+                                disabled={busyAction === `skip-plan:${item.id}`}
+                                type="button"
+                              >
+                                Lewati
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </details>
+              )}
+            </div>
+          </aside>
+
+          {detail ? (
+            <section className="poll-stage">
+              <StageHeader
+                code={detail.session.code}
+                joined={joinedCount}
+                answered={stageMode === "composing" ? 0 : answeredCount}
+                mode={stageMode}
+                countdownSeconds={countdownSeconds}
+                timerSeconds={activeRound?.timerSeconds ?? null}
+                correctCount={correctCount}
+                copied={copied}
+                onCopy={copyStudentUrl}
               />
 
-              {detail.session.status === "open" && (
-                <section className="admin-panel p-5">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h2 className="admin-panel-title">Start next round</h2>
-                      <p className="mt-1 text-xs font-semibold text-stone-400">
-                        {selectedPlanItem ? `Loaded planned row ${selectedPlanItem.sortOrder}. Review before opening.` : "Use a planned row or type a manual classroom prompt."}
-                      </p>
-                    </div>
-                    <button className="admin-button-ghost" onClick={clearRoundForm} type="button">
-                      Clear
-                    </button>
+              {(stageMode === "voting" || stageMode === "revealed") && visibleRound && (
+                <>
+                  <div className="poll-round-head">
+                    <span className="poll-round-tag">{visibleRound.label}</span>
+                    <span className="poll-round-sub">
+                      {stageMode === "revealed"
+                        ? `Jawaban benar ${visibleRound.correctOption}`
+                        : "Pertanyaan pembimbing"}
+                    </span>
                   </div>
 
-                  <div className="grid gap-4">
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_120px_140px] lg:items-end">
-                      <label className="block">
-                        <span className="admin-kicker">Round label</span>
-                        <input value={roundLabel} onChange={(event) => setRoundLabel(event.target.value)} placeholder={`Round ${detail.rounds.length + 1}`} className="admin-control mt-2" />
-                      </label>
-                      <label className="block">
-                        <span className="admin-kicker">Correct</span>
-                        <select value={correctOption} onChange={(event) => setCorrectOption(event.target.value as PollOption)} className="admin-control mt-2">
-                          {pollOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                        </select>
-                      </label>
-                      <label className="block">
-                        <span className="admin-kicker">Timer sec</span>
-                        <input value={timerSeconds} onChange={(event) => setTimerSeconds(event.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="Manual" className="admin-control mt-2" />
-                      </label>
-                    </div>
+                  {visibleRound.questionText ? (
+                    <h1 className="poll-question">{visibleRound.questionText}</h1>
+                  ) : (
+                    <h1 className="poll-question is-empty">
+                      Tanpa pertanyaan tertulis. Peserta menjawab dari soal yang dibacakan.
+                    </h1>
+                  )}
 
-                    <label className="block">
-                      <span className="admin-kicker">Teacher question</span>
-                      <textarea value={questionText} onChange={(event) => setQuestionText(event.target.value)} placeholder="Optional. Shown only on the teacher presentation view." className="admin-control mt-2 min-h-24" />
-                    </label>
+                  <RoundLadder round={visibleRound} revealed={stageMode === "revealed"} />
 
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <OptionInput label="A" value={optionA} onChange={setOptionA} />
-                      <OptionInput label="B" value={optionB} onChange={setOptionB} />
-                      <OptionInput label="C" value={optionC} onChange={setOptionC} />
-                      <OptionInput label="D" value={optionD} onChange={setOptionD} />
-                      <OptionInput label="E" value={optionE} onChange={setOptionE} />
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button className="admin-button-success h-12 min-w-36" onClick={createRound} disabled={busyAction === "create-round"} type="button">
-                        {activeRound ? "Close current & start" : "Start Round"}
-                      </button>
+                  <div className="poll-stage-foot">
+                    <p className="poll-stage-note">
+                      <i />
+                      {stageMode === "revealed"
+                        ? "Papan skor sudah diperbarui dengan jawaban round ini"
+                        : joinedCount === 0
+                          ? "Belum ada peserta bergabung. Bagikan Kode Poll ke kelas."
+                          : pendingParticipants.length > 0
+                            ? `Menunggu ${pendingParticipants.slice(0, 3).map((participant) => participant.displayName).join(", ")}${pendingParticipants.length > 3 ? `, +${pendingParticipants.length - 3} lagi` : ""}`
+                            : "Semua peserta sudah menjawab"}
+                    </p>
+                    <div className="poll-stage-actions">
+                      {stageMode === "voting" ? (
+                        <button
+                          className="poll-btn-primary"
+                          onClick={requestCloseRound}
+                          disabled={busyAction === "close-round"}
+                          type="button"
+                        >
+                          {busyAction === "close-round" ? "Menutup..." : "Tutup & buka jawaban"}
+                        </button>
+                      ) : (
+                        <button
+                          className="poll-btn-primary"
+                          onClick={() => setComposingRound(true)}
+                          type="button"
+                        >
+                          Round berikutnya
+                        </button>
+                      )}
                       <a
+                        className="poll-btn-ghost"
                         href={`/admin/polls/presentation?sessionId=${encodeURIComponent(detail.session.id)}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="admin-button-secondary no-underline"
                       >
-                        Presentation view
+                        Layar kelas
                       </a>
+                      <button className="poll-btn-quiet" onClick={requestCloseSession} type="button">
+                        Akhiri sesi
+                      </button>
                     </div>
                   </div>
-                </section>
+                </>
               )}
 
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
-                <RoundPanel
-                  round={visibleRound}
-                  participantCount={detail.participants.length}
-                  busyAction={busyAction}
-                  onCloseRound={closeRound}
-                  onCorrectRound={correctRound}
-                />
-                <StudentPreview detail={detail} round={visibleRound} />
-              </div>
+              {stageMode === "composing" && (
+                <>
+                  <div className="poll-round-head">
+                    <span className="poll-round-tag">Round {detail.rounds.length + 1}</span>
+                    <span className="poll-round-sub">
+                      {selectedPlanItem ? `Rencana baris ${selectedPlanItem.sortOrder}` : "Siap mulai"}
+                    </span>
+                  </div>
 
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                <ParticipantPanel detail={detail} round={activeRound} />
-                <LeaderboardPanel scores={detail.scores} />
-              </div>
+                  <div className="poll-composer">
+                    <p className="poll-composer-hint">
+                      {plannedItems.length > 0
+                        ? `${plannedItems.length} rencana round siap dipakai, atau tulis pertanyaan baru.`
+                        : "Tulis pertanyaan di bawah, atau mulai round tanpa pertanyaan tertulis."}
+                    </p>
 
-              <section className="admin-panel flex flex-col gap-3 p-5 sm:flex-row sm:justify-between">
-                {detail.session.status !== "open" || detail.session.archivedAt ? (
-                  <button className="admin-button-secondary" onClick={archiveSession} disabled={busyAction === "archive-session"} type="button">
-                    {detail.session.archivedAt ? "Unarchive" : "Archive"}
-                  </button>
-                ) : (
-                  <span />
-                )}
-                {detail.session.status === "open" ? (
-                  <button className="admin-button-primary" onClick={closeSession} disabled={busyAction === "close-session"} type="button">
-                    Close Session
-                  </button>
-                ) : (
-                  <button className="admin-button-success" onClick={reopenSession} disabled={busyAction === "reopen-session"} type="button">
-                    Reopen Session
-                  </button>
-                )}
-              </section>
+                    {plannedItems.length > 0 && (
+                      <label className="poll-field">
+                        <span>Rencana round</span>
+                        <select
+                          className="poll-select"
+                          value={selectedPlanItemId}
+                          onChange={(event) => {
+                            const item = plannedItems.find((candidate) => candidate.id === event.target.value);
+                            if (item) {
+                              loadPlanItem(item);
+                              return;
+                            }
+                            clearRoundForm();
+                          }}
+                        >
+                          <option value="">Tulis manual</option>
+                          {plannedItems.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              Baris {item.sortOrder} · {(item.label || item.questionText).slice(0, 60)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
+                    <div className="poll-composer-grid">
+                      <label className="poll-field">
+                        <span>Label round</span>
+                        <input
+                          className="poll-input"
+                          value={roundLabel}
+                          onChange={(event) => setRoundLabel(event.target.value)}
+                          placeholder={`Round ${detail.rounds.length + 1}`}
+                        />
+                      </label>
+                      <label className="poll-field">
+                        <span>Jawaban benar</span>
+                        <select
+                          className="poll-select"
+                          value={correctOption}
+                          onChange={(event) => setCorrectOption(event.target.value as PollOption)}
+                        >
+                          {pollOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="poll-field">
+                        <span>Timer (detik)</span>
+                        <input
+                          className="poll-input"
+                          value={timerSeconds}
+                          onChange={(event) => setTimerSeconds(event.target.value.replace(/\D/g, "").slice(0, 3))}
+                          placeholder="Tanpa timer"
+                          inputMode="numeric"
+                        />
+                        {timerInvalid && (
+                          <span className="poll-field-error">{TIMER_MIN_SECONDS}–{TIMER_MAX_SECONDS} detik, atau kosongkan.</span>
+                        )}
+                      </label>
+                    </div>
+
+                    <label className="poll-field">
+                      <span>Pertanyaan</span>
+                      <textarea
+                        className="poll-textarea"
+                        value={questionText}
+                        onChange={(event) => setQuestionText(event.target.value)}
+                        placeholder="Contoh: Siapa presiden pertama Republik Indonesia?"
+                      />
+                    </label>
+
+                    <div className="poll-composer-options">
+                      {([
+                        ["A", optionA, setOptionA],
+                        ["B", optionB, setOptionB],
+                        ["C", optionC, setOptionC],
+                        ["D", optionD, setOptionD],
+                        ["E", optionE, setOptionE],
+                      ] as const).map(([letter, value, setValue]) => (
+                        <label className={`poll-field ${letter === "E" ? "poll-field-wide" : ""}`} key={letter}>
+                          <span>
+                            Pilihan {letter}
+                            {letter === "E" ? " (opsional)" : ""}
+                          </span>
+                          <input
+                            className="poll-input"
+                            value={value}
+                            onChange={(event) => setValue(event.target.value)}
+                            placeholder={letter === "E" ? "Boleh kosong" : `Teks pilihan ${letter}`}
+                          />
+                        </label>
+                      ))}
+                    </div>
+
+                    <div className="poll-composer-actions">
+                      <button
+                        className="poll-btn-primary"
+                        onClick={() => createRound({ withContent: true })}
+                        disabled={!canStartWithContent || busyAction === "create-round"}
+                        type="button"
+                      >
+                        {busyAction === "create-round" ? "Memulai..." : `Mulai Round ${detail.rounds.length + 1}`}
+                      </button>
+                      {(canStartWithoutContent || !hasAnyContent) && (
+                        <button
+                          className="poll-btn-ghost"
+                          onClick={() => createRound({ withContent: false })}
+                          disabled={!canStartWithoutContent || busyAction === "create-round"}
+                          type="button"
+                        >
+                          Mulai tanpa pertanyaan
+                        </button>
+                      )}
+                      {hasAnyContent && (
+                        <button className="poll-btn-ghost" onClick={clearRoundForm} type="button">
+                          Kosongkan
+                        </button>
+                      )}
+                      {latestRound && (
+                        <button className="poll-btn-quiet" onClick={() => setComposingRound(false)} type="button">
+                          Batal
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="poll-composer-hint">
+                      Pertanyaan dan pilihan A–D wajib diisi untuk menampilkan soal. Pilihan E opsional.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {stageMode === "closed" && (
+                <>
+                  <div className="poll-round-head">
+                    <span className="poll-round-tag">Sesi ditutup</span>
+                    <span className="poll-round-sub">
+                      {visibleRound ? `Round terakhir ${visibleRound.label}` : "Belum ada round"}
+                    </span>
+                  </div>
+
+                  {visibleRound ? (
+                    <>
+                      {visibleRound.questionText ? (
+                        <h1 className="poll-question">{visibleRound.questionText}</h1>
+                      ) : (
+                        <h1 className="poll-question is-empty">Round tanpa pertanyaan tertulis.</h1>
+                      )}
+                      <RoundLadder round={visibleRound} revealed />
+                    </>
+                  ) : (
+                    <p className="poll-composer-hint">Sesi ini belum punya round. Buka sesi untuk memulai.</p>
+                  )}
+
+                  <div className="poll-stage-foot">
+                    <div className="poll-stage-actions">
+                      <button
+                        className="poll-btn-primary"
+                        onClick={reopenSession}
+                        disabled={busyAction === "reopen-session"}
+                        type="button"
+                      >
+                        {busyAction === "reopen-session" ? "Membuka..." : "Buka sesi"}
+                      </button>
+                      <button
+                        className="poll-btn-quiet"
+                        onClick={archiveSession}
+                        disabled={busyAction === "archive-session"}
+                        type="button"
+                      >
+                        {detail.session.archivedAt ? "Batalkan arsip" : "Arsipkan sesi"}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </section>
           ) : (
-            <section className="admin-panel p-8 text-center">
-              <p className="text-base font-extrabold text-stone-700">No Poll Session yet.</p>
-              <p className="mt-1 text-sm font-semibold text-stone-400">Create one to show the join code and start the first round.</p>
+            <section className="poll-stage poll-stage-empty">
+              <span className="poll-eyebrow">Poll Sessions</span>
+              <h2>Belum ada sesi</h2>
+              <p>Buat sesi, bagikan Kode Poll ke kelas, lalu mulai round pertama.</p>
+              <div className="poll-stage-actions">
+                <button className="poll-btn-primary" onClick={() => setCreatingSession(true)} type="button">
+                  Buat sesi
+                </button>
+              </div>
             </section>
+          )}
+
+          {detail ? (
+            <RosterPanel
+              participants={detail.participants}
+              round={rosterRound}
+              scores={detail.scores}
+            />
+          ) : (
+            <aside className="poll-roster">
+              <div className="poll-roster-section">
+                <div className="poll-roster-head">
+                  <h3>Peserta</h3>
+                </div>
+                <p className="poll-roster-empty">Peserta muncul setelah sesi dibuat dan kode dibagikan.</p>
+              </div>
+            </aside>
           )}
         </div>
       </div>
+
+      {confirm && (
+        <ConfirmDialog
+          state={confirm}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
     </main>
   );
 }
 
-function SessionList({ sessions, selectedSessionId }: { sessions: PollSessionList; selectedSessionId: string }) {
-  const visibleSessions = sessions.filter((session) => !session.archivedAt || session.id === selectedSessionId);
+function SessionRow({ session, isActive }: { session: PollSessionSummary; isActive: boolean }) {
+  return (
+    <Link
+      to="/admin/polls"
+      search={{ sessionId: session.id }}
+      className={`poll-session ${isActive ? "is-active" : ""} ${session.status === "open" ? "is-live" : ""}`}
+      aria-current={isActive ? "true" : undefined}
+    >
+      <div className="poll-session-top">
+        <span className="poll-session-dot" />
+        <span className="poll-session-state">{session.status === "open" ? "Live" : session.status === "closed" ? "Ditutup" : "Draf"}</span>
+        <span className="poll-session-time">{formatSessionTime(session.openedAt)}</span>
+      </div>
+      <span className="poll-session-title">{session.title}</span>
+      <span className="poll-session-meta">
+        {session.code} · {session.roundCount} round · {session.participantCount} bergabung
+      </span>
+    </Link>
+  );
+}
+
+function StageHeader({
+  code,
+  joined,
+  answered,
+  mode,
+  countdownSeconds,
+  timerSeconds,
+  correctCount,
+  copied,
+  onCopy,
+}: {
+  code: string;
+  joined: number;
+  answered: number;
+  mode: StageMode;
+  countdownSeconds: number | null;
+  timerSeconds: number | null;
+  correctCount: number;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  const joinHost = useJoinHost();
+  const answeredLabel = mode === "composing"
+    ? "round belum dimulai"
+    : mode === "closed"
+      ? "jawaban round terakhir"
+      : "sudah menjawab";
+  const showDots = joined > 0;
 
   return (
-    <aside className="admin-panel overflow-hidden xl:sticky xl:top-6">
-      <div className="admin-panel-header">
-        <h2 className="admin-panel-title">Sessions</h2>
+    <header className="poll-stage-head">
+      <div>
+        <span className="poll-eyebrow">Kode Poll</span>
+        <div className="poll-code-row">
+          <span className="poll-code">{code}</span>
+          <button className="poll-copy" onClick={onCopy} type="button">
+            {copied ? "Tersalin" : "Salin"}
+          </button>
+        </div>
+        <span className="poll-join-hint">
+          Buka <b>{joinHost ?? "halaman poll"}</b>, masukkan kode
+        </span>
       </div>
-      {visibleSessions.map((session) => (
-        <Link
-          key={session.id}
-          to="/admin/polls"
-          search={{ sessionId: session.id }}
-          className={`block border-b border-stone-100 p-4 no-underline transition-colors last:border-b-0 ${session.id === selectedSessionId ? "bg-primary-tint" : "bg-white hover:bg-stone-50"}`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <b className="block truncate text-sm font-black text-stone-800">{session.title}</b>
-              <span className="mt-1 block text-xs font-semibold text-stone-400">{session.code} · {session.participantCount} peserta</span>
-            </div>
-            <StatusPill status={session.status} />
+
+      <div className="poll-answered">
+        <div className="poll-answered-num">
+          {answered}<span>/{joined}</span>
+        </div>
+        <span className="poll-answered-label">{answeredLabel}</span>
+        {showDots && (
+          <div className="poll-dots" aria-hidden="true">
+            {Array.from({ length: Math.min(joined, 24) }, (_, index) => (
+              <i className={index < answered ? "is-on" : ""} key={index} />
+            ))}
           </div>
-        </Link>
-      ))}
-      {visibleSessions.length === 0 && <p className="p-5 text-sm font-semibold text-stone-400">No sessions yet.</p>}
+        )}
+      </div>
+
+      {mode === "voting" && (
+        timerSeconds && countdownSeconds !== null ? (
+          <TimerRing seconds={countdownSeconds} total={timerSeconds} />
+        ) : (
+          <div className="poll-timer-flat">
+            <b>Tanpa timer</b>
+          </div>
+        )
+      )}
+
+      {mode === "revealed" && (
+        <div className="poll-score-tile" aria-label={`${correctCount} jawaban benar`}>
+          <span>{correctCount}</span>
+          <b>benar</b>
+        </div>
+      )}
+
+      {mode === "closed" && (
+        <div className="poll-timer-flat">
+          <b>Sesi ditutup</b>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function TimerRing({ seconds, total }: { seconds: number; total: number }) {
+  const radius = 38;
+  const circumference = 2 * Math.PI * radius;
+  const remainingRatio = total > 0 ? Math.min(Math.max(seconds / total, 0), 1) : 0;
+  const offset = circumference * (1 - remainingRatio);
+  const display = seconds >= 60 ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : String(seconds);
+  const unit = seconds >= 60 ? "sisa" : "detik";
+
+  return (
+    <div className={`poll-ring ${seconds <= 10 ? "is-low" : ""}`} aria-label={`Sisa ${seconds} detik`}>
+      <svg viewBox="0 0 86 86" aria-hidden="true">
+        <circle className="poll-ring-track" cx="43" cy="43" r={radius} />
+        <circle
+          className="poll-ring-value"
+          cx="43"
+          cy="43"
+          r={radius}
+          strokeDasharray={circumference.toFixed(1)}
+          strokeDashoffset={offset.toFixed(1)}
+        />
+      </svg>
+      <div className="poll-ring-center">
+        <div className="poll-ring-num">{display}</div>
+        <div className="poll-ring-unit">{unit}</div>
+      </div>
+    </div>
+  );
+}
+
+function RoundLadder({ round, revealed }: { round: PollRound; revealed: boolean }) {
+  const totalAnswers = round.totalAnswers;
+  const showCorrect = revealed || round.status === "closed";
+
+  return (
+    <ol className="poll-ladder">
+      {pollOptions.map((option) => {
+        const text = getPollRoundOptionText(round, option);
+        const count = round.counts[option] ?? 0;
+        const percent = totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0;
+        const isCorrect = showCorrect && round.correctOption === option;
+
+        return (
+          <li
+            className={`poll-row ${isCorrect ? "is-correct" : ""} ${count === 0 && !isCorrect ? "is-zero" : ""}`}
+            key={option}
+          >
+            <span className="poll-row-letter">{option}</span>
+            <div className="poll-row-main">
+              <div className="poll-row-text">
+                {text || "—"}
+                {isCorrect && <span className="poll-badge-true">Benar</span>}
+              </div>
+              <div className="poll-row-track">
+                <div className="poll-row-fill" style={{ width: `${percent}%` }} />
+              </div>
+            </div>
+            <div className="poll-row-count">
+              {count}
+              <span>suara</span>
+            </div>
+            <div className="poll-row-pct">{percent}%</div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function RosterPanel({
+  participants,
+  round,
+  scores,
+}: {
+  participants: PollSessionDetail["participants"];
+  round: PollRound | null;
+  scores: PollSessionDetail["scores"];
+}) {
+  const answeredIds = new Set(round?.answers.map((answer) => answer.participantId) ?? []);
+
+  return (
+    <aside className="poll-roster">
+      <div className="poll-roster-section">
+        <div className="poll-roster-head">
+          <h3>Peserta</h3>
+          <span>{participants.length} bergabung</span>
+        </div>
+        {participants.length > 0 ? (
+          participants.map((participant) => {
+            const answered = answeredIds.has(participant.id);
+
+            return (
+              <div className={`poll-person ${answered ? "is-in" : ""}`} key={participant.id}>
+                <span className="poll-avatar">{initials(participant.displayName)}</span>
+                <span className="poll-person-name">{participant.displayName}</span>
+                <span className="poll-person-state">{answered ? "Menjawab" : "Menunggu"}</span>
+              </div>
+            );
+          })
+        ) : (
+          <p className="poll-roster-empty">Belum ada peserta. Bagikan Kode Poll ke kelas.</p>
+        )}
+      </div>
+
+      <div className="poll-roster-section">
+        <div className="poll-roster-head">
+          <h3>Papan skor</h3>
+          <span>Total sesi</span>
+        </div>
+        {scores.length > 0 ? (
+          scores.map((score) => (
+            <div className="poll-score-row" key={score.participantId}>
+              <span className="poll-score-rank">#{score.rank}</span>
+              <span className="poll-score-name">{score.displayName}</span>
+              <span className="poll-score-pts">{score.totalPoints}</span>
+            </div>
+          ))
+        ) : (
+          <p className="poll-roster-empty">Skor muncul setelah peserta menjawab round pertama.</p>
+        )}
+      </div>
+
+      <p className="poll-roster-foot">Skor dihitung dari jawaban benar dan kecepatan menjawab.</p>
     </aside>
   );
 }
 
-function PollPlanPanel({
-  detail,
-  busyAction,
-  selectedPlanItemId,
-  onDownloadTemplate,
-  onImportWorkbook,
-  onLoadPlanItem,
-  onSkipPlanItem,
-}: {
-  detail: PollSessionDetail;
-  busyAction: string;
-  selectedPlanItemId: string;
-  onDownloadTemplate: () => void;
-  onImportWorkbook: (file: File) => Promise<void> | void;
-  onLoadPlanItem: (item: PollPlanItem) => void;
-  onSkipPlanItem: (item: PollPlanItem) => void;
-}) {
-  const plannedItems = detail.planItems.filter((item) => item.status === "planned");
-  const startedCount = detail.planItems.filter((item) => item.status === "started").length;
-  const skippedCount = detail.planItems.filter((item) => item.status === "skipped").length;
-  const canReplacePlan = detail.session.status === "open" && !detail.session.archivedAt;
-
+function ConfirmDialog({ state, onCancel }: { state: ConfirmState; onCancel: () => void }) {
   return (
-    <section className="admin-panel overflow-hidden">
-      <div className="admin-panel-header flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="admin-panel-title">Poll Round Plan</h2>
-          <p className="mt-1 text-xs font-semibold text-stone-400">
-            {plannedItems.length} queued · {startedCount} started · {skippedCount} skipped
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button className="admin-button-secondary" onClick={onDownloadTemplate} disabled={busyAction === "download-plan-template"} type="button">
-            Download template
+    <div
+      className="poll-confirm-backdrop"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onCancel();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onCancel();
+      }}
+    >
+      <div className="poll-confirm" role="dialog" aria-modal="true" aria-labelledby="poll-confirm-title">
+        <h2 id="poll-confirm-title">{state.title}</h2>
+        <p>{state.description}</p>
+        <div className="poll-confirm-actions">
+          <button className="poll-btn-plain" onClick={onCancel} type="button">
+            Batal
           </button>
-          <FileUpload
-            accept=".xlsx"
-            busy={busyAction === "import-plan" || !canReplacePlan}
-            placeholder="Upload plan"
-            onFileSelect={onImportWorkbook}
-          />
+          <button className="poll-btn-dark" onClick={state.onConfirm} type="button" autoFocus>
+            {state.confirmLabel}
+          </button>
         </div>
       </div>
-
-      {plannedItems.length === 0 ? (
-        <div className="p-6 text-sm font-semibold text-stone-400">
-          No queued rows. Upload an XLSX plan or start rounds manually.
-        </div>
-      ) : (
-        <div className="grid gap-3 p-4">
-          {plannedItems.map((item) => (
-            <div key={item.id} className={`rounded-[var(--radius-lg)] border-2 p-4 ${selectedPlanItemId === item.id ? "border-primary bg-primary-tint" : "border-stone-100 bg-white"}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-black uppercase tracking-wide text-stone-400">
-                    Row {item.sortOrder} · Correct {item.correctOption}{item.timerSeconds ? ` · ${item.timerSeconds}s` : ""}
-                  </div>
-                  <h3 className="mt-1 text-sm font-black leading-snug text-stone-800">
-                    {item.label || `Round ${item.sortOrder}`}
-                  </h3>
-                  <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-stone-500">
-                    {item.questionText}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button className="admin-button-secondary" onClick={() => onLoadPlanItem(item)} type="button">
-                    Load
-                  </button>
-                  <button className="admin-button-ghost text-amber-700 hover:bg-amber-50" onClick={() => onSkipPlanItem(item)} disabled={busyAction === `skip-plan:${item.id}`} type="button">
-                    Skip
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function OptionInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="block">
-      <span className="admin-kicker">Option {label}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={`Option ${label}`} className="admin-control mt-2" />
-    </label>
+    </div>
   );
 }
 
@@ -609,7 +1093,7 @@ function FileUpload({
   const selectFile = async (file: File | undefined) => {
     if (!file) return;
     if (isUnavailable) return;
-    if (!isAcceptedFile(file, accept)) return;
+    if (!file.name.toLowerCase().endsWith(accept)) return;
 
     setFileName(file.name);
 
@@ -673,275 +1157,38 @@ function FileUpload({
       className={`admin-file-upload ${isUnavailable ? "pointer-events-none opacity-50" : ""} ${fileName ? "admin-file-upload-active" : ""} ${isDragging ? "border-primary bg-primary-tint text-primary-dark" : ""}`}
     >
       <UploadIcon className="h-4 w-4 shrink-0" />
-      <span className="truncate">{isDragging ? "Drop .xlsx here" : isUploading ? "Importing..." : fileName || placeholder}</span>
+      <span className="truncate">{isDragging ? "Lepas .xlsx di sini" : isUploading ? "Mengunggah..." : fileName || placeholder}</span>
       <input ref={inputRef} onChange={handleChange} disabled={isUnavailable} className="sr-only" type="file" accept={accept} />
     </div>
   );
 }
 
-function isAcceptedFile(file: File, accept: string) {
-  if (accept !== ".xlsx") return true;
-
-  return file.name.toLowerCase().endsWith(".xlsx");
+function formatSessionTime(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(value));
 }
 
-function RoundPanel({
-  round,
-  participantCount,
-  busyAction,
-  onCloseRound,
-  onCorrectRound,
-}: {
-  round: PollRound | null;
-  participantCount: number;
-  busyAction: string;
-  onCloseRound: (roundId: string) => void;
-  onCorrectRound: (roundId: string, correctOption: PollOption) => void;
-}) {
-  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
-  const isTimerActive = Boolean(round?.timerSeconds);
-  const isTimerUrgent = isTimerActive && countdownSeconds !== null && countdownSeconds > 0 && countdownSeconds <= 10;
+function useJoinHost() {
+  const [joinHost, setJoinHost] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!round || round.status !== "open" || !round.timerSeconds) {
-      setCountdownSeconds(null);
-      return;
-    }
+    setJoinHost(`${window.location.host}/poll`);
+  }, []);
 
-    const openedAt = new Date(round.openedAt).getTime();
-    const timeoutMs = round.timerSeconds * 1000;
-
-    const update = () => {
-      const remaining = Math.max(
-        Math.ceil((openedAt + timeoutMs - Date.now()) / 1000),
-        0,
-      );
-      setCountdownSeconds(remaining);
-    };
-
-    update();
-    const timerId = window.setInterval(update, 1000);
-
-    return () => window.clearInterval(timerId);
-  }, [round?.id, round?.status, round?.openedAt, round?.timerSeconds]);
-
-  const timerText = countdownSeconds === null
-    ? ""
-    : countdownSeconds <= 0
-      ? "Timer habis"
-      : `Sisa waktu: ${formatPollCountdown(countdownSeconds)}`;
-
-  if (!round) {
-    return (
-      <section className="admin-panel p-8 text-center">
-        <p className="text-base font-extrabold text-stone-700">No active round.</p>
-        <p className="mt-1 text-sm font-semibold text-stone-400">Choose the correct answer and start Round 1.</p>
-      </section>
-    );
-  }
-
-  const hasTeacherContent = Boolean(round.questionText);
-
-  return (
-    <section className="admin-panel overflow-hidden">
-      <div className="admin-panel-header">
-        <div>
-          <h2 className="admin-panel-title">{round.label}</h2>
-          <p className="mt-1 text-xs font-semibold text-stone-400">
-            {round.totalAnswers}/{participantCount} answered · Correct {round.correctOption}
-          </p>
-          {isTimerActive && timerText ? (
-            <p className={`mt-2 text-[11px] font-black ${isTimerUrgent ? "text-rose-600" : "text-primary"}`}>
-              {timerText}
-            </p>
-          ) : null}
-        </div>
-        {round.status === "open" ? (
-          <button className="admin-button-primary" onClick={() => onCloseRound(round.id)} disabled={busyAction === "close-round"} type="button">
-            Reveal
-          </button>
-        ) : (
-          <StatusPill status="closed" />
-        )}
-      </div>
-
-      {hasTeacherContent && (
-        <div className="border-b border-stone-100 p-5">
-          <p className="text-base font-black leading-relaxed text-stone-800">{round.questionText}</p>
-          <div className="mt-4 grid gap-2">
-            {pollOptions.map((option) => {
-              const optionText = getPollRoundOptionText(round, option);
-              if (!optionText) return null;
-
-              return (
-                <div key={option} className="flex gap-3 rounded-[var(--radius-md)] border border-stone-100 bg-stone-50 p-3 text-sm font-semibold text-stone-600">
-                  <span className="font-black text-primary">{option}</span>
-                  <span>{optionText}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-3 p-5">
-        {pollOptions.map((option) => {
-          const count = round.counts[option] ?? 0;
-          const percent = round.totalAnswers > 0 ? Math.round((count / round.totalAnswers) * 100) : 0;
-          const isCorrect = round.status === "closed" && round.correctOption === option;
-
-          return (
-            <div key={option} className={`rounded-[var(--radius-lg)] border-2 border-b-4 p-3 ${isCorrect ? "border-green-200 border-b-green-500 bg-green-50" : "border-stone-100 border-b-stone-200 bg-white"}`}>
-              <div className="flex items-center gap-3">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-xl border-2 text-lg font-black ${isCorrect ? "border-green-200 bg-white text-success" : "border-primary-soft bg-primary-tint text-primary"}`}>
-                  {option}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between text-xs font-black uppercase tracking-wide text-stone-400">
-                    <span>{count} votes</span>
-                    <span>{percent}%</span>
-                  </div>
-                  <div className="mt-2 h-3 overflow-hidden rounded-full bg-stone-100">
-                    <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {round.status === "closed" && (
-        <div className="border-t border-stone-100 p-5">
-          <span className="admin-kicker">Correct answer correction</span>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {pollOptions.map((option) => (
-              <button
-                key={option}
-                className={`h-10 w-10 rounded-xl border-2 border-b-4 text-sm font-black ${round.correctOption === option ? "border-primary border-b-primary-dark bg-primary-tint text-primary-dark" : "border-stone-100 border-b-stone-200 bg-white text-stone-500"}`}
-                onClick={() => onCorrectRound(round.id, option)}
-                disabled={busyAction === `correct-${round.id}` || round.correctOption === option}
-                type="button"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
-  );
+  return joinHost;
 }
 
-function StudentPreview({ detail, round }: { detail: PollSessionDetail; round: PollRound | null }) {
-  const isClosedRound = round?.status === "closed";
-
-  return (
-    <section className="rounded-[var(--radius-xl)] border-2 border-b-4 border-stone-100 border-b-stone-200 bg-white p-5 shadow-sm">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">Student preview</div>
-      <h2 className="mt-1 text-xl font-black tracking-tight text-stone-800">{detail.session.title}</h2>
-      <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-primary-soft bg-primary-tint p-4">
-        <div className="text-xs font-black uppercase tracking-wide text-primary-dark">{round ? round.label : "Waiting"}</div>
-        <p className="mt-1 text-sm font-semibold text-primary-darker">
-          {round ? (round.status === "open" ? "Pilih jawabanmu." : "Round selesai.") : "Menunggu dimulai."}
-        </p>
-      </div>
-      <div className="mt-4 grid grid-cols-5 gap-2">
-        {pollOptions.map((option) => (
-          <div
-            key={option}
-            className={`flex aspect-square items-center justify-center rounded-[var(--radius-lg)] border-2 border-b-4 text-xl font-black ${isClosedRound && round.correctOption === option ? "border-green-200 border-b-green-500 bg-green-50 text-success" : "border-stone-100 border-b-stone-200 bg-white text-primary"}`}
-          >
-            {option}
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 rounded-[var(--radius-lg)] border-2 border-amber-100 bg-amber-50 p-3 text-xs font-bold text-amber-800">
-        Participants can see who answered, but not peer choices while the round is open.
-      </div>
-    </section>
-  );
-}
-
-function ParticipantPanel({ detail, round }: { detail: PollSessionDetail; round: PollRound | null }) {
-  const answeredIds = new Set(round?.answers.map((answer) => answer.participantId) ?? []);
-  const answeredCount = answeredIds.size;
-
-  return (
-    <section className="admin-panel overflow-hidden">
-      <div className="admin-panel-header flex items-center justify-between">
-        <div>
-          <h2 className="admin-panel-title">Participants</h2>
-          <p className="mt-1 text-xs font-semibold text-stone-400">{answeredCount}/{detail.participants.length} answered</p>
-        </div>
-        <div className="flex h-7 items-center rounded-full border-2 border-green-100 bg-green-50 px-2.5 text-[10px] font-black text-success">
-          {answeredCount}/{detail.participants.length}
-        </div>
-      </div>
-      <div className="max-h-[280px] overflow-y-auto p-3">
-        {detail.participants.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {detail.participants.map((participant) => {
-              const answered = answeredIds.has(participant.id);
-
-              return (
-                <div
-                  key={participant.id}
-                  className={`inline-flex max-w-[200px] items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${
-                    answered
-                      ? "border-green-200 bg-green-50 text-green-700"
-                      : "border-stone-200 bg-stone-50 text-stone-500"
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${answered ? "bg-success" : "bg-stone-300"}`} />
-                  <span className="min-w-0 flex-1 truncate">{participant.displayName}</span>
-                  <span className="shrink-0 text-[9px] font-black uppercase opacity-50">
-                    {participant.studentUserId ? "S" : "G"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="p-2 text-sm font-semibold text-stone-400">Waiting for participants to join.</p>
-        )}
-      </div>
-    </section>
-  );
-}
-function LeaderboardPanel({ scores }: { scores: PollSessionDetail["scores"] }) {
-  return (
-    <section className="admin-panel overflow-hidden">
-      <div className="admin-panel-header">
-        <h2 className="admin-panel-title">Session leaderboard</h2>
-      </div>
-      {scores.map((score) => (
-        <div key={score.participantId} className="flex items-center gap-3 border-b border-stone-100 p-4 last:border-b-0">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-amber-200 bg-amber-50 text-sm font-black text-amber-700">
-            #{score.rank}
-          </span>
-          <div className="min-w-0 flex-1">
-            <b className="block truncate text-sm font-black text-stone-800">{score.displayName}</b>
-            <span className="text-xs font-semibold text-stone-400">{score.correctAnswers} correct · {score.answeredRounds} answered</span>
-          </div>
-          <span className="text-lg font-black text-primary">{score.totalPoints}</span>
-        </div>
-      ))}
-      {scores.length === 0 && <p className="p-5 text-sm font-semibold text-stone-400">Scores appear after participants answer.</p>}
-    </section>
-  );
-}
-
-function StatusPill({ status }: { status: string }) {
-  const className = status === "open"
-    ? "border-green-100 bg-green-50 text-success"
-    : "border-stone-100 bg-stone-50 text-stone-500";
-
-  return (
-    <span className={`shrink-0 rounded-full border-2 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${className}`}>
-      {status}
-    </span>
-  );
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 function UploadIcon({ className }: { className?: string }) {

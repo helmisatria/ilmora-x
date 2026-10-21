@@ -3,14 +3,14 @@ import { z } from "zod";
 import {
   PollPresentationPage,
   type PollSessionDetail,
-} from "../../features/poll-session/poll-presentation-page";
-import { getPollSessionAdmin } from "../../features/poll-session/poll-admin-functions";
+} from "../features/poll-session/poll-presentation-page";
+import { getPollSessionAdmin } from "../features/poll-session/poll-admin-functions";
 
 const searchSchema = z.object({
   sessionId: z.string().min(1),
 });
 
-export const Route = createFileRoute("/admin/polls_/presentation")({
+export const Route = createFileRoute("/admin_/polls_/presentation")({
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => ({ sessionId: search.sessionId }),
   loader: async ({ deps }) => {
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/admin/polls_/presentation")({
   },
   head: () => ({
     meta: [
-      { title: "Poll Presentation — IlmoraX Admin" },
+      { title: "Poll Presentation — IlmoraX" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
