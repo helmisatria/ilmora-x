@@ -1,6 +1,9 @@
 import { useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import { FileUpload } from "../../components/admin/TryoutWorkbookImport";
 import {
   Dialog,
@@ -390,13 +393,10 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
-        <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <h1 className="admin-title">Categories</h1>
-          <p className="admin-description">
-            Manage the three-level taxonomy used by Questions, Student Evaluation, and Materi links.
-          </p>
-        </header>
+        <AdminPageHeader
+          title="Categories"
+          description="Manage the three-level taxonomy used by Questions, Student Evaluation, and Materi links."
+        />
 
         {errorMessage && (
           <p className="admin-alert">
@@ -414,16 +414,13 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
         )}
 
         <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <div>
-              <h2 className="admin-panel-title">Excel Import / Export</h2>
-              <p className="mt-1 text-xs font-semibold text-stone-500">
-                Download the current taxonomy, edit it in Excel, then preview and confirm the upsert.
-              </p>
-            </div>
-          </div>
+          <AdminPanelHeader
+            title="Excel Import / Export"
+            badge={<span className="admin-count">{countTaxonomyNodes(categories)}</span>}
+            description="Download the current taxonomy, edit it in Excel, then preview and confirm the upsert."
+          />
 
-          <div className="flex flex-wrap gap-3 p-5 sm:p-6">
+          <div className="flex flex-wrap gap-3 p-4">
             <button
               type="button"
               onClick={downloadTaxonomyWorkbook}
@@ -444,18 +441,20 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
         </section>
 
         <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Create Category</h2>
-          </div>
+          <AdminPanelHeader
+            title="Create Category"
+            badge={<span className="admin-count">{categories.length}</span>}
+            description="Add a category to the taxonomy. Name and sort order are required."
+          />
 
-          <div className="grid gap-4 p-5 md:grid-cols-[1fr_120px_130px_auto]">
+          <div className="grid gap-4 p-4 md:grid-cols-[1fr_120px_130px_auto]">
             <TextInput label="Name" value={newCategory.name} onChange={(name) => setNewCategory({ ...newCategory, name })} />
             <Field label="Color">
               <input
                 type="color"
                 value={newCategory.color}
                 onChange={(event) => setNewCategory({ ...newCategory, color: event.target.value })}
-                className="admin-control h-11 p-1"
+                className="admin-control h-9 p-1"
               />
             </Field>
             <TextInput label="Sort" value={newCategory.sortOrder} onChange={(sortOrder) => setNewCategory({ ...newCategory, sortOrder })} />
@@ -473,14 +472,11 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
         </section>
 
         <section className="admin-panel mt-6 overflow-hidden">
-          <div className="admin-panel-header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="admin-panel-title">Category Tree</h2>
-              <p className="mt-1 text-xs font-semibold text-stone-500">
-                {categories.length} categories, {countSubCategories(categories)} sub-categories, {countTopics(categories)} topics
-              </p>
-            </div>
-          </div>
+          <AdminPanelHeader
+            title="Category Tree"
+            badge={<span className="admin-count">{categories.length}</span>}
+            description={`${categories.length} categories, ${countSubCategories(categories)} sub-categories, ${countTopics(categories)} topics`}
+          />
 
           <div className="divide-y divide-stone-100">
           {categories.map((category) => {
@@ -509,11 +505,11 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
                   />
 
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold tracking-tight text-stone-800">{category.name}</p>
+                    <h3 className="truncate text-[13.5px] font-bold text-stone-800">{category.name}</h3>
                     <MetaLine slug={category.slug} />
                   </div>
 
-                  <span className="category-tree-count">
+                  <span className="admin-status-pill border-stone-200 bg-stone-50 text-stone-500">
                     {category.subCategories.length} sub · {countCategoryTopics(category)} topics
                   </span>
 
@@ -521,7 +517,7 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
                     <button
                       type="button"
                       onClick={() => setEditingCategory(toCategoryForm(category))}
-                      className="admin-button-secondary category-tree-row-action"
+                      className="admin-button-ghost category-tree-row-action"
                     >
                       Edit
                     </button>
@@ -679,9 +675,7 @@ export function AdminCategoriesPage({ categories }: { categories: CategoryRow[] 
                     })}
 
                     {category.subCategories.length === 0 && (
-                      <p className="category-tree-empty">
-                        No sub-categories yet.
-                      </p>
+                      <AdminEmptyState title="No sub-categories yet." />
                     )}
 
                     <div className="category-tree-child category-tree-child-subcategory category-tree-new-child">
@@ -750,7 +744,7 @@ function CategoryActions({
   if (!isEditing) {
     return (
       <div className="category-tree-action-cell gap-2">
-        <button type="button" onClick={onEdit} className="admin-button-secondary category-tree-action-button w-full">
+        <button type="button" onClick={onEdit} className="admin-button-ghost category-tree-action-button w-full">
           Edit
         </button>
         {onDelete && (
@@ -758,7 +752,7 @@ function CategoryActions({
             type="button"
             onClick={onDelete}
             disabled={isDeleteBusy}
-            className="admin-button-danger category-tree-action-button w-full"
+            className="admin-button-ghost category-tree-action-button w-full text-red-600 hover:bg-red-50 hover:text-red-700"
           >
             {isDeleteBusy ? "Checking..." : "Remove"}
           </button>
@@ -769,7 +763,7 @@ function CategoryActions({
 
   return (
     <div className="category-tree-action-cell gap-2">
-      <button type="button" onClick={onCancel} className="admin-button-secondary category-tree-action-button">
+      <button type="button" onClick={onCancel} className="admin-button-ghost category-tree-action-button">
         Cancel
       </button>
       <button type="button" onClick={onSave} disabled={isBusy} className="admin-button-primary category-tree-action-button">
@@ -797,12 +791,10 @@ function TaxonomyWorkbookPreviewPanel({
 
   return (
     <section className="admin-panel mt-6">
-      <div className="admin-panel-header">
-        <div>
-          <h2 className="admin-panel-title">Workbook preview</h2>
-          <p className="mt-1 text-xs font-semibold text-stone-400">{preview.fileName}</p>
-        </div>
-      </div>
+      <AdminPanelHeader
+        title="Workbook preview"
+        description={preview.fileName}
+      />
 
       <div className="grid gap-5 p-5 sm:p-6">
         {preview.issues.length > 0 && (
@@ -867,12 +859,17 @@ function WorkbookMetric({
   tone: "create" | "update" | "unchanged";
 }) {
   const className = {
-    create: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    update: "border-amber-200 bg-amber-50 text-amber-800",
-    unchanged: "border-stone-200 bg-stone-50 text-stone-500",
+    create: "border-emerald-200 bg-emerald-50",
+    update: "border-amber-200 bg-amber-50",
+    unchanged: "border-stone-200 bg-stone-50",
+  }[tone];
+  const valueClassName = {
+    create: "text-emerald-700",
+    update: "text-amber-800",
+    unchanged: "text-stone-500",
   }[tone];
 
-  return <MetricCard label={label} value={value} className={className} />;
+  return <MetricCard label={label} value={value} className={className} valueClassName={valueClassName} />;
 }
 
 function WorkbookChangeGroup({
@@ -1027,17 +1024,18 @@ function TaxonomyDeletionDialog({
 
 function UsageMetric({ label, value, active }: { label: string; value: number; active: boolean }) {
   const className = active
-    ? "border-red-200 bg-red-50 text-red-700"
-    : "border-stone-200 bg-stone-50 text-stone-500";
+    ? "border-red-200 bg-red-50"
+    : "border-stone-200 bg-stone-50";
+  const valueClassName = active ? "text-red-700" : "text-stone-500";
 
-  return <MetricCard label={label} value={value} className={className} />;
+  return <MetricCard label={label} value={value} className={className} valueClassName={valueClassName} />;
 }
 
-function MetricCard({ label, value, className }: { label: string; value: number; className: string }) {
+function MetricCard({ label, value, className, valueClassName }: { label: string; value: number; className: string; valueClassName: string }) {
   return (
-    <div className={`rounded-xl border px-4 py-3 ${className}`}>
-      <p className="text-[11px] font-black uppercase tracking-wide">{label}</p>
-      <p className="mt-1 text-2xl font-black">{value}</p>
+    <div className={`admin-stat ${className}`}>
+      <p className="admin-stat-label">{label}</p>
+      <p className={`admin-stat-value ${valueClassName}`}>{value}</p>
     </div>
   );
 }
@@ -1131,9 +1129,18 @@ function TextInput({
 }
 
 function Field({ label, compact, children }: { label: string; compact?: boolean; children: ReactNode }) {
+  if (compact) {
+    return (
+      <label className="grid gap-1">
+        <span className="text-[11px] font-black uppercase tracking-wide text-stone-500">{label}</span>
+        {children}
+      </label>
+    );
+  }
+
   return (
-    <label className={`grid ${compact ? "gap-1" : "gap-2"}`}>
-      <span className="text-[11px] font-black uppercase tracking-wide text-stone-500">{label}</span>
+    <label className="block min-w-0">
+      <span className="mb-1.5 block text-xs font-bold text-stone-600">{label}</span>
       {children}
     </label>
   );
@@ -1141,8 +1148,10 @@ function Field({ label, compact, children }: { label: string; compact?: boolean;
 
 function MetaLine({ slug }: { slug: string }) {
   return (
-    <div className="mt-1 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-      <span>Slug: <code className="normal-case text-stone-500">{slug}</code></span>
+    <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+      <span className="admin-meta-tag">
+        Slug: <code className="normal-case text-stone-500">{slug}</code>
+      </span>
     </div>
   );
 }
@@ -1307,6 +1316,11 @@ function getNextSortOrder(items: Array<{ sortOrder: number }>) {
 
 function countSubCategories(categories: CategoryRow[]) {
   return categories.reduce((total, category) => total + category.subCategories.length, 0);
+}
+
+// Every row a taxonomy workbook holds: categories, sub-categories, and topics.
+function countTaxonomyNodes(categories: CategoryRow[]) {
+  return categories.length + countSubCategories(categories) + countTopics(categories);
 }
 
 function countTopics(categories: CategoryRow[]) {

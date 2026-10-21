@@ -1,7 +1,10 @@
 import { Link, Outlet, useLocation, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TryoutIcon } from "../../components/TryoutIcon";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
+import { AdminSearchField } from "../../components/admin/AdminSearchField";
 import { useUnsavedChangesGuard } from "../../components/admin/useUnsavedChangesGuard";
 import { FileUpload, WorkbookPreviewPanel, type WorkbookPreview } from "../../components/admin/TryoutWorkbookImport";
 import { getSafeErrorMessage } from "../../lib/user-errors";
@@ -216,16 +219,15 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
   return (
     <main className="admin-shell page-enter">
       <fieldset className="admin-lane min-w-0" disabled={!isHydrated || Boolean(busyAction)} data-admin-ready={isHydrated}>
-        <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <h1 className="admin-title">Try-out</h1>
-          <p className="admin-description">
-            Buat try-out, tambahkan soal dan pembahasan, lalu tayangkan saat siap.
-          </p>
-          {tryouts.some((tryout) => tryout.status === "published") && (
-            <a href="#catalog-order" className="insights-link mt-3">Atur urutan di katalog peserta ↓</a>
-          )}
-        </header>
+        <AdminPageHeader
+          title="Try-out"
+          description="Buat try-out, tambahkan soal dan pembahasan, lalu tayangkan saat siap."
+          actions={
+            tryouts.some((tryout) => tryout.status === "published") && (
+              <a href="#catalog-order" className="insights-link">Atur urutan di katalog peserta ↓</a>
+            )
+          }
+        />
 
         {successMessage && <p role="status" className="mt-4 text-sm text-emerald-700">{successMessage}</p>}
         {errorMessage && !workbookPreview && (
@@ -327,17 +329,12 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
             badge={<span className="admin-count">{tryouts.length}</span>}
             description="Semua try-out, termasuk draf dan yang disembunyikan."
             actions={
-              <label className="relative block w-full sm:w-64">
-                <span className="sr-only">Cari try-out</span>
-                <SearchIcon />
-                <input
-                  type="search"
-                  className="admin-control pl-9"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari judul atau kategori"
-                />
-              </label>
+              <AdminSearchField
+                label="Cari try-out"
+                value={search}
+                onChange={setSearch}
+                placeholder="Cari judul atau kategori"
+              />
             }
           />
 
@@ -392,9 +389,14 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
             ))}
 
             {filteredTryouts.length === 0 && (
-              <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-stone-400">{tryouts.length === 0 ? "Belum ada try-out. Buat lewat formulir atau unggah Excel." : "Tidak ada try-out yang cocok. Coba kata lain."}</p>
-              </div>
+              <AdminEmptyState
+                title={tryouts.length === 0 ? "Belum ada try-out. Buat lewat formulir atau unggah Excel." : "Tidak ada try-out yang cocok. Coba kata lain."}
+                action={search.trim() && (
+                  <button type="button" onClick={() => setSearch("")} className="admin-button-ghost">
+                    Hapus pencarian
+                  </button>
+                )}
+              />
             )}
           </div>
         </section>
@@ -433,14 +435,6 @@ function DownloadIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <path d="M12 3v12m0 0-5-5m5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" fill="none" aria-hidden="true">
-      <path d="m20 20-4.2-4.2M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

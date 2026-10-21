@@ -1,5 +1,6 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import { getSafeErrorMessage } from "../../lib/user-errors";
 import { getLevelForXp } from "../engagement-surface/level-catalog";
@@ -163,7 +164,7 @@ export function AdminStudentDetailPage({
               ))}
 
               {categories.length === 0 && (
-                <EmptyState message="No submitted Attempts yet." />
+                <AdminEmptyState title="No submitted Attempts yet." />
               )}
             </div>
           </div>
@@ -195,7 +196,7 @@ export function AdminStudentDetailPage({
               )}
 
               {attempts.length === 0 && (
-                <EmptyState message="No submitted Attempts yet." />
+                <AdminEmptyState title="No submitted Attempts yet." />
               )}
             </div>
           </div>
@@ -336,14 +337,6 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
         className="h-full rounded-full transition-all duration-500"
         style={{ width: `${value}%`, background: color }}
       />
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="p-8 text-center">
-      <p className="text-sm font-semibold text-stone-400">{message}</p>
     </div>
   );
 }

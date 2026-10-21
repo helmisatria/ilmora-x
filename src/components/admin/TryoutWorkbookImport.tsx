@@ -7,6 +7,7 @@ import type {
   WorkbookTaxonomyAction,
   WorkbookValidationIssue,
 } from "../../features/tryout-content/tryout-workbook";
+import { AdminPanelHeader } from "./AdminPanelHeader";
 
 export type WorkbookPreview = {
   fileName: string;
@@ -35,12 +36,10 @@ export function WorkbookPreviewPanel({
 
   return (
     <section className="admin-panel mt-6">
-      <div className="admin-panel-header">
-        <div>
-          <h2 className="admin-panel-title">Periksa isi Excel</h2>
-          <p className="mt-1 text-xs font-semibold text-stone-400">{preview.fileName}</p>
-        </div>
-      </div>
+      <AdminPanelHeader
+        title="Periksa isi Excel"
+        description={preview.fileName}
+      />
 
       <div className="grid gap-5 p-5 sm:p-6">
         {preview.issues.length > 0 && (

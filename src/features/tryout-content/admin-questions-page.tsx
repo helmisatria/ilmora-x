@@ -1,7 +1,10 @@
 import { getSafeErrorMessage } from "../../lib/user-errors";
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
+import { AdminSearchField } from "../../components/admin/AdminSearchField";
 import { useUnsavedChangesGuard } from "../../components/admin/useUnsavedChangesGuard";
 import {
   createQuestionAdmin,
@@ -213,7 +216,10 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
   return (
     <main className="admin-shell page-enter">
       <fieldset className="admin-lane min-w-0" disabled={!isHydrated || Boolean(busyAction)} data-admin-ready={isHydrated}>
-        <Header />
+        <AdminPageHeader
+          title="Bank soal"
+          description="Kelola soal yang dapat dipakai di beberapa try-out. Perubahan di bank soal berlaku untuk semua try-out yang memakai soal tersebut."
+        />
 
         <section ref={bankRef} id="question-bank" tabIndex={-1} className="admin-panel mt-6 scroll-mt-20 sm:scroll-mt-6" aria-labelledby="question-bank-title">
           <AdminPanelHeader
@@ -223,11 +229,13 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
             description="Cari teks soal, kategori, subkategori, atau topik."
             actions={
               <>
-                <label className="relative block w-full sm:w-48 lg:w-64">
-                  <span className="sr-only">Cari soal</span>
-                  <SearchIcon />
-                  <input type="search" className="admin-control pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Teks soal, kategori, atau topik" />
-                </label>
+                <AdminSearchField
+                  label="Cari soal"
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Teks soal, kategori, atau topik"
+                  className="w-full sm:w-48 lg:w-64"
+                />
                 <button type="button" onClick={(event) => startNewQuestion(event.detail === 0)} className="admin-button-primary">Tambah soal</button>
               </>
             }
@@ -269,10 +277,14 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
               </div>
             ))}
             {filteredQuestions.length === 0 && (
-              <div className="rounded-b-xl p-8 text-center">
-                <p className="text-sm font-semibold text-stone-500">{questions.length === 0 ? "Belum ada soal. Tambahkan soal pertama lewat formulir." : "Tidak ada soal yang cocok. Coba kata lain."}</p>
-                {search.trim() && <button type="button" onClick={() => setSearch("")} className="admin-button-ghost mt-3">Hapus pencarian</button>}
-              </div>
+              <AdminEmptyState
+                title={questions.length === 0 ? "Belum ada soal. Tambahkan soal pertama lewat formulir." : "Tidak ada soal yang cocok. Coba kata lain."}
+                action={search.trim() && (
+                  <button type="button" onClick={() => setSearch("")} className="admin-button-ghost">
+                    Hapus pencarian
+                  </button>
+                )}
+              />
             )}
           </div>
         </section>
@@ -311,18 +323,6 @@ export function AdminQuestionsPage({ categories, questions }: AdminQuestionsPage
         </div>
       </fieldset>
     </main>
-  );
-}
-
-function Header() {
-  return (
-    <header className="admin-header">
-      <a href="/admin" className="admin-back-link">Admin</a>
-      <h1 className="admin-title">Bank soal</h1>
-      <p className="admin-description">
-        Kelola soal yang dapat dipakai di beberapa try-out. Perubahan di bank soal berlaku untuk semua try-out yang memakai soal tersebut.
-      </p>
-    </header>
   );
 }
 
@@ -384,14 +384,6 @@ function StatusPill({ status }: { status: QuestionRow["status"] }) {
     <span className={`admin-status-pill ${className}`}>
       {label}
     </span>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" fill="none" aria-hidden="true">
-      <path d="m20 20-4.2-4.2M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
   );
 }
 

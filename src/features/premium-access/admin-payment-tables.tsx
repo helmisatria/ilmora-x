@@ -120,8 +120,8 @@ export const ProductTable = memo(function ProductTable({
         header: ({ column }) => <SortableHeader column={column}>Product</SortableHeader>,
         cell: ({ row }) => (
           <div>
-            <div className="font-bold text-stone-800">{row.original.name}</div>
-            <div className="mt-1 max-w-xl text-sm font-medium text-stone-500">{row.original.description || "No description"}</div>
+            <div className="admin-table-title">{row.original.name}</div>
+            <div className="admin-table-meta max-w-xl">{row.original.description || "No description"}</div>
           </div>
         ),
       },
@@ -194,7 +194,7 @@ export const CouponTable = memo(function CouponTable({
       {
         accessorKey: "code",
         header: ({ column }) => <SortableHeader column={column}>Coupon</SortableHeader>,
-        cell: ({ row }) => <span className="font-bold text-stone-800">{row.original.code}</span>,
+        cell: ({ row }) => <span className="admin-table-title">{row.original.code}</span>,
         filterFn: "includesString",
       },
       {
@@ -485,30 +485,30 @@ function AdminTable<TData>({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-        <thead className="border-b-2 border-stone-100 bg-stone-50/80 text-[11px] font-bold uppercase tracking-wide text-stone-400">
+      <table className="admin-table min-w-[860px]">
+        <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <th key={header.id} className="px-4 py-3 align-middle last:text-right sm:px-5">
+                <th key={header.id} className="last:text-right">
                   {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
             </tr>
           ))}
         </thead>
-        <tbody className="divide-y-2 divide-stone-100">
+        <tbody>
           {table.getRowModel().rows.length === 0 ? (
             <tr>
-              <td className="px-5 py-8 text-center text-sm font-semibold text-stone-400" colSpan={table.getAllColumns().length}>
+              <td className="p-8 text-center text-sm font-semibold text-stone-400" colSpan={table.getAllColumns().length}>
                 {emptyMessage}
               </td>
             </tr>
           ) : (
             table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="bg-white align-top">
+              <tr key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-4 py-4 align-middle text-stone-600 last:text-right sm:px-5">
+                  <td key={cell.id} className="last:text-right">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

@@ -1,5 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import { useUnsavedChangesGuard } from "../../components/admin/useUnsavedChangesGuard";
 import { TryoutIcon } from "../../components/TryoutIcon";
@@ -579,12 +580,14 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
             )}
 
             {workbook.questions.length > 0 && visibleQuestions.length === 0 && (
-              <div className="px-4 py-8 text-center">
-                <p className="text-sm font-semibold text-stone-500">Tidak ada soal yang cocok dengan "{questionSearch.trim()}".</p>
-                <button type="button" className="admin-button-ghost mt-2" onClick={() => setQuestionSearch("")}>
-                  Hapus pencarian
-                </button>
-              </div>
+              <AdminEmptyState
+                title={`Tidak ada soal yang cocok dengan "${questionSearch.trim()}".`}
+                action={
+                  <button type="button" className="admin-button-ghost" onClick={() => setQuestionSearch("")}>
+                    Hapus pencarian
+                  </button>
+                }
+              />
             )}
 
             {visibleQuestions.map((question, index) => {
@@ -676,7 +679,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
                 onFileSelect={(file) => importWorkbook(file)}
               />
             </div>
-            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+            <p className="admin-note-warning">
               Excel mengganti seluruh daftar soal try-out ini. Soal yang tidak ada di Excel keluar dari try-out. Riwayat peserta tetap tersimpan.
             </p>
           </div>
