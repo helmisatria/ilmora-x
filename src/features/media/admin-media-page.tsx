@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import type { ChangeEvent, DragEvent, KeyboardEvent } from "react";
 import { useRef, useState } from "react";
 import { z } from "zod";
@@ -8,6 +8,9 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import type { listMediaAdmin } from "./admin-media-functions";
 
 export const adminMediaSearchSchema = z.object({
@@ -96,13 +99,12 @@ export function AdminMediaPage({
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
-        <header className="admin-header">
-          <Link to="/admin" className="admin-back-link">Admin</Link>
-          <h1 className="admin-title">Media</h1>
-          <p className="admin-description">
-            Upload, copy, and reuse image or video URLs for Question review media.
-          </p>
-        </header>
+        <AdminPageHeader
+          title="Media"
+          description="Upload, copy, and reuse image or video URLs for Question review media."
+          backHref="/admin"
+          backLabel="Admin"
+        />
 
         {errorMessage && (
           <p className="admin-alert">
@@ -110,34 +112,39 @@ export function AdminMediaPage({
           </p>
         )}
 
-        <section className="admin-panel mt-6 p-5 sm:p-6">
-          <MediaDropzone busy={busyUpload} onFileSelect={uploadMedia} />
+        <section className="admin-panel mt-6">
+          <AdminPanelHeader
+            title="Upload media"
+            description="Upload an image or video, then copy its URL into questions and explanations."
+          />
+          <div className="p-4">
+            <MediaDropzone busy={busyUpload} onFileSelect={uploadMedia} />
+          </div>
         </section>
 
         <section className="admin-panel mt-6 overflow-hidden">
-          <div className="admin-panel-header flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="admin-panel-title">Media Library</h2>
-              <p className="mt-1 text-xs font-semibold text-stone-400">
-                {mediaList.pagination.total} files · page {mediaList.pagination.page} of {mediaList.pagination.pageCount}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(["all", "image", "video"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => changeFilter(type)}
-                  className={search.type === type ? "admin-button-primary" : "admin-button-ghost"}
-                >
-                  {getFilterLabel(type)}
-                </button>
-              ))}
-            </div>
-          </div>
+          <AdminPanelHeader
+            title="Media Library"
+            badge={<span className="admin-count">{mediaList.pagination.total}</span>}
+            description={`Page ${mediaList.pagination.page} of ${mediaList.pagination.pageCount}`}
+            actions={
+              <>
+                {(["all", "image", "video"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => changeFilter(type)}
+                    className={search.type === type ? "admin-button-primary" : "admin-button-ghost"}
+                  >
+                    {getFilterLabel(type)}
+                  </button>
+                ))}
+              </>
+            }
+          />
 
           {mediaList.media.length > 0 ? (
-            <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {mediaList.media.map((media) => (
                 <MediaCard
                   key={media.id}
@@ -149,9 +156,10 @@ export function AdminMediaPage({
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center">
-              <p className="text-sm font-semibold text-stone-400">No media uploaded yet.</p>
-            </div>
+            <AdminEmptyState
+              title="No media uploaded yet."
+              description="Unggah gambar atau video untuk dipakai di soal dan pembahasan."
+            />
           )}
 
           <Pagination
@@ -264,7 +272,7 @@ function MediaCard({
   onPreview: () => void;
 }) {
   return (
-    <article className="overflow-hidden rounded-[var(--radius-md)] border-2 border-stone-100 bg-white">
+    <article className="flex flex-col overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.035)]">
       <button
         type="button"
         onClick={onPreview}
@@ -273,26 +281,28 @@ function MediaCard({
         <MediaThumbnail media={media} />
       </button>
 
-      <div className="grid gap-3 p-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className={`admin-status-pill ${getMediaTypeClassName(media.mediaType)}`}>
-              {media.mediaType}
-            </span>
-            <span className="text-xs font-semibold text-stone-400">{formatBytes(media.sizeBytes)}</span>
-          </div>
-          <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-stone-800">{media.fileName}</h3>
-          <p className="mt-1 text-xs font-semibold text-stone-400">{formatDate(media.createdAt)}</p>
+      <div className="flex flex-1 flex-col gap-2 p-3">
+        <div className="flex items-center gap-2">
+          <span className={`admin-status-pill ${getMediaTypeClassName(media.mediaType)}`}>
+            {media.mediaType}
+          </span>
+        </div>
+        <h3 className="line-clamp-2 break-words text-[13.5px] font-bold leading-5 text-stone-800">{media.fileName}</h3>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          <span className="admin-meta-tag">{formatBytes(media.sizeBytes)}</span>
+          <span className="admin-meta-tag">{formatDate(media.createdAt)}</span>
         </div>
 
-        <button
-          type="button"
-          onClick={onCopy}
-          className="admin-button-secondary w-full justify-center"
-        >
-          <CopyIcon className="h-3.5 w-3.5" />
-          {copied ? "Copied" : "Copy link"}
-        </button>
+        <div className="mt-auto border-t border-stone-100 pt-2">
+          <button
+            type="button"
+            onClick={onCopy}
+            className="admin-button-ghost w-full justify-center"
+          >
+            <CopyIcon className="h-3.5 w-3.5" />
+            {copied ? "Copied" : "Copy link"}
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -387,7 +397,7 @@ function Pagination({
   if (pageCount <= 1) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-stone-100 p-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 p-4">
       <button
         type="button"
         onClick={() => onChange(page - 1)}

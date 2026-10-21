@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LockClosedIcon } from "@radix-ui/react-icons";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 import {
   AdminMonitoringPage,
   type QueueMonitoring,
@@ -34,12 +35,11 @@ function AdminMonitoringRoute() {
 function MonitoringAccessDenied() {
   return (
     <main className="admin-shell page-enter">
-      <div className="admin-lane-narrow">
-        <header className="admin-header">
-          <Link to="/admin" className="admin-back-link">Admin</Link>
-          <h1 className="admin-title">Monitoring</h1>
-          <p className="admin-description">Weekly Leaderboard finalization and queue status.</p>
-        </header>
+      <div className="admin-lane">
+        <AdminPageHeader
+          title="Monitoring"
+          description="Weekly Leaderboard finalization and queue status."
+        />
         <section className="admin-panel mt-6 max-w-xl p-6 sm:p-8">
           <span className="inline-flex size-12 items-center justify-center rounded-xl bg-primary-tint text-primary">
             <LockClosedIcon width="24" height="24" className="size-6" aria-hidden="true" />

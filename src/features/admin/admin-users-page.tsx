@@ -1,6 +1,9 @@
 import { Link, Outlet, useLocation, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
+import { AdminSearchField } from "../../components/admin/AdminSearchField";
 import { getSafeErrorMessage } from "../../lib/user-errors";
 import {
   addAdminAdmin,
@@ -145,7 +148,10 @@ export function AdminUsersPage({
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
-        <Header title="Users" description="Manage Student access and Admin whitelist membership." />
+        <AdminPageHeader
+          title="Users"
+          description="Manage Student access and Admin whitelist membership."
+        />
 
         {successMessage && <p role="status" className="mt-4 text-sm text-emerald-700">{successMessage}</p>}
         {errorMessage && (
@@ -161,22 +167,16 @@ export function AdminUsersPage({
             badge={<span className="admin-count">{hasFilters ? `${matchingStudents.length}/${students.length}` : students.length}</span>}
             description="Open an Evaluation, suspend an account, or sign in as a Student to see what they see."
             actions={
-              <label className="relative block w-full sm:w-64">
-                <span className="sr-only">Search Students by name or email</span>
-                <SearchIcon />
-                <input
-                  id="student-search"
-                  type="search"
-                  className="admin-control pl-9"
-                  value={studentQuery}
-                  onChange={(event) => changeFilter(setStudentQuery)(event.target.value)}
-                  placeholder="Search name or email"
-                />
-              </label>
+              <AdminSearchField
+                label="Search Students by name or email"
+                value={studentQuery}
+                onChange={(value) => changeFilter(setStudentQuery)(value)}
+                placeholder="Search name or email"
+              />
             }
           />
 
-          <div className="flex flex-wrap items-center gap-2 border-b border-stone-100 px-4 py-2.5">
+          <div className="admin-filter-bar">
             <label className="sr-only" htmlFor="student-status">Account status</label>
             <select
               id="student-status"
@@ -293,14 +293,14 @@ export function AdminUsersPage({
             )}
 
             {matchingStudents.length === 0 && (
-              <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-stone-400">{students.length === 0 ? "No Students found yet." : "No Students match these filters."}</p>
-                {hasFilters && (
-                  <button type="button" onClick={resetFilters} className="admin-button-secondary mt-3">
+              <AdminEmptyState
+                title={students.length === 0 ? "No Students found yet." : "No Students match these filters."}
+                action={hasFilters && (
+                  <button type="button" onClick={resetFilters} className="admin-button-secondary">
                     Reset filters
                   </button>
                 )}
-              </div>
+              />
             )}
           </div>
         </section>
@@ -395,9 +395,7 @@ export function AdminUsersPage({
             ))}
 
             {admins.length === 0 && (
-              <div className="p-8 text-center">
-                <p className="text-sm font-semibold text-stone-400">No admins found yet.</p>
-              </div>
+              <AdminEmptyState title="No admins found yet." />
             )}
           </div>
         </section>
@@ -419,16 +417,6 @@ function getImpersonateBlockedReason({
   if (isAdminAccount) return "Admin accounts cannot be impersonated.";
   if (isSuspended) return "Suspended Students cannot be impersonated.";
   return undefined;
-}
-
-function Header({ title, description }: { title: string; description: string }) {
-  return (
-    <header className="admin-header">
-      <a href="/admin" className="admin-back-link">Admin</a>
-      <h1 className="admin-title">{title}</h1>
-      <p className="admin-description">{description}</p>
-    </header>
-  );
 }
 
 function StudentAvatar({ name, image }: { name: string; image: string | null }) {
@@ -489,14 +477,6 @@ function RoleBadge({ role }: { role: "admin" | "super_admin" }) {
     <span className={`admin-status-pill ${isSuper ? "border-primary-soft bg-primary-tint text-primary" : "border-stone-200 bg-stone-100 text-stone-600"}`}>
       {isSuper ? "Super-admin" : "Admin"}
     </span>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" fill="none" aria-hidden="true">
-      <path d="m20 20-4.2-4.2M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
   );
 }
 

@@ -1,5 +1,7 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { BrandMark } from "../../components/brand-mark";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import {
   Sidebar,
   SidebarContent,
@@ -118,38 +120,42 @@ export function AdminShell() {
 function AdminOverview() {
   return (
     <main className="admin-shell page-enter">
-      <div className="admin-lane-narrow">
-        <header className="admin-header">
-          <p className="admin-kicker">IlmoraX CMS</p>
-          <h1 className="admin-title">Admin</h1>
-          <p className="admin-description">
-            Operate content, users, payments, and platform signals from one focused workspace.
-          </p>
-        </header>
+      <div className="admin-lane">
+        <AdminPageHeader
+          backHref={null}
+          title="Admin"
+          description="Operate content, users, payments, and platform signals from one focused workspace."
+        />
 
-        <section className="mt-8 grid gap-4 md:grid-cols-2">
-          {adminSections.map((section) => {
-            const Icon = section.icon;
+        <section className="admin-panel mt-6">
+          <AdminPanelHeader
+            title="Workspace"
+            badge={<span className="admin-count">{adminSections.length}</span>}
+            description="Every admin area. Each one keeps the same layout: a header, a panel per topic, and a list of rows."
+          />
 
-            return (
-              <Link
-                preload="intent"
-                key={section.to}
-                to={section.to}
-                className="admin-panel group p-5 no-underline transition-all duration-200 hover:-translate-y-[2px] hover:shadow-md"
-              >
-                <div className="flex items-start gap-4">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] border-2 border-stone-100 bg-stone-50 text-stone-500 transition-colors group-hover:border-primary-soft group-hover:bg-primary-soft/30 group-hover:text-primary">
-                    <Icon className="size-5" />
+          <div className="grid gap-px bg-stone-100 sm:grid-cols-2 xl:grid-cols-3">
+            {adminSections.map((section) => {
+              const Icon = section.icon;
+
+              return (
+                <Link
+                  preload="intent"
+                  key={section.to}
+                  to={section.to}
+                  className="group flex min-w-0 items-start gap-3 bg-white p-4 no-underline transition-colors duration-150 hover:bg-stone-50/70"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-100 bg-stone-50 text-stone-500 transition-colors group-hover:border-primary-soft group-hover:bg-primary-tint group-hover:text-primary">
+                    <Icon className="h-4 w-4" />
                   </span>
-                  <div>
-                    <h2 className="text-[15px] font-bold tracking-tight text-stone-800 transition-colors group-hover:text-primary">{section.label}</h2>
-                    <p className="mt-1 text-sm font-semibold leading-relaxed text-stone-500">{section.description}</p>
+                  <div className="min-w-0">
+                    <h2 className="text-[13.5px] font-bold text-stone-800 transition-colors group-hover:text-primary">{section.label}</h2>
+                    <p className="mt-0.5 text-xs font-medium leading-5 text-stone-500">{section.description}</p>
                   </div>
-                </div>
-              </Link>
-            );
-          })}
+                </Link>
+              );
+            })}
+          </div>
         </section>
       </div>
     </main>

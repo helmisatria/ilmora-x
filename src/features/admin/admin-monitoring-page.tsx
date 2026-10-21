@@ -1,6 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import { finaliseWeeklyLeaderboardAdmin, getQueueMonitoringAdmin } from "./admin-monitoring-functions";
 
 export type QueueMonitoring = Awaited<ReturnType<typeof getQueueMonitoringAdmin>>;
@@ -15,55 +17,57 @@ export function AdminMonitoringPage({ monitoring }: { monitoring: QueueMonitorin
 
   return (
     <main className="admin-shell page-enter">
-      <div className="admin-lane-narrow">
-        <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="admin-title">Monitoring</h1>
-              <p className="admin-description">Weekly Leaderboard finalization and optional pg-boss queues.</p>
-            </div>
-            <StatusPill active={!monitoring.finalization.needsFinalization} />
-          </div>
-        </header>
+      <div className="admin-lane">
+        <AdminPageHeader
+          title="Monitoring"
+          description="Weekly Leaderboard finalization and optional pg-boss queues."
+          actions={<StatusPill active={!monitoring.finalization.needsFinalization} />}
+        />
 
-        <section className="admin-panel mt-6 p-6">
-          <p className="admin-kicker">Weekly Leaderboard</p>
-          <h2 className="mt-2 text-xl font-black tracking-tight text-stone-800">
-            {monitoring.finalization.needsFinalization ? "Previous week has no snapshot" : "Previous week finalized"}
-          </h2>
-          <p className="mt-2 text-sm font-semibold text-stone-500">
-            Expected week: {monitoring.finalization.expectedWeek}. Latest snapshot: {monitoring.finalization.latestWeek ?? "none"}.
-          </p>
-          {monitoring.finalization.finalizedAt && (
-            <p className="mt-1 text-sm font-semibold text-stone-500">
-              Finalized {formatDate(monitoring.finalization.finalizedAt)} · {monitoring.finalization.rankedStudentCount} ranked Students.
+        <section className="admin-panel mt-6">
+          <AdminPanelHeader
+            title="Weekly Leaderboard"
+            description="Finalize the previous week and rerun it from its saved snapshot."
+          />
+          <div className="grid gap-4 p-4">
+            <div>
+              <h2 className="text-[13.5px] font-bold text-stone-800">
+                {monitoring.finalization.needsFinalization ? "Previous week has no snapshot" : "Previous week finalized"}
+              </h2>
+              <p className="mt-1 text-xs font-semibold text-stone-500">
+                Expected week: {monitoring.finalization.expectedWeek}. Latest snapshot: {monitoring.finalization.latestWeek ?? "none"}.
+              </p>
+              {monitoring.finalization.finalizedAt && (
+                <p className="mt-0.5 text-xs font-semibold text-stone-500">
+                  Finalized {formatDate(monitoring.finalization.finalizedAt)} · {monitoring.finalization.rankedStudentCount} ranked Students.
+                </p>
+              )}
+            </div>
+            <p className="admin-note">
+              Railway is configured to run the finalization command every Monday at 00:05 WIB. Check the Railway
+              leaderboard-cron service for run logs; this page confirms the database result.
             </p>
-          )}
-          <p className="mt-2 text-sm font-semibold text-stone-500">
-            Railway is configured to run the finalization command every Monday at 00:05 WIB. Check the Railway leaderboard-cron service for run logs; this page confirms the database result.
-          </p>
-          <WeeklyFinalizationTable weeks={monitoring.finalization.recentWeeks} />
+            <WeeklyFinalizationTable weeks={monitoring.finalization.recentWeeks} />
+          </div>
         </section>
 
         {!monitoring.installed ? (
-          <section className="admin-panel mt-4 p-6">
-            <p className="admin-kicker">Optional pg-boss worker</p>
-            <h2 className="mt-2 text-lg font-black tracking-tight text-stone-800">No pg-boss queues are configured.</h2>
-            <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-stone-500">
-              This does not indicate whether the separate Railway cron ran. Use the snapshot above to check its result.
-            </p>
+          <section className="admin-panel mt-6">
+            <AdminPanelHeader
+              title="Optional pg-boss worker"
+              description="No pg-boss queues are configured. This does not indicate whether the separate Railway cron ran. Use the snapshot above to check its result."
+            />
           </section>
         ) : (
           <>
-            <div className="mt-6 grid gap-3 md:grid-cols-4">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Queues" value={monitoring.queues.length} />
               <Metric label="Schedules" value={monitoring.schedules.length} />
               <Metric label="Queued" value={totalQueued} />
               <Metric label="Failed" value={totalFailed} tone={totalFailed > 0 ? "danger" : "default"} />
             </div>
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1.35fr]">
+            <div className="mt-6 grid items-start gap-4 lg:grid-cols-[1fr_1.35fr]">
               <SchedulePanel schedules={monitoring.schedules} />
               <QueuePanel queues={monitoring.queues} totalActive={totalActive} />
             </div>
@@ -95,25 +99,25 @@ function WeeklyFinalizationTable({ weeks }: { weeks: WeekRow[] }) {
   };
 
   return (
-    <div className="mt-5 overflow-x-auto rounded-[var(--radius-md)] border border-stone-100">
-      <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-stone-100 bg-stone-50 text-xs font-black uppercase tracking-[0.14em] text-stone-400">
+    <div className="overflow-x-auto rounded-lg border border-stone-100">
+      <table className="admin-table min-w-full">
+        <thead>
           <tr>
-            <th className="px-5 py-3">Week</th>
-            <th className="px-5 py-3">Snapshot</th>
-            <th className="px-5 py-3">Ranked</th>
-            <th className="px-5 py-3">Top-N Badges</th>
-            <th className="px-5 py-3 text-right">Action</th>
+            <th>Week</th>
+            <th>Snapshot</th>
+            <th>Ranked</th>
+            <th>Top-N Badges</th>
+            <th className="text-right">Action</th>
           </tr>
         </thead>
         <tbody>
           {weeks.map((week) => (
-            <tr key={week.weekStartDate} className="border-b border-stone-100 last:border-b-0">
-              <td className="px-5 py-4 align-top font-black text-stone-800">{week.weekStartDate}</td>
-              <td className="px-5 py-4 align-top font-semibold text-stone-500">
+            <tr key={week.weekStartDate}>
+              <td className="font-bold text-stone-800">{week.weekStartDate}</td>
+              <td className="font-semibold text-stone-500">
                 {week.snapshot ? formatDate(week.snapshot.finalizedAt) : <span className="text-amber-700">Not finalized</span>}
               </td>
-              <td className="px-5 py-4 align-top font-semibold text-stone-600">
+              <td className="font-semibold text-stone-600">
                 {week.snapshot ? (
                   <>
                     {week.snapshot.rankedStudentCount}
@@ -123,8 +127,8 @@ function WeeklyFinalizationTable({ weeks }: { weeks: WeekRow[] }) {
                   </>
                 ) : "-"}
               </td>
-              <td className="px-5 py-4 align-top font-black text-stone-700">{week.snapshot ? week.snapshot.topNBadgeCount : "-"}</td>
-              <td className="px-5 py-4 text-right align-top">
+              <td className="font-bold text-stone-700">{week.snapshot ? week.snapshot.topNBadgeCount : "-"}</td>
+              <td className="text-right">
                 <button
                   className={week.snapshot ? "admin-button-secondary px-3 text-xs" : "admin-button-primary px-3 text-xs"}
                   disabled={busyWeek !== null}
@@ -138,7 +142,7 @@ function WeeklyFinalizationTable({ weeks }: { weeks: WeekRow[] }) {
           ))}
         </tbody>
       </table>
-      <p className="border-t border-stone-100 px-5 py-3 text-xs font-semibold text-stone-400">
+      <p className="border-t border-stone-100 px-4 py-3 text-xs font-semibold text-stone-400">
         Rerun only fills missing Top-N Badges from the saved snapshot. It never changes ranks or gives a Badge twice.
       </p>
     </div>
@@ -170,9 +174,9 @@ function Metric({
   const valueClass = tone === "danger" ? "text-rose-600" : "text-stone-800";
 
   return (
-    <div className="admin-panel p-5">
-      <p className="admin-kicker">{label}</p>
-      <p className={`mt-2 text-4xl font-bold tracking-tight ${valueClass}`}>{value}</p>
+    <div className="admin-stat">
+      <p className="admin-stat-label">{label}</p>
+      <p className={`admin-stat-value ${valueClass}`}>{value}</p>
     </div>
   );
 }
@@ -180,33 +184,35 @@ function Metric({
 function SchedulePanel({ schedules }: { schedules: ScheduleRow[] }) {
   return (
     <section className="admin-panel overflow-hidden">
-      <div className="admin-panel-header">
-        <h2 className="admin-panel-title">Schedules</h2>
-      </div>
+      <AdminPanelHeader
+        title="Schedules"
+        badge={<span className="admin-count">{schedules.length}</span>}
+        description="Registered cron jobs."
+      />
 
       {schedules.length === 0 ? (
         <p className="p-6 text-sm font-semibold text-stone-400">No scheduled jobs registered.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-stone-100 bg-stone-50 text-xs font-black uppercase tracking-[0.14em] text-stone-400">
+          <table className="admin-table min-w-full">
+            <thead>
               <tr>
-                <th className="px-5 py-3">Queue</th>
-                <th className="px-5 py-3">Cron</th>
-                <th className="px-5 py-3">Timezone</th>
-                <th className="px-5 py-3">Updated</th>
+                <th>Queue</th>
+                <th>Cron</th>
+                <th>Timezone</th>
+                <th>Updated</th>
               </tr>
             </thead>
             <tbody>
               {schedules.map((schedule) => (
-                <tr key={`${schedule.name}:${schedule.key}`} className="border-b border-stone-100 last:border-b-0">
-                  <td className="px-5 py-4 align-top">
-                    <p className="font-black text-stone-800">{schedule.name}</p>
-                    {schedule.key ? <p className="mt-1 text-xs font-semibold text-stone-400">{schedule.key}</p> : null}
+                <tr key={`${schedule.name}:${schedule.key}`}>
+                  <td>
+                    <p className="admin-table-title">{schedule.name}</p>
+                    {schedule.key ? <p className="admin-table-meta">{schedule.key}</p> : null}
                   </td>
-                  <td className="px-5 py-4 align-top font-semibold text-stone-600">{schedule.cron}</td>
-                  <td className="px-5 py-4 align-top font-semibold text-stone-600">{schedule.timezone ?? "Server default"}</td>
-                  <td className="px-5 py-4 align-top font-semibold text-stone-500">{formatDate(schedule.updatedOn)}</td>
+                  <td className="font-semibold text-stone-600">{schedule.cron}</td>
+                  <td className="font-semibold text-stone-600">{schedule.timezone ?? "Server default"}</td>
+                  <td className="font-semibold text-stone-500">{formatDate(schedule.updatedOn)}</td>
                 </tr>
               ))}
             </tbody>
@@ -220,38 +226,39 @@ function SchedulePanel({ schedules }: { schedules: ScheduleRow[] }) {
 function QueuePanel({ queues, totalActive }: { queues: QueueRow[]; totalActive: number }) {
   return (
     <section className="admin-panel overflow-hidden">
-      <div className="admin-panel-header flex items-center justify-between gap-3">
-        <h2 className="admin-panel-title">Queues</h2>
-        <span className="text-xs font-black uppercase tracking-[0.14em] text-stone-400">{totalActive} active</span>
-      </div>
+      <AdminPanelHeader
+        title="Queues"
+        badge={<span className="admin-count">{queues.length}</span>}
+        description={`${totalActive} active`}
+      />
 
       {queues.length === 0 ? (
         <p className="p-6 text-sm font-semibold text-stone-400">No queues registered.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-stone-100 bg-stone-50 text-xs font-black uppercase tracking-[0.14em] text-stone-400">
+          <table className="admin-table min-w-full">
+            <thead>
               <tr>
-                <th className="px-5 py-3">Queue</th>
-                <th className="px-5 py-3">Queued</th>
-                <th className="px-5 py-3">Active</th>
-                <th className="px-5 py-3">Completed</th>
-                <th className="px-5 py-3">Failed</th>
-                <th className="px-5 py-3">Oldest queued</th>
+                <th>Queue</th>
+                <th>Queued</th>
+                <th>Active</th>
+                <th>Completed</th>
+                <th>Failed</th>
+                <th>Oldest queued</th>
               </tr>
             </thead>
             <tbody>
               {queues.map((queue) => (
-                <tr key={queue.name} className="border-b border-stone-100 last:border-b-0">
-                  <td className="px-5 py-4 align-top">
-                    <p className="font-black text-stone-800">{queue.name}</p>
-                    <p className="mt-1 text-xs font-semibold text-stone-400">{queue.policy}</p>
+                <tr key={queue.name}>
+                  <td>
+                    <p className="admin-table-title">{queue.name}</p>
+                    <p className="admin-table-meta">{queue.policy}</p>
                   </td>
                   <NumberCell value={queue.queuedCount} />
                   <NumberCell value={queue.activeCount} />
                   <NumberCell value={queue.completedCount} />
                   <NumberCell value={queue.failedCount} danger={queue.failedCount > 0} />
-                  <td className="px-5 py-4 align-top font-semibold text-stone-500">{formatDate(queue.oldestQueuedAt)}</td>
+                  <td className="font-semibold text-stone-500">{formatDate(queue.oldestQueuedAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -265,7 +272,7 @@ function QueuePanel({ queues, totalActive }: { queues: QueueRow[]; totalActive: 
 function NumberCell({ value, danger = false }: { value: number; danger?: boolean }) {
   const className = danger ? "text-rose-600" : "text-stone-700";
 
-  return <td className={`px-5 py-4 align-top font-black ${className}`}>{value}</td>;
+  return <td className={`font-bold tabular-nums ${className}`}>{value}</td>;
 }
 
 function formatDate(value: Date | string | null) {

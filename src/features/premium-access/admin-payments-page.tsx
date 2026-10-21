@@ -11,6 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import {
   deleteCouponAdmin,
   getPaymentAdminData,
@@ -322,39 +324,44 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
-        <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <h1 className="admin-title">Payments</h1>
-          <p className="admin-description">
-            Manage Products, Coupons, manual access grants, and Midtrans Checkout repair.
-          </p>
-        </header>
+        <AdminPageHeader
+          title="Payments"
+          description="Manage Products, Coupons, manual access grants, and Midtrans Checkout repair."
+        />
 
         <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Product</h2>
-            <button
-              className="admin-button-primary"
-              onClick={() => openProductDialog(null)}
-              type="button"
-            >
-              Create Product
-            </button>
-          </div>
+          <AdminPanelHeader
+            title="Product"
+            badge={<span className="admin-count">{data.products.length}</span>}
+            description="Paid access Products shown to Students."
+            actions={
+              <button
+                className="admin-button-primary"
+                onClick={() => openProductDialog(null)}
+                type="button"
+              >
+                Create Product
+              </button>
+            }
+          />
           <ProductTable products={data.products} tryouts={data.tryouts} onEdit={openProductDialog} onToggle={toggleProduct} />
         </section>
 
         <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Coupon</h2>
-            <button
-              className="admin-button-primary"
-              onClick={() => openCouponDialog(null)}
-              type="button"
-            >
-              Create Coupon
-            </button>
-          </div>
+          <AdminPanelHeader
+            title="Coupon"
+            badge={<span className="admin-count">{data.coupons.length}</span>}
+            description="Discount codes, their eligibility, and how often they were used."
+            actions={
+              <button
+                className="admin-button-primary"
+                onClick={() => openCouponDialog(null)}
+                type="button"
+              >
+                Create Coupon
+              </button>
+            }
+          />
           <CouponTable
             busyAction={couponTableBusyAction}
             coupons={data.coupons}
@@ -365,28 +372,32 @@ export function AdminPaymentsPage({ data }: { data: PaymentAdminData }) {
         </section>
 
         <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Manual Grant</h2>
-            <button className="admin-button-primary" onClick={() => setGrantDialogOpen(true)} type="button">
-              Grant Access
-            </button>
-          </div>
-          <div className="p-5 text-sm font-semibold text-stone-500 sm:p-6">
-            Use Manual Grant for explicit support actions with an audit reason.
-          </div>
+          <AdminPanelHeader
+            title="Manual Grant"
+            description="Use Manual Grant for explicit support actions with an audit reason."
+            actions={
+              <button className="admin-button-primary" onClick={() => setGrantDialogOpen(true)} type="button">
+                Grant Access
+              </button>
+            }
+          />
         </section>
 
-        <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Recent Checkouts</h2>
-          </div>
+        <section className="admin-panel mt-6 overflow-hidden">
+          <AdminPanelHeader
+            title="Recent Checkouts"
+            badge={<span className="admin-count">{data.checkouts.length}</span>}
+            description="Midtrans Checkout records. Sync one to repair its status."
+          />
           <CheckoutTable checkouts={data.checkouts} busyAction={checkoutTableBusyAction} onSync={syncCheckout} />
         </section>
 
-        <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Recent Entitlements</h2>
-          </div>
+        <section className="admin-panel mt-6 overflow-hidden">
+          <AdminPanelHeader
+            title="Recent Entitlements"
+            badge={<span className="admin-count">{data.entitlements.length}</span>}
+            description="Access granted by Checkout or by an Admin."
+          />
           <EntitlementTable entitlements={data.entitlements} />
         </section>
 

@@ -11,6 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import { QuestionPictureField } from "../../components/admin/QuestionPictureField";
 import { toDateTimeLocal } from "../premium-access/admin-payment-form-values";
 import {
@@ -175,23 +178,25 @@ export function AdminAnnouncementsPage({ announcements }: { announcements: Annou
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
-        <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <h1 className="admin-title">Announcements</h1>
-          <p className="admin-description">
-            Show a one-time modal on the landing page or Student dashboard. Only one announcement can be enabled at a time,
-            and it only shows between its start and end time. Each Student sees it until they close it.
-          </p>
-        </header>
+        <AdminPageHeader
+          title="Announcements"
+          description="Show a one-time modal on the landing page or Student dashboard. Only one announcement can be enabled at a time, and it only shows between its start and end time. Each Student sees it until they close it."
+          backHref="/admin"
+          backLabel="Admin"
+        />
 
         <section className="admin-panel mt-6">
-          <div className="admin-panel-header">
-            <h2 className="admin-panel-title">Announcement</h2>
-            <button className="admin-button-primary" onClick={() => openDialog(null)} type="button">
-              Create Announcement
-            </button>
-          </div>
-          <AnnouncementTable
+          <AdminPanelHeader
+            title="Announcement"
+            badge={<span className="admin-count">{announcements.length}</span>}
+            description="Every announcement with its placement, schedule, and status."
+            actions={
+              <button className="admin-button-primary" onClick={() => openDialog(null)} type="button">
+                Create Announcement
+              </button>
+            }
+          />
+          <AnnouncementList
             announcements={announcements}
             busyAction={busyAction}
             onDelete={deleteAnnouncement}
@@ -212,7 +217,7 @@ export function AdminAnnouncementsPage({ announcements }: { announcements: Annou
   );
 }
 
-function AnnouncementTable({
+function AnnouncementList({
   announcements,
   busyAction,
   onDelete,
@@ -227,85 +232,82 @@ function AnnouncementTable({
 }) {
   if (announcements.length === 0) {
     return (
-      <div className="px-5 py-8 text-center text-sm font-semibold text-stone-400">
-        No announcements yet. Create one to show it to Students.
-      </div>
+      <AdminEmptyState
+        title="No announcements yet. Create one to show it to Students."
+        description="An enabled announcement shows on the landing page or in the Student app."
+      />
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-        <thead className="border-b-2 border-stone-100 bg-stone-50/80 text-[11px] font-bold uppercase tracking-wide text-stone-400">
-          <tr>
-            <th className="px-4 py-3 sm:px-5">Announcement</th>
-            <th className="px-4 py-3 sm:px-5">Shown on</th>
-            <th className="px-4 py-3 sm:px-5">Window</th>
-            <th className="px-4 py-3 sm:px-5">Closed by</th>
-            <th className="px-4 py-3 sm:px-5">Status</th>
-            <th className="px-4 py-3 text-right sm:px-5">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y-2 divide-stone-100">
-          {announcements.map((announcement) => {
-            const status = getAnnouncementStatus(announcement);
+    <div>
+      {announcements.map((announcement) => {
+        const status = getAnnouncementStatus(announcement);
 
-            return (
-              <tr key={announcement.id} className="bg-white">
-                <td className="max-w-[360px] px-4 py-4 align-middle sm:px-5">
-                  <div className="flex items-center gap-3">
-                    {announcement.imageUrl && (
-                      <img
-                        src={announcement.imageUrl}
-                        alt=""
-                        className="h-12 w-12 shrink-0 rounded-[var(--radius-sm)] border-2 border-stone-100 bg-stone-50 object-cover"
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <div className="font-bold text-stone-800">{announcement.title}</div>
-                      <div className="mt-1 line-clamp-2 text-xs font-medium text-stone-400">{announcement.body}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-4 align-middle text-stone-600 sm:px-5">{placementLabels[announcement.placement]}</td>
-                <td className="px-4 py-4 align-middle text-sm font-medium text-stone-600 sm:px-5">
-                  <div>{formatDateTime(announcement.startsAt)}</div>
-                  <div className="mt-1 text-stone-400">to {formatDateTime(announcement.endsAt)}</div>
-                </td>
-                <td className="px-4 py-4 align-middle text-stone-600 sm:px-5">
-                  {announcement.dismissedCount} {announcement.dismissedCount === 1 ? "Student" : "Students"}
-                </td>
-                <td className="px-4 py-4 align-middle sm:px-5">
+        return (
+          <div
+            key={announcement.id}
+            className="admin-list-row flex flex-col gap-2 border-t border-stone-100 px-3 py-2.5 transition-colors duration-150 first:border-t-0 last:rounded-b-xl hover:bg-stone-50/70 sm:flex-row sm:items-center sm:gap-3 sm:px-4"
+          >
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              {announcement.imageUrl ? (
+                <img
+                  src={announcement.imageUrl}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-xl border border-stone-100 bg-stone-50 object-cover"
+                />
+              ) : (
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-100 bg-stone-50 text-stone-500"
+                  aria-hidden="true"
+                >
+                  <MegaphoneIcon className="h-4 w-4" />
+                </div>
+              )}
+              <div className="admin-list-content">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="line-clamp-2 break-words text-[13.5px] font-bold leading-5 text-stone-800">{announcement.title}</h3>
                   <span className={`admin-status-pill ${statusStyles[status]}`}>{status}</span>
-                </td>
-                <td className="px-4 py-4 align-middle sm:px-5">
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <button className="admin-button-ghost text-primary hover:bg-primary-tint" onClick={() => onEdit(announcement)} type="button">
-                      Edit
-                    </button>
-                    <button
-                      className="admin-button-ghost text-amber-600 hover:bg-amber-50"
-                      disabled={busyAction === `toggle:${announcement.id}`}
-                      onClick={() => onToggle(announcement)}
-                      type="button"
-                    >
-                      {announcement.active ? "Disable" : "Enable"}
-                    </button>
-                    <button
-                      className="admin-button-ghost text-rose-600 hover:bg-rose-50"
-                      disabled={busyAction === `delete:${announcement.id}`}
-                      onClick={() => onDelete(announcement)}
-                      type="button"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </div>
+                <p className="mt-0.5 line-clamp-2 text-xs font-medium text-stone-400">{announcement.body}</p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                  <span className="admin-meta-tag">{placementLabels[announcement.placement]}</span>
+                  <span className="admin-meta-tag">
+                    {formatDateTime(announcement.startsAt)} to {formatDateTime(announcement.endsAt)}
+                  </span>
+                  <span className="admin-meta-tag">
+                    {announcement.dismissedCount} {announcement.dismissedCount === 1 ? "Student" : "Students"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-list-actions pl-12 sm:pl-0">
+              <div className="admin-list-actions-bar">
+                <button className="admin-button-ghost text-primary hover:bg-primary-tint" onClick={() => onEdit(announcement)} type="button">
+                  Edit
+                </button>
+                <button
+                  className="admin-button-ghost text-amber-600 hover:bg-amber-50"
+                  disabled={busyAction === `toggle:${announcement.id}`}
+                  onClick={() => onToggle(announcement)}
+                  type="button"
+                >
+                  {announcement.active ? "Disable" : "Enable"}
+                </button>
+                <button
+                  className="admin-button-ghost text-rose-600 hover:bg-rose-50"
+                  disabled={busyAction === `delete:${announcement.id}`}
+                  onClick={() => onDelete(announcement)}
+                  type="button"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -467,7 +469,7 @@ function AnnouncementDialog({
 function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[11px] font-bold uppercase tracking-wide text-stone-400">{label}</span>
+      <span className="mb-1.5 block text-xs font-bold text-stone-600">{label}</span>
       {children}
       {error && <span className="mt-2 block text-xs font-semibold text-rose-600">{error}</span>}
     </label>
@@ -522,6 +524,14 @@ function makeSaveInput(values: AnnouncementFormValues) {
     endsAt: new Date(values.endsAt).toISOString(),
     active: values.active,
   };
+}
+
+function MegaphoneIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h2l-1.5-5H10l8 4V6l-8 4H5a2 2 0 0 0-2 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function formatDateTime(value: string) {

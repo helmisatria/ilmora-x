@@ -373,10 +373,6 @@
     @apply mx-auto w-full max-w-6xl;
   }
 
-  .admin-lane-narrow {
-    @apply mx-auto w-full max-w-5xl;
-  }
-
   .admin-header {
     @apply border-b border-stone-200/80 pb-3;
   }
@@ -519,6 +515,66 @@
 
   .admin-status-pill {
     @apply inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide;
+  }
+
+  /* Tables follow the panel density of the list rows: quiet header, hairline separators, no heavy borders. */
+  .admin-table {
+    @apply w-full border-collapse text-left text-[13px];
+  }
+
+  .admin-table thead th {
+    @apply border-b border-stone-100 bg-stone-50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-stone-400 align-middle;
+  }
+
+  .admin-table tbody td {
+    @apply border-b border-stone-100 px-4 py-3 align-middle text-stone-600;
+  }
+
+  .admin-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .admin-table tbody tr {
+    @apply transition-colors duration-150 hover:bg-stone-50/70;
+  }
+
+  .admin-table-title {
+    @apply text-[13.5px] font-bold text-stone-800;
+  }
+
+  .admin-table-meta {
+    @apply mt-0.5 text-xs font-semibold text-stone-400;
+  }
+
+  /* A short explainer under a page or panel header. */
+  .admin-note {
+    @apply rounded-lg border border-stone-200 bg-stone-50/70 px-4 py-3 text-[13px] font-medium leading-relaxed text-stone-600;
+  }
+
+  .admin-note-warning {
+    @apply rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-800;
+  }
+
+  /* Compact metric tile, same size as the Student detail tiles. */
+  .admin-stat {
+    @apply rounded-xl border border-stone-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.035)];
+  }
+
+  .admin-stat-label {
+    @apply text-[11px] font-semibold uppercase tracking-wide text-stone-400;
+  }
+
+  .admin-stat-value {
+    @apply mt-0.5 text-xl font-bold tabular-nums tracking-tight text-stone-800;
+  }
+
+  /* Filter row under a panel header. */
+  .admin-filter-bar {
+    @apply flex flex-wrap items-center gap-2 border-b border-stone-100 px-4 py-2.5;
+  }
+
+  .admin-filter-bar .admin-control {
+    @apply w-auto min-w-[9rem] flex-1 sm:flex-none;
   }
 
   .category-tree-group {

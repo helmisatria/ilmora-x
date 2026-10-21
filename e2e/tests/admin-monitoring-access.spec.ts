@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
+import { gotoHydrated } from "../support/navigation";
 
 const adminState = resolve("e2e/.auth/admin-b.json");
 test.skip(!existsSync(adminState), "Requires the local ordinary Admin QA session.");
@@ -40,7 +41,7 @@ test("Monitoring restriction is styled before JavaScript loads", async ({ browse
 });
 
 test("root error page retains its stylesheet and bounded icon", async ({ page }) => {
-  await page.goto("/admin");
+  await gotoHydrated(page, "/admin");
   await expect(page.getByRole("heading", { name: "Admin", exact: true })).toBeVisible();
   await page.route("**/_serverFn/**", (route) => route.abort("failed"));
   await page.getByRole("link", { name: "Open Student App" }).click();

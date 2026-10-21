@@ -1,6 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import { getLeaderboardSettingsAdmin, updateLeaderboardSettingsAdmin } from "./admin-leaderboard-settings-functions";
 import { AdminSettingsAuditList } from "./admin-settings-audit-list";
 
@@ -47,59 +49,66 @@ export function AdminLeaderboardSettingsPage({ settings }: { settings: Leaderboa
 
   return (
     <main className="admin-shell page-enter">
-      <div className="admin-lane-narrow">
-        <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <h1 className="admin-title">Leaderboard settings</h1>
-          <p className="admin-description">
-            Rules for the weekly Leaderboard. To repair a finalized week, use{" "}
-            <a href="/admin/monitoring" className="font-bold text-primary">Monitoring</a>.
-          </p>
-        </header>
+      <div className="admin-lane">
+        <AdminPageHeader
+          title="Leaderboard settings"
+          description={
+            <>
+              Rules for the weekly Leaderboard. To repair a finalized week, use{" "}
+              <a href="/admin/monitoring" className="font-bold text-primary">Monitoring</a>.
+            </>
+          }
+        />
 
-        <section className="admin-panel mt-6 p-6">
-          <p className="admin-kicker">Weekly participant threshold</p>
-          <div className="mt-2 flex flex-wrap items-baseline gap-3">
-            <span className="text-3xl font-black tracking-tight text-stone-800">{settings.effective.value}</span>
-            <span className="text-sm font-semibold text-stone-500">ranked Students needed for Top-N Badges</span>
-          </div>
-          <p className="mt-2 text-sm font-semibold text-stone-500">
-            Source: <span className="font-bold text-stone-700">{sourceLabels[settings.effective.source]}</span>
-            {settings.effective.source === "admin" && settings.adminUpdatedAt && (
-              <> · changed {formatDate(settings.adminUpdatedAt)}{settings.adminUpdatedByEmail ? ` by ${settings.adminUpdatedByEmail}` : ""}</>
-            )}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-stone-400">
-            Order used: Admin setting, then env var ({settings.envValue ?? "not set"}), then default ({settings.defaultValue}).
-          </p>
+        <section className="admin-panel mt-6">
+          <AdminPanelHeader
+            title="Weekly participant threshold"
+            description="Ranked Students needed before Top-N Badges are awarded."
+          />
 
-          <form className="mt-5 flex flex-wrap items-end gap-3" onSubmit={submit}>
-            <label className="block w-40">
-              <span className="mb-2 block text-[11px] font-bold uppercase tracking-wide text-stone-400">New threshold</span>
-              <input
-                className="admin-control"
-                inputMode="numeric"
-                min={1}
-                onChange={(event) => setThreshold(event.target.value)}
-                step={1}
-                type="number"
-                value={threshold}
-              />
-            </label>
-            <button className="admin-button-primary" disabled={busy} type="submit">
-              {busy ? "Saving..." : "Save threshold"}
-            </button>
-            {settings.adminValue !== null && (
-              <button className="admin-button-secondary" disabled={busy} onClick={() => void save(null)} type="button">
-                Use {fallback}
+          <div className="grid gap-4 p-4">
+            <div className="admin-stat">
+              <p className="admin-stat-label">Active threshold</p>
+              <p className="admin-stat-value text-3xl">{settings.effective.value}</p>
+              <p className="mt-1 text-xs font-semibold text-stone-500">
+                Source: <span className="font-bold text-stone-700">{sourceLabels[settings.effective.source]}</span>
+                {settings.effective.source === "admin" && settings.adminUpdatedAt && (
+                  <> · changed {formatDate(settings.adminUpdatedAt)}{settings.adminUpdatedByEmail ? ` by ${settings.adminUpdatedByEmail}` : ""}</>
+                )}
+              </p>
+              <p className="mt-0.5 text-xs font-semibold text-stone-400">
+                Order used: Admin setting, then env var ({settings.envValue ?? "not set"}), then default ({settings.defaultValue}).
+              </p>
+            </div>
+
+            <form className="flex flex-wrap items-end gap-3" onSubmit={submit}>
+              <label className="block w-40">
+                <span className="mb-1.5 block text-xs font-bold text-stone-600">New threshold</span>
+                <input
+                  className="admin-control"
+                  inputMode="numeric"
+                  min={1}
+                  onChange={(event) => setThreshold(event.target.value)}
+                  step={1}
+                  type="number"
+                  value={threshold}
+                />
+              </label>
+              <button className="admin-button-primary" disabled={busy} type="submit">
+                {busy ? "Saving..." : "Save threshold"}
               </button>
-            )}
-          </form>
+              {settings.adminValue !== null && (
+                <button className="admin-button-secondary" disabled={busy} onClick={() => void save(null)} type="button">
+                  Use {fallback}
+                </button>
+              )}
+            </form>
 
-          <p className="mt-5 rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-800">
-            A change applies only to weeks finalized after saving. Weeks already finalized keep the threshold stored in their
-            snapshot, including when you rerun them from Monitoring.
-          </p>
+            <p className="admin-note-warning">
+              A change applies only to weeks finalized after saving. Weeks already finalized keep the threshold stored in their
+              snapshot, including when you rerun them from Monitoring.
+            </p>
+          </div>
         </section>
 
         <AdminSettingsAuditList rows={settings.audit} emptyText="No Admin has changed the threshold yet." />

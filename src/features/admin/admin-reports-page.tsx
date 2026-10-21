@@ -1,5 +1,8 @@
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import {
   listQuestionReportsAdmin,
   updateQuestionReportStatusAdmin,
@@ -72,77 +75,79 @@ export function AdminReportsPage({
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
-        <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <h1 className="admin-title">Question reports</h1>
-          <p className="admin-description">Review Student reports with Attempt context and mark the moderation outcome.</p>
-        </header>
+        <AdminPageHeader
+          title="Question reports"
+          description="Review Student reports with Attempt context and mark the moderation outcome."
+          backHref="/admin"
+          backLabel="Admin"
+        />
 
         {errorMessage && (
           <p className="admin-alert mt-6">{errorMessage}</p>
         )}
 
-        <section className="admin-panel mt-6 p-5">
-          <div className="grid gap-4 lg:grid-cols-[180px_220px_minmax(0,1fr)_minmax(0,1fr)]">
-            <label className="block">
-              <span className="admin-kicker">Status</span>
-              <select
-                value={status}
-                onChange={(event) => updateFilters({ status: event.target.value as ReportStatusFilter })}
-                className="admin-control mt-2"
-              >
-                <option value="open">Open</option>
-                <option value="reviewed">Reviewed</option>
-                <option value="resolved">Resolved</option>
-                <option value="dismissed">Dismissed</option>
-                <option value="all">All</option>
-              </select>
-            </label>
+        <section className="admin-panel mt-6">
+          <AdminPanelHeader
+            title="Filter reports"
+            description="Saring laporan berdasarkan status, alasan, try-out, atau soal."
+          />
 
-            <label className="block">
-              <span className="admin-kicker">Reason</span>
-              <select
-                value={reason}
-                onChange={(event) => updateFilters({ reason: event.target.value as ReportReasonFilter })}
-                className="admin-control mt-2"
-              >
-                <option value="all">All Reasons</option>
-                {reportReasonFilters.filter((value) => value !== "all").map((value) => (
-                  <option key={value} value={value}>{getReasonLabel(value)}</option>
-                ))}
-              </select>
-            </label>
+          <div className="admin-filter-bar">
+            <label className="sr-only" htmlFor="report-status">Status</label>
+            <select
+              id="report-status"
+              value={status}
+              onChange={(event) => updateFilters({ status: event.target.value as ReportStatusFilter })}
+              className="admin-control"
+            >
+              <option value="open">Open</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="resolved">Resolved</option>
+              <option value="dismissed">Dismissed</option>
+              <option value="all">All</option>
+            </select>
 
-            <label className="block">
-              <span className="admin-kicker">Try-out</span>
-              <select
-                value={tryoutId}
-                onChange={(event) => updateFilters({ tryoutId: event.target.value })}
-                className="admin-control mt-2"
-              >
-                <option value="">All Try-outs</option>
-                {queue.tryouts.map((tryout) => (
-                  <option key={tryout.id} value={tryout.id}>{tryout.title}</option>
-                ))}
-              </select>
-            </label>
+            <label className="sr-only" htmlFor="report-reason">Reason</label>
+            <select
+              id="report-reason"
+              value={reason}
+              onChange={(event) => updateFilters({ reason: event.target.value as ReportReasonFilter })}
+              className="admin-control"
+            >
+              <option value="all">All Reasons</option>
+              {reportReasonFilters.filter((value) => value !== "all").map((value) => (
+                <option key={value} value={value}>{getReasonLabel(value)}</option>
+              ))}
+            </select>
 
-            <label className="block">
-              <span className="admin-kicker">Question</span>
-              <select
-                value={questionId}
-                onChange={(event) => updateFilters({ questionId: event.target.value })}
-                className="admin-control mt-2"
-              >
-                <option value="">All Questions</option>
-                {queue.questions.map((question) => (
-                  <option key={question.id} value={question.id}>{question.questionText}</option>
-                ))}
-              </select>
-            </label>
+            <label className="sr-only" htmlFor="report-tryout">Try-out</label>
+            <select
+              id="report-tryout"
+              value={tryoutId}
+              onChange={(event) => updateFilters({ tryoutId: event.target.value })}
+              className="admin-control"
+            >
+              <option value="">All Try-outs</option>
+              {queue.tryouts.map((tryout) => (
+                <option key={tryout.id} value={tryout.id}>{tryout.title}</option>
+              ))}
+            </select>
+
+            <label className="sr-only" htmlFor="report-question">Question</label>
+            <select
+              id="report-question"
+              value={questionId}
+              onChange={(event) => updateFilters({ questionId: event.target.value })}
+              className="admin-control"
+            >
+              <option value="">All Questions</option>
+              {queue.questions.map((question) => (
+                <option key={question.id} value={question.id}>{question.questionText}</option>
+              ))}
+            </select>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2 border-b border-stone-100 px-4 py-2.5">
             <button
               type="button"
               onClick={() => updateFilters({ reason: "all" })}
@@ -164,12 +169,11 @@ export function AdminReportsPage({
         </section>
 
         <section className="admin-panel mt-6 overflow-hidden">
-          <div className="admin-panel-header">
-            <div>
-              <h2 className="admin-panel-title">Moderation queue</h2>
-              <p className="mt-1 text-xs font-semibold text-stone-400">{queue.reports.length} reports shown</p>
-            </div>
-          </div>
+          <AdminPanelHeader
+            title="Moderation queue"
+            badge={<span className="admin-count">{queue.reports.length}</span>}
+            description={`${queue.reports.length} reports shown`}
+          />
 
           {queue.reports.map((report) => (
             <ReportCard
@@ -181,9 +185,7 @@ export function AdminReportsPage({
           ))}
 
           {queue.reports.length === 0 && (
-            <div className="p-8 text-center">
-              <p className="text-sm font-semibold text-stone-400">No reports match these filters.</p>
-            </div>
+            <AdminEmptyState title="No reports match these filters." />
           )}
         </section>
       </div>
@@ -201,51 +203,52 @@ function ReportCard({
   onUpdateStatus: (reportId: string, status: ReportStatus) => void;
 }) {
   return (
-    <article className="border-b border-stone-100 p-5 last:border-b-0 sm:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
+    <article className="border-t border-stone-100 px-3 py-3 transition-colors duration-150 first:border-t-0 last:rounded-b-xl hover:bg-stone-50/70 sm:px-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
+            <h3 className="line-clamp-2 break-words text-[13.5px] font-bold leading-5 text-stone-800">
+              {report.questionText}
+            </h3>
             <StatusPill status={report.status} />
-            <span className="admin-meta-tag first:before:hidden">Reason: {getReasonLabel(report.reason)}</span>
-            <span className="admin-meta-tag">Reported {formatDateTime(report.createdAt)}</span>
           </div>
 
-          <h3 className="mt-3 text-base font-black leading-snug tracking-tight text-stone-800">
-            {report.questionText}
-          </h3>
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="admin-meta-tag first:before:hidden">{report.tryoutTitle}</span>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            <span className="admin-meta-tag">Reason: {getReasonLabel(report.reason)}</span>
+            <span className="admin-meta-tag">{report.tryoutTitle}</span>
             <span className="admin-meta-tag">Attempt #{report.attemptNumber}</span>
             <span className="admin-meta-tag">Score {report.attemptScore}%</span>
             <span className="admin-meta-tag">{report.categoryName} / {report.subCategoryName} / {report.topicName}</span>
+            <span className="admin-meta-tag">Reported {formatDateTime(report.createdAt)}</span>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 lg:justify-end">
-          <ReportAction label="Reopen" status="open" report={report} busy={busy} onUpdateStatus={onUpdateStatus} />
-          <ReportAction label="Reviewed" status="reviewed" report={report} busy={busy} onUpdateStatus={onUpdateStatus} />
-          <ReportAction label="Resolved" status="resolved" report={report} busy={busy} onUpdateStatus={onUpdateStatus} />
-          <ReportAction label="Dismiss" status="dismissed" report={report} busy={busy} onUpdateStatus={onUpdateStatus} />
+        <div className="admin-list-actions pl-12 sm:pl-0">
+          <div className="admin-list-actions-bar">
+            <ReportAction label="Reopen" status="open" report={report} busy={busy} onUpdateStatus={onUpdateStatus} />
+            <ReportAction label="Reviewed" status="reviewed" report={report} busy={busy} onUpdateStatus={onUpdateStatus} />
+            <ReportAction label="Resolved" status="resolved" report={report} busy={busy} onUpdateStatus={onUpdateStatus} />
+            <ReportAction label="Dismiss" status="dismissed" report={report} busy={busy} onUpdateStatus={onUpdateStatus} />
+          </div>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+      <div className="mt-3 grid gap-3 lg:grid-cols-3">
         <InfoBox label="Student" value={`${report.studentName} (${report.studentEmail})`} />
         <InfoBox label="Student answer" value={report.selectedOption ?? "Unanswered"} />
         <InfoBox label="Correct answer" value={report.correctOption} />
       </div>
 
       {report.note && (
-        <div className="mt-4 rounded-[var(--radius-md)] border-2 border-amber-100 bg-amber-50/60 p-4">
+        <div className="admin-note-warning mt-3">
           <p className="admin-kicker text-amber-700">{report.reason === "other" ? "Custom reason" : "Student note"}</p>
-          <p className="mt-2 text-sm font-semibold leading-relaxed text-stone-700">{report.note}</p>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-stone-700">{report.note}</p>
         </div>
       )}
 
-      <div className="mt-4 rounded-[var(--radius-md)] border-2 border-stone-100 bg-stone-50 p-4">
+      <div className="admin-note mt-3">
         <p className="admin-kicker">Explanation snapshot</p>
-        <p className="mt-2 line-clamp-3 text-sm font-medium leading-relaxed text-stone-600">{report.explanation}</p>
+        <p className="mt-1 line-clamp-3 text-sm font-medium leading-relaxed text-stone-600">{report.explanation}</p>
       </div>
     </article>
   );
@@ -270,7 +273,8 @@ function ReportAction({
     <button
       onClick={() => onUpdateStatus(report.id, status)}
       disabled={busy || active}
-      className={active ? "admin-button-primary" : "admin-button-ghost"}
+      aria-current={active ? "true" : undefined}
+      className={active ? "admin-button-ghost bg-stone-100 text-stone-700" : "admin-button-ghost"}
       type="button"
     >
       {label}
@@ -280,9 +284,9 @@ function ReportAction({
 
 function InfoBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[var(--radius-md)] border-2 border-stone-100 bg-white p-4">
+    <div className="rounded-lg border border-stone-200 bg-white px-3 py-2.5">
       <p className="admin-kicker">{label}</p>
-      <p className="mt-2 text-sm font-bold text-stone-800">{value}</p>
+      <p className="mt-1 text-[13px] font-bold text-stone-800 [overflow-wrap:anywhere]">{value}</p>
     </div>
   );
 }

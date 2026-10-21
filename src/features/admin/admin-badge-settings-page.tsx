@@ -9,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminPanelHeader } from "../../components/admin/AdminPanelHeader";
 import { listBadgeSettingsAdmin, updateBadgeSettingsAdmin } from "./admin-badge-settings-functions";
 import { AdminSettingsAuditList } from "./admin-settings-audit-list";
 
@@ -29,90 +31,96 @@ export function AdminBadgeSettingsPage({ data }: { data: BadgeSettingsData }) {
   return (
     <main className="admin-shell page-enter">
       <div className="admin-lane">
-        <header className="admin-header">
-          <a href="/admin" className="admin-back-link">Admin</a>
-          <h1 className="admin-title">Badge settings</h1>
-          <p className="admin-description">
-            {data.badges.length} Badges, {activeCount} active. Edits apply to future awards only.
-          </p>
-        </header>
+        <AdminPageHeader
+          title="Badge settings"
+          description="Edit the name, requirement text, EXP reward, and availability of each Badge."
+        />
 
-        <section className="mt-6 rounded-[var(--radius-md)] border border-stone-200 bg-white px-4 py-3 text-[13px] font-semibold leading-relaxed text-stone-500">
-          <p>
-            <span className="font-bold text-stone-700">You can edit:</span> the name and requirement text Students see,
-            the EXP reward for future awards, and whether a Badge can still be awarded.
-          </p>
-          <p className="mt-1">
-            <span className="font-bold text-stone-700">Fixed in code:</span> Badge code, category, the unlock rule, and
-            permanent EXP bonus tiers. Badges with a permanent bonus cannot be turned off.
-          </p>
-          <p className="mt-1">
-            Earned Badges, their EXP, and popup state never change. A turned-off Badge stays in Students' collections if they
-            already earned it.
-          </p>
+        <section className="admin-panel mt-6">
+          <AdminPanelHeader
+            title="What you can edit"
+            description="Badge code, category, the unlock rule, and permanent EXP bonus tiers stay fixed in code."
+          />
+          <div className="admin-note m-4">
+            <p>
+              <span className="font-bold text-stone-700">You can edit:</span> the name and requirement text Students see,
+              the EXP reward for future awards, and whether a Badge can still be awarded.
+            </p>
+            <p className="mt-1">
+              Earned Badges, their EXP, and popup state never change. A turned-off Badge stays in Students' collections if
+              they already earned it.
+            </p>
+          </div>
         </section>
 
-        <div className="admin-panel mt-4 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-stone-100 bg-stone-50 text-xs font-black uppercase tracking-[0.14em] text-stone-400">
-              <tr>
-                <th className="px-4 py-3">Badge</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Requirement</th>
-                <th className="px-4 py-3 text-right">EXP</th>
-                <th className="px-4 py-3 text-right">Bonus</th>
-                <th className="px-4 py-3 text-right">Earned</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.badges.map((badge) => (
-                <tr key={badge.code} className="border-b border-stone-100 last:border-b-0">
-                  <td className="px-4 py-3 align-top">
-                    <div className="flex items-start gap-2.5">
-                      <span className="text-xl leading-none" aria-hidden="true">{badge.icon}</span>
-                      <div className="min-w-0">
-                        <div className="font-bold text-stone-800">{badge.displayName}</div>
-                        <div className="text-xs font-semibold text-stone-400">
-                          {badge.code}
-                          {badge.displayName !== badge.catalogName && <> · catalog: {badge.catalogName}</>}
+        <section className="admin-panel mt-6 overflow-hidden">
+          <AdminPanelHeader
+            title="Badges"
+            badge={<span className="admin-count">{data.badges.length}</span>}
+            description={`${activeCount} active. Edits apply to future awards only.`}
+          />
+          <div className="overflow-x-auto">
+            <table className="admin-table min-w-full">
+              <thead>
+                <tr>
+                  <th>Badge</th>
+                  <th>Category</th>
+                  <th>Requirement</th>
+                  <th className="text-right">EXP</th>
+                  <th className="text-right">Bonus</th>
+                  <th className="text-right">Earned</th>
+                  <th>Status</th>
+                  <th className="text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.badges.map((badge) => (
+                  <tr key={badge.code}>
+                    <td>
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xl leading-none" aria-hidden="true">{badge.icon}</span>
+                        <div className="min-w-0">
+                          <div className="admin-table-title">{badge.displayName}</div>
+                          <div className="admin-table-meta">
+                            {badge.code}
+                            {badge.displayName !== badge.catalogName && <> · catalog: {badge.catalogName}</>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top font-semibold text-stone-500">{badge.category}</td>
-                  <td className="max-w-[340px] px-4 py-3 align-top text-[13px] font-semibold text-stone-600">
-                    {badge.requirementText}
-                    {badge.requirementOverride && <EditedTag />}
-                  </td>
-                  <td className="px-4 py-3 text-right align-top font-black text-stone-700">
-                    {badge.xpReward.toLocaleString("id-ID")}
-                    {badge.xpReward !== badge.defaultXpReward && (
-                      <div className="text-xs font-semibold text-stone-400">was {badge.defaultXpReward.toLocaleString("id-ID")}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right align-top font-semibold text-stone-500">
-                    {badge.permanentXpBonusPercent ? `+${badge.permanentXpBonusPercent}%` : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-right align-top font-black text-stone-700">{badge.earnedCount.toLocaleString("id-ID")}</td>
-                  <td className="px-4 py-3 align-top">
-                    <span
-                      className={`admin-status-pill ${badge.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}
-                    >
-                      {badge.active ? "Active" : "Off"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right align-top">
-                    <button className="admin-button-secondary px-3 text-xs" onClick={() => setEditingBadge(badge)} type="button">
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </td>
+                    <td className="font-semibold text-stone-500">{badge.category}</td>
+                    <td className="max-w-[340px] font-semibold text-stone-600">
+                      {badge.requirementText}
+                      {badge.requirementOverride && <EditedTag />}
+                    </td>
+                    <td className="text-right font-bold text-stone-700">
+                      {badge.xpReward.toLocaleString("id-ID")}
+                      {badge.xpReward !== badge.defaultXpReward && (
+                        <div className="text-xs font-semibold text-stone-400">was {badge.defaultXpReward.toLocaleString("id-ID")}</div>
+                      )}
+                    </td>
+                    <td className="text-right font-semibold text-stone-500">
+                      {badge.permanentXpBonusPercent ? `+${badge.permanentXpBonusPercent}%` : "-"}
+                    </td>
+                    <td className="text-right font-bold tabular-nums text-stone-700">{badge.earnedCount.toLocaleString("id-ID")}</td>
+                    <td>
+                      <span
+                        className={`admin-status-pill ${badge.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}
+                      >
+                        {badge.active ? "Active" : "Off"}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <button className="admin-button-ghost" onClick={() => setEditingBadge(badge)} type="button">
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <AdminSettingsAuditList rows={data.audit} emptyText="No Admin has changed a Badge yet." />
       </div>
