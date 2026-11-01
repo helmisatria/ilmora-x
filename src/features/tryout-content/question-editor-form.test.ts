@@ -137,7 +137,7 @@ test("lines pasted into an option fill the following options", () => {
 });
 
 test("try-out details report each missing field with the known summary", () => {
-  const result = validateTryoutDetails({ title: "", description: "", icon: "", categoryId: "", durationMinutes: "30", accessLevel: "free" });
+  const result = validateTryoutDetails({ title: "", description: "", icon: "", categoryId: "", durationMinutes: "30", accessLevel: "free", shuffleQuestions: true });
 
   assert.equal(result.summary, "Isi judul, deskripsi, dan kategori.");
   assert.equal(result.errors.title, "Judul wajib diisi.");
@@ -147,7 +147,7 @@ test("try-out details report each missing field with the known summary", () => {
 });
 
 test("try-out duration must be 1 to 300 minutes", () => {
-  const base = { title: "T", description: "D", icon: "", categoryId: "c", accessLevel: "free" as const };
+  const base = { title: "T", description: "D", icon: "", categoryId: "c", accessLevel: "free" as const, shuffleQuestions: true };
 
   assert.equal(validateTryoutDetails({ ...base, durationMinutes: "301" }).summary, "Isi durasi dengan angka bulat 1 sampai 300 menit.");
   assert.equal(validateTryoutDetails({ ...base, durationMinutes: "1.5" }).errors.durationMinutes, "Isi angka 1 sampai 300.");

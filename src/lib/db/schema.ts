@@ -157,6 +157,7 @@ export const tryouts = pgTable("tryouts", {
   categoryId: text("category_id").notNull().references(() => categories.id),
   durationMinutes: integer("duration_minutes").notNull(),
   accessLevel: text("access_level").notNull(),
+  shuffleQuestions: boolean("shuffle_questions").notNull().default(true),
   status: text("status").notNull().default("draft"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   catalogOrder: integer("catalog_order"),

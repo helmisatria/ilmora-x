@@ -62,6 +62,7 @@ function toTryoutForm(tryout: TryoutWorkbook["tryout"]): TryoutForm {
     categoryId: tryout.categoryId,
     durationMinutes: String(tryout.durationMinutes),
     accessLevel: tryout.accessLevel,
+    shuffleQuestions: tryout.shuffleQuestions,
   };
 }
 
@@ -108,7 +109,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
   useEffect(() => {
     setForm(toTryoutForm(workbook.tryout));
   }, [workbook.tryout.id, workbook.tryout.title, workbook.tryout.description, workbook.tryout.icon,
-    workbook.tryout.categoryId, workbook.tryout.durationMinutes, workbook.tryout.accessLevel, workbook.tryout.updatedAt]);
+    workbook.tryout.categoryId, workbook.tryout.durationMinutes, workbook.tryout.accessLevel, workbook.tryout.shuffleQuestions, workbook.tryout.updatedAt]);
   useEffect(() => {
     if (!successMessage) return;
 
@@ -145,7 +146,8 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
     form.icon !== (workbook.tryout.icon ?? "") ||
     form.categoryId !== workbook.tryout.categoryId ||
     form.durationMinutes.trim() !== String(workbook.tryout.durationMinutes) ||
-    form.accessLevel !== workbook.tryout.accessLevel;
+    form.accessLevel !== workbook.tryout.accessLevel ||
+    form.shuffleQuestions !== workbook.tryout.shuffleQuestions;
   const isQuestionDirty = Boolean(questionDraft && !isSameQuestion(questionDraft.values, questionDraft.initialValues));
   useUnsavedChangesGuard(hasChanges || isQuestionDirty);
 
@@ -188,6 +190,7 @@ export function AdminTryoutDetailPage({ workbook, categories }: AdminTryoutDetai
           categoryId: form.categoryId,
           durationMinutes: Number(form.durationMinutes),
           accessLevel: form.accessLevel,
+          shuffleQuestions: form.shuffleQuestions,
           tryoutId,
         },
       });

@@ -92,6 +92,21 @@ export function TryoutDetailsFields({
           </select>
         </AdminField>
       </div>
+
+      <label className="flex items-start gap-3 text-sm text-stone-700">
+        <input
+          type="checkbox"
+          checked={values.shuffleQuestions}
+          onChange={(event) => onChange({ shuffleQuestions: event.target.checked })}
+          className="mt-0.5 size-4 shrink-0 accent-[#205072]"
+        />
+        <span>
+          <span className="block font-bold text-stone-900">Acak urutan soal</span>
+          <span className="block text-xs text-stone-500">
+            Setiap peserta mendapat urutan soal yang berbeda di tiap percobaan. Urutan tersimpan selama satu percobaan.
+          </span>
+        </span>
+      </label>
     </>
   );
 }

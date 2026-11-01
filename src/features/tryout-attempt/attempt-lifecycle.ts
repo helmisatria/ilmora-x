@@ -18,6 +18,7 @@ import { conflict, notFound } from "../../lib/http/errors";
 import { type Viewer } from "../../lib/auth-functions";
 import { calculateAttemptXp } from "./attempt-xp";
 import { getDailyAttemptWindow } from "./daily-attempt-window";
+import { shuffleAttemptQuestions } from "./shuffle-attempt-questions";
 import { awardDailyBadges } from "../engagement-surface/engagement-surface";
 import { getPermanentXpBonusPercent } from "../engagement-surface/badge-catalog";
 import { badgeCodeToId } from "../engagement-surface/engagement-surface-model";
@@ -126,6 +127,7 @@ export async function startOrResumeAttemptForStudent({
       title: tryouts.title,
       durationMinutes: tryouts.durationMinutes,
       accessLevel: tryouts.accessLevel,
+      shuffleQuestions: tryouts.shuffleQuestions,
     })
     .from(tryouts)
     .where(and(eq(tryouts.id, tryoutId), eq(tryouts.status, "published")))
@@ -149,7 +151,7 @@ export async function startOrResumeAttemptForStudent({
     throw conflict(`Batas pengerjaan harian tercapai. Try-out yang sama hanya bisa dikerjakan ${startState.normalDailyAttemptLimit} kali per hari.`);
   }
 
-  const questionRows = await db
+  const publishedQuestionRows = await db
     .select({
       questionId: questions.id,
       sortOrder: tryoutQuestions.sortOrder,
@@ -179,9 +181,11 @@ export async function startOrResumeAttemptForStudent({
     .where(and(eq(tryoutQuestions.tryoutId, tryoutId), eq(questions.status, "published")))
     .orderBy(tryoutQuestions.sortOrder);
 
-  if (questionRows.length === 0) {
+  if (publishedQuestionRows.length === 0) {
     throw conflict("This Try-out has no published Questions yet.");
   }
+
+  const questionRows = tryout.shuffleQuestions ? shuffleAttemptQuestions(publishedQuestionRows) : publishedQuestionRows;
 
   const [lastAttempt] = await db
     .select({ attemptNumber: attempts.attemptNumber })

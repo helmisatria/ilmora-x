@@ -7,6 +7,7 @@ export type TryoutDetailsValues = {
   categoryId: string;
   durationMinutes: string;
   accessLevel: AccessLevel;
+  shuffleQuestions: boolean;
 };
 
 export type TryoutDetailsField = keyof TryoutDetailsValues;
