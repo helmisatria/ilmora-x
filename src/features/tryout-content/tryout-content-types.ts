@@ -20,6 +20,7 @@ export type TryoutContentInput = {
   categoryId: string;
   durationMinutes: number;
   accessLevel: TryoutAccessLevel;
+  shuffleQuestions: boolean;
 };
 
 export type TryoutWorkbookTryout = {

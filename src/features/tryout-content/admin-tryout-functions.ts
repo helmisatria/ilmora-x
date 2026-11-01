@@ -37,6 +37,7 @@ const tryoutInputSchema = z.object({
   categoryId: z.string().trim().min(1),
   durationMinutes: z.number().int().min(1).max(300),
   accessLevel: tryoutAccessLevelSchema,
+  shuffleQuestions: z.boolean(),
 });
 
 const updateTryoutSchema = tryoutInputSchema.extend({
@@ -191,6 +192,7 @@ export const getTryoutWorkbookAdmin = createServerFn({ method: "GET" })
         categoryId: tryouts.categoryId,
         durationMinutes: tryouts.durationMinutes,
         accessLevel: tryouts.accessLevel,
+        shuffleQuestions: tryouts.shuffleQuestions,
         status: tryouts.status,
         updatedAt: tryouts.updatedAt,
       })

@@ -27,6 +27,7 @@ const emptyForm: TryoutDetailsValues = {
   categoryId: "",
   durationMinutes: "30",
   accessLevel: "free",
+  shuffleQuestions: true,
 };
 
 export type AdminTryoutsPageData = {
@@ -55,7 +56,8 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
   const validation = validateTryoutDetails(form);
   const errors: TryoutDetailsErrors = { ...(showValidation ? validation.errors : {}), ...serverErrors };
   const isDirty = Boolean(form.title.trim() || form.description.trim() || form.icon) ||
-    form.durationMinutes !== emptyForm.durationMinutes || form.accessLevel !== emptyForm.accessLevel;
+    form.durationMinutes !== emptyForm.durationMinutes || form.accessLevel !== emptyForm.accessLevel ||
+    form.shuffleQuestions !== emptyForm.shuffleQuestions;
   // This page stays mounted under the detail route, so only guard the list itself.
   useUnsavedChangesGuard(isIndexRoute && isDirty && !busyAction);
 
@@ -106,6 +108,7 @@ export function AdminTryoutsPage({ categories, tryouts }: AdminTryoutsPageData) 
       categoryId: form.categoryId,
       durationMinutes: Number(form.durationMinutes),
       accessLevel: form.accessLevel,
+      shuffleQuestions: form.shuffleQuestions,
     };
 
     try {

@@ -75,7 +75,7 @@ try {
   const [sub] = await db.select().from(subCategories).where(eq(subCategories.categoryId, category.id)).limit(1);
   const [topic] = await db.select().from(topics).where(eq(topics.subCategoryId, sub.id)).limit(1);
   const metadata = { title: "", description: "Local race check", categoryId: category.id,
-    durationMinutes: 30, accessLevel: "free" as const, status: "published" as const };
+    durationMinutes: 30, accessLevel: "free" as const, shuffleQuestions: true, status: "published" as const };
   const question = { categoryId: category.id, subCategoryId: sub.id, topicId: topic.id,
     questionText: "Local QA", optionA: "A", optionB: "B", optionC: "C", optionD: "D",
     correctOption: "B" as const, explanation: "Pembahasan awal", pictureUrl: "https://example.test/original.png",

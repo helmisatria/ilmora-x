@@ -141,6 +141,13 @@
       "when": 1790812800000,
       "tag": "0019_tryout_catalog_order",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790899200000,
+      "tag": "0020_tryout_shuffle_questions",
+      "breakpoints": true
     }
   ]
 }

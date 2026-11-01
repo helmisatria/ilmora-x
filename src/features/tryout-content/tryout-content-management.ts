@@ -55,6 +55,7 @@ export async function createTryoutContent(data: TryoutContentInput) {
         categoryId: data.categoryId,
         durationMinutes: data.durationMinutes,
         accessLevel: data.accessLevel,
+        shuffleQuestions: data.shuffleQuestions,
         status: "draft",
       }).returning({ id: tryouts.id });
 
@@ -81,6 +82,7 @@ export async function updateTryoutContent(data: TryoutContentInput & { tryoutId:
         categoryId: data.categoryId,
         durationMinutes: data.durationMinutes,
         accessLevel: data.accessLevel,
+        shuffleQuestions: data.shuffleQuestions,
         updatedAt: nextTryoutRevision,
       })
       .where(eq(tryouts.id, data.tryoutId));
