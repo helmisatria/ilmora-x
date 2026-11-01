@@ -25,6 +25,12 @@ export function getSafeErrorMessage(error: unknown, fallback: string) {
   return rawMessage;
 }
 
+// The server rejects a request with "Authentication is required." when the session no longer exists,
+// for example after the same account signs in on another device.
+export function isSessionEndedError(error: unknown) {
+  return extractErrorMessage(error) === "Authentication is required.";
+}
+
 function extractErrorMessage(error: unknown) {
   if (error instanceof Error && error.message?.trim()) {
     return error.message.trim();

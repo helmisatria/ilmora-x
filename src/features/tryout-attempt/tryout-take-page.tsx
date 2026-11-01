@@ -18,7 +18,7 @@ import {
   restoreAttemptProgress,
   type AttemptProgressPayload,
 } from "./attempt-progress-queue";
-import { getSafeErrorMessage } from "../../lib/user-errors";
+import { getSafeErrorMessage, isSessionEndedError } from "../../lib/user-errors";
 import {
   getTryoutPreparation,
   resumeActiveAttempt,
@@ -75,6 +75,7 @@ export function TryoutTakePage({ tryout }: { tryout: TryoutPreparation }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [startError, setStartError] = useState<string>("");
   const [submitError, setSubmitError] = useState<string>("");
+  const [sessionEnded, setSessionEnded] = useState(false);
   const [submitting, setSubmitting] = useState<{ attemptId: string } | null>(null);
   const hasAutoResumed = useRef(false);
 
@@ -96,8 +97,9 @@ export function TryoutTakePage({ tryout }: { tryout: TryoutPreparation }) {
       });
       setLastSaved(formatSavedTime(result.savedAt));
       setSaveStatus("saved");
-    } catch {
+    } catch (error) {
       queueAttemptProgress(window.localStorage, payload);
+      if (isSessionEndedError(error)) setSessionEnded(true);
       setSaveStatus("error");
       posthog.capture(productAnalyticsEvents.attemptAutosaveFailed, {
         attempt_id: payload.attemptId,
@@ -198,7 +200,9 @@ export function TryoutTakePage({ tryout }: { tryout: TryoutPreparation }) {
         removeQueuedAttemptProgress(window.localStorage, result.attemptId);
         setSubmitting({ attemptId: result.attemptId });
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (isSessionEndedError(error)) setSessionEnded(true);
+      });
   }, [answers, attemptData, flagged, phase, qIndex, questions, submitting, timeLeft]);
 
   useEffect(() => {
@@ -384,6 +388,12 @@ export function TryoutTakePage({ tryout }: { tryout: TryoutPreparation }) {
         setSubmitting({ attemptId: result.attemptId });
       })
       .catch((error) => {
+        if (isSessionEndedError(error)) {
+          queueAttemptProgress(window.localStorage, payload);
+          setShowSubmitConfirm(false);
+          setSessionEnded(true);
+          return;
+        }
         setSubmitError(getSafeErrorMessage(error, "Submit belum berhasil. Coba lagi sebentar lagi."));
       });
   };
@@ -467,6 +477,13 @@ export function TryoutTakePage({ tryout }: { tryout: TryoutPreparation }) {
           </div>
         </div>
       </div>
+
+      {sessionEnded && (
+        <div role="alert" className="bg-amber-50 border-b-2 border-amber-200 px-4 py-3 text-center text-[13px] font-semibold text-amber-800">
+          Akunmu masuk di perangkat lain, jadi sesi di perangkat ini berakhir. Jawaban terakhir tersimpan di perangkat ini.{" "}
+          <a href="/auth/login" className="underline">Masuk lagi untuk melanjutkan</a>
+        </div>
+      )}
 
       <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 max-w-3xl mx-auto w-full pb-28">
         <div className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 mb-5 shadow-md border-2 border-stone-100 border-b-4 border-b-stone-200">
